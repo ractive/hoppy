@@ -1,3 +1,14 @@
+[workspace]
+members = [
+    ".",
+    "crates/hoppy-api-compute",
+    "crates/hoppy-api-core",
+    "crates/hoppy-api-shield",
+    "crates/hoppy-api-storage",
+    "crates/hoppy-api-stream",
+]
+resolver = "2"
+
 [package]
 name = "hoppy"
 version = "0.1.0"
