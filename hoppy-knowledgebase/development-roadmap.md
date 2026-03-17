@@ -1,0 +1,283 @@
+---
+title: "Hoppy Development Roadmap"
+date: 2026-03-17
+tags:
+  - roadmap
+  - planning
+  - iterations
+status: active
+---
+
+# Hoppy Development Roadmap
+
+## Guiding Principles
+
+- **Vertical slices**: Each iteration delivers something runnable end-to-end
+- **Start narrow, widen later**: Get one service working well before adding more
+- **Foundation first**: Invest early in the scaffolding (CLI framework, output formatting, auth, error handling) so adding services later is mechanical
+- **Test with real API calls**: Each iteration should be testable against the live bunny.net API
+
+## Git Branching Strategy
+
+**One branch per iteration**, merged to main via PR.
+
+- Branch naming: `iter-0/skeleton`, `iter-0.5/codegen-experiment`, `iter-1/pull-zones`, etc.
+- Main is always in a working state
+- Each iteration gets a reviewable PR
+- If an iteration goes sideways, we abandon the branch — main is safe
+- No feature branches within iterations (each iteration is small enough to be atomic)
+
+---
+
+## Iteration 0 — Project Skeleton
+
+**Goal:** Rust project compiles, CLI parses args, nothing talks to the network yet.
+
+- [x] `cargo init` with workspace layout
+- [x] Clap derive setup with nested subcommand structure (`hoppy <service> <action>`)
+- [x] Global flags: `--format json|table|text`, `--debug`, `--quiet`, `--yes`, `--version`
+- [x] `BUNNY_API_KEY` env var reading (validate presence, error if missing)
+- [x] Output formatting module (json + table + text) with a dummy data struct
+- [x] Error handling scaffold (anyhow, human-friendly error display, JSON errors when `--format json`)
+- [x] Stderr for status/errors, stdout for data
+- [x] `hoppy completions <shell>` subcommand (clap_complete)
+- [x] Basic README with usage examples
+- [x] CI: GitHub Actions workflow that builds and runs `hoppy --help` on linux/mac/windows
+
+**Deliverable:** `hoppy --help` shows the command tree, `hoppy pull-zone list` prints "not implemented yet" cleanly.
+
+---
+
+## Iteration 0.5 — Codegen Experiment
+
+**Goal:** Validate whether Progenitor can generate usable Rust clients from the bunny.net OpenAPI specs. Determine the codegen strategy before writing service implementations.
+
+### OpenAPI Specs Inventory
+
+All specs are **OpenAPI 3.0.x** (no Swagger 2.0):
+
+| API | Spec URL | OAS Version | Endpoints | Schemas | Base URL |
+|-----|----------|-------------|-----------|---------|----------|
+| Core Platform | [public.json](https://core-api-public-docs.b-cdn.net/docs/v3/public.json) | 3.0.0 | ~65 | ~100 | `api.bunny.net` |
+| Stream (Video) | [bunnynet-video-api.public.json](https://video.bunnycdn.com/openapi/bunnynet-video-api.public.json) | 3.0.0 | ~30 | ~50 | `video.bunnycdn.com` |
+| Shield | [swagger.json](https://api.bunny.net/shield/docs/v1/swagger.json) | 3.0.4 | ~41 | ~60 | `api.bunny.net/shield` |
+| Edge Scripting | [compute.json](https://core-api-public-docs.b-cdn.net/docs/v3/compute.json) | 3.0.0 | ~22 | ~24 | `api.bunny.net/compute` |
+| Storage | [openapi.json](https://docs.bunny.net/api-reference/storage/openapi.json) | 3.0.0 | 4 | 2 | `{region}.storage.bunnycdn.com` |
+
+### Experiment Plan
+
+- [ ] Download all 5 OpenAPI spec files into `specs/` directory
+- [ ] Install `cargo-progenitor`
+- [ ] Run Progenitor against each spec, record results:
+  - [ ] Core Platform — largest, most important
+  - [ ] Stream — second priority
+  - [ ] Shield — uses 3.0.4, may have quirks
+  - [ ] Edge Scripting — smaller, good test case
+  - [ ] Storage — tiny, baseline test
+- [ ] For each spec, evaluate:
+  - Does it generate without errors?
+  - Do the generated types look correct?
+  - Does the generated client compile?
+  - Are the method signatures usable?
+- [ ] If Progenitor fails on a spec, try minor spec fixes (remove unsupported features, fix schema issues)
+- [ ] If Progenitor fails fundamentally, try `openapi-generator` as fallback
+- [ ] Document results and decide strategy per API
+
+### Expected Outcome
+
+A decision matrix:
+
+| API | Codegen? | Tool | Notes |
+|-----|----------|------|-------|
+| Core Platform | yes/no | progenitor / openapi-generator / hand-written | ... |
+| Stream | yes/no | ... | ... |
+| Shield | yes/no | ... | ... |
+| Edge Scripting | yes/no | ... | ... |
+| Storage | yes/no | ... | ... |
+
+All specs get the same treatment — if codegen works, we use it for all 5, including Storage. Consistency over convenience.
+
+### Integration Approach
+
+If codegen works, the generated clients go into a workspace member crate:
+
+```
+hoppy/
+  Cargo.toml          (workspace)
+  crates/
+    hoppy-cli/        (the CLI binary)
+    hoppy-api-core/   (generated from Core Platform spec)
+    hoppy-api-stream/ (generated from Stream spec)
+    hoppy-api-shield/ (generated from Shield spec)
+    hoppy-api-compute/(generated from Edge Scripting spec)
+  specs/              (downloaded OpenAPI JSON files)
+```
+
+The CLI crate depends on the generated crates and wraps their clients with our auth/output/error handling.
+
+**Deliverable:** Decision document with codegen results per spec. Generated crates compile (or documented reasons why not).
+
+---
+
+## Iteration 1 — First Service: Pull Zones (Core API)
+
+**Goal:** Full CRUD for pull zones against the live API. This proves out the entire vertical stack.
+
+- [ ] HTTP client setup (using generated client if codegen succeeded, or hand-written reqwest)
+- [ ] Shared request/response plumbing: base URL, auth, error mapping, debug logging of requests
+- [ ] Pull Zone commands:
+  - [ ] `list` — paginated listing
+  - [ ] `get --id <id>` — single pull zone details
+  - [ ] `create --name <name> --origin-url <url> [options]` — create pull zone
+  - [ ] `update --id <id> [options]` — update pull zone settings
+  - [ ] `delete --id <id> [--yes]` — delete with confirmation
+  - [ ] `purge --id <id> [--urls <url>...]` — purge cache
+- [ ] Table output: pick sensible default columns (id, name, origin URL, status)
+- [ ] Pagination: `--page`, `--per-page` flags
+- [ ] Integration test: at least one test that mocks the API response
+
+**Deliverable:** `BUNNY_API_KEY=xxx hoppy pull-zone list --format json` returns real data.
+
+---
+
+## Iteration 2 — Storage Zones + File Operations
+
+**Goal:** Manage storage zones and upload/download files — this exercises the Storage API (different base URL, different auth key).
+
+- [ ] Storage Zone commands (Core API):
+  - [ ] `storage-zone list|get|create|update|delete`
+- [ ] Storage file commands (Storage API — different base URL):
+  - [ ] `storage upload --zone <name> --remote-path <path> --file <local-path>`
+  - [ ] `storage download --zone <name> --remote-path <path> [--output <local-path>]`
+  - [ ] `storage ls --zone <name> [--path <dir>]`
+  - [ ] `storage rm --zone <name> --remote-path <path> [--yes]`
+- [ ] Handle per-zone storage API key (from zone details or `BUNNY_STORAGE_KEY` env var)
+- [ ] Progress bar for upload/download (stderr, only if TTY)
+
+**Deliverable:** Upload and download files to/from bunny.net storage.
+
+---
+
+## Iteration 3 — DNS
+
+**Goal:** Manage DNS zones and records.
+
+- [ ] DNS zone commands:
+  - [ ] `dns zone list|get|create|update|delete`
+- [ ] DNS record commands:
+  - [ ] `dns record list --zone-id <id>`
+  - [ ] `dns record add --zone-id <id> --type <A|AAAA|CNAME|...> --name <name> --value <value> [--ttl <seconds>]`
+  - [ ] `dns record update --zone-id <id> --record-id <id> [options]`
+  - [ ] `dns record delete --zone-id <id> --record-id <id> [--yes]`
+- [ ] Import/export zone files (if API supports it)
+
+**Deliverable:** Full DNS management via CLI.
+
+---
+
+## Iteration 4 — Stream (Video)
+
+**Goal:** Manage video libraries and videos — exercises the Stream API (different base URL and API key).
+
+- [ ] Stream library commands:
+  - [ ] `stream library list|get|create|update|delete`
+- [ ] Stream video commands:
+  - [ ] `stream video list --library-id <id>`
+  - [ ] `stream video get --library-id <id> --video-id <id>`
+  - [ ] `stream video upload --library-id <id> --file <path>`
+  - [ ] `stream video delete --library-id <id> --video-id <id> [--yes]`
+- [ ] Handle stream API key (`BUNNY_STREAM_KEY` or derived from library)
+- [ ] Video upload with progress bar
+
+**Deliverable:** Upload and manage videos via CLI.
+
+---
+
+## Iteration 5 — Shield (Security)
+
+**Goal:** Manage WAF, rate limiting, DDoS settings.
+
+- [ ] Shield subcommands:
+  - [ ] `shield waf list-rules|add-rule|delete-rule`
+  - [ ] `shield rate-limit get|update`
+  - [ ] `shield ddos get|update`
+  - [ ] `shield access-list list|get|add|delete`
+  - [ ] `shield bot-detection get|update`
+
+**Deliverable:** Security configuration via CLI.
+
+---
+
+## Iteration 6 — Edge Scripting + Magic Containers
+
+**Goal:** Manage serverless scripts and containers.
+
+- [ ] Edge scripting commands:
+  - [ ] `script list|get|create|update|delete|deploy`
+  - [ ] `script variable list|set|delete`
+  - [ ] `script secret set|delete`
+- [ ] Magic container commands:
+  - [ ] `container list|get|create|update|delete`
+  - [ ] `container logs --id <id> [--follow]`
+  - [ ] `container scale --id <id> --replicas <n>`
+
+**Deliverable:** Deploy and manage edge scripts and containers.
+
+---
+
+## Iteration 7 — Polish & Distribution
+
+**Goal:** Production-ready release.
+
+- [ ] Config file support: `~/.config/hoppy/config.toml` for defaults
+- [ ] Shell completion install helper: `hoppy completions install bash|zsh|fish`
+- [ ] `--dry-run` for mutating operations (show what would happen)
+- [ ] `--wait` for async operations
+- [ ] Man page generation
+- [ ] GitHub Actions release workflow: build + upload binaries on version tag
+- [ ] Homebrew formula / cargo install support
+- [ ] Comprehensive README with examples for each service
+- [ ] `hoppy auth check` — validate API key and print account info
+
+**Deliverable:** Tagged v0.1.0 release with binaries for linux (x86_64, aarch64), macOS (x86_64, aarch64), windows (x86_64).
+
+---
+
+## Possible Future Iterations
+
+- **Statistics/analytics commands** — `hoppy stats` for traffic, bandwidth, cache hit rates
+- **Billing commands** — `hoppy billing summary`, invoices
+- **Optimizer commands** — image transformation presets
+- **AI image generation** — `hoppy ai generate --prompt "..."`
+- **Database commands** — `hoppy db query --sql "SELECT ..."`
+- **Bulk operations** — pipe JSON in, batch create/update/delete
+- **Profile support** — multiple named API key profiles
+- **Auto-update** — self-update mechanism
+- **MCP server mode** — run as a Model Context Protocol server for direct LLM integration
+
+---
+
+## Iteration Sizing Estimate
+
+| Iteration | Scope | Complexity |
+|-----------|-------|------------|
+| 0 — Skeleton | CLI framework, output, auth, CI | Small |
+| 0.5 — Codegen Experiment | Test Progenitor on all specs | Small |
+| 1 — Pull Zones | First full service, HTTP client | Medium |
+| 2 — Storage | Second API, file I/O, progress bars | Medium |
+| 3 — DNS | Straightforward CRUD + records | Small-Medium |
+| 4 — Stream | Third API, video upload | Medium |
+| 5 — Shield | Security features | Small-Medium |
+| 6 — Scripting + Containers | Two services, log streaming | Medium |
+| 7 — Polish & Release | CI/CD, packaging, docs | Medium |
+
+## Decision Log
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-03-17 | Codegen experiment before committing to approach | All 5 specs are OAS 3.0.x — codegen is viable and would prevent error-prone hand-written serde types. Experiment validates this. |
+| 2026-03-17 | All specs get same codegen treatment | Consistency over convenience — if codegen works, use it for all 5 specs including Storage |
+| 2026-03-17 | Pull Zones as first service | Most common bunny.net use case (CDN), exercises the core API, good proving ground |
+| 2026-03-17 | No `--api-key` flag | clig.dev: don't pass secrets via flags (visible in ps/history). Use `BUNNY_API_KEY` env var only. |
+| 2026-03-17 | Table output as default for TTY | Follows az/gcloud/clig.dev pattern. JSON auto-default when piped. |
+| 2026-03-17 | Branch per iteration | Keeps main stable. Branch naming: `iter-N/description`. Merge via PR. |
