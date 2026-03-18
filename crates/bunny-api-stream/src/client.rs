@@ -56,6 +56,11 @@ impl StreamClient {
         rb.header("AccessKey", &self.api_key)
     }
 
+    /// URL-encode a single path segment (e.g. a video or collection GUID).
+    fn encode(id: &str) -> String {
+        urlencoding::encode(id).into_owned()
+    }
+
     /// Execute a prepared request, optionally logging method and URL to stderr.
     async fn send(&self, rb: RequestBuilder) -> Result<reqwest::Response> {
         let request = rb.build().context("failed to build request")?;
@@ -128,7 +133,8 @@ impl StreamClient {
 
     /// Fetch a single video by its GUID.
     pub async fn get_video(&self, library_id: i64, video_id: &str) -> Result<Video> {
-        let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
+        let vid = Self::encode(video_id);
+        let url = format!("{}/library/{library_id}/videos/{vid}", self.base_url);
         let resp = self.send(self.auth(self.http.get(&url))).await?;
         Self::parse_response(resp).await
     }
@@ -151,7 +157,8 @@ impl StreamClient {
         video_id: &str,
         body: &UpdateVideo,
     ) -> Result<StatusMessage> {
-        let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
+        let vid = Self::encode(video_id);
+        let url = format!("{}/library/{library_id}/videos/{vid}", self.base_url);
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
@@ -160,7 +167,8 @@ impl StreamClient {
 
     /// Delete a video and all its associated files.
     pub async fn delete_video(&self, library_id: i64, video_id: &str) -> Result<StatusMessage> {
-        let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
+        let vid = Self::encode(video_id);
+        let url = format!("{}/library/{library_id}/videos/{vid}", self.base_url);
         let resp = self.send(self.auth(self.http.delete(&url))).await?;
         Self::parse_response(resp).await
     }
@@ -180,7 +188,8 @@ impl StreamClient {
         video_id: &str,
         body: impl Into<reqwest::Body>,
     ) -> Result<StatusMessage> {
-        let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
+        let vid = Self::encode(video_id);
+        let url = format!("{}/library/{library_id}/videos/{vid}", self.base_url);
         let resp = self
             .send(
                 self.auth(self.http.put(&url))
@@ -236,10 +245,8 @@ impl StreamClient {
 
     /// Fetch a single collection by its GUID.
     pub async fn get_collection(&self, library_id: i64, collection_id: &str) -> Result<Collection> {
-        let url = format!(
-            "{}/library/{library_id}/collections/{collection_id}",
-            self.base_url
-        );
+        let col = Self::encode(collection_id);
+        let url = format!("{}/library/{library_id}/collections/{col}", self.base_url);
         let resp = self.send(self.auth(self.http.get(&url))).await?;
         Self::parse_response(resp).await
     }
@@ -264,10 +271,8 @@ impl StreamClient {
         collection_id: &str,
         body: &UpdateCollection,
     ) -> Result<Collection> {
-        let url = format!(
-            "{}/library/{library_id}/collections/{collection_id}",
-            self.base_url
-        );
+        let col = Self::encode(collection_id);
+        let url = format!("{}/library/{library_id}/collections/{col}", self.base_url);
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
@@ -280,10 +285,8 @@ impl StreamClient {
         library_id: i64,
         collection_id: &str,
     ) -> Result<StatusMessage> {
-        let url = format!(
-            "{}/library/{library_id}/collections/{collection_id}",
-            self.base_url
-        );
+        let col = Self::encode(collection_id);
+        let url = format!("{}/library/{library_id}/collections/{col}", self.base_url);
         let resp = self.send(self.auth(self.http.delete(&url))).await?;
         Self::parse_response(resp).await
     }
@@ -467,5 +470,21 @@ mod tests {
     fn stream_client_with_debug() {
         let client = StreamClient::new("key").with_debug(true);
         assert!(client.debug);
+    }
+
+    #[test]
+    fn encode_plain_guid_is_unchanged() {
+        assert_eq!(StreamClient::encode("abc-def-123"), "abc-def-123");
+    }
+
+    #[test]
+    fn encode_special_chars_in_id() {
+        // A `?` must be percent-encoded so it cannot break the URL as a query separator.
+        assert_eq!(StreamClient::encode("id?foo"), "id%3Ffoo");
+    }
+
+    #[test]
+    fn encode_space_in_id() {
+        assert_eq!(StreamClient::encode("my id"), "my%20id");
     }
 }

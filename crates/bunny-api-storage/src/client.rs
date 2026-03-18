@@ -3,6 +3,16 @@ use bytes::Bytes;
 
 use crate::types::{StorageError, StorageObject};
 
+/// URL-encode each `/`-separated segment of a path, preserving the slashes.
+///
+/// For example `"images/my dir"` becomes `"images/my%20dir"`.
+fn encode_path_segments(path: &str) -> String {
+    path.split('/')
+        .map(|seg| urlencoding::encode(seg).into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 /// Client for the bunny.net Edge Storage API.
 ///
 /// Each storage zone has a primary region, which determines the API hostname.
@@ -165,19 +175,24 @@ impl StorageClient {
 
     /// Builds the listing URL: `{base}/{zone}/{path}/`
     fn listing_url(&self, storage_zone_name: &str, path: &str) -> String {
+        let zone = urlencoding::encode(storage_zone_name);
         if path.is_empty() {
-            format!("{}/{storage_zone_name}/", self.base_url)
+            format!("{}/{zone}/", self.base_url)
         } else {
-            format!("{}/{storage_zone_name}/{path}/", self.base_url)
+            let encoded_path = encode_path_segments(path);
+            format!("{}/{zone}/{encoded_path}/", self.base_url)
         }
     }
 
     /// Builds the file URL: `{base}/{zone}/{path}/{file_name}`
     fn file_url(&self, storage_zone_name: &str, path: &str, file_name: &str) -> String {
+        let zone = urlencoding::encode(storage_zone_name);
+        let name = urlencoding::encode(file_name);
         if path.is_empty() {
-            format!("{}/{storage_zone_name}/{file_name}", self.base_url)
+            format!("{}/{zone}/{name}", self.base_url)
         } else {
-            format!("{}/{storage_zone_name}/{path}/{file_name}", self.base_url)
+            let encoded_path = encode_path_segments(path);
+            format!("{}/{zone}/{encoded_path}/{name}", self.base_url)
         }
     }
 
@@ -245,6 +260,24 @@ mod tests {
     }
 
     #[test]
+    fn listing_url_encodes_special_chars_in_zone() {
+        let c = client();
+        assert_eq!(
+            c.listing_url("my zone", ""),
+            "https://storage.bunnycdn.com/my%20zone/"
+        );
+    }
+
+    #[test]
+    fn listing_url_encodes_special_chars_in_path() {
+        let c = client();
+        assert_eq!(
+            c.listing_url("my-zone", "my folder/sub dir"),
+            "https://storage.bunnycdn.com/my-zone/my%20folder/sub%20dir/"
+        );
+    }
+
+    #[test]
     fn file_url_empty_path() {
         let c = client();
         assert_eq!(
@@ -259,6 +292,25 @@ mod tests {
         assert_eq!(
             c.file_url("my-zone", "images/2024", "photo.jpg"),
             "https://storage.bunnycdn.com/my-zone/images/2024/photo.jpg"
+        );
+    }
+
+    #[test]
+    fn file_url_encodes_special_chars_in_file_name() {
+        let c = client();
+        assert_eq!(
+            c.file_url("my-zone", "images", "my file #1.jpg"),
+            "https://storage.bunnycdn.com/my-zone/images/my%20file%20%231.jpg"
+        );
+    }
+
+    #[test]
+    fn file_url_encodes_query_breaking_chars_in_file_name() {
+        let c = client();
+        // A `?` in the filename must be encoded so it is not treated as a query string.
+        assert_eq!(
+            c.file_url("my-zone", "", "file?name.txt"),
+            "https://storage.bunnycdn.com/my-zone/file%3Fname.txt"
         );
     }
 }
