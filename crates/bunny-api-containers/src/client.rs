@@ -147,15 +147,16 @@ impl ContainersClient {
         granularity: Granularity,
         to_date: Option<&str>,
     ) -> Result<ApplicationStatistics> {
-        let gran_str = serde_json::to_value(granularity)?
-            .as_str()
-            .unwrap_or("Daily")
-            .to_string();
+        let gran_str = match granularity {
+            Granularity::Daily => "Daily",
+            Granularity::Hourly => "Hourly",
+            Granularity::Minute => "Minute",
+        };
         let mut req = self.auth(
             self.http
                 .get(self.url(&format!("/apps/{app_id}/statistics"))),
         );
-        req = req.query(&[("fromDate", from_date), ("granularity", &gran_str)]);
+        req = req.query(&[("fromDate", from_date), ("granularity", gran_str)]);
         if let Some(to) = to_date {
             req = req.query(&[("toDate", to)]);
         }

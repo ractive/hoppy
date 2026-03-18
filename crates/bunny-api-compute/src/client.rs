@@ -30,7 +30,7 @@ impl ComputeClient {
     pub fn with_base_url(api_key: impl Into<String>, base_url: impl Into<String>) -> Self {
         Self {
             http: Client::new(),
-            base_url: base_url.into(),
+            base_url: base_url.into().trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
         }
