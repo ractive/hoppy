@@ -2,10 +2,11 @@ use bunny_api_core::{ApiError, CoreClient};
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-fn fixture(name: &str) -> String {
-    let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read fixture {path}: {e}"))
-}
+const FIXTURE_LIST_PAGINATED: &str =
+    include_str!("fixtures/pullzone_list_paginated.json");
+const FIXTURE_GET: &str = include_str!("fixtures/pullzone_get.json");
+const FIXTURE_UNAUTHORIZED: &str =
+    include_str!("fixtures/error_unauthorized.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -22,7 +23,7 @@ async fn list_pull_zones_returns_paginated_items() {
         .and(query_param("perPage", "1000"))
         .respond_with(
             ResponseTemplate::new(200)
-                .set_body_raw(fixture("pullzone_list_paginated.json"), "application/json"),
+                .set_body_raw(FIXTURE_LIST_PAGINATED, "application/json"),
         )
         .expect(1)
         .mount(&server)
@@ -40,6 +41,30 @@ async fn list_pull_zones_returns_paginated_items() {
 }
 
 #[tokio::test]
+async fn list_pull_zones_forwards_explicit_page_and_per_page() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone"))
+        .and(query_param("page", "3"))
+        .and(query_param("perPage", "25"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_LIST_PAGINATED, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .list_pull_zones(Some(3), Some(25), None)
+        .await
+        .unwrap();
+
+    assert_eq!(result.items.len(), 2);
+}
+
+#[tokio::test]
 async fn get_pull_zone_returns_single_zone() {
     let server = MockServer::start().await;
 
@@ -48,7 +73,7 @@ async fn get_pull_zone_returns_single_zone() {
         .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
-                .set_body_raw(fixture("pullzone_get.json"), "application/json"),
+                .set_body_raw(FIXTURE_GET, "application/json"),
         )
         .expect(1)
         .mount(&server)
@@ -72,7 +97,7 @@ async fn invalid_api_key_returns_api_error() {
         .and(path("/pullzone"))
         .respond_with(
             ResponseTemplate::new(401)
-                .set_body_raw(fixture("error_unauthorized.json"), "application/json"),
+                .set_body_raw(FIXTURE_UNAUTHORIZED, "application/json"),
         )
         .expect(1)
         .mount(&server)
