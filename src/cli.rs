@@ -292,11 +292,21 @@ pub enum DnsAction {
 #[derive(Subcommand)]
 pub enum DnsZoneAction {
     /// List DNS zones
-    List,
+    List {
+        /// Filter by domain
+        #[arg(long)]
+        search: Option<String>,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
+    },
     /// Get a specific DNS zone
     Get {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
     /// Create a DNS zone
     Create {
@@ -306,12 +316,30 @@ pub enum DnsZoneAction {
     /// Update a DNS zone
     Update {
         #[arg(long)]
-        id: u64,
+        id: i64,
+        /// Enable custom nameservers
+        #[arg(long)]
+        custom_nameservers_enabled: Option<bool>,
+        /// Primary nameserver
+        #[arg(long)]
+        nameserver1: Option<String>,
+        /// Secondary nameserver
+        #[arg(long)]
+        nameserver2: Option<String>,
+        /// SOA email address
+        #[arg(long)]
+        soa_email: Option<String>,
+        /// Enable query logging
+        #[arg(long)]
+        logging_enabled: Option<bool>,
+        /// Enable IP anonymization in logs
+        #[arg(long)]
+        logging_ip_anonymization_enabled: Option<bool>,
     },
     /// Delete a DNS zone
     Delete {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
 }
 
@@ -320,34 +348,77 @@ pub enum DnsRecordAction {
     /// List records in a DNS zone
     List {
         #[arg(long)]
-        zone_id: u64,
+        zone_id: i64,
     },
     /// Add a DNS record
     Add {
         #[arg(long)]
-        zone_id: u64,
+        zone_id: i64,
+        /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, Redirect, Flatten)
         #[arg(long, value_name = "TYPE")]
         r#type: String,
+        /// Record name (subdomain, empty for apex)
         #[arg(long)]
-        name: String,
+        name: Option<String>,
+        /// Record value (IP address, hostname, text, etc.)
         #[arg(long)]
         value: String,
+        /// TTL in seconds
         #[arg(long)]
-        ttl: Option<u32>,
+        ttl: Option<i32>,
+        /// Priority (for MX, SRV)
+        #[arg(long)]
+        priority: Option<i32>,
+        /// Weight (for weighted/smart routing)
+        #[arg(long)]
+        weight: Option<i32>,
+        /// Port (for SRV records)
+        #[arg(long)]
+        port: Option<i32>,
+        /// Flags (for CAA records)
+        #[arg(long)]
+        flags: Option<u8>,
+        /// Tag (for CAA records, e.g. "issue", "issuewild")
+        #[arg(long)]
+        tag: Option<String>,
+        /// Comment
+        #[arg(long)]
+        comment: Option<String>,
     },
     /// Update a DNS record
     Update {
         #[arg(long)]
-        zone_id: u64,
+        zone_id: i64,
         #[arg(long)]
-        record_id: u64,
+        record_id: i64,
+        /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS)
+        #[arg(long, value_name = "TYPE")]
+        r#type: String,
+        /// Record value
+        #[arg(long)]
+        value: String,
+        /// Record name (subdomain)
+        #[arg(long)]
+        name: Option<String>,
+        /// TTL in seconds
+        #[arg(long)]
+        ttl: Option<i32>,
+        /// Priority (for MX, SRV)
+        #[arg(long)]
+        priority: Option<i32>,
+        /// Weight
+        #[arg(long)]
+        weight: Option<i32>,
+        /// Comment
+        #[arg(long)]
+        comment: Option<String>,
     },
     /// Delete a DNS record
     Delete {
         #[arg(long)]
-        zone_id: u64,
+        zone_id: i64,
         #[arg(long)]
-        record_id: u64,
+        record_id: i64,
     },
 }
 
