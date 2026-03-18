@@ -449,11 +449,13 @@ name = "hoppy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bunny-api-core",
  "clap",
  "clap_complete",
  "serde",
  "serde_json",
  "tabled",
+ "tokio",
 ]
 
 [[package]]

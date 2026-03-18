@@ -7,7 +7,7 @@ tags:
   - api-client
   - rust
   - action-items
-status: active
+status: completed
 ---
 
 # Iteration 1 Code Review

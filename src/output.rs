@@ -24,8 +24,7 @@ pub fn print_data<T: Serialize + Tabled>(items: &[T], format: OutputFormat) {
             if let Some(arr) = json_value.as_array() {
                 for item in arr {
                     if let Some(obj) = item.as_object() {
-                        let vals: Vec<String> =
-                            obj.values().map(format_text_value).collect();
+                        let vals: Vec<String> = obj.values().map(format_text_value).collect();
                         println!("{}", vals.join("\t"));
                     }
                 }
