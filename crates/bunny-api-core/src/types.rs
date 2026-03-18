@@ -482,6 +482,9 @@ pub enum DnsRecordType {
     PTR = 10,
     Script = 11,
     NS = 12,
+    SVCB = 13,
+    HTTPS = 14,
+    TLSA = 15,
 }
 
 impl std::fmt::Display for DnsRecordType {
@@ -500,6 +503,9 @@ impl std::fmt::Display for DnsRecordType {
             DnsRecordType::PTR => write!(f, "PTR"),
             DnsRecordType::Script => write!(f, "Script"),
             DnsRecordType::NS => write!(f, "NS"),
+            DnsRecordType::SVCB => write!(f, "SVCB"),
+            DnsRecordType::HTTPS => write!(f, "HTTPS"),
+            DnsRecordType::TLSA => write!(f, "TLSA"),
         }
     }
 }
@@ -521,6 +527,9 @@ impl std::str::FromStr for DnsRecordType {
             "PTR" => Ok(DnsRecordType::PTR),
             "SCRIPT" => Ok(DnsRecordType::Script),
             "NS" => Ok(DnsRecordType::NS),
+            "SVCB" => Ok(DnsRecordType::SVCB),
+            "HTTPS" => Ok(DnsRecordType::HTTPS),
+            "TLSA" => Ok(DnsRecordType::TLSA),
             _ => anyhow::bail!("unknown DNS record type: {s}"),
         }
     }
