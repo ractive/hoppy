@@ -1,0 +1,21 @@
+{
+  "VideoLibraryId": 10001,
+  "Guid": "newvideo-1111-2222-3333-444455556666",
+  "Title": "My New Video",
+  "DateUploaded": "2024-06-01T00:00:00Z",
+  "Views": 0,
+  "IsPublic": false,
+  "Length": 0,
+  "Status": 0,
+  "Framerate": 0.0,
+  "Width": 0,
+  "Height": 0,
+  "OutputCodecs": "",
+  "ThumbnailCount": 0,
+  "EncodeProgress": 0,
+  "StorageSize": 0,
+  "HasMP4Fallback": false,
+  "AverageWatchTime": 0,
+  "TotalWatchTime": 0,
+  "Captions": []
+}

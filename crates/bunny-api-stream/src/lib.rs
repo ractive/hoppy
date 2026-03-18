@@ -24,6 +24,6 @@ pub mod types;
 // Flatten the most-used items into the crate root for ergonomic imports.
 pub use client::StreamClient;
 pub use types::{
-    Caption, Collection, CreateVideo, FetchVideo, PaginatedList, StatusMessage, UpdateVideo, Video,
-    VideoStatus,
+    Caption, Collection, CreateCollection, CreateVideo, FetchVideo, PaginatedList, StatusMessage,
+    UpdateCollection, UpdateVideo, Video, VideoStatus,
 };

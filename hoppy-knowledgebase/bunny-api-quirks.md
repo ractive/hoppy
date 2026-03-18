@@ -91,3 +91,41 @@ Same behavior as pull zones — returns bare array without pagination params, pa
 **Affected:** DNS record model field `EnviromentalVariables` (missing "n" — should be "Environmental")
 
 This is the actual field name in the bunny.net API. If we ever need to serialize/deserialize this field, we must use the misspelled name.
+
+## Stream API uses PascalCase despite being a separate service
+
+**Affected endpoints:** All Stream API endpoints (`video.bunnycdn.com`)
+
+The Stream API OpenAPI spec describes fields in camelCase (`guid`, `title`, `videoLibraryId`), but the actual API responses use PascalCase (`Guid`, `Title`, `VideoLibraryId`) — same as the Core API. Our types use `#[serde(rename_all = "PascalCase")]` which works correctly against the live API.
+
+## Stream API pagination uses different field names
+
+**Affected endpoints:** All Stream API list endpoints
+
+- Core API pagination: `Items`, `CurrentPage`, `TotalItems`, `HasMoreItems` with `perPage` query param
+- Stream API pagination: `Items`, `CurrentPage`, `TotalItems`, `ItemsPerPage` with `itemsPerPage` query param
+
+The response field `ItemsPerPage` replaces `HasMoreItems`. We compute `has_more_items` from `current_page * items_per_page < total_items`.
+
+## Stream API uses per-library API key
+
+**Affected endpoints:** All Stream API video/collection endpoints
+
+The Stream API requires a per-library API key (not the account API key). Available from the `ApiKey` field in the VideoLibrary response (Core API `GET /videolibrary/{id}`).
+
+**Workaround:** Check `BUNNY_STREAM_KEY` env var first, then fall back to fetching the library via Core API to extract `ApiKey`. Same pattern as Storage zones.
+
+## Video upload is two-step with raw binary PUT
+
+**Affected endpoint:** Video upload
+
+1. `POST /library/{libraryId}/videos` — creates a video placeholder, returns GUID
+2. `PUT /library/{libraryId}/videos/{videoId}` — uploads raw bytes with `Content-Type: application/octet-stream`
+
+Re-uploading to an existing video ID returns 400. Must delete and recreate.
+
+## Video library update uses POST
+
+**Affected endpoint:** `POST /videolibrary/{id}`
+
+Same as all other bunny.net update endpoints — uses POST, not PATCH.

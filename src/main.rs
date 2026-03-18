@@ -24,7 +24,9 @@ async fn main() {
         Commands::Dns { action } => {
             commands::dns::handle(action, cli.format, cli.debug, cli.yes).await
         }
-        Commands::Stream { action } => commands::stream::handle(action, cli.format),
+        Commands::Stream { action } => {
+            commands::stream::handle(action, cli.format, cli.debug, cli.yes).await
+        }
         Commands::Shield { action } => commands::shield::handle(action, cli.format),
         Commands::Script { action } => commands::script::handle(action, cli.format),
         Commands::Container { action } => commands::container::handle(action, cli.format),

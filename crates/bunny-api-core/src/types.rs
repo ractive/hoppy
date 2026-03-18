@@ -679,6 +679,119 @@ impl UpdateDnsZone {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Video Library types
+// ---------------------------------------------------------------------------
+
+/// A bunny.net Video Library (Stream).
+///
+/// `ApiKey` and `ReadOnlyApiKey` are deserialized but never serialized
+/// to prevent accidental exposure in JSON output.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct VideoLibrary {
+    pub id: i64,
+    pub name: String,
+    #[serde(default)]
+    pub video_count: i64,
+    #[serde(default)]
+    pub traffic_usage: i64,
+    #[serde(default)]
+    pub storage_usage: i64,
+    #[serde(default)]
+    pub date_created: String,
+    #[serde(default, skip_serializing)]
+    pub api_key: String,
+    #[serde(default, skip_serializing)]
+    pub read_only_api_key: String,
+    #[serde(default)]
+    pub has_watermark: bool,
+    #[serde(default)]
+    pub pull_zone_id: i64,
+    #[serde(default)]
+    pub storage_zone_id: i64,
+    #[serde(default)]
+    pub enabled_resolutions: Option<String>,
+    #[serde(default)]
+    pub replication_regions: Vec<String>,
+    #[serde(default)]
+    pub allow_direct_play: bool,
+    #[serde(rename = "EnableMP4Fallback", default)]
+    pub enable_mp4_fallback: bool,
+}
+
+/// Request body for `POST /videolibrary` — create a new Video Library.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreateVideoLibrary {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replication_regions: Option<Vec<String>>,
+}
+
+impl CreateVideoLibrary {
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            replication_regions: None,
+        }
+    }
+
+    #[must_use]
+    pub fn replication_regions(mut self, regions: Vec<String>) -> Self {
+        self.replication_regions = Some(regions);
+        self
+    }
+}
+
+/// Request body for `POST /videolibrary/{id}` — update an existing Video Library.
+///
+/// All fields are optional; only non-`None` values are serialised.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateVideoLibrary {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_direct_play: Option<bool>,
+    #[serde(rename = "EnableMP4Fallback", skip_serializing_if = "Option::is_none")]
+    pub enable_mp4_fallback: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub has_watermark: Option<bool>,
+}
+
+impl UpdateVideoLibrary {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[must_use]
+    pub fn allow_direct_play(mut self, allow: bool) -> Self {
+        self.allow_direct_play = Some(allow);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_mp4_fallback(mut self, enable: bool) -> Self {
+        self.enable_mp4_fallback = Some(enable);
+        self
+    }
+
+    #[must_use]
+    pub fn has_watermark(mut self, has: bool) -> Self {
+        self.has_watermark = Some(has);
+        self
+    }
+}
+
 /// Request body for `PUT /dnszone/{zoneId}/records` — add a DNS record.
 /// Note: bunny.net uses PUT for record creation, not POST.
 #[derive(Debug, Clone, Serialize)]
