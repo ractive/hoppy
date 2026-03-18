@@ -136,6 +136,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "tokio",
+ "wiremock",
 ]
 
 [[package]]
@@ -547,6 +548,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bunny-api-core",
+ "bunny-api-shield",
  "bunny-api-storage",
  "bunny-api-stream",
  "clap",

@@ -1,0 +1,36 @@
+{
+  "data": [
+    {
+      "id": 7001,
+      "shieldZoneId": 55001,
+      "userId": "user-abc-123",
+      "ruleName": "Block SQL Injection",
+      "ruleDescription": "Blocks common SQL injection patterns",
+      "ruleConfiguration": {
+        "actionType": 1,
+        "operatorType": 2,
+        "severityType": 2,
+        "value": "SELECT"
+      }
+    },
+    {
+      "id": 7002,
+      "shieldZoneId": 55001,
+      "userId": "user-abc-123",
+      "ruleName": "Log XSS Attempts",
+      "ruleDescription": "Logs cross-site scripting attempts",
+      "ruleConfiguration": {
+        "actionType": 2,
+        "operatorType": 2,
+        "severityType": 1,
+        "value": "<script"
+      }
+    }
+  ],
+  "page": {
+    "totalCount": 2,
+    "totalPages": 1,
+    "currentPage": 1,
+    "pageSize": 20
+  }
+}

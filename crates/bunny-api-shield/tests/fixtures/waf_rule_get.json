@@ -1,0 +1,13 @@
+{
+  "id": 7001,
+  "shieldZoneId": 55001,
+  "userId": "user-abc-123",
+  "ruleName": "Block SQL Injection",
+  "ruleDescription": "Blocks common SQL injection patterns",
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 2,
+    "severityType": 2,
+    "value": "SELECT"
+  }
+}

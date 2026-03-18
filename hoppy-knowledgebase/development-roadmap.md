@@ -208,12 +208,19 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Manage WAF, rate limiting, DDoS settings.
 
-- [ ] Shield subcommands:
-  - [ ] `shield waf list-rules|add-rule|delete-rule`
-  - [ ] `shield rate-limit get|update`
-  - [ ] `shield ddos get|update`
-  - [ ] `shield access-list list|get|add|delete`
-  - [ ] `shield bot-detection get|update`
+- [x] Shield zone commands:
+  - [x] `shield zone list|get|get-by-pullzone|create|update`
+- [x] Shield subcommands:
+  - [x] `shield waf list-rules|get-rule|add-rule|update-rule|delete-rule`
+  - [x] `shield rate-limit list|get|create|update|delete`
+  - [x] `shield access-list list|get|create|update|delete|update-config`
+  - [x] `shield bot-detection get|update`
+- [x] DDoS configuration via shield zone update (--ddos-sensitivity, --ddos-execution-mode, --ddos-challenge-window)
+- [x] Debug mode support (`--debug` flag)
+- [x] Confirmation prompts for destructive operations (`--yes` to skip)
+- [x] 27 wiremock integration tests with fixture-based responses
+- [x] Error handling tests (401 unauthorized, 404 not found)
+- [ ] WAF profiles command (`shield waf profiles`) — API client implemented, CLI not wired yet
 
 **Deliverable:** Security configuration via CLI.
 
@@ -309,3 +316,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-18 | Video upload progress bar deferred to iter 7 | Same as storage upload — `tokio::fs::read` loads entire file. Progress bar work deferred to polish iteration. |
 | 2026-03-18 | VideoLibrary.ApiKey excluded from JSON output | `#[serde(skip_serializing)]` on `api_key` and `read_only_api_key` to prevent leaking credentials in CLI output. Same pattern as storage zone passwords. |
 | 2026-03-18 | Stream API pagination has `ItemsPerPage` not `HasMoreItems` | Stream API uses `ItemsPerPage` field instead of `HasMoreItems`. CLI computes `has_more_items` from `current_page * items_per_page < total_items`. |
+| 2026-03-18 | Shield API uses camelCase unlike Core API's PascalCase | Shield API uses `camelCase` for all JSON field names. All Shield types use `#[serde(rename_all = "camelCase")]`. |
+| 2026-03-18 | DDoS has no dedicated CRUD — configured via Shield Zone update | DDoS sensitivity, execution mode, and challenge window are fields on the Shield Zone, not separate resources. CLI exposes them as `shield zone update` flags. |
+| 2026-03-18 | Shield block-vpn/tor/datacentre are read-only on API responses | These fields appear in `ShieldZoneResponse` but cannot be set via the update endpoint's `ShieldZoneRequest`. CLI does not expose them as update flags. |
+| 2026-03-18 | Shield enum values passed as integers on CLI | WAF action types, operator types, sensitivity levels etc. are passed as numeric values (matching the API's integer enum representation). `serde_json::from_value` converts to typed enums with descriptive error messages. |

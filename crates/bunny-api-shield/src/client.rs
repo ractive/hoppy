@@ -23,6 +23,7 @@ pub struct ShieldClient {
     client: Client,
     api_key: String,
     base_url: String,
+    debug: bool,
 }
 
 impl ShieldClient {
@@ -39,7 +40,15 @@ impl ShieldClient {
             client: Client::new(),
             api_key: api_key.into(),
             base_url: base_url.into(),
+            debug: false,
         }
+    }
+
+    /// Enable or disable debug logging of HTTP method and URL to stderr.
+    #[must_use]
+    pub fn with_debug(mut self, debug: bool) -> Self {
+        self.debug = debug;
+        self
     }
 
     // -----------------------------------------------------------------------
@@ -52,6 +61,15 @@ impl ShieldClient {
 
     fn auth(&self, rb: RequestBuilder) -> RequestBuilder {
         rb.header("AccessKey", &self.api_key)
+    }
+
+    /// Build and execute a request, printing method and URL to stderr when debug is enabled.
+    async fn execute(&self, rb: RequestBuilder) -> Result<Response> {
+        let req = rb.build().context("failed to build request")?;
+        if self.debug {
+            eprintln!(">> {} {}", req.method(), req.url());
+        }
+        self.client.execute(req).await.context("request failed")
     }
 
     async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
@@ -92,13 +110,13 @@ impl ShieldClient {
     /// `GET /shield/shield-zone/{shieldZoneId}`
     pub async fn get_shield_zone(&self, shield_zone_id: i64) -> Result<ShieldZoneResponse> {
         let resp = self
-            .auth(
-                self.client
-                    .get(self.url(&format!("/shield/shield-zone/{shield_zone_id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/shield-zone/{shield_zone_id}"))),
+                ),
             )
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         let wrapper: GetShieldZoneResponse = self.handle_response(resp).await?;
         wrapper
@@ -114,12 +132,10 @@ impl ShieldClient {
         pull_zone_id: i64,
     ) -> Result<ShieldZoneResponse> {
         let resp = self
-            .auth(self.client.get(self.url(&format!(
+            .execute(self.auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/get-by-pullzone/{pull_zone_id}"
-            ))))
-            .send()
-            .await
-            .context("request failed")?;
+            )))))
+            .await?;
 
         let wrapper: GetShieldZoneResponse = self.handle_response(resp).await?;
         wrapper
@@ -132,10 +148,8 @@ impl ShieldClient {
     /// `GET /shield/shield-zones`
     pub async fn list_shield_zones(&self) -> Result<GetShieldZonesResponse> {
         let resp = self
-            .auth(self.client.get(self.url("/shield/shield-zones")))
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(self.auth(self.client.get(self.url("/shield/shield-zones"))))
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -149,11 +163,11 @@ impl ShieldClient {
             shield_zone: None,
         };
         let resp = self
-            .auth(self.client.post(self.url("/shield/shield-zone")))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.post(self.url("/shield/shield-zone")))
+                    .json(&body),
+            )
+            .await?;
 
         // The spec shows CreateShieldZoneResponse wrapping a CreateShieldZoneRequest
         // (unusual echo pattern). We parse it as the response type directly.
@@ -183,11 +197,11 @@ impl ShieldClient {
     /// `PATCH /shield/shield-zone`
     pub async fn update_shield_zone(&self, body: UpdateShieldZoneRequest) -> Result<()> {
         let resp = self
-            .auth(self.client.patch(self.url("/shield/shield-zone")))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.patch(self.url("/shield/shield-zone")))
+                    .json(&body),
+            )
+            .await?;
 
         self.handle_empty_response(resp).await
     }
@@ -201,13 +215,13 @@ impl ShieldClient {
     /// `GET /shield/waf/custom-rules/{shieldZoneId}`
     pub async fn list_waf_rules(&self, shield_zone_id: i64) -> Result<Vec<CustomWafRule>> {
         let resp = self
-            .auth(
-                self.client
-                    .get(self.url(&format!("/shield/waf/custom-rules/{shield_zone_id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/waf/custom-rules/{shield_zone_id}"))),
+                ),
             )
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         let response: GetCustomWafRulesResponse = self.handle_response(resp).await?;
         Ok(response.data.unwrap_or_default())
@@ -218,13 +232,13 @@ impl ShieldClient {
     /// `GET /shield/waf/custom-rule/{id}`
     pub async fn get_waf_rule(&self, id: i64) -> Result<CustomWafRule> {
         let resp = self
-            .auth(
-                self.client
-                    .get(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+                ),
             )
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -234,11 +248,11 @@ impl ShieldClient {
     /// `POST /shield/waf/custom-rule`
     pub async fn create_waf_rule(&self, body: CreateCustomWafRule) -> Result<CustomWafRule> {
         let resp = self
-            .auth(self.client.post(self.url("/shield/waf/custom-rule")))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.post(self.url("/shield/waf/custom-rule")))
+                    .json(&body),
+            )
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -252,14 +266,14 @@ impl ShieldClient {
         body: UpdateCustomWafRule,
     ) -> Result<CustomWafRule> {
         let resp = self
-            .auth(
-                self.client
-                    .patch(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .patch(self.url(&format!("/shield/waf/custom-rule/{id}")))
+                        .json(&body),
+                ),
             )
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -269,13 +283,13 @@ impl ShieldClient {
     /// `DELETE /shield/waf/custom-rule/{id}`
     pub async fn delete_waf_rule(&self, id: i64) -> Result<()> {
         let resp = self
-            .auth(
-                self.client
-                    .delete(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .delete(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+                ),
             )
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         self.handle_empty_response(resp).await
     }
@@ -289,13 +303,13 @@ impl ShieldClient {
     /// `GET /shield/rate-limits/{shieldZoneId}`
     pub async fn list_rate_limit_rules(&self, shield_zone_id: i64) -> Result<Vec<RateLimitRule>> {
         let resp = self
-            .auth(
-                self.client
-                    .get(self.url(&format!("/shield/rate-limits/{shield_zone_id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/rate-limits/{shield_zone_id}"))),
+                ),
             )
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         let response: GetRateLimitRulesResponse = self.handle_response(resp).await?;
         Ok(response.data.unwrap_or_default())
@@ -306,13 +320,13 @@ impl ShieldClient {
     /// `GET /shield/rate-limit/{id}`
     pub async fn get_rate_limit_rule(&self, id: i64) -> Result<RateLimitRule> {
         let resp = self
-            .auth(
-                self.client
-                    .get(self.url(&format!("/shield/rate-limit/{id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/rate-limit/{id}"))),
+                ),
             )
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -322,11 +336,11 @@ impl ShieldClient {
     /// `POST /shield/rate-limit`
     pub async fn create_rate_limit_rule(&self, body: CreateRateLimitRule) -> Result<RateLimitRule> {
         let resp = self
-            .auth(self.client.post(self.url("/shield/rate-limit")))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.post(self.url("/shield/rate-limit")))
+                    .json(&body),
+            )
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -340,14 +354,14 @@ impl ShieldClient {
         body: UpdateRateLimitRule,
     ) -> Result<RateLimitRule> {
         let resp = self
-            .auth(
-                self.client
-                    .patch(self.url(&format!("/shield/rate-limit/{id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .patch(self.url(&format!("/shield/rate-limit/{id}")))
+                        .json(&body),
+                ),
             )
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -357,13 +371,13 @@ impl ShieldClient {
     /// `DELETE /shield/rate-limit/{id}`
     pub async fn delete_rate_limit_rule(&self, id: i64) -> Result<()> {
         let resp = self
-            .auth(
-                self.client
-                    .delete(self.url(&format!("/shield/rate-limit/{id}"))),
+            .execute(
+                self.auth(
+                    self.client
+                        .delete(self.url(&format!("/shield/rate-limit/{id}"))),
+                ),
             )
-            .send()
-            .await
-            .context("request failed")?;
+            .await?;
 
         self.handle_empty_response(resp).await
     }
@@ -380,12 +394,10 @@ impl ShieldClient {
         shield_zone_id: i64,
     ) -> Result<AccessListsDetailsResponse> {
         let resp = self
-            .auth(self.client.get(self.url(&format!(
+            .execute(self.auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists"
-            ))))
-            .send()
-            .await
-            .context("request failed")?;
+            )))))
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -399,12 +411,10 @@ impl ShieldClient {
         id: i64,
     ) -> Result<CustomAccessList> {
         let resp = self
-            .auth(self.client.get(self.url(&format!(
+            .execute(self.auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists/{id}"
-            ))))
-            .send()
-            .await
-            .context("request failed")?;
+            )))))
+            .await?;
 
         let wrapper: CustomAccessListResponse = self.handle_response(resp).await?;
         wrapper
@@ -421,13 +431,13 @@ impl ShieldClient {
         body: CreateCustomAccessList,
     ) -> Result<CustomAccessList> {
         let resp = self
-            .auth(self.client.post(self.url(&format!(
-                "/shield/shield-zone/{shield_zone_id}/access-lists"
-            ))))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.post(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/access-lists"
+                ))))
+                .json(&body),
+            )
+            .await?;
 
         let wrapper: CustomAccessListResponse = self.handle_response(resp).await?;
         wrapper
@@ -445,13 +455,13 @@ impl ShieldClient {
         body: UpdateCustomAccessList,
     ) -> Result<CustomAccessList> {
         let resp = self
-            .auth(self.client.patch(self.url(&format!(
-                "/shield/shield-zone/{shield_zone_id}/access-lists/{id}"
-            ))))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.patch(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/access-lists/{id}"
+                ))))
+                .json(&body),
+            )
+            .await?;
 
         let wrapper: CustomAccessListResponse = self.handle_response(resp).await?;
         wrapper
@@ -469,13 +479,13 @@ impl ShieldClient {
         body: UpdateAccessListConfiguration,
     ) -> Result<()> {
         let resp = self
-            .auth(self.client.patch(self.url(&format!(
-                "/shield/shield-zone/{shield_zone_id}/access-lists/configurations/{id}"
-            ))))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.patch(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/access-lists/configurations/{id}"
+                ))))
+                .json(&body),
+            )
+            .await?;
 
         self.handle_empty_response(resp).await
     }
@@ -485,12 +495,10 @@ impl ShieldClient {
     /// `DELETE /shield/shield-zone/{shieldZoneId}/access-lists/{id}`
     pub async fn delete_access_list(&self, shield_zone_id: i64, id: i64) -> Result<()> {
         let resp = self
-            .auth(self.client.delete(self.url(&format!(
+            .execute(self.auth(self.client.delete(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists/{id}"
-            ))))
-            .send()
-            .await
-            .context("request failed")?;
+            )))))
+            .await?;
 
         self.handle_empty_response(resp).await
     }
@@ -507,12 +515,10 @@ impl ShieldClient {
         shield_zone_id: i64,
     ) -> Result<BotDetectionConfigurationResponse> {
         let resp = self
-            .auth(self.client.get(self.url(&format!(
+            .execute(self.auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/bot-detection"
-            ))))
-            .send()
-            .await
-            .context("request failed")?;
+            )))))
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -526,13 +532,13 @@ impl ShieldClient {
         body: UpdateBotDetection,
     ) -> Result<UpdateBotDetectionResponse> {
         let resp = self
-            .auth(self.client.patch(self.url(&format!(
-                "/shield/shield-zone/{shield_zone_id}/bot-detection"
-            ))))
-            .json(&body)
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(
+                self.auth(self.client.patch(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/bot-detection"
+                ))))
+                .json(&body),
+            )
+            .await?;
 
         self.handle_response(resp).await
     }
@@ -546,10 +552,8 @@ impl ShieldClient {
     /// `GET /shield/waf/profiles`
     pub async fn list_waf_profiles(&self) -> Result<Vec<WafProfileMinimal>> {
         let resp = self
-            .auth(self.client.get(self.url("/shield/waf/profiles")))
-            .send()
-            .await
-            .context("request failed")?;
+            .execute(self.auth(self.client.get(self.url("/shield/waf/profiles"))))
+            .await?;
 
         // The spec returns `GetWafProfilesResponse { data: Vec<Vec<WafProfileMinimal>> }`.
         // We flatten that nested structure for convenience.
@@ -600,6 +604,18 @@ mod tests {
     fn client_stores_api_key() {
         let client = ShieldClient::new("my-api-key-12345");
         assert_eq!(client.api_key, "my-api-key-12345");
+    }
+
+    #[test]
+    fn client_debug_defaults_false() {
+        let client = ShieldClient::new("key");
+        assert!(!client.debug);
+    }
+
+    #[test]
+    fn client_with_debug_sets_flag() {
+        let client = ShieldClient::new("key").with_debug(true);
+        assert!(client.debug);
     }
 
     #[test]

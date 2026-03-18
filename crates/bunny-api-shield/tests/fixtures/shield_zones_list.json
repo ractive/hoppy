@@ -1,0 +1,31 @@
+{
+  "data": [
+    {
+      "shieldZoneId": 55001,
+      "pullZoneId": 100001,
+      "wafEnabled": true,
+      "wafExecutionMode": 1,
+      "learningMode": false,
+      "planType": 1,
+      "dDoSShieldSensitivity": 2,
+      "dDoSExecutionMode": 1,
+      "rateLimitRulesLimit": 20,
+      "customWafRulesLimit": 50
+    },
+    {
+      "shieldZoneId": 55002,
+      "pullZoneId": 100002,
+      "wafEnabled": false,
+      "learningMode": true,
+      "planType": 0,
+      "rateLimitRulesLimit": 5,
+      "customWafRulesLimit": 10
+    }
+  ],
+  "page": {
+    "totalCount": 2,
+    "totalPages": 1,
+    "currentPage": 1,
+    "pageSize": 20
+  }
+}

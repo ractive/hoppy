@@ -538,12 +538,277 @@ pub enum StreamVideoAction {
 
 #[derive(Subcommand)]
 pub enum ShieldAction {
-    /// WAF rules
-    Waf,
-    /// Rate limiting
-    RateLimit,
-    /// DDoS protection
-    Ddos,
+    /// Manage Shield Zones
+    Zone {
+        #[command(subcommand)]
+        action: ShieldZoneAction,
+    },
+    /// Manage WAF rules
+    Waf {
+        #[command(subcommand)]
+        action: ShieldWafAction,
+    },
+    /// Manage rate limit rules
+    RateLimit {
+        #[command(subcommand)]
+        action: ShieldRateLimitAction,
+    },
+    /// Manage access lists
+    AccessList {
+        #[command(subcommand)]
+        action: ShieldAccessListAction,
+    },
+    /// Manage bot detection
+    BotDetection {
+        #[command(subcommand)]
+        action: ShieldBotDetectionAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldZoneAction {
+    /// List all Shield Zones
+    List,
+    /// Get a Shield Zone by ID
+    Get {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get a Shield Zone by Pull Zone ID
+    GetByPullzone {
+        #[arg(long)]
+        pull_zone_id: i64,
+    },
+    /// Create a Shield Zone for a Pull Zone
+    Create {
+        #[arg(long)]
+        pull_zone_id: i64,
+    },
+    /// Update a Shield Zone's configuration
+    Update {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Enable or disable WAF
+        #[arg(long)]
+        waf_enabled: Option<bool>,
+        /// WAF execution mode (0 = Disabled, 1 = Enabled)
+        #[arg(long)]
+        waf_execution_mode: Option<u8>,
+        /// DDoS shield sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High, 4 = VeryHigh)
+        #[arg(long)]
+        ddos_sensitivity: Option<u8>,
+        /// DDoS execution mode (0 = Disabled, 1 = Enabled)
+        #[arg(long)]
+        ddos_execution_mode: Option<u8>,
+        /// DDoS challenge window duration in seconds
+        #[arg(long)]
+        ddos_challenge_window: Option<i32>,
+        /// Enable or disable learning mode
+        #[arg(long)]
+        learning_mode: Option<bool>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldWafAction {
+    /// List custom WAF rules for a Shield Zone
+    ListRules {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get a custom WAF rule by ID
+    GetRule {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Add a custom WAF rule
+    AddRule {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Rule name
+        #[arg(long)]
+        name: Option<String>,
+        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
+        #[arg(long)]
+        action_type: u8,
+        /// Operator type (0 = Eq, 1 = NotEq, 2 = Contains, 3 = NotContains, 4 = Begins, 5 = Ends, 6 = Regex, 7 = NotRegex, 8 = Lt, 9 = Gt, 12 = Pm, 14 = PmFromFile, 15 = IpMatch, 17 = GeoLookup, 18 = ValidateUrlEncoding)
+        #[arg(long)]
+        operator_type: u8,
+        /// Severity type (0 = Low, 1 = Medium, 2 = High)
+        #[arg(long)]
+        severity_type: u8,
+        /// Value to match against
+        #[arg(long)]
+        value: Option<String>,
+    },
+    /// Update a custom WAF rule
+    UpdateRule {
+        #[arg(long)]
+        id: i64,
+        /// Rule name
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Delete a custom WAF rule
+    DeleteRule {
+        #[arg(long)]
+        id: i64,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldRateLimitAction {
+    /// List rate limit rules for a Shield Zone
+    List {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get a rate limit rule by ID
+    Get {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Create a rate limit rule
+    Create {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Rule name
+        #[arg(long)]
+        name: Option<String>,
+        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
+        #[arg(long)]
+        action_type: u8,
+        /// Operator type (0–18; same values as WAF rules)
+        #[arg(long)]
+        operator_type: u8,
+        /// Severity type (0 = Low, 1 = Medium, 2 = High)
+        #[arg(long)]
+        severity_type: u8,
+        /// Value to match against
+        #[arg(long)]
+        value: Option<String>,
+        /// Number of requests before triggering the rule
+        #[arg(long)]
+        request_count: i32,
+        /// Counter key type (0 = Global, 1 = PerIp, 2 = PerCountry, 3 = PerAsn, 4 = PerHeader, 5 = PerCookie, 6 = PerQuery, 7 = PerFingerprint)
+        #[arg(long)]
+        counter_key_type: u8,
+        /// Counting timeframe in seconds (1, 10, 60, 300, 900, 3600)
+        #[arg(long)]
+        timeframe: u16,
+        /// Block duration in seconds (30, 60, 300, 900, 1800, 3600)
+        #[arg(long)]
+        block_time: u16,
+    },
+    /// Update a rate limit rule
+    Update {
+        #[arg(long)]
+        id: i64,
+        /// Rule name
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Delete a rate limit rule
+    Delete {
+        #[arg(long)]
+        id: i64,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldAccessListAction {
+    /// Get all access lists (managed + custom) for a Shield Zone
+    List {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get a custom access list by ID
+    Get {
+        #[arg(long)]
+        shield_zone_id: i64,
+        #[arg(long)]
+        id: i64,
+    },
+    /// Create a custom access list
+    Create {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// List name
+        #[arg(long)]
+        name: String,
+        /// List type (0 = Ip, 1 = Country, 2 = Asn, 3 = Hostname, 4 = UserAgent, 5 = Custom)
+        #[arg(long)]
+        r#type: u8,
+        /// List content (newline-separated entries)
+        #[arg(long)]
+        content: String,
+    },
+    /// Update a custom access list
+    Update {
+        #[arg(long)]
+        shield_zone_id: i64,
+        #[arg(long)]
+        id: i64,
+        /// List name
+        #[arg(long)]
+        name: Option<String>,
+        /// List content (newline-separated entries)
+        #[arg(long)]
+        content: Option<String>,
+    },
+    /// Delete a custom access list
+    Delete {
+        #[arg(long)]
+        shield_zone_id: i64,
+        #[arg(long)]
+        id: i64,
+    },
+    /// Update access list configuration (enabled/action)
+    UpdateConfig {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Configuration ID
+        #[arg(long)]
+        configuration_id: i64,
+        /// Enable or disable the access list
+        #[arg(long)]
+        is_enabled: Option<bool>,
+        /// Action (0 = NoAction, 1 = Block, 2 = Allow, 3 = LogOnly, 4 = Challenge, 5 = ChallengeInterstitial)
+        #[arg(long)]
+        action: Option<u8>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldBotDetectionAction {
+    /// Get bot detection configuration for a Shield Zone
+    Get {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Update bot detection configuration
+    Update {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Execution mode (0 = Disabled, 1 = Enabled)
+        #[arg(long)]
+        execution_mode: Option<u8>,
+        /// Request integrity sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High)
+        #[arg(long)]
+        request_integrity_sensitivity: Option<u8>,
+        /// IP address reputation sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High)
+        #[arg(long)]
+        ip_address_sensitivity: Option<u8>,
+        /// Browser fingerprint sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High)
+        #[arg(long)]
+        fingerprint_sensitivity: Option<u8>,
+        /// Browser fingerprint aggression (0 = Disabled, 1 = VeryLow, 2 = Low, 3 = Medium, 4 = High)
+        #[arg(long)]
+        fingerprint_aggression: Option<u8>,
+        /// Enable complex browser fingerprinting
+        #[arg(long)]
+        fingerprint_complex_enabled: Option<bool>,
+    },
 }
 
 // -- Edge Scripting --
