@@ -36,6 +36,16 @@ hoppy script list
 hoppy script code get --id 123
 hoppy script publish --id 123
 
+# Magic Containers
+hoppy container app list
+hoppy container app get --id app-uuid
+hoppy container app create --name my-app --runtime-type Shared --min 1 --max 3 --region DE
+hoppy container template get --app-id app-uuid --container-id ctr-uuid
+hoppy container endpoint list --app-id app-uuid
+hoppy container registry list
+hoppy container region list
+hoppy container limits
+
 # Output formats
 hoppy pull-zone list --format json
 hoppy pull-zone list --format table
