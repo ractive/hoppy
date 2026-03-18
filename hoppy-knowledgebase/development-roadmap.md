@@ -244,12 +244,14 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 - [x] 28 wiremock integration tests with fixture-based responses
 - [x] Error handling tests (401 unauthorized, 404 not found)
 - [x] Request body validation in tests (body_json matchers)
-- [ ] Magic container commands — deferred (API exists but no OpenAPI spec provided; see https://docs.bunny.net/api-reference/magic-containers/overview.md)
-  - [ ] `container list|get|create|update|delete`
-  - [ ] `container logs --id <id> [--follow]`
-  - [ ] `container scale --id <id> --replicas <n>`
+- [x] Magic container API client (`bunny-api-containers` crate) — hand-written from docs (no OpenAPI spec available)
+  - [x] 47 endpoints across 11 resource groups (applications, containers, registries, endpoints, volumes, autoscaling, regions, nodes, pods, limits, log forwarding)
+  - [x] Full type coverage: all request/response structs, enums, cursor-based pagination
+  - [x] Error handling via `ProblemDetails` + `ErrorDetails` (RFC 7807 pattern, like Shield)
+  - [x] 13 unit tests (serde roundtrip, client construction, auth header)
+  - [ ] CLI commands for Magic Containers — not yet wired (API client ready, CLI integration pending)
 
-**Deliverable:** Deploy and manage edge scripts. Containers deferred pending API availability.
+**Deliverable:** Deploy and manage edge scripts. Magic Containers API client implemented; CLI commands pending.
 
 ---
 
@@ -296,7 +298,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 3 — DNS | Straightforward CRUD + records | Small-Medium |
 | 4 — Stream | Third API, video upload | Medium |
 | 5 — Shield | Security features | Small-Medium |
-| 6 — Scripting + Containers | Two services, log streaming | Medium |
+| 6 — Scripting + Containers | Two services, API client + CLI for scripting, API client for containers | Medium |
 | 7 — Polish & Release | CI/CD, packaging, docs | Medium |
 
 ## Decision Log
@@ -330,7 +332,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-18 | DDoS has no dedicated CRUD — configured via Shield Zone update | DDoS sensitivity, execution mode, and challenge window are fields on the Shield Zone, not separate resources. CLI exposes them as `shield zone update` flags. |
 | 2026-03-18 | Shield block-vpn/tor/datacentre are read-only on API responses | These fields appear in `ShieldZoneResponse` but cannot be set via the update endpoint's `ShieldZoneRequest`. CLI does not expose them as update flags. |
 | 2026-03-18 | Shield enum values passed as integers on CLI | WAF action types, operator types, sensitivity levels etc. are passed as numeric values (matching the API's integer enum representation). `serde_json::from_value` converts to typed enums with descriptive error messages. |
-| 2026-03-18 | Magic Containers deferred — no OpenAPI spec available | The Magic Containers API exists (see https://docs.bunny.net/api-reference/magic-containers/overview.md) but no OpenAPI spec is provided, unlike the other 5 APIs. Hand-writing a client from docs alone is possible but deferred. |
+| 2026-03-18 | Magic Containers API client hand-written from docs | No OpenAPI spec available for Magic Containers. Client generated manually from https://docs.bunny.net documentation pages (47 endpoints). Uses camelCase serde (like Shield), cursor-based pagination, ProblemDetails+ErrorDetails error handling. CLI wiring deferred. |
 | 2026-03-18 | `Deploy` renamed to `Publish` for edge scripts | The bunny.net API endpoint is `POST /compute/script/{id}/publish`, not "deploy". CLI command renamed to match. |
 | 2026-03-18 | `deployment_key` excluded from JSON output | `#[serde(skip_serializing)]` on `EdgeScript.deployment_key` to prevent leaking deployment credentials. Same pattern as other crates. |
 | 2026-03-18 | Compute API uses PascalCase like Core API | Confirmed via OpenAPI spec and fixture recording. All types use `#[serde(rename_all = "PascalCase")]`. |

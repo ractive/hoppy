@@ -115,6 +115,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bunny-api-containers"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "bunny-api-core"
 version = "0.1.0"
 dependencies = [
@@ -549,6 +561,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bunny-api-compute",
+ "bunny-api-containers",
  "bunny-api-core",
  "bunny-api-shield",
  "bunny-api-storage",
