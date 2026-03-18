@@ -58,13 +58,13 @@ impl CoreClient {
         search: Option<&str>,
     ) -> Result<PaginatedList<PullZone>> {
         let url = format!("{}/pullzone", self.base_url);
-        let mut rb = self.auth(self.http.get(&url));
-        if let Some(p) = page {
-            rb = rb.query(&[("page", p.to_string())]);
-        }
-        if let Some(pp) = per_page {
-            rb = rb.query(&[("perPage", pp.to_string())]);
-        }
+        // Always send pagination params — without them the bunny.net API
+        // returns a bare JSON array instead of the paginated envelope.
+        let page = page.unwrap_or(1);
+        let per_page = per_page.unwrap_or(1000);
+        let mut rb = self
+            .auth(self.http.get(&url))
+            .query(&[("page", page.to_string()), ("perPage", per_page.to_string())]);
         if let Some(q) = search {
             rb = rb.query(&[("search", q)]);
         }
