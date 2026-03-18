@@ -37,8 +37,7 @@ fn billing_to_rows(b: &BillingDetails) -> Vec<AccountRow> {
     };
 
     let bandwidth_gb = b.monthly_bandwidth_used / 1_073_741_824;
-    let bandwidth_remainder =
-        (b.monthly_bandwidth_used % 1_073_741_824) * 100 / 1_073_741_824;
+    let bandwidth_remainder = (b.monthly_bandwidth_used % 1_073_741_824) * 100 / 1_073_741_824;
 
     vec![
         AccountRow {

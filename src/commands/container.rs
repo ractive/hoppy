@@ -610,7 +610,10 @@ async fn handle_app(
             };
             let body = PatchApplicationRequest {
                 name: name.clone(),
-                runtime_type: runtime_type.as_deref().map(|s| s.parse().map_err(anyhow::Error::msg)).transpose()?,
+                runtime_type: runtime_type
+                    .as_deref()
+                    .map(|s| s.parse().map_err(anyhow::Error::msg))
+                    .transpose()?,
                 auto_scaling,
                 ..Default::default()
             };
@@ -1171,7 +1174,10 @@ async fn handle_registry(
             };
             let body = ContainerRegistryRequest {
                 display_name: name.clone(),
-                registry_type: registry_type.as_deref().map(|s| s.parse().map_err(anyhow::Error::msg)).transpose()?,
+                registry_type: registry_type
+                    .as_deref()
+                    .map(|s| s.parse().map_err(anyhow::Error::msg))
+                    .transpose()?,
                 password_credentials: credentials,
             };
             let resp = c.add_registry(&body).await?;
