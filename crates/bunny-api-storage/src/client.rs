@@ -24,6 +24,7 @@ pub struct StorageClient {
     http: reqwest::Client,
     base_url: String,
     access_key: String,
+    debug: bool,
 }
 
 impl StorageClient {
@@ -42,7 +43,26 @@ impl StorageClient {
             http: reqwest::Client::new(),
             base_url,
             access_key: access_key.into(),
+            debug: false,
         }
+    }
+
+    /// Creates a client pointing at a custom base URL (useful for tests /
+    /// staging environments).
+    pub fn with_base_url(access_key: impl Into<String>, base_url: impl Into<String>) -> Self {
+        Self {
+            http: reqwest::Client::new(),
+            base_url: base_url.into().trim_end_matches('/').to_owned(),
+            access_key: access_key.into(),
+            debug: false,
+        }
+    }
+
+    /// Enable or disable debug logging of HTTP requests and responses to stderr.
+    #[must_use]
+    pub fn with_debug(mut self, debug: bool) -> Self {
+        self.debug = debug;
+        self
     }
 
     /// Lists files and directories at the given path within a storage zone.
@@ -56,13 +76,8 @@ impl StorageClient {
         path: &str,
     ) -> Result<Vec<StorageObject>> {
         let url = self.listing_url(storage_zone_name, path);
-        let response = self
-            .http
-            .get(&url)
-            .header("AccessKey", &self.access_key)
-            .send()
-            .await
-            .with_context(|| format!("GET {url}"))?;
+        let rb = self.http.get(&url).header("AccessKey", &self.access_key);
+        let response = self.send(rb).await?;
 
         if !response.status().is_success() {
             return Err(self.extract_error(response).await);
@@ -82,13 +97,8 @@ impl StorageClient {
         file_name: &str,
     ) -> Result<Bytes> {
         let url = self.file_url(storage_zone_name, path, file_name);
-        let response = self
-            .http
-            .get(&url)
-            .header("AccessKey", &self.access_key)
-            .send()
-            .await
-            .with_context(|| format!("GET {url}"))?;
+        let rb = self.http.get(&url).header("AccessKey", &self.access_key);
+        let response = self.send(rb).await?;
 
         if !response.status().is_success() {
             return Err(self.extract_error(response).await);
@@ -114,17 +124,17 @@ impl StorageClient {
         checksum: Option<&str>,
     ) -> Result<()> {
         let url = self.file_url(storage_zone_name, path, file_name);
-        let mut request = self
+        let mut rb = self
             .http
             .put(&url)
             .header("AccessKey", &self.access_key)
             .body(body);
 
         if let Some(sha256) = checksum {
-            request = request.header("Checksum", sha256);
+            rb = rb.header("Checksum", sha256);
         }
 
-        let response = request.send().await.with_context(|| format!("PUT {url}"))?;
+        let response = self.send(rb).await?;
 
         if !response.status().is_success() {
             return Err(self.extract_error(response).await);
@@ -141,13 +151,8 @@ impl StorageClient {
         file_name: &str,
     ) -> Result<()> {
         let url = self.file_url(storage_zone_name, path, file_name);
-        let response = self
-            .http
-            .delete(&url)
-            .header("AccessKey", &self.access_key)
-            .send()
-            .await
-            .with_context(|| format!("DELETE {url}"))?;
+        let rb = self.http.delete(&url).header("AccessKey", &self.access_key);
+        let response = self.send(rb).await?;
 
         if !response.status().is_success() {
             return Err(self.extract_error(response).await);
@@ -174,6 +179,26 @@ impl StorageClient {
         } else {
             format!("{}/{storage_zone_name}/{path}/{file_name}", self.base_url)
         }
+    }
+
+    // --- Internal helpers ---
+
+    /// Execute a prepared request, logging method and URL to stderr when debug
+    /// mode is enabled. The `AccessKey` header value is never logged.
+    async fn send(&self, rb: reqwest::RequestBuilder) -> Result<reqwest::Response> {
+        let request = rb.build().context("failed to build request")?;
+        if self.debug {
+            eprintln!(">> {} {}", request.method(), request.url());
+        }
+        let response = self
+            .http
+            .execute(request)
+            .await
+            .context("HTTP request failed")?;
+        if self.debug {
+            eprintln!("<< {}", response.status());
+        }
+        Ok(response)
     }
 
     // --- Error extraction ---

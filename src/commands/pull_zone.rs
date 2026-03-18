@@ -6,6 +6,16 @@ use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreatePullZone, PullZone, PurgeCache, UpdatePullZone};
 use std::io::{self, BufRead, Write};
 
+/// Wrapper for JSON list output — includes the pagination envelope.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "PascalCase")]
+struct PaginatedListJson<'a, T> {
+    items: &'a [T],
+    current_page: i64,
+    total_items: i64,
+    has_more_items: bool,
+}
+
 // ---------------------------------------------------------------------------
 // Display structs
 // ---------------------------------------------------------------------------
@@ -117,8 +127,14 @@ pub async fn handle(
                 .list_pull_zones(*page, *per_page, search.as_deref())
                 .await?;
             if let OutputFormat::Json = format {
-                let json = serde_json::to_string_pretty(&result.items)
-                    .expect("failed to serialize to JSON");
+                let envelope = PaginatedListJson {
+                    items: &result.items,
+                    current_page: result.current_page,
+                    total_items: result.total_items,
+                    has_more_items: result.has_more_items,
+                };
+                let json =
+                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
                 println!("{json}");
             } else {
                 let rows: Vec<PullZoneRow> = result.items.iter().map(PullZoneRow::from).collect();
