@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::CommandFactory;
 use clap_mangen::Man;
@@ -44,7 +44,7 @@ fn parse_output_dir() -> PathBuf {
 fn generate_man_pages(
     cmd: &clap::Command,
     parents: &[&str],
-    output_dir: &PathBuf,
+    output_dir: &Path,
 ) -> anyhow::Result<()> {
     // Build the full hyphen-separated name: hoppy, hoppy-pull-zone, …
     let name = if parents.is_empty() {

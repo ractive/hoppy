@@ -19,23 +19,17 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            archive: tar.gz
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             cross: true
-            archive: tar.gz
           - target: x86_64-apple-darwin
             os: macos-13
-            archive: tar.gz
           - target: aarch64-apple-darwin
             os: macos-latest
-            archive: tar.gz
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            archive: zip
           - target: aarch64-pc-windows-msvc
             os: windows-latest
-            archive: zip
 
     runs-on: ${{ matrix.os }}
 
@@ -105,7 +99,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p man
-          cargo xtask man-pages --output-dir man
+          cargo xtask --output-dir man
 
       # Package Linux / macOS archives (.tar.gz)
       - name: Package (Unix)
@@ -167,7 +161,7 @@ jobs:
       - name: Generate man pages
         run: |
           mkdir -p man
-          cargo xtask man-pages --output-dir man
+          cargo xtask --output-dir man
 
       - name: Install packaging tools
         run: cargo install cargo-deb cargo-generate-rpm
@@ -183,11 +177,8 @@ jobs:
 
       - name: Rename packages with version
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          # cargo-deb outputs to target/debian/
-          mv target/debian/hoppy_${VERSION}-1_amd64.deb hoppy_${VERSION}_amd64.deb
-          # cargo-generate-rpm outputs to target/generate-rpm/
-          mv target/generate-rpm/hoppy-${VERSION}-1.x86_64.rpm hoppy-${VERSION}-1.x86_64.rpm
+          mv target/debian/*.deb .
+          mv target/generate-rpm/*.rpm .
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
@@ -216,7 +207,7 @@ jobs:
 
       - name: Generate SHA-256 checksums
         working-directory: artifacts
-        run: sha256sum hoppy-* *.deb *.rpm > sha256sums.txt
+        run: sha256sum hoppy-*.tar.gz hoppy-*.zip *.deb *.rpm > sha256sums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -302,8 +293,11 @@ jobs:
           end
           FORMULA
 
-          # Remove leading whitespace from heredoc
-          sed -i 's/^          //' homebrew-tap/Formula/hoppy.rb
+          # Strip the common leading whitespace that YAML indentation forces onto
+          # heredoc lines. Auto-detect the indent from the first line so this
+          # remains correct even if the step's indentation changes.
+          INDENT=$(head -1 homebrew-tap/Formula/hoppy.rb | sed 's/[^ ].*//')
+          sed -i "s/^${INDENT}//" homebrew-tap/Formula/hoppy.rb
 
       - name: Commit and push formula
         working-directory: homebrew-tap
