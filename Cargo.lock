@@ -148,6 +148,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "wiremock",
 ]
 
 [[package]]
@@ -543,6 +544,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bunny-api-core",
+ "bunny-api-storage",
  "clap",
  "clap_complete",
  "serde",

@@ -1,6 +1,6 @@
 use crate::auth;
 use crate::cli::{OutputFormat, PullZoneAction};
-use crate::output;
+use crate::output::{self, PaginatedListJson};
 use anyhow::Result;
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreatePullZone, PullZone, PurgeCache, UpdatePullZone};
@@ -117,8 +117,14 @@ pub async fn handle(
                 .list_pull_zones(*page, *per_page, search.as_deref())
                 .await?;
             if let OutputFormat::Json = format {
-                let json = serde_json::to_string_pretty(&result.items)
-                    .expect("failed to serialize to JSON");
+                let envelope = PaginatedListJson {
+                    items: &result.items,
+                    current_page: result.current_page,
+                    total_items: result.total_items,
+                    has_more_items: result.has_more_items,
+                };
+                let json =
+                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
                 println!("{json}");
             } else {
                 let rows: Vec<PullZoneRow> = result.items.iter().map(PullZoneRow::from).collect();

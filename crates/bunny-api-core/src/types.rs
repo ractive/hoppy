@@ -303,6 +303,140 @@ impl UpdatePullZone {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Storage Zone types
+// ---------------------------------------------------------------------------
+
+/// A bunny.net Storage Zone.
+///
+/// `Password` and `ReadOnlyPassword` are deserialized but never serialized
+/// to prevent accidental exposure in JSON output.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct StorageZone {
+    pub id: i64,
+    pub user_id: String,
+    pub name: String,
+    #[serde(default, skip_serializing)]
+    pub password: String,
+    #[serde(default)]
+    pub date_modified: String,
+    #[serde(default)]
+    pub deleted: bool,
+    #[serde(default)]
+    pub storage_used: i64,
+    #[serde(default)]
+    pub files_stored: i64,
+    #[serde(default)]
+    pub region: String,
+    #[serde(default)]
+    pub replication_regions: Vec<String>,
+    /// Complex nested object — passed through as raw JSON.
+    #[serde(default)]
+    pub pull_zones: Option<serde_json::Value>,
+    #[serde(default, skip_serializing)]
+    pub read_only_password: String,
+    #[serde(default)]
+    pub rewrite_404_to_200: bool,
+    /// Custom 404 file path — nullable in the API response.
+    #[serde(default)]
+    pub custom_404_file_path: Option<String>,
+    #[serde(default)]
+    pub storage_hostname: String,
+    #[serde(default)]
+    pub zone_tier: i64,
+    #[serde(default)]
+    pub replication_change_in_progress: bool,
+    #[serde(default)]
+    pub price_override: f64,
+    #[serde(default)]
+    pub discount: i64,
+    #[serde(default)]
+    pub storage_zone_type: i64,
+}
+
+/// Request body for `POST /storagezone` — create a new Storage Zone.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreateStorageZone {
+    pub name: String,
+    pub region: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replication_regions: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zone_tier: Option<i64>,
+}
+
+impl CreateStorageZone {
+    pub fn new(name: impl Into<String>, region: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            region: region.into(),
+            replication_regions: None,
+            zone_tier: None,
+        }
+    }
+
+    #[must_use]
+    pub fn replication_regions(mut self, regions: Vec<String>) -> Self {
+        self.replication_regions = Some(regions);
+        self
+    }
+
+    #[must_use]
+    pub fn zone_tier(mut self, tier: i64) -> Self {
+        self.zone_tier = Some(tier);
+        self
+    }
+}
+
+/// Request body for `POST /storagezone/{id}` — update an existing Storage Zone.
+///
+/// Every field is optional; only non-`None` fields are serialised.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateStorageZone {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replication_zones: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_404_file_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rewrite_404_to_200: Option<bool>,
+}
+
+impl UpdateStorageZone {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn replication_zones(mut self, zones: Vec<String>) -> Self {
+        self.replication_zones = Some(zones);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_url(mut self, url: impl Into<String>) -> Self {
+        self.origin_url = Some(url.into());
+        self
+    }
+
+    #[must_use]
+    pub fn custom_404_file_path(mut self, path: impl Into<String>) -> Self {
+        self.custom_404_file_path = Some(path.into());
+        self
+    }
+
+    #[must_use]
+    pub fn rewrite_404_to_200(mut self, rewrite: bool) -> Self {
+        self.rewrite_404_to_200 = Some(rewrite);
+        self
+    }
+}
+
 /// Request body for `POST /pullzone/{id}/purgeCache`.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "PascalCase")]

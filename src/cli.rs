@@ -165,26 +165,51 @@ pub enum PullZoneAction {
 #[derive(Subcommand)]
 pub enum StorageZoneAction {
     /// List all storage zones
-    List,
+    List {
+        /// Filter by name
+        #[arg(long)]
+        search: Option<String>,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
+    },
     /// Get a specific storage zone
     Get {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
     /// Create a new storage zone
     Create {
         #[arg(long)]
         name: String,
+        /// Primary region (e.g. DE, NY, LA, SG, SYD)
+        #[arg(long)]
+        region: String,
+        /// Replication regions (comma-separated or repeated flags)
+        #[arg(long, value_delimiter = ',')]
+        replication_regions: Vec<String>,
+        /// Zone tier (0 = Standard, 1 = Edge)
+        #[arg(long)]
+        zone_tier: Option<i64>,
     },
     /// Update a storage zone
     Update {
         #[arg(long)]
-        id: u64,
+        id: i64,
+        #[arg(long)]
+        rewrite_404_to_200: Option<bool>,
+        #[arg(long)]
+        custom_404_file_path: Option<String>,
+        #[arg(long)]
+        origin_url: Option<String>,
     },
     /// Delete a storage zone
     Delete {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
 }
 
@@ -194,35 +219,57 @@ pub enum StorageZoneAction {
 pub enum StorageAction {
     /// Upload a file
     Upload {
+        /// Storage zone name
         #[arg(long)]
         zone: String,
+        /// Remote path (e.g. images/photo.jpg)
         #[arg(long)]
         remote_path: String,
+        /// Local file to upload
         #[arg(long)]
         file: String,
+        /// Storage region hostname prefix (e.g. storage, la, sg, syd)
+        #[arg(long, default_value = "storage")]
+        region: String,
     },
     /// Download a file
     Download {
+        /// Storage zone name
         #[arg(long)]
         zone: String,
+        /// Remote path (e.g. images/photo.jpg)
         #[arg(long)]
         remote_path: String,
+        /// Local path to write the file (defaults to stdout)
         #[arg(long)]
         output: Option<String>,
+        /// Storage region hostname prefix (e.g. storage, la, sg, syd)
+        #[arg(long, default_value = "storage")]
+        region: String,
     },
     /// List files
     Ls {
+        /// Storage zone name
         #[arg(long)]
         zone: String,
-        #[arg(long, default_value = "/")]
+        /// Remote directory path (empty for root)
+        #[arg(long, default_value = "")]
         path: String,
+        /// Storage region hostname prefix (e.g. storage, la, sg, syd)
+        #[arg(long, default_value = "storage")]
+        region: String,
     },
     /// Delete a file
     Rm {
+        /// Storage zone name
         #[arg(long)]
         zone: String,
+        /// Remote path (e.g. images/photo.jpg)
         #[arg(long)]
         remote_path: String,
+        /// Storage region hostname prefix (e.g. storage, la, sg, syd)
+        #[arg(long, default_value = "storage")]
+        region: String,
     },
 }
 
