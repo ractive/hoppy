@@ -2,7 +2,7 @@ use crate::auth;
 use crate::cli::{OutputFormat, StreamAction, StreamLibraryAction, StreamVideoAction};
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
 use bunny_api_stream::types::{Collection, Video};
@@ -350,11 +350,11 @@ async fn handle_video(
             // Open the file and get its size for the progress bar.
             let fh = tokio::fs::File::open(file)
                 .await
-                .map_err(|e| anyhow::anyhow!("failed to open file {file}: {e}"))?;
+                .with_context(|| format!("opening file: {file}"))?;
             let file_size = fh
                 .metadata()
                 .await
-                .map_err(|e| anyhow::anyhow!("failed to read metadata for {file}: {e}"))?
+                .with_context(|| format!("reading metadata for: {file}"))?
                 .len();
 
             let pb = progress::file_progress(file_size, quiet);

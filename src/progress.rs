@@ -29,7 +29,7 @@ pub fn file_progress(file_size: u64, quiet: bool) -> Option<ProgressBar> {
         ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
         )
-        .unwrap()
+        .unwrap_or_else(|_| ProgressStyle::default_bar())
         .progress_chars("=>-"),
     );
     pb.enable_steady_tick(Duration::from_millis(120));
@@ -48,7 +48,7 @@ pub fn spinner(message: impl Into<String>, quiet: bool) -> Option<ProgressBar> {
     let pb = ProgressBar::new_spinner();
     pb.set_style(
         ProgressStyle::with_template("{spinner:.green} {msg}")
-            .unwrap()
+            .unwrap_or_else(|_| ProgressStyle::default_spinner())
             .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
     );
     pb.set_message(message.into());
