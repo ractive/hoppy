@@ -1,0 +1,50 @@
+{
+    "items": [
+        {
+            "accountId": "f848a143-72a5-4190-b35f-f30b59b0f7f9",
+            "userId": "f848a143-72a5-4190-b35f-f30b59b0f7f9",
+            "namespaceId": "default",
+            "displayName": "GitHub Packages ractive",
+            "hostName": "ghcr.io",
+            "userName": "ractive",
+            "firstPasswordSymbols": null,
+            "lastPasswordSymbols": "ghp",
+            "createdAt": "2026-03-15T13:42:45.575302",
+            "isPublic": false,
+            "lastUpdatedAt": null,
+            "id": 5602
+        },
+        {
+            "accountId": "global",
+            "userId": null,
+            "namespaceId": "default",
+            "displayName": "DockerHub Public",
+            "hostName": "docker.io",
+            "userName": null,
+            "firstPasswordSymbols": null,
+            "lastPasswordSymbols": null,
+            "createdAt": "2024-04-29T09:25:34.402443",
+            "isPublic": true,
+            "lastUpdatedAt": "2024-04-29T09:25:34.402443",
+            "id": 1155
+        },
+        {
+            "accountId": "global",
+            "userId": null,
+            "namespaceId": "default",
+            "displayName": "GitHub Public",
+            "hostName": "ghcr.io",
+            "userName": null,
+            "firstPasswordSymbols": null,
+            "lastPasswordSymbols": null,
+            "createdAt": "2024-04-29T09:25:34.402443",
+            "isPublic": true,
+            "lastUpdatedAt": "2024-04-29T09:25:34.402443",
+            "id": 1156
+        }
+    ],
+    "meta": {
+        "totalItems": 3
+    },
+    "cursor": null
+}

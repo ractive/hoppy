@@ -249,6 +249,8 @@ The CLI crate depends on the generated crates and wraps their clients with our a
   - [x] Full type coverage: all request/response structs, enums, cursor-based pagination
   - [x] Error handling via `ProblemDetails` + `ErrorDetails` (RFC 7807 pattern, like Shield)
   - [x] 13 unit tests (serde roundtrip, client construction, auth header)
+  - [x] 57 wiremock integration tests with real API fixtures (all 47 endpoints + error handling + debug mode)
+  - [x] Fix enum serde casing: API returns camelCase, added `rename_all = "camelCase"` to 10 enums
   - [ ] CLI commands for Magic Containers — not yet wired (API client ready, CLI integration pending)
 
 **Deliverable:** Deploy and manage edge scripts. Magic Containers API client implemented; CLI commands pending.
