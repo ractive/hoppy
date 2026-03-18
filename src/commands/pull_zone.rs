@@ -4,6 +4,7 @@ use crate::output;
 use anyhow::Result;
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreatePullZone, PullZone, PurgeCache, UpdatePullZone};
+use std::io::{self, BufRead, Write};
 
 // ---------------------------------------------------------------------------
 // Display structs
@@ -98,8 +99,13 @@ impl From<&PullZone> for PullZoneDetail {
 // Handler
 // ---------------------------------------------------------------------------
 
-pub async fn handle(action: &PullZoneAction, format: OutputFormat) -> Result<()> {
-    let client = CoreClient::new(auth::get_api_key()?);
+pub async fn handle(
+    action: &PullZoneAction,
+    format: OutputFormat,
+    debug: bool,
+    yes: bool,
+) -> Result<()> {
+    let client = CoreClient::new(auth::get_api_key()?).with_debug(debug);
 
     match action {
         PullZoneAction::List {
@@ -162,6 +168,17 @@ pub async fn handle(action: &PullZoneAction, format: OutputFormat) -> Result<()>
             print_pull_zone(&pz, format);
         }
         PullZoneAction::Delete { id } => {
+            if !yes {
+                eprint!("Delete pull zone {id}? [y/N] ");
+                io::stderr().flush()?;
+                let mut line = String::new();
+                io::stdin().lock().read_line(&mut line)?;
+                let answer = line.trim().to_lowercase();
+                if answer != "y" && answer != "yes" {
+                    eprintln!("Aborted.");
+                    return Ok(());
+                }
+            }
             client.delete_pull_zone(*id).await?;
             eprintln!("Deleted pull zone {id}");
         }
