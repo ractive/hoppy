@@ -25,3 +25,4 @@ anyhow = "1"
 tabled = "0.17"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 bunny-api-core = { path = "crates/bunny-api-core" }
+bunny-api-storage = { path = "crates/bunny-api-storage" }

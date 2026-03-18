@@ -11,3 +11,16 @@ pub fn get_api_key() -> Result<String> {
         ),
     }
 }
+
+/// Read the bunny.net Storage Zone access key from the BUNNY_STORAGE_KEY
+/// environment variable.
+///
+/// Returns `Some(key)` if set and non-empty, `None` otherwise.
+/// The caller is responsible for falling back to fetching the password
+/// from the Core API if `None` is returned.
+pub fn get_storage_key() -> Option<String> {
+    match env::var("BUNNY_STORAGE_KEY") {
+        Ok(key) if !key.is_empty() => Some(key),
+        _ => None,
+    }
+}

@@ -1,0 +1,22 @@
+{
+  "Id": 9001,
+  "UserId": "00000000-0000-0000-0000-000000000001",
+  "Name": "test-storage-zone-1",
+  "Password": "redacted-storage-password",
+  "DateModified": "2026-03-14T11:15:44",
+  "Deleted": false,
+  "StorageUsed": 5635181,
+  "FilesStored": 46,
+  "Region": "DE",
+  "ReplicationRegions": [],
+  "PullZones": [],
+  "ReadOnlyPassword": "redacted-readonly-password",
+  "Rewrite404To200": false,
+  "Custom404FilePath": null,
+  "StorageHostname": "storage.bunnycdn.com",
+  "ZoneTier": 0,
+  "ReplicationChangeInProgress": false,
+  "PriceOverride": 0.0,
+  "Discount": 0,
+  "StorageZoneType": 0
+}

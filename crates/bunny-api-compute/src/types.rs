@@ -239,6 +239,11 @@ where
 /// Generic pagination wrapper used by list endpoints.
 ///
 /// `items` defaults to an empty `Vec` when the API returns `null` or omits the key.
+// NOTE: This `PaginatedList` is intentionally separate from the one in
+// `bunny-api-core`. The Compute API can return `null` for the `Items` key,
+// which requires a custom deserializer (`deserialize_null_as_empty_vec`).
+// Core's version assumes `Items` is always an array. These differences are
+// meaningful and the types are kept separate to avoid a shared-crate dependency.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 #[serde(bound(deserialize = "T: for<'a> serde::Deserialize<'a>"))]
@@ -251,6 +256,9 @@ pub struct PaginatedList<T> {
 }
 
 /// Error body returned by the API on 4xx responses.
+///
+/// NOTE: Intentionally separate from `bunny-api-core::ApiError` — the Compute
+/// API returns `Option` fields whereas the Core API returns non-optional fields.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct ApiError {
