@@ -270,6 +270,9 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 - [ ] Homebrew formula / cargo install support
 - [ ] Comprehensive README with examples for each service
 - [ ] `hoppy auth check` — validate API key and print account info
+- [ ] Replace `endpoint_suggestions: Vec<serde_json::Value>` in `bunny-api-containers` types with a concrete type once API shape is confirmed
+- [ ] Consider removing `CursorListJson` wrapper in CLI — serialize `CursorList<T>` directly in JSON mode (already done for volumes)
+- [ ] Add `FromStr` impls to container enums (`RuntimeType`, `Granularity`, `RegistryType`, etc.) to replace hand-written `parse_*` helpers
 
 **Deliverable:** Tagged v0.1.0 release with binaries for linux (x86_64, aarch64), macOS (x86_64, aarch64), windows (x86_64).
 
