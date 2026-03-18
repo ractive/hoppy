@@ -6,10 +6,10 @@
 //! # Quick start
 //!
 //! ```no_run
-//! use hoppy_api_shield::ShieldClient;
+//! use bunny_api_shield::ShieldClient;
 //!
 //! # async fn example() -> anyhow::Result<()> {
-//! let client = ShieldClient::new("your-api-key")?;
+//! let client = ShieldClient::new("your-api-key");
 //! let zone = client.get_shield_zone(12345).await?;
 //! println!("Shield Zone: {:?}", zone.shield_zone_id);
 //! # Ok(())

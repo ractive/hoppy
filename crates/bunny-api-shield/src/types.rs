@@ -584,7 +584,7 @@ pub struct CustomWafRule {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCustomWafRule {
-    pub shield_zone_id: i32,
+    pub shield_zone_id: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -665,7 +665,7 @@ pub struct RateLimitRule {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateRateLimitRule {
-    pub shield_zone_id: i32,
+    pub shield_zone_id: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -844,7 +844,7 @@ pub struct BrowserFingerprintConfiguration {
 #[serde(rename_all = "camelCase")]
 pub struct BotDetectionConfigurationState {
     #[serde(default)]
-    pub shield_zone_id: i32,
+    pub shield_zone_id: i64,
     pub request_integrity: RequestIntegrityConfiguration,
     pub ip_address: IpAddressConfiguration,
     pub browser_fingerprint: BrowserFingerprintConfiguration,
@@ -866,7 +866,7 @@ pub struct BotDetectionConfigurationResponse {
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBotDetection {
-    pub shield_zone_id: i32,
+    pub shield_zone_id: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub execution_mode: Option<BotDetectionExecutionMode>,
     #[serde(skip_serializing_if = "Option::is_none")]
