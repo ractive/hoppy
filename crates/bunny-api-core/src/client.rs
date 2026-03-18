@@ -7,6 +7,8 @@ use reqwest::{
 use crate::types::{ApiError, CreatePullZone, PaginatedList, PullZone, PurgeCache, UpdatePullZone};
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
+/// Maximum items per page accepted by the bunny.net API.
+const DEFAULT_PER_PAGE: u32 = 1000;
 
 /// Async client for the bunny.net HTTP API.
 ///
@@ -50,7 +52,9 @@ impl CoreClient {
 
     /// List Pull Zones with optional pagination and search.
     ///
-    /// `page` is 1-based. Pass `None` to use the API default (page 1).
+    /// `page` is 1-based; defaults to 1. `per_page` defaults to 1000 (the API
+    /// maximum). Both are always sent so the API returns a paginated envelope.
+    /// Callers with more than 1000 zones must page manually.
     pub async fn list_pull_zones(
         &self,
         page: Option<u32>,
@@ -58,13 +62,13 @@ impl CoreClient {
         search: Option<&str>,
     ) -> Result<PaginatedList<PullZone>> {
         let url = format!("{}/pullzone", self.base_url);
-        let mut rb = self.auth(self.http.get(&url));
-        if let Some(p) = page {
-            rb = rb.query(&[("page", p.to_string())]);
-        }
-        if let Some(pp) = per_page {
-            rb = rb.query(&[("perPage", pp.to_string())]);
-        }
+        // Always send pagination params — without them the bunny.net API
+        // returns a bare JSON array instead of the paginated envelope.
+        let page = page.unwrap_or(1);
+        let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
+        let mut rb = self
+            .auth(self.http.get(&url))
+            .query(&[("page", page.to_string()), ("perPage", per_page.to_string())]);
         if let Some(q) = search {
             rb = rb.query(&[("search", q)]);
         }
