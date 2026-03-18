@@ -65,7 +65,12 @@ impl std::fmt::Display for ErrorDetails {
         }
         if let Some(errors) = &self.errors {
             for e in errors {
-                write!(f, "\n  {}: {}", e.field.as_deref().unwrap_or("?"), e.message)?;
+                write!(
+                    f,
+                    "\n  {}: {}",
+                    e.field.as_deref().unwrap_or("?"),
+                    e.message
+                )?;
             }
         }
         Ok(())

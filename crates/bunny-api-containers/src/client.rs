@@ -57,10 +57,7 @@ impl ContainersClient {
         self.http.execute(req).await.context("request failed")
     }
 
-    async fn handle_response<T: serde::de::DeserializeOwned>(
-        &self,
-        resp: Response,
-    ) -> Result<T> {
+    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
         let status = resp.status();
         if status.is_success() {
             return resp
@@ -133,12 +130,7 @@ impl ContainersClient {
     /// `GET /apps/{appId}/overview`
     pub async fn get_application_overview(&self, app_id: &str) -> Result<ApplicationOverview> {
         let resp = self
-            .execute(
-                self.auth(
-                    self.http
-                        .get(self.url(&format!("/apps/{app_id}/overview"))),
-                ),
-            )
+            .execute(self.auth(self.http.get(self.url(&format!("/apps/{app_id}/overview")))))
             .await?;
         self.handle_response(resp).await
     }
@@ -172,12 +164,12 @@ impl ContainersClient {
     /// Create a new application.
     ///
     /// `POST /apps`
-    pub async fn add_application(&self, body: &AddApplicationRequest) -> Result<AddApplicationResponse> {
+    pub async fn add_application(
+        &self,
+        body: &AddApplicationRequest,
+    ) -> Result<AddApplicationResponse> {
         let resp = self
-            .execute(
-                self.auth(self.http.post(self.url("/apps")))
-                    .json(body),
-            )
+            .execute(self.auth(self.http.post(self.url("/apps"))).json(body))
             .await?;
         self.handle_response(resp).await
     }
@@ -221,12 +213,7 @@ impl ContainersClient {
     /// `POST /apps/{appId}/deploy`
     pub async fn deploy_application(&self, app_id: &str) -> Result<()> {
         let resp = self
-            .execute(
-                self.auth(
-                    self.http
-                        .post(self.url(&format!("/apps/{app_id}/deploy"))),
-                ),
-            )
+            .execute(self.auth(self.http.post(self.url(&format!("/apps/{app_id}/deploy")))))
             .await?;
         self.handle_empty_response(resp).await
     }
@@ -251,12 +238,7 @@ impl ContainersClient {
     /// `POST /apps/{appId}/restart`
     pub async fn restart_application(&self, app_id: &str) -> Result<()> {
         let resp = self
-            .execute(
-                self.auth(
-                    self.http
-                        .post(self.url(&format!("/apps/{app_id}/restart"))),
-                ),
-            )
+            .execute(self.auth(self.http.post(self.url(&format!("/apps/{app_id}/restart")))))
             .await?;
         self.handle_empty_response(resp).await
     }
@@ -266,12 +248,7 @@ impl ContainersClient {
     /// `DELETE /apps/{appId}`
     pub async fn delete_application(&self, app_id: &str) -> Result<()> {
         let resp = self
-            .execute(
-                self.auth(
-                    self.http
-                        .delete(self.url(&format!("/apps/{app_id}"))),
-                ),
-            )
+            .execute(self.auth(self.http.delete(self.url(&format!("/apps/{app_id}")))))
             .await?;
         self.handle_empty_response(resp).await
     }
@@ -298,11 +275,7 @@ impl ContainersClient {
     /// Update autoscaling settings for an application.
     ///
     /// `PUT /apps/{appId}/autoscaling`
-    pub async fn update_autoscaling(
-        &self,
-        app_id: &str,
-        body: &AutoscalingSettings,
-    ) -> Result<()> {
+    pub async fn update_autoscaling(&self, app_id: &str, body: &AutoscalingSettings) -> Result<()> {
         let resp = self
             .execute(
                 self.auth(
@@ -387,9 +360,12 @@ impl ContainersClient {
         container_id: &str,
     ) -> Result<ContainerTemplate> {
         let resp = self
-            .execute(self.auth(self.http.get(self.url(&format!(
-                "/apps/{app_id}/containers/{container_id}"
-            )))))
+            .execute(
+                self.auth(
+                    self.http
+                        .get(self.url(&format!("/apps/{app_id}/containers/{container_id}"))),
+                ),
+            )
             .await?;
         self.handle_response(resp).await
     }
@@ -405,9 +381,10 @@ impl ContainersClient {
     ) -> Result<ContainerTemplate> {
         let resp = self
             .execute(
-                self.auth(self.http.patch(self.url(&format!(
-                    "/apps/{app_id}/containers/{container_id}"
-                ))))
+                self.auth(
+                    self.http
+                        .patch(self.url(&format!("/apps/{app_id}/containers/{container_id}"))),
+                )
                 .json(body),
             )
             .await?;
@@ -419,9 +396,12 @@ impl ContainersClient {
     /// `DELETE /apps/{appId}/containers/{containerId}`
     pub async fn delete_container(&self, app_id: &str, container_id: &str) -> Result<()> {
         let resp = self
-            .execute(self.auth(self.http.delete(self.url(&format!(
-                "/apps/{app_id}/containers/{container_id}"
-            )))))
+            .execute(
+                self.auth(
+                    self.http
+                        .delete(self.url(&format!("/apps/{app_id}/containers/{container_id}"))),
+                ),
+            )
             .await?;
         self.handle_empty_response(resp).await
     }
@@ -437,9 +417,10 @@ impl ContainersClient {
     ) -> Result<ContainerTemplate> {
         let resp = self
             .execute(
-                self.auth(self.http.put(self.url(&format!(
-                    "/apps/{app_id}/containers/{container_id}/env"
-                ))))
+                self.auth(
+                    self.http
+                        .put(self.url(&format!("/apps/{app_id}/containers/{container_id}/env"))),
+                )
                 .json(env),
             )
             .await?;
@@ -496,9 +477,10 @@ impl ContainersClient {
     ) -> Result<()> {
         let resp = self
             .execute(
-                self.auth(self.http.put(self.url(&format!(
-                    "/apps/{app_id}/endpoints/{endpoint_id}"
-                ))))
+                self.auth(
+                    self.http
+                        .put(self.url(&format!("/apps/{app_id}/endpoints/{endpoint_id}"))),
+                )
                 .json(body),
             )
             .await?;
@@ -510,9 +492,12 @@ impl ContainersClient {
     /// `DELETE /apps/{appId}/endpoints/{endpointId}`
     pub async fn delete_endpoint(&self, app_id: &str, endpoint_id: &str) -> Result<()> {
         let resp = self
-            .execute(self.auth(self.http.delete(self.url(&format!(
-                "/apps/{app_id}/endpoints/{endpoint_id}"
-            )))))
+            .execute(
+                self.auth(
+                    self.http
+                        .delete(self.url(&format!("/apps/{app_id}/endpoints/{endpoint_id}"))),
+                ),
+            )
             .await?;
         self.handle_empty_response(resp).await
     }
@@ -526,12 +511,7 @@ impl ContainersClient {
     /// `GET /apps/{appId}/volumes`
     pub async fn list_volumes(&self, app_id: &str) -> Result<ListVolumesResponse> {
         let resp = self
-            .execute(
-                self.auth(
-                    self.http
-                        .get(self.url(&format!("/apps/{app_id}/volumes"))),
-                ),
-            )
+            .execute(self.auth(self.http.get(self.url(&format!("/apps/{app_id}/volumes")))))
             .await?;
         self.handle_response(resp).await
     }
@@ -547,9 +527,10 @@ impl ContainersClient {
     ) -> Result<UpdateVolumeResponse> {
         let resp = self
             .execute(
-                self.auth(self.http.patch(self.url(&format!(
-                    "/apps/{app_id}/volumes/{volume_id}"
-                ))))
+                self.auth(
+                    self.http
+                        .patch(self.url(&format!("/apps/{app_id}/volumes/{volume_id}"))),
+                )
                 .json(body),
             )
             .await?;
@@ -584,9 +565,12 @@ impl ContainersClient {
         volume_id: &str,
     ) -> Result<DeleteAllVolumeInstancesResponse> {
         let resp = self
-            .execute(self.auth(self.http.delete(self.url(&format!(
-                "/apps/{app_id}/volumes/{volume_id}"
-            )))))
+            .execute(
+                self.auth(
+                    self.http
+                        .delete(self.url(&format!("/apps/{app_id}/volumes/{volume_id}"))),
+                ),
+            )
             .await?;
         self.handle_response(resp).await
     }
@@ -676,10 +660,7 @@ impl ContainersClient {
     /// Delete a container registry.
     ///
     /// `DELETE /registries/{registryId}`
-    pub async fn delete_registry(
-        &self,
-        registry_id: i64,
-    ) -> Result<RemoveContainerRegistryResult> {
+    pub async fn delete_registry(&self, registry_id: i64) -> Result<RemoveContainerRegistryResult> {
         let resp = self
             .execute(
                 self.auth(
@@ -748,11 +729,8 @@ impl ContainersClient {
     ) -> Result<ContainerConfigSuggestions> {
         let resp = self
             .execute(
-                self.auth(
-                    self.http
-                        .post(self.url("/registries/config-suggestions")),
-                )
-                .json(body),
+                self.auth(self.http.post(self.url("/registries/config-suggestions")))
+                    .json(body),
             )
             .await?;
         self.handle_response(resp).await
@@ -767,11 +745,8 @@ impl ContainersClient {
     ) -> Result<Vec<ContainerImage>> {
         let resp = self
             .execute(
-                self.auth(
-                    self.http
-                        .post(self.url("/registries/public-images/search")),
-                )
-                .json(body),
+                self.auth(self.http.post(self.url("/registries/public-images/search")))
+                    .json(body),
             )
             .await?;
         self.handle_response(resp).await
@@ -884,10 +859,7 @@ impl ContainersClient {
     /// Get a log forwarding configuration by app ID.
     ///
     /// `GET /log/forwarding/{appId}`
-    pub async fn get_log_forwarding(
-        &self,
-        app_id: &str,
-    ) -> Result<LogForwardingConfiguration> {
+    pub async fn get_log_forwarding(&self, app_id: &str) -> Result<LogForwardingConfiguration> {
         let resp = self
             .execute(
                 self.auth(
@@ -965,10 +937,7 @@ mod tests {
     #[test]
     fn client_with_base_url_overrides() {
         let client = ContainersClient::with_base_url("key", "http://localhost:9000");
-        assert_eq!(
-            client.url("/apps"),
-            "http://localhost:9000/apps"
-        );
+        assert_eq!(client.url("/apps"), "http://localhost:9000/apps");
     }
 
     #[test]
