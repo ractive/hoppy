@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::cli::{OutputFormat, StorageZoneAction};
 use crate::output::{self, PaginatedListJson};
-use anyhow::Result;
+use anyhow::{Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
 use std::io::{self, BufRead, Write};
@@ -161,6 +161,14 @@ pub async fn handle(
             custom_404_file_path,
             origin_url,
         } => {
+            if rewrite_404_to_200.is_none()
+                && custom_404_file_path.is_none()
+                && origin_url.is_none()
+            {
+                bail!(
+                    "at least one update flag is required (--rewrite-404-to-200, --custom-404-file-path, or --origin-url)"
+                );
+            }
             let mut body = UpdateStorageZone::new();
             if let Some(rewrite) = rewrite_404_to_200 {
                 body = body.rewrite_404_to_200(*rewrite);
