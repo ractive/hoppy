@@ -1,0 +1,11 @@
+[
+    {
+        "name": "latest"
+    },
+    {
+        "name": "alpine"
+    },
+    {
+        "name": "stable"
+    }
+]

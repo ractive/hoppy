@@ -26,6 +26,16 @@ hoppy dns record add --zone-id 123 --type A --name www --value 1.2.3.4
 hoppy stream video list --library-id 456
 hoppy stream video upload --library-id 456 --file ./video.mp4
 
+# Shield (WAF / security)
+hoppy shield zone list
+hoppy shield waf list-rules --shield-zone-id 789
+hoppy shield rate-limit list --shield-zone-id 789
+
+# Edge scripting
+hoppy script list
+hoppy script code get --id 123
+hoppy script publish --id 123
+
 # Output formats
 hoppy pull-zone list --format json
 hoppy pull-zone list --format table

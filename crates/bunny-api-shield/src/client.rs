@@ -39,7 +39,7 @@ impl ShieldClient {
         Self {
             client: Client::new(),
             api_key: api_key.into(),
-            base_url: base_url.into(),
+            base_url: base_url.into().trim_end_matches('/').to_owned(),
             debug: false,
         }
     }

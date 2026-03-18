@@ -1,0 +1,12 @@
+{
+    "title": "Validation Error",
+    "status": 400,
+    "detail": "One or more validation errors occurred.",
+    "instance": "/v3/apps",
+    "errors": [
+        {
+            "field": "containerTemplates",
+            "message": "Application must have at least one container"
+        }
+    ]
+}

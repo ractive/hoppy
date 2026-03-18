@@ -1040,26 +1040,464 @@ pub enum ScriptSecretAction {
 
 #[derive(Subcommand)]
 pub enum ContainerAction {
-    /// List containers
-    List,
-    /// Get a specific container
+    /// Manage applications
+    App {
+        #[command(subcommand)]
+        action: ContainerAppAction,
+    },
+    /// Manage container templates within an application
+    Template {
+        #[command(subcommand)]
+        action: ContainerTemplateAction,
+    },
+    /// Manage application endpoints
+    Endpoint {
+        #[command(subcommand)]
+        action: ContainerEndpointAction,
+    },
+    /// Manage application volumes
+    Volume {
+        #[command(subcommand)]
+        action: ContainerVolumeAction,
+    },
+    /// Manage container registries
+    Registry {
+        #[command(subcommand)]
+        action: ContainerRegistryAction,
+    },
+    /// Manage and query regions
+    Region {
+        #[command(subcommand)]
+        action: ContainerRegionAction,
+    },
+    /// List available nodes
+    Node {
+        #[command(subcommand)]
+        action: ContainerNodeAction,
+    },
+    /// Manage pods
+    Pod {
+        #[command(subcommand)]
+        action: ContainerPodAction,
+    },
+    /// Show account limits for Magic Containers
+    Limits,
+    /// Manage log forwarding configurations
+    LogForwarding {
+        #[command(subcommand)]
+        action: ContainerLogForwardingAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerAppAction {
+    /// List all applications
+    List {
+        /// Cursor for the next page
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Maximum number of results
+        #[arg(long)]
+        limit: Option<i32>,
+    },
+    /// Get a specific application
     Get {
         #[arg(long)]
         id: String,
     },
-    /// Create a container
+    /// Create a new application
     Create {
+        /// Application name
         #[arg(long)]
         name: String,
+        /// Runtime type (Shared or Reserved)
+        #[arg(long)]
+        runtime_type: String,
+        /// Minimum number of instances
+        #[arg(long)]
+        min: i32,
+        /// Maximum number of instances
+        #[arg(long)]
+        max: i32,
+        /// Region IDs (may be repeated)
+        #[arg(long = "region")]
+        regions: Vec<String>,
     },
-    /// Delete a container
+    /// Update an application
+    Update {
+        #[arg(long)]
+        id: String,
+        /// New name
+        #[arg(long)]
+        name: Option<String>,
+        /// New runtime type
+        #[arg(long)]
+        runtime_type: Option<String>,
+        /// New minimum instances
+        #[arg(long)]
+        min: Option<i32>,
+        /// New maximum instances
+        #[arg(long)]
+        max: Option<i32>,
+    },
+    /// Deploy an application
+    Deploy {
+        #[arg(long)]
+        id: String,
+    },
+    /// Undeploy (suspend) an application
+    Undeploy {
+        #[arg(long)]
+        id: String,
+    },
+    /// Restart all pods in an application
+    Restart {
+        #[arg(long)]
+        id: String,
+    },
+    /// Delete an application
     Delete {
         #[arg(long)]
         id: String,
     },
-    /// View container logs
-    Logs {
+    /// Show live overview for an application
+    Overview {
         #[arg(long)]
         id: String,
+    },
+    /// Show statistics for an application
+    Statistics {
+        #[arg(long)]
+        id: String,
+        /// Start date (YYYY-MM-DD)
+        #[arg(long)]
+        from: String,
+        /// End date (YYYY-MM-DD)
+        #[arg(long)]
+        to: Option<String>,
+        /// Statistics granularity (Daily, Hourly, Minute)
+        #[arg(long)]
+        granularity: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerTemplateAction {
+    /// Get a container template
+    Get {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        container_id: String,
+    },
+    /// Add a container template to an application
+    Add {
+        #[arg(long)]
+        app_id: String,
+        /// Container name
+        #[arg(long)]
+        name: String,
+        /// Docker image name
+        #[arg(long)]
+        image_name: String,
+        /// Docker image namespace
+        #[arg(long)]
+        image_namespace: String,
+        /// Docker image tag
+        #[arg(long)]
+        image_tag: String,
+        /// Registry ID
+        #[arg(long)]
+        registry_id: String,
+    },
+    /// Update a container template
+    Update {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        container_id: String,
+        /// New name
+        #[arg(long)]
+        name: Option<String>,
+        /// New image tag
+        #[arg(long)]
+        image_tag: Option<String>,
+        /// New image name
+        #[arg(long)]
+        image_name: Option<String>,
+        /// New image namespace
+        #[arg(long)]
+        image_namespace: Option<String>,
+        /// New registry ID
+        #[arg(long)]
+        registry_id: Option<String>,
+    },
+    /// Delete a container template
+    Delete {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        container_id: String,
+    },
+    /// Set environment variables for a container template (replaces all)
+    Env {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        container_id: String,
+        /// KEY=VALUE pairs (may be repeated)
+        #[arg(long = "env")]
+        env: Vec<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerEndpointAction {
+    /// List endpoints for an application
+    List {
+        #[arg(long)]
+        app_id: String,
+    },
+    /// Add an endpoint to an application
+    Add {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        container_id: String,
+        /// Display name for the endpoint
+        #[arg(long)]
+        name: String,
+        /// Container port to expose
+        #[arg(long)]
+        container_port: i32,
+        /// Publicly exposed port
+        #[arg(long)]
+        exposed_port: Option<i32>,
+        /// Use CDN endpoint type
+        #[arg(long, conflicts_with = "anycast")]
+        cdn: bool,
+        /// Use Anycast endpoint type
+        #[arg(long, conflicts_with = "cdn")]
+        anycast: bool,
+    },
+    /// Update an endpoint
+    Update {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        endpoint_id: String,
+        /// Display name for the endpoint
+        #[arg(long)]
+        name: String,
+        /// Container port
+        #[arg(long)]
+        container_port: i32,
+        /// Publicly exposed port
+        #[arg(long)]
+        exposed_port: Option<i32>,
+        /// Use CDN endpoint type
+        #[arg(long, conflicts_with = "anycast")]
+        cdn: bool,
+        /// Use Anycast endpoint type
+        #[arg(long, conflicts_with = "cdn")]
+        anycast: bool,
+    },
+    /// Delete an endpoint
+    Delete {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        endpoint_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerVolumeAction {
+    /// List volumes for an application
+    List {
+        #[arg(long)]
+        app_id: String,
+    },
+    /// Update a volume
+    Update {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        volume_id: String,
+        /// New name
+        #[arg(long)]
+        name: Option<String>,
+        /// New size in GB
+        #[arg(long)]
+        size: Option<i32>,
+    },
+    /// Detach a volume from all pods
+    Detach {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        volume_id: String,
+    },
+    /// Delete all instances of a volume
+    Delete {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        volume_id: String,
+    },
+    /// Delete a single volume instance
+    DeleteInstance {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        volume_id: String,
+        #[arg(long)]
+        instance_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerRegistryAction {
+    /// List all container registries
+    List,
+    /// Get a specific container registry
+    Get {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Create a container registry
+    Create {
+        /// Display name
+        #[arg(long)]
+        name: String,
+        /// Registry type (DockerHub or GitHub)
+        #[arg(long)]
+        registry_type: Option<String>,
+        /// Username for authentication
+        #[arg(long)]
+        username: Option<String>,
+        /// Password for authentication
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Update a container registry
+    Update {
+        #[arg(long)]
+        id: i64,
+        /// New display name
+        #[arg(long)]
+        name: String,
+        /// New username
+        #[arg(long)]
+        username: Option<String>,
+        /// New password
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Delete a container registry
+    Delete {
+        #[arg(long)]
+        id: i64,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerRegionAction {
+    /// List available regions
+    List {
+        /// Cursor for the next page
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Maximum number of results
+        #[arg(long)]
+        limit: Option<i32>,
+    },
+    /// Get the optimal base region
+    Optimal,
+}
+
+#[derive(Subcommand)]
+pub enum ContainerNodeAction {
+    /// List available nodes
+    List {
+        /// Cursor for the next page
+        #[arg(long)]
+        cursor: Option<String>,
+        /// Maximum number of results
+        #[arg(long)]
+        limit: Option<i32>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerPodAction {
+    /// Recreate a pod
+    Recreate {
+        #[arg(long)]
+        app_id: String,
+        #[arg(long)]
+        pod_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ContainerLogForwardingAction {
+    /// List all log forwarding configurations
+    List,
+    /// Get log forwarding configuration for an application
+    Get {
+        #[arg(long)]
+        app_id: String,
+    },
+    /// Create a log forwarding configuration
+    Create {
+        #[arg(long)]
+        app_id: String,
+        /// Transport type (SyslogUdp or SyslogTcp)
+        #[arg(long)]
+        forwarding_type: String,
+        /// Syslog endpoint host
+        #[arg(long)]
+        endpoint: String,
+        /// Syslog endpoint port
+        #[arg(long)]
+        port: i32,
+        /// Syslog format (SyslogRfc3164 or SyslogRfc5424)
+        #[arg(long)]
+        format: String,
+        /// Optional authentication token
+        #[arg(long)]
+        token: Option<String>,
+        /// Enable immediately
+        #[arg(long)]
+        enabled: bool,
+    },
+    /// Update a log forwarding configuration
+    Update {
+        #[arg(long)]
+        app_id: String,
+        /// Transport type (SyslogUdp or SyslogTcp)
+        #[arg(long)]
+        forwarding_type: String,
+        /// Syslog endpoint host
+        #[arg(long)]
+        endpoint: String,
+        /// Syslog endpoint port
+        #[arg(long)]
+        port: i32,
+        /// Syslog format (SyslogRfc3164 or SyslogRfc5424)
+        #[arg(long)]
+        format: String,
+        /// Optional authentication token
+        #[arg(long)]
+        token: Option<String>,
+        /// Enable the configuration
+        #[arg(long)]
+        enabled: bool,
+    },
+    /// Delete a log forwarding configuration
+    Delete {
+        #[arg(long)]
+        app_id: String,
     },
 }
