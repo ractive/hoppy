@@ -147,6 +147,8 @@ async fn get_application_overview() {
 
     assert_eq!(overview.regions.len(), 1);
     assert_eq!(overview.regions[0].region.as_deref(), Some("DE"));
+    assert!(overview.average_cpu.is_some(), "averageCPU should deserialize");
+    assert!(overview.average_ram.is_some(), "averageRAM should deserialize");
     let chart = overview.latency_chart.unwrap();
     assert_eq!(chart.len(), 3);
 }
@@ -1576,7 +1578,7 @@ async fn unauthorized_returns_error() {
         .unwrap_err();
 
     assert!(
-        err.to_string().contains("API error"),
+        err.to_string().contains("401"),
         "unexpected error: {err}"
     );
 }

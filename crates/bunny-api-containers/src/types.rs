@@ -1152,9 +1152,9 @@ pub struct ApplicationOverview {
     pub desired_instances: Option<i32>,
     #[serde(default)]
     pub status: Option<ApplicationStatus>,
-    #[serde(default)]
+    #[serde(rename = "averageCPU", default)]
     pub average_cpu: Option<DoubleStatusIndicator>,
-    #[serde(default)]
+    #[serde(rename = "averageRAM", default)]
     pub average_ram: Option<DoubleStatusIndicator>,
     #[serde(default)]
     pub average_volumes_usage: Option<DoubleStatusIndicator>,
@@ -1202,9 +1202,9 @@ pub struct OverviewRegion {
     pub instances: i32,
     #[serde(default)]
     pub status: Option<DeploymentStatus>,
-    #[serde(default)]
+    #[serde(rename = "averageCPU", default)]
     pub average_cpu: f64,
-    #[serde(default)]
+    #[serde(rename = "averageRAM", default)]
     pub average_ram: f64,
     #[serde(default)]
     pub average_volumes_usage_percentage: f64,

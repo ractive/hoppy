@@ -77,19 +77,20 @@ impl ContainersClient {
     }
 
     async fn surface_error<T>(&self, resp: Response) -> Result<T> {
+        let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
         // Try ErrorDetails first (more structured), then ProblemDetails.
-        if let Ok(err) = serde_json::from_str::<ErrorDetails>(&body) {
-            if err.title.is_some() || err.status.is_some() {
-                bail!(err);
-            }
+        if let Ok(err) = serde_json::from_str::<ErrorDetails>(&body)
+            && (err.title.is_some() || err.status.is_some())
+        {
+            bail!(err);
         }
-        if let Ok(problem) = serde_json::from_str::<ProblemDetails>(&body) {
-            if problem.title.is_some() || problem.status.is_some() {
-                bail!(problem);
-            }
+        if let Ok(problem) = serde_json::from_str::<ProblemDetails>(&body)
+            && (problem.title.is_some() || problem.status.is_some())
+        {
+            bail!(problem);
         }
-        bail!("API error: {body}");
+        bail!("API error (HTTP {status}): {body}");
     }
 
     // -------------------------------------------------------------------------
@@ -145,7 +146,7 @@ impl ContainersClient {
         granularity: Granularity,
         to_date: Option<&str>,
     ) -> Result<ApplicationStatistics> {
-        let gran_str = serde_json::to_value(&granularity)?
+        let gran_str = serde_json::to_value(granularity)?
             .as_str()
             .unwrap_or("Daily")
             .to_string();
