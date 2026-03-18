@@ -1,12 +1,14 @@
 use crate::auth;
 use crate::cli::{OutputFormat, StorageAction};
 use crate::output;
+use crate::progress;
 use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_storage::StorageClient;
 use bunny_api_storage::StorageObject;
 use std::io::{self, BufRead, Write};
 use tokio::fs;
+use tokio_util::io::ReaderStream;
 
 // ---------------------------------------------------------------------------
 // Display structs
@@ -44,6 +46,7 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    quiet: bool,
 ) -> Result<()> {
     match action {
         StorageAction::Ls { zone, path, region } => {
@@ -68,12 +71,39 @@ pub async fn handle(
         } => {
             let client = build_storage_client(zone, region, debug).await?;
             let (dir, name) = split_remote_path(remote_path)?;
-            let bytes = fs::read(file)
+
+            // Open the file and get its size for the progress bar.
+            let fh = fs::File::open(file)
                 .await
-                .with_context(|| format!("reading local file: {file}"))?;
-            eprintln!("Uploading {file} → {zone}/{remote_path} ...");
-            client.upload_file(zone, dir, name, bytes, None).await?;
-            eprintln!("Done.");
+                .with_context(|| format!("opening local file: {file}"))?;
+            let file_size = fh
+                .metadata()
+                .await
+                .with_context(|| format!("reading metadata for: {file}"))?
+                .len();
+
+            let pb = progress::file_progress(file_size, quiet);
+
+            // Wrap the file in a streaming body so the progress bar can track
+            // bytes as they are sent, without loading the whole file into memory.
+            // `wrap_async_read` increments the bar as bytes pass through.
+            // When quiet/no-TTY there is no bar, so we stream the file directly.
+            let body: reqwest::Body = if let Some(bar) = &pb {
+                reqwest::Body::wrap_stream(ReaderStream::new(bar.wrap_async_read(fh)))
+            } else {
+                reqwest::Body::wrap_stream(ReaderStream::new(fh))
+            };
+
+            client.upload_file(zone, dir, name, body, None).await?;
+
+            progress::finish_with_message(pb.as_ref(), format!("Uploaded {file}"));
+
+            if quiet {
+                // nothing
+            } else if pb.is_none() {
+                // Not a TTY — emit a plain message to stderr.
+                eprintln!("Uploaded {file} → {zone}/{remote_path}");
+            }
         }
         StorageAction::Download {
             zone,
@@ -83,19 +113,32 @@ pub async fn handle(
         } => {
             let client = build_storage_client(zone, region, debug).await?;
             let (dir, name) = split_remote_path(remote_path)?;
-            eprintln!("Downloading {zone}/{remote_path} ...");
+
+            let pb = progress::spinner(format!("Downloading {zone}/{remote_path}..."), quiet);
+
             let bytes = client.download_file(zone, dir, name).await?;
+
             match output {
                 Some(path) => {
                     fs::write(path, &bytes)
                         .await
                         .with_context(|| format!("writing output file: {path}"))?;
-                    eprintln!("Saved to {path} ({} bytes)", bytes.len());
+                    progress::finish_with_message(
+                        pb.as_ref(),
+                        format!("Downloaded {zone}/{remote_path} ({} bytes)", bytes.len()),
+                    );
+                    if pb.is_none() && !quiet {
+                        eprintln!("Saved to {path} ({} bytes)", bytes.len());
+                    }
                 }
                 None => {
                     io::stdout()
                         .write_all(&bytes)
                         .context("writing to stdout")?;
+                    progress::finish_with_message(
+                        pb.as_ref(),
+                        format!("Downloaded {zone}/{remote_path} ({} bytes)", bytes.len()),
+                    );
                 }
             }
         }

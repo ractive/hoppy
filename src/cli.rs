@@ -86,12 +86,26 @@ pub enum Commands {
         action: ContainerAction,
     },
 
+    /// Authenticate and validate API key
+    Auth {
+        #[command(subcommand)]
+        action: AuthAction,
+    },
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
         #[arg(value_enum)]
         shell: Shell,
     },
+}
+
+// -- Auth --
+
+#[derive(Subcommand)]
+pub enum AuthAction {
+    /// Validate the API key and display account billing info
+    Check,
 }
 
 // -- Pull Zone --
@@ -611,6 +625,8 @@ pub enum ShieldZoneAction {
 
 #[derive(Subcommand)]
 pub enum ShieldWafAction {
+    /// List available WAF profiles
+    Profiles,
     /// List custom WAF rules for a Shield Zone
     ListRules {
         #[arg(long)]
@@ -995,6 +1011,20 @@ pub enum ScriptVariableAction {
         #[arg(long)]
         variable_id: i64,
     },
+    /// Upsert (create or update by name) an environment variable
+    Upsert {
+        #[arg(long)]
+        id: i64,
+        /// Variable name
+        #[arg(long)]
+        name: String,
+        /// Mark this variable as required
+        #[arg(long)]
+        required: Option<bool>,
+        /// Default value for the variable
+        #[arg(long)]
+        default_value: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1033,6 +1063,17 @@ pub enum ScriptSecretAction {
         /// Secret ID
         #[arg(long)]
         secret_id: i64,
+    },
+    /// Upsert (create or update by name) a secret
+    Upsert {
+        #[arg(long)]
+        id: i64,
+        /// Secret name
+        #[arg(long)]
+        name: String,
+        /// Secret value
+        #[arg(long)]
+        value: String,
     },
 }
 
@@ -1178,6 +1219,41 @@ pub enum ContainerAppAction {
         /// Statistics granularity (Daily, Hourly, Minute)
         #[arg(long)]
         granularity: Option<String>,
+    },
+    /// Get autoscaling settings for an application
+    AutoscalingGet {
+        #[arg(long)]
+        app_id: String,
+    },
+    /// Update autoscaling settings for an application
+    AutoscalingUpdate {
+        #[arg(long)]
+        app_id: String,
+        /// Minimum number of instances
+        #[arg(long)]
+        min: i32,
+        /// Maximum number of instances
+        #[arg(long)]
+        max: i32,
+    },
+    /// Get region settings for an application
+    RegionSettingsGet {
+        #[arg(long)]
+        app_id: String,
+    },
+    /// Update region settings for an application
+    RegionSettingsUpdate {
+        #[arg(long)]
+        app_id: String,
+        /// Allowed region IDs (may be repeated)
+        #[arg(long = "allowed-region")]
+        allowed_region_ids: Option<Vec<String>>,
+        /// Required region IDs (may be repeated)
+        #[arg(long = "required-region")]
+        required_region_ids: Option<Vec<String>>,
+        /// Maximum number of allowed regions
+        #[arg(long)]
+        max_allowed_regions: Option<i32>,
     },
 }
 
@@ -1398,6 +1474,63 @@ pub enum ContainerRegistryAction {
     Delete {
         #[arg(long)]
         id: i64,
+    },
+    /// List tags for a container image
+    ImageTags {
+        /// Registry ID
+        #[arg(long)]
+        registry_id: String,
+        /// Image name
+        #[arg(long)]
+        image_name: String,
+        /// Image namespace (e.g. "library" for Docker Hub official images)
+        #[arg(long)]
+        image_namespace: String,
+    },
+    /// Get the digest for a container image tag
+    ImageDigest {
+        /// Registry ID
+        #[arg(long)]
+        registry_id: String,
+        /// Image name
+        #[arg(long)]
+        image_name: String,
+        /// Image namespace
+        #[arg(long)]
+        image_namespace: String,
+        /// Image tag
+        #[arg(long)]
+        tag: String,
+    },
+    /// Get configuration suggestions for a container image
+    ConfigSuggestions {
+        /// Registry ID
+        #[arg(long)]
+        registry_id: String,
+        /// Image name
+        #[arg(long)]
+        image_name: String,
+        /// Image namespace
+        #[arg(long)]
+        image_namespace: String,
+        /// Image tag
+        #[arg(long)]
+        tag: String,
+    },
+    /// Search public container images
+    SearchPublic {
+        /// Registry ID
+        #[arg(long)]
+        registry_id: String,
+        /// Search prefix/query
+        #[arg(long)]
+        query: String,
+        /// Maximum results
+        #[arg(long)]
+        size: Option<i32>,
+        /// Page number
+        #[arg(long)]
+        page: Option<i32>,
     },
 }
 

@@ -2,6 +2,7 @@ mod auth;
 mod cli;
 mod commands;
 mod output;
+mod progress;
 
 use clap::Parser;
 use clap_complete::generate;
@@ -12,6 +13,9 @@ async fn main() {
     let cli = Cli::parse();
 
     let result = match &cli.command {
+        Commands::Auth { action } => {
+            commands::auth::handle(action, cli.format, cli.debug, cli.yes).await
+        }
         Commands::PullZone { action } => {
             commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes).await
         }
@@ -19,13 +23,13 @@ async fn main() {
             commands::storage_zone::handle(action, cli.format, cli.debug, cli.yes).await
         }
         Commands::Storage { action } => {
-            commands::storage::handle(action, cli.format, cli.debug, cli.yes).await
+            commands::storage::handle(action, cli.format, cli.debug, cli.yes, cli.quiet).await
         }
         Commands::Dns { action } => {
             commands::dns::handle(action, cli.format, cli.debug, cli.yes).await
         }
         Commands::Stream { action } => {
-            commands::stream::handle(action, cli.format, cli.debug, cli.yes).await
+            commands::stream::handle(action, cli.format, cli.debug, cli.yes, cli.quiet).await
         }
         Commands::Shield { action } => {
             commands::shield::handle(action, cli.format, cli.debug, cli.yes).await

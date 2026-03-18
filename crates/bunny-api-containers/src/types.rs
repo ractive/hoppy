@@ -254,6 +254,81 @@ pub enum SyslogFormat {
 }
 
 // ---------------------------------------------------------------------------
+// FromStr implementations
+// ---------------------------------------------------------------------------
+
+impl std::str::FromStr for RuntimeType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "shared" => Ok(RuntimeType::Shared),
+            "reserved" => Ok(RuntimeType::Reserved),
+            other => Err(format!(
+                "invalid runtime-type '{other}': must be Shared or Reserved"
+            )),
+        }
+    }
+}
+
+impl std::str::FromStr for Granularity {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "daily" => Ok(Granularity::Daily),
+            "hourly" => Ok(Granularity::Hourly),
+            "minute" => Ok(Granularity::Minute),
+            other => Err(format!(
+                "invalid granularity '{other}': must be Daily, Hourly, or Minute"
+            )),
+        }
+    }
+}
+
+impl std::str::FromStr for RegistryType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "dockerhub" => Ok(RegistryType::DockerHub),
+            "github" => Ok(RegistryType::GitHub),
+            other => Err(format!(
+                "invalid registry-type '{other}': must be DockerHub or GitHub"
+            )),
+        }
+    }
+}
+
+impl std::str::FromStr for LogForwardingType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "syslogudp" => Ok(LogForwardingType::SyslogUdp),
+            "syslogtcp" => Ok(LogForwardingType::SyslogTcp),
+            other => Err(format!(
+                "invalid forwarding-type '{other}': must be SyslogUdp or SyslogTcp"
+            )),
+        }
+    }
+}
+
+impl std::str::FromStr for SyslogFormat {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "syslogrfc3164" => Ok(SyslogFormat::SyslogRfc3164),
+            "syslogrfc5424" => Ok(SyslogFormat::SyslogRfc5424),
+            other => Err(format!(
+                "invalid format '{other}': must be SyslogRfc3164 or SyslogRfc5424"
+            )),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Pagination
 // ---------------------------------------------------------------------------
 
@@ -265,6 +340,11 @@ pub struct ListMeta {
 }
 
 /// Generic cursor-paginated list response.
+///
+/// When serialized to JSON this produces a nested shape:
+/// `{"items": [...], "meta": {"totalItems": N}, "cursor": "..."}`.
+/// This differs from the old flat `CursorListJson` wrapper that had a top-level
+/// `total_items` field; the nested shape is intentional and matches the API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(deserialize = "T: for<'a> serde::Deserialize<'a>"))]
@@ -1089,12 +1169,55 @@ pub struct GetContainerConfigSuggestionsRequest {
     pub tag: String,
 }
 
+/// Suggested CDN port mapping returned by config suggestions.
+///
+/// Note: `protocols` is a list of strings (e.g. `["Tcp"]`) in the suggestions
+/// response, unlike the `EndpointPortMapping` response type used elsewhere.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EndpointSuggestionPortMapping {
+    pub container_port: i32,
+    #[serde(default)]
+    pub exposed_port: Option<i32>,
+    #[serde(default)]
+    pub protocols: Vec<String>,
+}
+
+/// Suggested CDN configuration returned by config suggestions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EndpointSuggestionCdn {
+    #[serde(default)]
+    pub is_ssl_enabled: Option<bool>,
+    #[serde(default)]
+    pub sticky_sessions: Option<bool>,
+    #[serde(default)]
+    pub pull_zone_id: Option<String>,
+    #[serde(default)]
+    pub port_mappings: Vec<EndpointSuggestionPortMapping>,
+}
+
+/// A single endpoint suggestion returned by the config suggestions endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EndpointSuggestion {
+    pub display_name: String,
+    #[serde(default)]
+    pub cdn: Option<EndpointSuggestionCdn>,
+    #[serde(default)]
+    pub internal_ip: Option<String>,
+    #[serde(default)]
+    pub public_ip: Option<String>,
+    #[serde(default)]
+    pub anycast: Option<serde_json::Value>,
+}
+
 /// Container config suggestions response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ContainerConfigSuggestions {
     #[serde(default)]
-    pub endpoint_suggestions: Vec<serde_json::Value>,
+    pub endpoint_suggestions: Vec<EndpointSuggestion>,
     #[serde(default)]
     pub environment_variables_suggestions: Vec<EnvironmentVariableSuggestion>,
     #[serde(default)]
@@ -1508,5 +1631,88 @@ mod tests {
         assert!(json.contains("\"type\":\"SyslogTcp\""));
         assert!(json.contains("\"format\":\"SyslogRfc5424\""));
         assert!(!json.contains("token"));
+    }
+
+    #[test]
+    fn runtime_type_from_str() {
+        assert_eq!(
+            "Shared".parse::<RuntimeType>().unwrap(),
+            RuntimeType::Shared
+        );
+        assert_eq!(
+            "Reserved".parse::<RuntimeType>().unwrap(),
+            RuntimeType::Reserved
+        );
+        assert_eq!(
+            "shared".parse::<RuntimeType>().unwrap(),
+            RuntimeType::Shared
+        );
+        assert!("invalid".parse::<RuntimeType>().is_err());
+    }
+
+    #[test]
+    fn granularity_from_str() {
+        assert_eq!("Daily".parse::<Granularity>().unwrap(), Granularity::Daily);
+        assert_eq!(
+            "Hourly".parse::<Granularity>().unwrap(),
+            Granularity::Hourly
+        );
+        assert_eq!(
+            "Minute".parse::<Granularity>().unwrap(),
+            Granularity::Minute
+        );
+        assert_eq!("daily".parse::<Granularity>().unwrap(), Granularity::Daily);
+        assert!("weekly".parse::<Granularity>().is_err());
+    }
+
+    #[test]
+    fn registry_type_from_str() {
+        assert_eq!(
+            "DockerHub".parse::<RegistryType>().unwrap(),
+            RegistryType::DockerHub
+        );
+        assert_eq!(
+            "GitHub".parse::<RegistryType>().unwrap(),
+            RegistryType::GitHub
+        );
+        assert_eq!(
+            "dockerhub".parse::<RegistryType>().unwrap(),
+            RegistryType::DockerHub
+        );
+        assert!("ECR".parse::<RegistryType>().is_err());
+    }
+
+    #[test]
+    fn log_forwarding_type_from_str() {
+        assert_eq!(
+            "SyslogUdp".parse::<LogForwardingType>().unwrap(),
+            LogForwardingType::SyslogUdp
+        );
+        assert_eq!(
+            "SyslogTcp".parse::<LogForwardingType>().unwrap(),
+            LogForwardingType::SyslogTcp
+        );
+        assert_eq!(
+            "syslogtcp".parse::<LogForwardingType>().unwrap(),
+            LogForwardingType::SyslogTcp
+        );
+        assert!("http".parse::<LogForwardingType>().is_err());
+    }
+
+    #[test]
+    fn syslog_format_from_str() {
+        assert_eq!(
+            "SyslogRfc3164".parse::<SyslogFormat>().unwrap(),
+            SyslogFormat::SyslogRfc3164
+        );
+        assert_eq!(
+            "SyslogRfc5424".parse::<SyslogFormat>().unwrap(),
+            SyslogFormat::SyslogRfc5424
+        );
+        assert_eq!(
+            "syslogrfc5424".parse::<SyslogFormat>().unwrap(),
+            SyslogFormat::SyslogRfc5424
+        );
+        assert!("json".parse::<SyslogFormat>().is_err());
     }
 }

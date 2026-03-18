@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod container;
 pub mod dns;
 pub mod pull_zone;
