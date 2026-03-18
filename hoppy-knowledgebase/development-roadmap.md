@@ -282,16 +282,61 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Everything needed to ship v0.1.0 as a proper open-source release.
 
-- [ ] GitHub Actions release workflow: build + upload binaries on version tag (linux x86_64/aarch64, macOS x86_64/aarch64, windows x86_64)
-- [ ] Homebrew formula (tap repo + formula pointing at GitHub release assets)
-- [ ] `cargo install` support (verify Cargo.toml metadata, test `cargo install --path .`)
-- [ ] Man page generation (`clap_mangen` build script or xtask)
-- [ ] Shell completion install helper: `hoppy completions install bash|zsh|fish` (write to standard paths)
-- [ ] Comprehensive README with install instructions, examples for each service, badges
-- [ ] CHANGELOG.md for v0.1.0
-- [ ] Linux packages (deb/rpm) via GitHub Actions (optional stretch goal)
+### Foundation
+- [ ] LICENSE file (MIT)
+- [ ] CHANGELOG.md for v0.1.0 (summarize all iterations)
+- [ ] Cargo.toml metadata: `repository`, `homepage`, `keywords`, `categories`, `readme`
+- [ ] Update CI workflow: trigger on push to main + PRs (not just `workflow_dispatch`)
 
-**Deliverable:** Tagged v0.1.0 release with binaries for linux (x86_64, aarch64), macOS (x86_64, aarch64), windows (x86_64). Installable via Homebrew, cargo install, or direct download.
+### GitHub Actions Release Workflow
+- [ ] Trigger on tag push matching `v*` (e.g. `v0.1.0`)
+- [ ] Build matrix (6 targets):
+  - `x86_64-unknown-linux-gnu` (ubuntu-latest, native)
+  - `aarch64-unknown-linux-gnu` (ubuntu-latest, cross-rs)
+  - `x86_64-apple-darwin` (macos-13, native)
+  - `aarch64-apple-darwin` (macos-latest, native)
+  - `x86_64-pc-windows-msvc` (windows-latest, native)
+  - `aarch64-pc-windows-msvc` (windows-latest, native)
+- [ ] Package artifacts: `.tar.gz` (linux/macOS), `.zip` (Windows)
+- [ ] Each archive includes: binary, shell completions (bash/zsh/fish), man page, LICENSE, README
+- [ ] Generate `sha256sums.txt` for all archives
+- [ ] Create GitHub Release from tag, upload all archives + checksums
+
+### Man Page Generation
+- [ ] Add `clap_mangen` dependency
+- [ ] xtask or build script to generate man pages from clap command tree
+- [ ] Bundle in release archives and packages
+
+### Shell Completions
+- [ ] Keep stdout approach (`hoppy completions <shell>`) — industry standard (starship, rustup, gh, ripgrep all do this)
+- [ ] Bundle pre-generated completions in release archives
+- [ ] Include completions in deb/rpm/Homebrew packages (auto-installed to correct paths)
+- [ ] Document redirect commands in README and `hoppy completions --help`
+
+### Packaging
+- [ ] **Homebrew**: Create `ractive/homebrew-hoppy` tap repo with formula; automate SHA256 + formula update in release workflow
+- [ ] **cargo install**: `cargo install --git https://github.com/ractive/hoppy` (crates.io deferred — requires publishing all 7 crates)
+- [ ] **deb**: `cargo-deb` with `[package.metadata.deb]` — include completions + man page as assets
+- [ ] **rpm**: `cargo-generate-rpm` with `[package.metadata.generate-rpm]` — same assets
+- [ ] **winget**: Prepare manifest (`InstallerType: zip`, `NestedInstallerType: portable`), submit to `microsoft/winget-pkgs` after first release
+
+### README Overhaul
+- [ ] Installation section: Homebrew, cargo install --git, direct download, winget, deb/rpm, build from source
+- [ ] Feature overview with service list
+- [ ] Usage examples organized by service (keep existing)
+- [ ] Shell completions with per-shell paths
+- [ ] Global options
+- [ ] Badges: CI status, license
+- [ ] Contributing section
+
+### Not in scope for v0.1.0
+- crates.io publishing (requires publishing all 6 sub-crates with proper versioning)
+- Signed binaries / macOS notarization
+- AUR / Nix / Scoop packages
+- Auto-update mechanism
+- `hoppy completions install` subcommand (stdout + package managers is sufficient)
+
+**Deliverable:** Tagged v0.1.0 release with binaries for linux (x86_64, aarch64), macOS (x86_64, aarch64), windows (x86_64, aarch64). Installable via Homebrew, cargo install --git, direct download, deb, rpm, or winget.
 
 ---
 
@@ -364,3 +409,9 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-18 | `deployment_key` excluded from JSON output | `#[serde(skip_serializing)]` on `EdgeScript.deployment_key` to prevent leaking deployment credentials. Same pattern as other crates. |
 | 2026-03-18 | Compute API uses PascalCase like Core API | Confirmed via OpenAPI spec and fixture recording. All types use `#[serde(rename_all = "PascalCase")]`. |
 | 2026-03-18 | Compute API `Items` can be null in paginated responses | Unlike Core API, Compute API may return `"Items": null` instead of `[]`. Custom `deserialize_null_as_empty_vec` handles this. PaginatedList intentionally kept separate from Core's version. |
+| 2026-03-18 | Homebrew tap: `ractive/homebrew-hoppy` | User may have other formulas; single-formula tap naming (`homebrew-hoppy`) keeps things isolated |
+| 2026-03-18 | winget manifest prepared but submitted after first release | winget-pkgs requires a review process; prepare manifest in repo, submit PR manually after v0.1.0 is published |
+| 2026-03-18 | `cargo install --git` instead of crates.io for v0.1.0 | Publishing to crates.io requires all 7 crates (6 api + 1 cli) published in dependency order with proper versioning — too much coordination for initial release |
+| 2026-03-18 | Shell completions: stdout-only, no `install` subcommand | Industry standard (starship, rustup, gh, ripgrep, fd, bat). Package managers handle installation. Adding `install` later is non-breaking if needed. |
+| 2026-03-18 | Windows aarch64 included in release matrix | `aarch64-pc-windows-msvc` builds natively on `windows-latest` runner — zero extra effort |
+| 2026-03-18 | cross-rs for Linux aarch64 only | Native runners for everything else. cross-rs is more reliable than cargo-zigbuild for aarch64 (reported segfault issues with zigbuild). |
