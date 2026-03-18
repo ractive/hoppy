@@ -7,11 +7,12 @@ use clap::Parser;
 use clap_complete::generate;
 use cli::{Cli, Commands};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     let result = match &cli.command {
-        Commands::PullZone { action } => commands::pull_zone::handle(action, cli.format),
+        Commands::PullZone { action } => commands::pull_zone::handle(action, cli.format).await,
         Commands::StorageZone { action } => commands::storage_zone::handle(action, cli.format),
         Commands::Storage { action } => commands::storage::handle(action, cli.format),
         Commands::Dns { action } => commands::dns::handle(action, cli.format),
