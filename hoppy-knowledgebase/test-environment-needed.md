@@ -12,7 +12,7 @@ A dedicated **test environment** (separate bunny.net account or sub-account) is 
 
 ## Current State
 
-- The `BUNNY_API_KEY` in use belongs to a **production account** with real pull zones (`stova-web`, `stova-assets`).
+- The `BUNNY_API_KEY` in use belongs to a **production account** with real pull zones.
 - Only **read-only** (GET) API calls are safe to run against it.
 - Integration tests use `wiremock` mock server with recorded fixtures — no live API calls.
 

@@ -7,6 +7,8 @@ use reqwest::{
 use crate::types::{ApiError, CreatePullZone, PaginatedList, PullZone, PurgeCache, UpdatePullZone};
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
+/// Maximum items per page accepted by the bunny.net API.
+const DEFAULT_PER_PAGE: u32 = 1000;
 
 /// Async client for the bunny.net HTTP API.
 ///
@@ -63,7 +65,7 @@ impl CoreClient {
         // Always send pagination params — without them the bunny.net API
         // returns a bare JSON array instead of the paginated envelope.
         let page = page.unwrap_or(1);
-        let per_page = per_page.unwrap_or(1000);
+        let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
         let mut rb = self
             .auth(self.http.get(&url))
             .query(&[("page", page.to_string()), ("perPage", per_page.to_string())]);
