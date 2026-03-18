@@ -257,29 +257,45 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 ---
 
-## Iteration 7 — Polish & Distribution
+## Iteration 7 — Code Cleanup & Small Features
 
-**Goal:** Production-ready release.
+**Goal:** Quick wins — clean up deferred tech debt, add small features. No release infrastructure yet.
 
-- [ ] Config file support: `~/.config/hoppy/config.toml` for defaults
-- [ ] Shell completion install helper: `hoppy completions install bash|zsh|fish`
-- [ ] `--dry-run` for mutating operations (show what would happen)
-- [ ] `--wait` for async operations
-- [ ] Man page generation
-- [ ] GitHub Actions release workflow: build + upload binaries on version tag
-- [ ] Homebrew formula / cargo install support
-- [ ] Comprehensive README with examples for each service
-- [ ] `hoppy auth check` — validate API key and print account info
+- [ ] `hoppy auth check` — validate API key and print account info (new Core API endpoint + CLI command)
 - [ ] Replace `endpoint_suggestions: Vec<serde_json::Value>` in `bunny-api-containers` types with a concrete type once API shape is confirmed
-- [ ] Consider removing `CursorListJson` wrapper in CLI — serialize `CursorList<T>` directly in JSON mode (already done for volumes)
-- [ ] Add `FromStr` impls to container enums (`RuntimeType`, `Granularity`, `RegistryType`, etc.) to replace hand-written `parse_*` helpers
+- [ ] Remove `CursorListJson` wrapper in CLI — serialize `CursorList<T>` directly in JSON mode (already done for volumes, 5 remaining call sites)
+- [ ] Add `FromStr` impls to container enums (`RuntimeType`, `Granularity`, `RegistryType`, `LogForwardingType`, `SyslogFormat`) to replace hand-written `parse_*` helpers
+- [ ] Wire WAF profiles CLI command (`shield waf profiles`) — API client already implemented in iter 5, just needs CLI wiring
+- [ ] Progress bars for storage upload/download and video upload (`indicatif` crate, stderr only when TTY)
+- [ ] `bunny-api-containers` wiremock integration tests (pattern established in other crates)
 
-**Deliverable:** Tagged v0.1.0 release with binaries for linux (x86_64, aarch64), macOS (x86_64, aarch64), windows (x86_64).
+**Deliverable:** Cleaner codebase, all deferred small items resolved.
+
+---
+
+## Iteration 8 — Release Readiness
+
+**Goal:** Everything needed to ship v0.1.0 as a proper open-source release.
+
+- [ ] GitHub Actions release workflow: build + upload binaries on version tag (linux x86_64/aarch64, macOS x86_64/aarch64, windows x86_64)
+- [ ] Homebrew formula (tap repo + formula pointing at GitHub release assets)
+- [ ] `cargo install` support (verify Cargo.toml metadata, test `cargo install --path .`)
+- [ ] Man page generation (`clap_mangen` build script or xtask)
+- [ ] Shell completion install helper: `hoppy completions install bash|zsh|fish` (write to standard paths)
+- [ ] Comprehensive README with install instructions, examples for each service, badges
+- [ ] CHANGELOG.md for v0.1.0
+- [ ] Linux packages (deb/rpm) via GitHub Actions (optional stretch goal)
+
+**Deliverable:** Tagged v0.1.0 release with binaries for linux (x86_64, aarch64), macOS (x86_64, aarch64), windows (x86_64). Installable via Homebrew, cargo install, or direct download.
 
 ---
 
 ## Possible Future Iterations
 
+- **Config file support** — `~/.config/hoppy/config.toml` for defaults (API key, default format, etc.)
+- **`--dry-run` for mutating operations** — show what would happen without executing
+- **`--wait` for async operations** — poll until operation completes
+- **DNS import/export** — BIND zone file import/export (API partially supports it)
 - **Statistics/analytics commands** — `hoppy stats` for traffic, bandwidth, cache hit rates
 - **Billing commands** — `hoppy billing summary`, invoices
 - **Optimizer commands** — image transformation presets
@@ -304,7 +320,8 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 4 — Stream | Third API, video upload | Medium |
 | 5 — Shield | Security features | Small-Medium |
 | 6 — Scripting + Containers | Two services, API client + CLI for both scripting and containers | Medium-Large |
-| 7 — Polish & Release | CI/CD, packaging, docs | Medium |
+| 7 — Code Cleanup | Tech debt, small features, deferred items | Small |
+| 8 — Release Readiness | CI/CD, packaging, docs, Homebrew | Medium |
 
 ## Decision Log
 
