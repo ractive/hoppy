@@ -1,0 +1,6 @@
+{
+  "Id": 301,
+  "Name": "NEW_VAR",
+  "Required": true,
+  "DefaultValue": "default-value"
+}

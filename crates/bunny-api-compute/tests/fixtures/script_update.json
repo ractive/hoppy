@@ -1,0 +1,19 @@
+{
+  "Id": 1001,
+  "Name": "updated-cdn-script",
+  "LastModified": "2024-02-05T14:20:00Z",
+  "ScriptType": 1,
+  "CurrentReleaseId": 501,
+  "EdgeScriptVariables": null,
+  "Deleted": false,
+  "LinkedPullZones": null,
+  "Integration": null,
+  "DefaultHostname": "updated-cdn-script.b-cdn.net",
+  "SystemHostname": null,
+  "DeploymentKey": null,
+  "RepositoryId": null,
+  "IntegrationId": null,
+  "MonthlyCost": 0.0,
+  "MonthlyRequestCount": 12500,
+  "MonthlyCpuTime": 3200
+}
