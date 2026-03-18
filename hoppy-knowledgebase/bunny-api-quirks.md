@@ -61,3 +61,33 @@ The Storage API uses `AccessKey` header (same as Core API) but requires a **per-
 **Affected endpoint:** `GET /storagezone` (list), `GET /storagezone/{id}` (get)
 
 The `PullZones` field in storage zone responses can be `null` (not just an empty array). Our type uses `Option<serde_json::Value>` to handle this without failing deserialization.
+
+## DNS record creation uses PUT
+
+**Affected endpoint:** `PUT /dnszone/{zoneId}/records`
+
+Record creation uses `PUT` instead of `POST`, which is the only endpoint in the entire API that does this. All other create operations use `POST`.
+
+**Workaround:** `CoreClient::add_dns_record` uses `self.http.put()` explicitly.
+
+## DNS records embedded in zone response
+
+**Affected endpoint:** `GET /dnszone/{id}`
+
+There is no standalone "list records" endpoint. Records are returned as a `Records` array inside the zone object when fetching a specific zone (`GET /dnszone/{id}`).
+
+**Workaround:** `dns record list --zone-id <id>` fetches the full zone via `get_dns_zone()` and extracts the `records` field.
+
+## DNS zone list has same pagination quirk
+
+**Affected endpoint:** `GET /dnszone`
+
+Same behavior as pull zones — returns bare array without pagination params, paginated envelope with them.
+
+**Workaround:** Same as pull zones — always send `page=1&perPage=1000` defaults.
+
+## EnviromentalVariables field is misspelled in API
+
+**Affected:** DNS record model field `EnviromentalVariables` (missing "n" — should be "Environmental")
+
+This is the actual field name in the bunny.net API. If we ever need to serialize/deserialize this field, we must use the misspelled name.
