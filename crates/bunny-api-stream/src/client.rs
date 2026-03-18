@@ -99,8 +99,8 @@ impl StreamClient {
     pub async fn list_videos(
         &self,
         library_id: i64,
-        page: Option<i32>,
-        items_per_page: Option<i32>,
+        page: Option<u32>,
+        items_per_page: Option<u32>,
         search: Option<&str>,
         collection: Option<&str>,
         order_by: Option<&str>,
@@ -211,8 +211,8 @@ impl StreamClient {
     pub async fn list_collections(
         &self,
         library_id: i64,
-        page: Option<i32>,
-        items_per_page: Option<i32>,
+        page: Option<u32>,
+        items_per_page: Option<u32>,
         search: Option<&str>,
         order_by: Option<&str>,
     ) -> Result<PaginatedList<Collection>> {

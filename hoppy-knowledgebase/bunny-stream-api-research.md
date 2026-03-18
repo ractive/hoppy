@@ -245,18 +245,17 @@ GET /library/{libraryId}/videos?page={page}&itemsPerPage={itemsPerPage}&search={
 
 ```json
 {
-  "totalItems": 150,
-  "currentPage": 1,
-  "itemsPerPage": 100,
-  "items": [VideoModel, ...]
+  "TotalItems": 150,
+  "CurrentPage": 1,
+  "ItemsPerPage": 100,
+  "Items": [VideoModel, ...]
 }
 ```
 
 **QUIRK — Different pagination format from Core API:**
-- Core API uses PascalCase: `Items`, `CurrentPage`, `TotalItems`, `HasMoreItems`
-- Stream API uses camelCase: `items`, `currentPage`, `totalItems`, `itemsPerPage`
-- Stream API uses `itemsPerPage` instead of `HasMoreItems`
-- Stream API pagination param is `itemsPerPage`, Core API uses `perPage`
+- Both APIs use PascalCase (despite the OpenAPI spec claiming camelCase for Stream)
+- Stream API uses `ItemsPerPage` instead of `HasMoreItems`
+- Stream API pagination query param is `itemsPerPage`, Core API uses `perPage`
 
 ### Get Video
 
@@ -582,10 +581,10 @@ GET /library/{libraryId}/collections?page={page}&itemsPerPage={itemsPerPage}&sea
 
 ```json
 {
-  "totalItems": 10,
-  "currentPage": 1,
-  "itemsPerPage": 100,
-  "items": [CollectionModel, ...]
+  "TotalItems": 10,
+  "CurrentPage": 1,
+  "ItemsPerPage": 100,
+  "Items": [CollectionModel, ...]
 }
 ```
 
@@ -731,12 +730,12 @@ DELETE /library/{libraryId}/collections/{collectionId}
 
 ## Key Quirks and Differences from Core API
 
-### 1. Field naming: camelCase vs PascalCase
+### 1. Field naming: PascalCase (not camelCase as OpenAPI spec claims)
 
 - **Core API** (video libraries): PascalCase — `Id`, `Name`, `VideoCount`, `ApiKey`
-- **Stream API** (videos, collections): camelCase — `guid`, `title`, `videoLibraryId`, `dateUploaded`
+- **Stream API** (videos, collections): **Also PascalCase** — `Guid`, `Title`, `VideoLibraryId`, `DateUploaded`
 
-This is a significant difference. The Stream API is a completely separate service with different conventions. Serde config will need `#[serde(rename_all = "camelCase")]` for Stream types vs `#[serde(rename_all = "PascalCase")]` for Core types.
+**IMPORTANT:** The OpenAPI spec at `video.bunnycdn.com` describes fields in camelCase, but the actual live API returns PascalCase. Our types use `#[serde(rename_all = "PascalCase")]` which matches the real API behavior.
 
 ### 2. Pagination format differs
 
@@ -747,10 +746,10 @@ This is a significant difference. The Stream API is a completely separate servic
 
 **Stream API:**
 ```json
-{ "totalItems": 50, "currentPage": 1, "itemsPerPage": 100, "items": [...] }
+{ "TotalItems": 50, "CurrentPage": 1, "ItemsPerPage": 100, "Items": [...] }
 ```
 
-Different field names (casing), and `itemsPerPage` instead of `HasMoreItems`.
+Both use PascalCase. The Stream API uses `ItemsPerPage` instead of `HasMoreItems`.
 
 ### 3. Pagination param name differs
 
