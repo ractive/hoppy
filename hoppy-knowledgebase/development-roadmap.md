@@ -190,15 +190,15 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Manage video libraries and videos — exercises the Stream API (different base URL and API key).
 
-- [ ] Stream library commands:
-  - [ ] `stream library list|get|create|update|delete`
-- [ ] Stream video commands:
-  - [ ] `stream video list --library-id <id>`
-  - [ ] `stream video get --library-id <id> --video-id <id>`
-  - [ ] `stream video upload --library-id <id> --file <path>`
-  - [ ] `stream video delete --library-id <id> --video-id <id> [--yes]`
-- [ ] Handle stream API key (`BUNNY_STREAM_KEY` or derived from library)
-- [ ] Video upload with progress bar
+- [x] Stream library commands:
+  - [x] `stream library list|get|create|update|delete`
+- [x] Stream video commands:
+  - [x] `stream video list --library-id <id>`
+  - [x] `stream video get --library-id <id> --video-id <id>`
+  - [x] `stream video upload --library-id <id> --file <path>`
+  - [x] `stream video delete --library-id <id> --video-id <id> [--yes]`
+- [x] Handle stream API key (`BUNNY_STREAM_KEY` or derived from library)
+- [ ] Video upload with progress bar — deferred to iter 7 polish
 
 **Deliverable:** Upload and manage videos via CLI.
 
@@ -304,3 +304,8 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-18 | DNS record creation uses PUT | bunny.net uses `PUT /dnszone/{zoneId}/records` for record creation, not POST — unusual but documented in their OpenAPI spec |
 | 2026-03-18 | DNS records embedded in zone response | No separate list-records endpoint — `GET /dnszone/{id}` returns the zone with all records in a `Records` array. `dns record list` fetches the full zone and extracts records. |
 | 2026-03-18 | DNS zone import/export deferred | API supports `GET /dnszone/{id}/export` (BIND file) and `POST /dnszone/{zoneId}/import` but import endpoint lacks documentation detail. Deferred to avoid risky implementation. |
+| 2026-03-18 | Stream API key resolution mirrors Storage pattern | `BUNNY_STREAM_KEY` env var checked first; if absent, fetch library via Core API and use its `ApiKey` field. Consistent with storage key resolution. |
+| 2026-03-18 | Stream API PascalCase despite OpenAPI spec claiming camelCase | Live API returns PascalCase fields, matching Core API. OpenAPI spec is misleading. Using `#[serde(rename_all = "PascalCase")]` on all Stream types. |
+| 2026-03-18 | Video upload progress bar deferred to iter 7 | Same as storage upload — `tokio::fs::read` loads entire file. Progress bar work deferred to polish iteration. |
+| 2026-03-18 | VideoLibrary.ApiKey excluded from JSON output | `#[serde(skip_serializing)]` on `api_key` and `read_only_api_key` to prevent leaking credentials in CLI output. Same pattern as storage zone passwords. |
+| 2026-03-18 | Stream API pagination has `ItemsPerPage` not `HasMoreItems` | Stream API uses `ItemsPerPage` field instead of `HasMoreItems`. CLI computes `has_more_items` from `current_page * items_per_page < total_items`. |
