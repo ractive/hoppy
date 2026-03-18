@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, bail};
-use reqwest::{Client, Response, StatusCode};
+use reqwest::{Client, RequestBuilder, Response, StatusCode};
 
 use crate::types::{
     AccessListsDetailsResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
@@ -29,21 +29,17 @@ impl ShieldClient {
     /// Create a new `ShieldClient` with the given API key.
     ///
     /// Uses `https://api.bunny.net` as the base URL.
-    pub fn new(api_key: impl Into<String>) -> Result<Self> {
-        let client = Client::builder()
-            .build()
-            .context("failed to build HTTP client")?;
-        Ok(Self {
-            client,
-            api_key: api_key.into(),
-            base_url: BASE_URL.to_string(),
-        })
+    pub fn new(api_key: impl Into<String>) -> Self {
+        Self::with_base_url(api_key, BASE_URL)
     }
 
-    /// Override the base URL (useful for testing against a mock server).
-    pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
-        self.base_url = url.into();
-        self
+    /// Create a client pointing at a custom base URL (useful for testing against a mock server).
+    pub fn with_base_url(api_key: impl Into<String>, base_url: impl Into<String>) -> Self {
+        Self {
+            client: Client::new(),
+            api_key: api_key.into(),
+            base_url: base_url.into(),
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -52,6 +48,10 @@ impl ShieldClient {
 
     fn url(&self, path: &str) -> String {
         format!("{}{}", self.base_url, path)
+    }
+
+    fn auth(&self, rb: RequestBuilder) -> RequestBuilder {
+        rb.header("AccessKey", &self.api_key)
     }
 
     async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
@@ -90,11 +90,12 @@ impl ShieldClient {
     /// Get a Shield Zone by its ID.
     ///
     /// `GET /shield/shield-zone/{shieldZoneId}`
-    pub async fn get_shield_zone(&self, shield_zone_id: i32) -> Result<ShieldZoneResponse> {
+    pub async fn get_shield_zone(&self, shield_zone_id: i64) -> Result<ShieldZoneResponse> {
         let resp = self
-            .client
-            .get(self.url(&format!("/shield/shield-zone/{shield_zone_id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .get(self.url(&format!("/shield/shield-zone/{shield_zone_id}"))),
+            )
             .send()
             .await
             .context("request failed")?;
@@ -113,11 +114,9 @@ impl ShieldClient {
         pull_zone_id: i64,
     ) -> Result<ShieldZoneResponse> {
         let resp = self
-            .client
-            .get(self.url(&format!(
+            .auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/get-by-pullzone/{pull_zone_id}"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .send()
             .await
             .context("request failed")?;
@@ -133,9 +132,7 @@ impl ShieldClient {
     /// `GET /shield/shield-zones`
     pub async fn list_shield_zones(&self) -> Result<GetShieldZonesResponse> {
         let resp = self
-            .client
-            .get(self.url("/shield/shield-zones"))
-            .header("AccessKey", &self.api_key)
+            .auth(self.client.get(self.url("/shield/shield-zones")))
             .send()
             .await
             .context("request failed")?;
@@ -152,9 +149,7 @@ impl ShieldClient {
             shield_zone: None,
         };
         let resp = self
-            .client
-            .post(self.url("/shield/shield-zone"))
-            .header("AccessKey", &self.api_key)
+            .auth(self.client.post(self.url("/shield/shield-zone")))
             .json(&body)
             .send()
             .await
@@ -188,9 +183,7 @@ impl ShieldClient {
     /// `PATCH /shield/shield-zone`
     pub async fn update_shield_zone(&self, body: UpdateShieldZoneRequest) -> Result<()> {
         let resp = self
-            .client
-            .patch(self.url("/shield/shield-zone"))
-            .header("AccessKey", &self.api_key)
+            .auth(self.client.patch(self.url("/shield/shield-zone")))
             .json(&body)
             .send()
             .await
@@ -206,11 +199,12 @@ impl ShieldClient {
     /// List custom WAF rules for a Shield Zone.
     ///
     /// `GET /shield/waf/custom-rules/{shieldZoneId}`
-    pub async fn list_waf_rules(&self, shield_zone_id: i32) -> Result<Vec<CustomWafRule>> {
+    pub async fn list_waf_rules(&self, shield_zone_id: i64) -> Result<Vec<CustomWafRule>> {
         let resp = self
-            .client
-            .get(self.url(&format!("/shield/waf/custom-rules/{shield_zone_id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .get(self.url(&format!("/shield/waf/custom-rules/{shield_zone_id}"))),
+            )
             .send()
             .await
             .context("request failed")?;
@@ -224,9 +218,10 @@ impl ShieldClient {
     /// `GET /shield/waf/custom-rule/{id}`
     pub async fn get_waf_rule(&self, id: i64) -> Result<CustomWafRule> {
         let resp = self
-            .client
-            .get(self.url(&format!("/shield/waf/custom-rule/{id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .get(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+            )
             .send()
             .await
             .context("request failed")?;
@@ -239,9 +234,7 @@ impl ShieldClient {
     /// `POST /shield/waf/custom-rule`
     pub async fn create_waf_rule(&self, body: CreateCustomWafRule) -> Result<CustomWafRule> {
         let resp = self
-            .client
-            .post(self.url("/shield/waf/custom-rule"))
-            .header("AccessKey", &self.api_key)
+            .auth(self.client.post(self.url("/shield/waf/custom-rule")))
             .json(&body)
             .send()
             .await
@@ -259,9 +252,10 @@ impl ShieldClient {
         body: UpdateCustomWafRule,
     ) -> Result<CustomWafRule> {
         let resp = self
-            .client
-            .patch(self.url(&format!("/shield/waf/custom-rule/{id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .patch(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+            )
             .json(&body)
             .send()
             .await
@@ -275,9 +269,10 @@ impl ShieldClient {
     /// `DELETE /shield/waf/custom-rule/{id}`
     pub async fn delete_waf_rule(&self, id: i64) -> Result<()> {
         let resp = self
-            .client
-            .delete(self.url(&format!("/shield/waf/custom-rule/{id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .delete(self.url(&format!("/shield/waf/custom-rule/{id}"))),
+            )
             .send()
             .await
             .context("request failed")?;
@@ -292,11 +287,12 @@ impl ShieldClient {
     /// List rate limit rules for a Shield Zone.
     ///
     /// `GET /shield/rate-limits/{shieldZoneId}`
-    pub async fn list_rate_limit_rules(&self, shield_zone_id: i32) -> Result<Vec<RateLimitRule>> {
+    pub async fn list_rate_limit_rules(&self, shield_zone_id: i64) -> Result<Vec<RateLimitRule>> {
         let resp = self
-            .client
-            .get(self.url(&format!("/shield/rate-limits/{shield_zone_id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .get(self.url(&format!("/shield/rate-limits/{shield_zone_id}"))),
+            )
             .send()
             .await
             .context("request failed")?;
@@ -310,9 +306,10 @@ impl ShieldClient {
     /// `GET /shield/rate-limit/{id}`
     pub async fn get_rate_limit_rule(&self, id: i64) -> Result<RateLimitRule> {
         let resp = self
-            .client
-            .get(self.url(&format!("/shield/rate-limit/{id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .get(self.url(&format!("/shield/rate-limit/{id}"))),
+            )
             .send()
             .await
             .context("request failed")?;
@@ -325,9 +322,7 @@ impl ShieldClient {
     /// `POST /shield/rate-limit`
     pub async fn create_rate_limit_rule(&self, body: CreateRateLimitRule) -> Result<RateLimitRule> {
         let resp = self
-            .client
-            .post(self.url("/shield/rate-limit"))
-            .header("AccessKey", &self.api_key)
+            .auth(self.client.post(self.url("/shield/rate-limit")))
             .json(&body)
             .send()
             .await
@@ -345,9 +340,10 @@ impl ShieldClient {
         body: UpdateRateLimitRule,
     ) -> Result<RateLimitRule> {
         let resp = self
-            .client
-            .patch(self.url(&format!("/shield/rate-limit/{id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .patch(self.url(&format!("/shield/rate-limit/{id}"))),
+            )
             .json(&body)
             .send()
             .await
@@ -361,9 +357,10 @@ impl ShieldClient {
     /// `DELETE /shield/rate-limit/{id}`
     pub async fn delete_rate_limit_rule(&self, id: i64) -> Result<()> {
         let resp = self
-            .client
-            .delete(self.url(&format!("/shield/rate-limit/{id}")))
-            .header("AccessKey", &self.api_key)
+            .auth(
+                self.client
+                    .delete(self.url(&format!("/shield/rate-limit/{id}"))),
+            )
             .send()
             .await
             .context("request failed")?;
@@ -380,14 +377,12 @@ impl ShieldClient {
     /// `GET /shield/shield-zone/{shieldZoneId}/access-lists`
     pub async fn get_access_lists(
         &self,
-        shield_zone_id: i32,
+        shield_zone_id: i64,
     ) -> Result<AccessListsDetailsResponse> {
         let resp = self
-            .client
-            .get(self.url(&format!(
+            .auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .send()
             .await
             .context("request failed")?;
@@ -400,15 +395,13 @@ impl ShieldClient {
     /// `GET /shield/shield-zone/{shieldZoneId}/access-lists/{id}`
     pub async fn get_custom_access_list(
         &self,
-        shield_zone_id: i32,
+        shield_zone_id: i64,
         id: i64,
     ) -> Result<CustomAccessList> {
         let resp = self
-            .client
-            .get(self.url(&format!(
+            .auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists/{id}"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .send()
             .await
             .context("request failed")?;
@@ -424,15 +417,13 @@ impl ShieldClient {
     /// `POST /shield/shield-zone/{shieldZoneId}/access-lists`
     pub async fn create_access_list(
         &self,
-        shield_zone_id: i32,
+        shield_zone_id: i64,
         body: CreateCustomAccessList,
     ) -> Result<CustomAccessList> {
         let resp = self
-            .client
-            .post(self.url(&format!(
+            .auth(self.client.post(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .json(&body)
             .send()
             .await
@@ -449,16 +440,14 @@ impl ShieldClient {
     /// `PATCH /shield/shield-zone/{shieldZoneId}/access-lists/{id}`
     pub async fn update_custom_access_list(
         &self,
-        shield_zone_id: i32,
+        shield_zone_id: i64,
         id: i64,
         body: UpdateCustomAccessList,
     ) -> Result<CustomAccessList> {
         let resp = self
-            .client
-            .patch(self.url(&format!(
+            .auth(self.client.patch(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists/{id}"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .json(&body)
             .send()
             .await
@@ -475,16 +464,14 @@ impl ShieldClient {
     /// `PATCH /shield/shield-zone/{shieldZoneId}/access-lists/configurations/{id}`
     pub async fn update_access_list_configuration(
         &self,
-        shield_zone_id: i32,
+        shield_zone_id: i64,
         id: i64,
         body: UpdateAccessListConfiguration,
     ) -> Result<()> {
         let resp = self
-            .client
-            .patch(self.url(&format!(
+            .auth(self.client.patch(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists/configurations/{id}"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .json(&body)
             .send()
             .await
@@ -496,13 +483,11 @@ impl ShieldClient {
     /// Delete a custom access list.
     ///
     /// `DELETE /shield/shield-zone/{shieldZoneId}/access-lists/{id}`
-    pub async fn delete_access_list(&self, shield_zone_id: i32, id: i64) -> Result<()> {
+    pub async fn delete_access_list(&self, shield_zone_id: i64, id: i64) -> Result<()> {
         let resp = self
-            .client
-            .delete(self.url(&format!(
+            .auth(self.client.delete(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/access-lists/{id}"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .send()
             .await
             .context("request failed")?;
@@ -519,14 +504,12 @@ impl ShieldClient {
     /// `GET /shield/shield-zone/{shieldZoneId}/bot-detection`
     pub async fn get_bot_detection(
         &self,
-        shield_zone_id: i32,
+        shield_zone_id: i64,
     ) -> Result<BotDetectionConfigurationResponse> {
         let resp = self
-            .client
-            .get(self.url(&format!(
+            .auth(self.client.get(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/bot-detection"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .send()
             .await
             .context("request failed")?;
@@ -539,18 +522,13 @@ impl ShieldClient {
     /// `PATCH /shield/shield-zone/{shieldZoneId}/bot-detection`
     pub async fn update_bot_detection(
         &self,
-        shield_zone_id: i32,
-        mut body: UpdateBotDetection,
+        shield_zone_id: i64,
+        body: UpdateBotDetection,
     ) -> Result<UpdateBotDetectionResponse> {
-        // Ensure the shield_zone_id in the body matches the path parameter.
-        body.shield_zone_id = shield_zone_id;
-
         let resp = self
-            .client
-            .patch(self.url(&format!(
+            .auth(self.client.patch(self.url(&format!(
                 "/shield/shield-zone/{shield_zone_id}/bot-detection"
-            )))
-            .header("AccessKey", &self.api_key)
+            ))))
             .json(&body)
             .send()
             .await
@@ -568,9 +546,7 @@ impl ShieldClient {
     /// `GET /shield/waf/profiles`
     pub async fn list_waf_profiles(&self) -> Result<Vec<WafProfileMinimal>> {
         let resp = self
-            .client
-            .get(self.url("/shield/waf/profiles"))
-            .header("AccessKey", &self.api_key)
+            .auth(self.client.get(self.url("/shield/waf/profiles")))
             .send()
             .await
             .context("request failed")?;
@@ -604,7 +580,7 @@ mod tests {
 
     #[test]
     fn client_url_construction() {
-        let client = ShieldClient::new("test-key").unwrap();
+        let client = ShieldClient::new("test-key");
         assert_eq!(
             client.url("/shield/shield-zone/42"),
             "https://api.bunny.net/shield/shield-zone/42"
@@ -613,9 +589,7 @@ mod tests {
 
     #[test]
     fn client_with_base_url_overrides() {
-        let client = ShieldClient::new("test-key")
-            .unwrap()
-            .with_base_url("http://localhost:8080");
+        let client = ShieldClient::with_base_url("test-key", "http://localhost:8080");
         assert_eq!(
             client.url("/shield/waf/custom-rule/1"),
             "http://localhost:8080/shield/waf/custom-rule/1"
@@ -624,7 +598,16 @@ mod tests {
 
     #[test]
     fn client_stores_api_key() {
-        let client = ShieldClient::new("my-api-key-12345").unwrap();
+        let client = ShieldClient::new("my-api-key-12345");
         assert_eq!(client.api_key, "my-api-key-12345");
+    }
+
+    #[test]
+    fn auth_sets_access_key_header() {
+        let client = ShieldClient::new("secret-key");
+        let rb = client.auth(client.client.get("http://localhost"));
+        let req = rb.build().unwrap();
+        let access_key = req.headers().get("AccessKey").unwrap().to_str().unwrap();
+        assert_eq!(access_key, "secret-key");
     }
 }
