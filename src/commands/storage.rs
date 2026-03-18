@@ -86,19 +86,12 @@ pub async fn handle(
 
             // Wrap the file in a streaming body so the progress bar can track
             // bytes as they are sent, without loading the whole file into memory.
-            let body: reqwest::Body = match &pb {
-                Some(bar) => {
-                    // `wrap_async_read` wraps an `AsyncRead` and increments the
-                    // bar as data passes through.  `ReaderStream` converts the
-                    // wrapped reader into a `Stream<Item = io::Result<Bytes>>`
-                    // which `reqwest::Body::wrap_stream` can consume.
-                    let reader = bar.wrap_async_read(fh);
-                    reqwest::Body::wrap_stream(ReaderStream::new(reader))
-                }
-                None => {
-                    // No progress bar: stream the file directly.
-                    reqwest::Body::wrap_stream(ReaderStream::new(fh))
-                }
+            // `wrap_async_read` increments the bar as bytes pass through.
+            // When quiet/no-TTY there is no bar, so we stream the file directly.
+            let body: reqwest::Body = if let Some(bar) = &pb {
+                reqwest::Body::wrap_stream(ReaderStream::new(bar.wrap_async_read(fh)))
+            } else {
+                reqwest::Body::wrap_stream(ReaderStream::new(fh))
             };
 
             client.upload_file(zone, dir, name, body, None).await?;
@@ -127,25 +120,25 @@ pub async fn handle(
 
             match output {
                 Some(path) => {
+                    fs::write(path, &bytes)
+                        .await
+                        .with_context(|| format!("writing output file: {path}"))?;
                     progress::finish_with_message(
                         pb.as_ref(),
                         format!("Downloaded {zone}/{remote_path} ({} bytes)", bytes.len()),
                     );
-                    fs::write(path, &bytes)
-                        .await
-                        .with_context(|| format!("writing output file: {path}"))?;
                     if pb.is_none() && !quiet {
                         eprintln!("Saved to {path} ({} bytes)", bytes.len());
                     }
                 }
                 None => {
+                    io::stdout()
+                        .write_all(&bytes)
+                        .context("writing to stdout")?;
                     progress::finish_with_message(
                         pb.as_ref(),
                         format!("Downloaded {zone}/{remote_path} ({} bytes)", bytes.len()),
                     );
-                    io::stdout()
-                        .write_all(&bytes)
-                        .context("writing to stdout")?;
                 }
             }
         }

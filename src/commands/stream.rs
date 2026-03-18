@@ -359,12 +359,10 @@ async fn handle_video(
 
             let pb = progress::file_progress(file_size, quiet);
 
-            let body: reqwest::Body = match &pb {
-                Some(bar) => {
-                    let reader = bar.wrap_async_read(fh);
-                    reqwest::Body::wrap_stream(ReaderStream::new(reader))
-                }
-                None => reqwest::Body::wrap_stream(ReaderStream::new(fh)),
+            let body: reqwest::Body = if let Some(bar) = &pb {
+                reqwest::Body::wrap_stream(ReaderStream::new(bar.wrap_async_read(fh)))
+            } else {
+                reqwest::Body::wrap_stream(ReaderStream::new(fh))
             };
 
             stream.upload_video(*library_id, &video.guid, body).await?;
