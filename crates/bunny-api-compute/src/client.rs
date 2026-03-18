@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use reqwest::{Client, Request, StatusCode};
 
 use crate::types::{
@@ -54,16 +54,11 @@ impl ComputeClient {
 
     /// Build and execute a request, printing method and URL to stderr when debug is enabled.
     async fn execute(&self, rb: reqwest::RequestBuilder) -> Result<reqwest::Response> {
-        let req: Request = rb
-            .build()
-            .map_err(|e| anyhow!("failed to build request: {e}"))?;
+        let req: Request = rb.build().context("failed to build request")?;
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
         }
-        self.http
-            .execute(req)
-            .await
-            .map_err(|e| anyhow!("request failed: {e}"))
+        self.http.execute(req).await.context("request failed")
     }
 
     /// Deserialise a successful JSON body, or surface a structured [`ApiError`] on 4xx.
@@ -111,12 +106,8 @@ impl ComputeClient {
         search: Option<&str>,
     ) -> Result<PaginatedList<EdgeScript>> {
         let mut req = self.auth(self.http.get(self.url("/compute/script")));
-        if let Some(p) = page {
-            req = req.query(&[("page", p.to_string())]);
-        }
-        if let Some(pp) = per_page {
-            req = req.query(&[("perPage", pp.to_string())]);
-        }
+        req = req.query(&[("page", page.unwrap_or(1).to_string())]);
+        req = req.query(&[("perPage", per_page.unwrap_or(1000).to_string())]);
         if let Some(s) = search {
             req = req.query(&[("search", s)]);
         }
@@ -271,12 +262,8 @@ impl ComputeClient {
             self.http
                 .get(self.url(&format!("/compute/script/{id}/releases"))),
         );
-        if let Some(p) = page {
-            req = req.query(&[("page", p.to_string())]);
-        }
-        if let Some(pp) = per_page {
-            req = req.query(&[("perPage", pp.to_string())]);
-        }
+        req = req.query(&[("page", page.unwrap_or(1).to_string())]);
+        req = req.query(&[("perPage", per_page.unwrap_or(1000).to_string())]);
         let resp = self.execute(req).await?;
         self.json_or_error(resp).await
     }

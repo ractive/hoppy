@@ -1,9 +1,9 @@
 use bunny_api_compute::ComputeClient;
 use bunny_api_compute::{
     AddSecret, AddVariable, CreateEdgeScript, PublishScript, ScriptType, UpdateEdgeScript,
-    UpdateSecret, UpdateVariable, UpsertVariable,
+    UpdateSecret, UpdateVariable, UpsertSecret, UpsertVariable,
 };
-use wiremock::matchers::{header, method, path, query_param};
+use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const FIXTURE_SCRIPTS_LIST: &str = include_str!("fixtures/scripts_list.json");
@@ -37,6 +37,8 @@ async fn list_scripts_returns_paginated() {
     Mock::given(method("GET"))
         .and(path("/compute/script"))
         .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "1"))
+        .and(query_param("perPage", "1000"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPTS_LIST, "application/json"),
         )
@@ -65,6 +67,8 @@ async fn list_scripts_with_search() {
     Mock::given(method("GET"))
         .and(path("/compute/script"))
         .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "1"))
+        .and(query_param("perPage", "1000"))
         .and(query_param("search", "cdn"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPTS_LIST, "application/json"),
@@ -114,6 +118,14 @@ async fn create_script_sends_correct_body() {
     Mock::given(method("POST"))
         .and(path("/compute/script"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Name": "new-script",
+            "Code": null,
+            "ScriptType": 1,
+            "CreateLinkedPullZone": false,
+            "LinkedPullZoneName": null,
+            "Integration": null
+        })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPT_CREATE, "application/json"),
         )
@@ -147,6 +159,10 @@ async fn update_script_sends_correct_body() {
     Mock::given(method("POST"))
         .and(path("/compute/script/1001"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Name": "updated-cdn-script",
+            "ScriptType": null
+        })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPT_UPDATE, "application/json"),
         )
@@ -240,6 +256,9 @@ async fn update_script_code_sends_body() {
     Mock::given(method("POST"))
         .and(path("/compute/script/1001/code"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Code": "export default { async fetch(req) { return new Response('ok'); } }"
+        })))
         .respond_with(ResponseTemplate::new(204))
         .expect(1)
         .mount(&server)
@@ -265,6 +284,8 @@ async fn list_releases_paginated() {
     Mock::given(method("GET"))
         .and(path("/compute/script/1001/releases"))
         .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "1"))
+        .and(query_param("perPage", "1000"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_RELEASES_LIST, "application/json"),
         )
@@ -317,6 +338,9 @@ async fn publish_script_sends_note() {
     Mock::given(method("POST"))
         .and(path("/compute/script/1001/publish"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Note": "v2.0 release"
+        })))
         .respond_with(ResponseTemplate::new(204))
         .expect(1)
         .mount(&server)
@@ -402,6 +426,10 @@ async fn update_variable_sends_body() {
     Mock::given(method("POST"))
         .and(path("/compute/script/1001/variables/201"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "DefaultValue": "https://updated-api.example.com",
+            "Required": false
+        })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_VARIABLE_UPDATE, "application/json"),
         )
@@ -530,12 +558,65 @@ async fn add_secret_returns_secret() {
 }
 
 #[tokio::test]
+async fn upsert_secret_with_204_returns_placeholder() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/compute/script/1001/secrets"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpsertSecret {
+        name: Some("MY_SECRET".to_owned()),
+        secret: Some("secret-val".to_owned()),
+    };
+    let secret = test_client(&server.uri())
+        .upsert_secret(1001, &body)
+        .await
+        .unwrap();
+    assert_eq!(secret.id, 0); // placeholder
+    assert_eq!(secret.name.as_deref(), Some("MY_SECRET"));
+}
+
+#[tokio::test]
+async fn upsert_secret_with_200_returns_body() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/compute/script/1001/secrets"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_SECRET_ADD, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpsertSecret {
+        name: Some("NEW_SECRET".to_owned()),
+        secret: Some("secret-val".to_owned()),
+    };
+    let secret = test_client(&server.uri())
+        .upsert_secret(1001, &body)
+        .await
+        .unwrap();
+    assert_eq!(secret.id, 403);
+    assert_eq!(secret.name.as_deref(), Some("NEW_SECRET"));
+}
+
+#[tokio::test]
 async fn update_secret_sends_body() {
     let server = MockServer::start().await;
 
     Mock::given(method("POST"))
         .and(path("/compute/script/1001/secrets/401"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Secret": "new-secret-value"
+        })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SECRET_ADD, "application/json"),
         )
@@ -683,6 +764,8 @@ async fn debug_mode_makes_request() {
     Mock::given(method("GET"))
         .and(path("/compute/script"))
         .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "1"))
+        .and(query_param("perPage", "1000"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPTS_LIST, "application/json"),
         )

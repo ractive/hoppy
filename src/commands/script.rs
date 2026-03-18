@@ -464,7 +464,8 @@ async fn handle_code(action: &ScriptCodeAction, format: OutputFormat, debug: boo
         ScriptCodeAction::Update { id, code, file } => {
             let source = match (code.as_deref(), file.as_deref()) {
                 (Some(c), _) => c.to_owned(),
-                (_, Some(path)) => std::fs::read_to_string(path)
+                (_, Some(path)) => tokio::fs::read_to_string(path)
+                    .await
                     .map_err(|e| anyhow::anyhow!("failed to read file {path}: {e}"))?,
                 (None, None) => bail!("one of --code or --file is required"),
             };
