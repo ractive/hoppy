@@ -1,0 +1,17 @@
+{
+  "Id": 50099,
+  "Domain": "hoppy-test.example",
+  "Records": [],
+  "DateModified": "2024-03-18T12:00:00Z",
+  "DateCreated": "2024-03-18T12:00:00Z",
+  "NameserversDetected": false,
+  "CustomNameserversEnabled": false,
+  "Nameserver1": null,
+  "Nameserver2": null,
+  "SoaEmail": null,
+  "NameserversNextCheck": "2024-03-19T00:00:00Z",
+  "LoggingEnabled": false,
+  "LoggingIPAnonymizationEnabled": false,
+  "DnsSecEnabled": false,
+  "CertificateKeyType": 0
+}

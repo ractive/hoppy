@@ -68,8 +68,9 @@ pub async fn handle(
         } => {
             let client = build_storage_client(zone, region, debug).await?;
             let (dir, name) = split_remote_path(remote_path)?;
-            let bytes =
-                fs::read(file).await.with_context(|| format!("reading local file: {file}"))?;
+            let bytes = fs::read(file)
+                .await
+                .with_context(|| format!("reading local file: {file}"))?;
             eprintln!("Uploading {file} → {zone}/{remote_path} ...");
             client.upload_file(zone, dir, name, bytes, None).await?;
             eprintln!("Done.");
