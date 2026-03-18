@@ -5,9 +5,9 @@ use reqwest::{
 };
 
 use crate::types::{
-    AddDnsRecord, ApiError, CreateDnsZone, CreatePullZone, CreateStorageZone, DnsRecord, DnsZone,
-    PaginatedList, PullZone, PurgeCache, StorageZone, UpdateDnsRecord, UpdateDnsZone,
-    UpdatePullZone, UpdateStorageZone,
+    AddDnsRecord, ApiError, CreateDnsZone, CreatePullZone, CreateStorageZone, CreateVideoLibrary,
+    DnsRecord, DnsZone, PaginatedList, PullZone, PurgeCache, StorageZone, UpdateDnsRecord,
+    UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -279,6 +279,69 @@ impl CoreClient {
     /// Delete a DNS record.
     pub async fn delete_dns_record(&self, zone_id: i64, record_id: i64) -> Result<()> {
         let url = format!("{}/dnszone/{zone_id}/records/{record_id}", self.base_url);
+        let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Video Library endpoints
+    // -----------------------------------------------------------------------
+
+    /// List Video Libraries with optional pagination and search.
+    pub async fn list_video_libraries(
+        &self,
+        page: Option<u32>,
+        per_page: Option<u32>,
+        search: Option<&str>,
+    ) -> Result<PaginatedList<VideoLibrary>> {
+        let url = format!("{}/videolibrary", self.base_url);
+        let page = page.unwrap_or(1);
+        let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
+        let mut rb = self.auth(self.http.get(&url)).query(&[
+            ("page", page.to_string()),
+            ("perPage", per_page.to_string()),
+        ]);
+        if let Some(q) = search {
+            rb = rb.query(&[("search", q)]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch a single Video Library by its numeric ID.
+    pub async fn get_video_library(&self, id: i64) -> Result<VideoLibrary> {
+        let url = format!("{}/videolibrary/{id}", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Create a new Video Library.
+    pub async fn create_video_library(&self, body: &CreateVideoLibrary) -> Result<VideoLibrary> {
+        let url = format!("{}/videolibrary", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Update an existing Video Library.
+    ///
+    /// The bunny.net API uses `POST` (not `PATCH`) for updates and returns 200.
+    pub async fn update_video_library(
+        &self,
+        id: i64,
+        body: &UpdateVideoLibrary,
+    ) -> Result<VideoLibrary> {
+        let url = format!("{}/videolibrary/{id}", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Delete a Video Library permanently.
+    pub async fn delete_video_library(&self, id: i64) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}", self.base_url);
         let rb = self.auth(self.http.delete(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await

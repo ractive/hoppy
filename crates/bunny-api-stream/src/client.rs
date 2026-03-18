@@ -2,7 +2,8 @@ use anyhow::{Context, Result, bail};
 use reqwest::{Client, RequestBuilder};
 
 use crate::types::{
-    Collection, CreateVideo, FetchVideo, PaginatedList, StatusMessage, UpdateVideo, Video,
+    Collection, CreateCollection, CreateVideo, FetchVideo, PaginatedList, StatusMessage,
+    UpdateCollection, UpdateVideo, Video,
 };
 
 const BASE_URL: &str = "https://video.bunnycdn.com";
@@ -19,6 +20,7 @@ pub struct StreamClient {
     http: Client,
     base_url: String,
     api_key: String,
+    debug: bool,
 }
 
 impl StreamClient {
@@ -28,6 +30,7 @@ impl StreamClient {
             http: Client::new(),
             base_url: BASE_URL.to_string(),
             api_key: api_key.into(),
+            debug: false,
         }
     }
 
@@ -37,12 +40,36 @@ impl StreamClient {
         self
     }
 
+    /// Enable or disable debug logging of HTTP requests and responses to stderr.
+    #[must_use]
+    pub fn with_debug(mut self, debug: bool) -> Self {
+        self.debug = debug;
+        self
+    }
+
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
 
     fn auth(&self, rb: RequestBuilder) -> RequestBuilder {
         rb.header("AccessKey", &self.api_key)
+    }
+
+    /// Execute a prepared request, optionally logging method and URL to stderr.
+    async fn send(&self, rb: RequestBuilder) -> Result<reqwest::Response> {
+        let request = rb.build().context("failed to build request")?;
+        if self.debug {
+            eprintln!(">> {} {}", request.method(), request.url());
+        }
+        let response = self
+            .http
+            .execute(request)
+            .await
+            .context("HTTP request failed")?;
+        if self.debug {
+            eprintln!("<< {}", response.status());
+        }
+        Ok(response)
     }
 
     /// Deserialise a successful JSON response or surface a meaningful error.
@@ -78,8 +105,7 @@ impl StreamClient {
         order_by: Option<&str>,
     ) -> Result<PaginatedList<Video>> {
         let url = format!("{}/library/{library_id}/videos", self.base_url);
-        let mut rb = self.http.get(&url);
-        rb = self.auth(rb);
+        let mut rb = self.auth(self.http.get(&url));
         if let Some(p) = page {
             rb = rb.query(&[("page", p.to_string())]);
         }
@@ -95,21 +121,14 @@ impl StreamClient {
         if let Some(o) = order_by {
             rb = rb.query(&[("orderBy", o)]);
         }
-        let resp = rb
-            .send()
-            .await
-            .context("GET /library/{library_id}/videos")?;
+        let resp = self.send(rb).await?;
         Self::parse_response(resp).await
     }
 
     /// Fetch a single video by its GUID.
     pub async fn get_video(&self, library_id: i64, video_id: &str) -> Result<Video> {
         let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
-        let resp = self
-            .auth(self.http.get(&url))
-            .send()
-            .await
-            .context("GET /library/{library_id}/videos/{video_id}")?;
+        let resp = self.send(self.auth(self.http.get(&url))).await?;
         Self::parse_response(resp).await
     }
 
@@ -119,11 +138,8 @@ impl StreamClient {
     pub async fn create_video(&self, library_id: i64, body: &CreateVideo) -> Result<Video> {
         let url = format!("{}/library/{library_id}/videos", self.base_url);
         let resp = self
-            .auth(self.http.post(&url))
-            .json(body)
-            .send()
-            .await
-            .context("POST /library/{library_id}/videos")?;
+            .send(self.auth(self.http.post(&url)).json(body))
+            .await?;
         Self::parse_response(resp).await
     }
 
@@ -136,22 +152,15 @@ impl StreamClient {
     ) -> Result<StatusMessage> {
         let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
         let resp = self
-            .auth(self.http.post(&url))
-            .json(body)
-            .send()
-            .await
-            .context("POST /library/{library_id}/videos/{video_id}")?;
+            .send(self.auth(self.http.post(&url)).json(body))
+            .await?;
         Self::parse_response(resp).await
     }
 
     /// Delete a video and all its associated files.
     pub async fn delete_video(&self, library_id: i64, video_id: &str) -> Result<StatusMessage> {
         let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
-        let resp = self
-            .auth(self.http.delete(&url))
-            .send()
-            .await
-            .context("DELETE /library/{library_id}/videos/{video_id}")?;
+        let resp = self.send(self.auth(self.http.delete(&url))).await?;
         Self::parse_response(resp).await
     }
 
@@ -172,12 +181,12 @@ impl StreamClient {
     ) -> Result<StatusMessage> {
         let url = format!("{}/library/{library_id}/videos/{video_id}", self.base_url);
         let resp = self
-            .auth(self.http.put(&url))
-            .header("Content-Type", "application/octet-stream")
-            .body(body)
-            .send()
-            .await
-            .context("PUT /library/{library_id}/videos/{video_id}")?;
+            .send(
+                self.auth(self.http.put(&url))
+                    .header("Content-Type", "application/octet-stream")
+                    .body(body),
+            )
+            .await?;
         Self::parse_response(resp).await
     }
 
@@ -188,11 +197,8 @@ impl StreamClient {
     pub async fn fetch_video(&self, library_id: i64, body: &FetchVideo) -> Result<StatusMessage> {
         let url = format!("{}/library/{library_id}/videos/fetch", self.base_url);
         let resp = self
-            .auth(self.http.post(&url))
-            .json(body)
-            .send()
-            .await
-            .context("POST /library/{library_id}/videos/fetch")?;
+            .send(self.auth(self.http.post(&url)).json(body))
+            .await?;
         Self::parse_response(resp).await
     }
 
@@ -210,8 +216,7 @@ impl StreamClient {
         order_by: Option<&str>,
     ) -> Result<PaginatedList<Collection>> {
         let url = format!("{}/library/{library_id}/collections", self.base_url);
-        let mut rb = self.http.get(&url);
-        rb = self.auth(rb);
+        let mut rb = self.auth(self.http.get(&url));
         if let Some(p) = page {
             rb = rb.query(&[("page", p.to_string())]);
         }
@@ -224,10 +229,7 @@ impl StreamClient {
         if let Some(o) = order_by {
             rb = rb.query(&[("orderBy", o)]);
         }
-        let resp = rb
-            .send()
-            .await
-            .context("GET /library/{library_id}/collections")?;
+        let resp = self.send(rb).await?;
         Self::parse_response(resp).await
     }
 
@@ -237,11 +239,51 @@ impl StreamClient {
             "{}/library/{library_id}/collections/{collection_id}",
             self.base_url
         );
+        let resp = self.send(self.auth(self.http.get(&url))).await?;
+        Self::parse_response(resp).await
+    }
+
+    /// Create a new collection in a library.
+    pub async fn create_collection(
+        &self,
+        library_id: i64,
+        body: &CreateCollection,
+    ) -> Result<Collection> {
+        let url = format!("{}/library/{library_id}/collections", self.base_url);
         let resp = self
-            .auth(self.http.get(&url))
-            .send()
-            .await
-            .context("GET /library/{library_id}/collections/{collection_id}")?;
+            .send(self.auth(self.http.post(&url)).json(body))
+            .await?;
+        Self::parse_response(resp).await
+    }
+
+    /// Update an existing collection.
+    pub async fn update_collection(
+        &self,
+        library_id: i64,
+        collection_id: &str,
+        body: &UpdateCollection,
+    ) -> Result<Collection> {
+        let url = format!(
+            "{}/library/{library_id}/collections/{collection_id}",
+            self.base_url
+        );
+        let resp = self
+            .send(self.auth(self.http.post(&url)).json(body))
+            .await?;
+        Self::parse_response(resp).await
+    }
+
+    /// Delete a collection.
+    pub async fn delete_collection(
+        &self,
+        library_id: i64,
+        collection_id: &str,
+    ) -> Result<StatusMessage> {
+        let url = format!(
+            "{}/library/{library_id}/collections/{collection_id}",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.delete(&url))).await?;
         Self::parse_response(resp).await
     }
 }
@@ -411,11 +453,18 @@ mod tests {
         let client = StreamClient::new("test-key");
         assert_eq!(client.api_key, "test-key");
         assert_eq!(client.base_url, BASE_URL);
+        assert!(!client.debug);
     }
 
     #[test]
     fn stream_client_with_base_url() {
         let client = StreamClient::new("key").with_base_url("http://localhost:8080");
         assert_eq!(client.base_url, "http://localhost:8080");
+    }
+
+    #[test]
+    fn stream_client_with_debug() {
+        let client = StreamClient::new("key").with_debug(true);
+        assert!(client.debug);
     }
 }

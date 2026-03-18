@@ -161,6 +161,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "tokio",
+ "wiremock",
 ]
 
 [[package]]
@@ -545,6 +546,7 @@ dependencies = [
  "anyhow",
  "bunny-api-core",
  "bunny-api-storage",
+ "bunny-api-stream",
  "clap",
  "clap_complete",
  "serde",

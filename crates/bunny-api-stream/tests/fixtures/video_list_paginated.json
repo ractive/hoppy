@@ -1,0 +1,50 @@
+{
+  "TotalItems": 2,
+  "CurrentPage": 1,
+  "ItemsPerPage": 100,
+  "Items": [
+    {
+      "VideoLibraryId": 10001,
+      "Guid": "aaaabbbb-1111-2222-3333-ccccddddeeee",
+      "Title": "Introduction Video",
+      "DateUploaded": "2024-01-10T12:00:00Z",
+      "Views": 150,
+      "IsPublic": true,
+      "Length": 180,
+      "Status": 4,
+      "Framerate": 30.0,
+      "Width": 1920,
+      "Height": 1080,
+      "OutputCodecs": "x264",
+      "ThumbnailCount": 1,
+      "EncodeProgress": 100,
+      "StorageSize": 52428800,
+      "HasMP4Fallback": true,
+      "AverageWatchTime": 120,
+      "TotalWatchTime": 18000,
+      "Captions": []
+    },
+    {
+      "VideoLibraryId": 10001,
+      "Guid": "ffffeeee-4444-5555-6666-777788889999",
+      "Title": "Tutorial Part 1",
+      "DateUploaded": "2024-02-05T09:00:00Z",
+      "Views": 75,
+      "IsPublic": true,
+      "Length": 600,
+      "Status": 4,
+      "Framerate": 24.0,
+      "Width": 1280,
+      "Height": 720,
+      "OutputCodecs": "x264",
+      "ThumbnailCount": 3,
+      "EncodeProgress": 100,
+      "StorageSize": 104857600,
+      "HasMP4Fallback": false,
+      "AverageWatchTime": 300,
+      "TotalWatchTime": 22500,
+      "CollectionId": "col-guid-0001",
+      "Captions": []
+    }
+  ]
+}

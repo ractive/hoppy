@@ -1,0 +1,9 @@
+{
+  "VideoLibraryId": 10001,
+  "Guid": "col-guid-new1",
+  "Name": "New Collection",
+  "VideoCount": 0,
+  "TotalSize": 0,
+  "PreviewVideoIds": null,
+  "PreviewImageUrls": []
+}

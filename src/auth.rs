@@ -24,3 +24,15 @@ pub fn get_storage_key() -> Option<String> {
         _ => None,
     }
 }
+
+/// Read the bunny.net Stream API key from the BUNNY_STREAM_KEY environment variable.
+///
+/// Returns `Some(key)` if set and non-empty, `None` otherwise.
+/// The caller is responsible for falling back to fetching the key from the
+/// VideoLibrary's `ApiKey` field via the Core API if `None` is returned.
+pub fn get_stream_key() -> Option<String> {
+    match env::var("BUNNY_STREAM_KEY") {
+        Ok(key) if !key.is_empty() => Some(key),
+        _ => None,
+    }
+}

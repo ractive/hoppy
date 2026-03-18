@@ -1,0 +1,9 @@
+{
+  "VideoLibraryId": 10001,
+  "Guid": "col-guid-0001",
+  "Name": "Tutorials",
+  "VideoCount": 5,
+  "TotalSize": 524288000,
+  "PreviewVideoIds": null,
+  "PreviewImageUrls": []
+}

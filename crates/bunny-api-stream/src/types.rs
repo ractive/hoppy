@@ -255,6 +255,39 @@ impl UpdateVideo {
     }
 }
 
+/// Request body for `POST /library/{id}/collections` — create a new collection.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreateCollection {
+    /// Name of the collection (required).
+    pub name: String,
+}
+
+impl CreateCollection {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+/// Request body for `POST /library/{id}/collections/{collectionId}` — update a collection.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateCollection {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+impl UpdateCollection {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+}
+
 /// Request body for `POST /library/{id}/videos/fetch` — pull a video from a URL.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "PascalCase")]

@@ -1,0 +1,25 @@
+{
+  "TotalItems": 2,
+  "CurrentPage": 1,
+  "ItemsPerPage": 100,
+  "Items": [
+    {
+      "VideoLibraryId": 10001,
+      "Guid": "col-guid-0001",
+      "Name": "Tutorials",
+      "VideoCount": 5,
+      "TotalSize": 524288000,
+      "PreviewVideoIds": null,
+      "PreviewImageUrls": []
+    },
+    {
+      "VideoLibraryId": 10001,
+      "Guid": "col-guid-0002",
+      "Name": "Demos",
+      "VideoCount": 2,
+      "TotalSize": 104857600,
+      "PreviewVideoIds": null,
+      "PreviewImageUrls": []
+    }
+  ]
+}
