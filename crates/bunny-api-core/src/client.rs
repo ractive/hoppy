@@ -4,7 +4,10 @@ use reqwest::{
     header::{self},
 };
 
-use crate::types::{ApiError, CreatePullZone, PaginatedList, PullZone, PurgeCache, UpdatePullZone};
+use crate::types::{
+    ApiError, CreatePullZone, CreateStorageZone, PaginatedList, PullZone, PurgeCache, StorageZone,
+    UpdatePullZone, UpdateStorageZone,
+};
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
 /// Maximum items per page accepted by the bunny.net API.
@@ -66,9 +69,10 @@ impl CoreClient {
         // returns a bare JSON array instead of the paginated envelope.
         let page = page.unwrap_or(1);
         let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
-        let mut rb = self
-            .auth(self.http.get(&url))
-            .query(&[("page", page.to_string()), ("perPage", per_page.to_string())]);
+        let mut rb = self.auth(self.http.get(&url)).query(&[
+            ("page", page.to_string()),
+            ("perPage", per_page.to_string()),
+        ]);
         if let Some(q) = search {
             rb = rb.query(&[("search", q)]);
         }
@@ -117,6 +121,72 @@ impl CoreClient {
     pub async fn purge_pull_zone_cache(&self, id: i64, body: &PurgeCache) -> Result<()> {
         let url = format!("{}/pullzone/{id}/purgeCache", self.base_url);
         let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Storage Zone endpoints
+    // -----------------------------------------------------------------------
+
+    /// List Storage Zones with optional pagination, search, and deleted filter.
+    ///
+    /// `page` is 1-based; defaults to 1. `per_page` defaults to 1000 (the API
+    /// maximum). Both are always sent so the API returns a paginated envelope.
+    pub async fn list_storage_zones(
+        &self,
+        page: Option<u32>,
+        per_page: Option<u32>,
+        search: Option<&str>,
+        include_deleted: Option<bool>,
+    ) -> Result<PaginatedList<StorageZone>> {
+        let url = format!("{}/storagezone", self.base_url);
+        let page = page.unwrap_or(1);
+        let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
+        let mut rb = self.auth(self.http.get(&url)).query(&[
+            ("page", page.to_string()),
+            ("perPage", per_page.to_string()),
+        ]);
+        if let Some(q) = search {
+            rb = rb.query(&[("search", q)]);
+        }
+        if let Some(deleted) = include_deleted {
+            rb = rb.query(&[("includeDeleted", deleted.to_string())]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch a single Storage Zone by its numeric ID.
+    pub async fn get_storage_zone(&self, id: i64) -> Result<StorageZone> {
+        let url = format!("{}/storagezone/{id}", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Create a new Storage Zone.
+    pub async fn create_storage_zone(&self, body: &CreateStorageZone) -> Result<StorageZone> {
+        let url = format!("{}/storagezone", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Update an existing Storage Zone.
+    ///
+    /// The bunny.net API uses `POST` (not `PATCH`) for updates and returns 204.
+    pub async fn update_storage_zone(&self, id: i64, body: &UpdateStorageZone) -> Result<()> {
+        let url = format!("{}/storagezone/{id}", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Delete a Storage Zone permanently.
+    pub async fn delete_storage_zone(&self, id: i64) -> Result<()> {
+        let url = format!("{}/storagezone/{id}", self.base_url);
+        let rb = self.auth(self.http.delete(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
     }

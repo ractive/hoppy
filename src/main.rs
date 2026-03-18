@@ -15,8 +15,12 @@ async fn main() {
         Commands::PullZone { action } => {
             commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes).await
         }
-        Commands::StorageZone { action } => commands::storage_zone::handle(action, cli.format),
-        Commands::Storage { action } => commands::storage::handle(action, cli.format),
+        Commands::StorageZone { action } => {
+            commands::storage_zone::handle(action, cli.format, cli.debug, cli.yes).await
+        }
+        Commands::Storage { action } => {
+            commands::storage::handle(action, cli.format, cli.debug, cli.yes).await
+        }
         Commands::Dns { action } => commands::dns::handle(action, cli.format),
         Commands::Stream { action } => commands::stream::handle(action, cli.format),
         Commands::Shield { action } => commands::shield::handle(action, cli.format),

@@ -2,6 +2,17 @@ use crate::cli::OutputFormat;
 use serde::Serialize;
 use tabled::Tabled;
 
+/// JSON wrapper for paginated list output — includes the pagination envelope
+/// (CurrentPage, TotalItems, HasMoreItems) instead of a bare items array.
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct PaginatedListJson<'a, T> {
+    pub items: &'a [T],
+    pub current_page: i64,
+    pub total_items: i64,
+    pub has_more_items: bool,
+}
+
 /// Print data in the requested format to stdout.
 pub fn print_data<T: Serialize + Tabled>(items: &[T], format: OutputFormat) {
     match format {
