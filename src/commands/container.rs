@@ -14,7 +14,7 @@ pub fn handle(action: &ContainerAction, _format: OutputFormat) -> Result<()> {
     stub(cmd)
 }
 
-fn stub(_command: &str) -> Result<()> {
-    eprintln!("Magic Containers API is not yet available from bunny.net");
+fn stub(command: &str) -> Result<()> {
+    eprintln!("Magic Containers API is not yet available from bunny.net: {command}");
     std::process::exit(2);
 }
