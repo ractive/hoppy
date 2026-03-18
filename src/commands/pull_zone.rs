@@ -110,21 +110,17 @@ pub async fn handle(action: &PullZoneAction, format: OutputFormat) -> Result<()>
             let result = client
                 .list_pull_zones(*page, *per_page, search.as_deref())
                 .await?;
-            match format {
-                OutputFormat::Json => {
-                    let json = serde_json::to_string_pretty(&result.items)
-                        .expect("failed to serialize to JSON");
-                    println!("{json}");
-                }
-                _ => {
-                    let rows: Vec<PullZoneRow> =
-                        result.items.iter().map(PullZoneRow::from).collect();
-                    output::print_data(&rows, format);
-                }
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&result.items)
+                    .expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let rows: Vec<PullZoneRow> = result.items.iter().map(PullZoneRow::from).collect();
+                output::print_data(&rows, format);
             }
         }
         PullZoneAction::Get { id } => {
-            let pz = client.get_pull_zone(*id as i64).await?;
+            let pz = client.get_pull_zone(*id).await?;
             print_pull_zone(&pz, format);
         }
         PullZoneAction::Create { name, origin_url } => {
@@ -162,11 +158,11 @@ pub async fn handle(action: &PullZoneAction, format: OutputFormat) -> Result<()>
             body.enable_geo_zone_asia = *enable_geo_zone_asia;
             body.enable_geo_zone_sa = *enable_geo_zone_sa;
             body.enable_geo_zone_af = *enable_geo_zone_af;
-            let pz = client.update_pull_zone(*id as i64, &body).await?;
+            let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format);
         }
         PullZoneAction::Delete { id } => {
-            client.delete_pull_zone(*id as i64).await?;
+            client.delete_pull_zone(*id).await?;
             eprintln!("Deleted pull zone {id}");
         }
         PullZoneAction::Purge { id, cache_tag } => {
@@ -174,7 +170,7 @@ pub async fn handle(action: &PullZoneAction, format: OutputFormat) -> Result<()>
                 Some(tag) => PurgeCache::by_tag(tag),
                 None => PurgeCache::all(),
             };
-            client.purge_pull_zone_cache(*id as i64, &body).await?;
+            client.purge_pull_zone_cache(*id, &body).await?;
             eprintln!("Purged cache for pull zone {id}");
         }
     }
@@ -184,14 +180,11 @@ pub async fn handle(action: &PullZoneAction, format: OutputFormat) -> Result<()>
 
 /// Output a single PullZone: full JSON for JSON format, detail struct otherwise.
 fn print_pull_zone(pz: &PullZone, format: OutputFormat) {
-    match format {
-        OutputFormat::Json => {
-            let json = serde_json::to_string_pretty(pz).expect("failed to serialize to JSON");
-            println!("{json}");
-        }
-        _ => {
-            let detail = PullZoneDetail::from(pz);
-            output::print_single(&detail, format);
-        }
+    if let OutputFormat::Json = format {
+        let json = serde_json::to_string_pretty(pz).expect("failed to serialize to JSON");
+        println!("{json}");
+    } else {
+        let detail = PullZoneDetail::from(pz);
+        output::print_single(&detail, format);
     }
 }

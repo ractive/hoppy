@@ -178,18 +178,15 @@ impl CoreClient {
             }
         };
 
-        match serde_json::from_slice::<ApiError>(&bytes) {
-            Ok(mut api_err) => {
-                // Fill in status code if the body didn't include it.
-                if api_err.status_code == 0 {
-                    api_err.status_code = status.as_u16();
-                }
-                anyhow::Error::new(api_err)
+        if let Ok(mut api_err) = serde_json::from_slice::<ApiError>(&bytes) {
+            // Fill in status code if the body didn't include it.
+            if api_err.status_code == 0 {
+                api_err.status_code = status.as_u16();
             }
-            Err(_) => {
-                let body_text = String::from_utf8_lossy(&bytes);
-                anyhow::anyhow!("HTTP {status}: {body_text}")
-            }
+            anyhow::Error::new(api_err)
+        } else {
+            let body_text = String::from_utf8_lossy(&bytes);
+            anyhow::anyhow!("HTTP {status}: {body_text}")
         }
     }
 }
