@@ -109,7 +109,7 @@ pub struct PullZone {
     // Security
     #[serde(default)]
     pub zone_security_enabled: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub zone_security_key: String,
 
     // Geo zones
@@ -199,26 +199,31 @@ impl CreatePullZone {
         }
     }
 
+    #[must_use]
     pub fn origin_type(mut self, t: OriginType) -> Self {
         self.origin_type = Some(t);
         self
     }
 
+    #[must_use]
     pub fn storage_zone_id(mut self, id: i64) -> Self {
         self.storage_zone_id = Some(id);
         self
     }
 
+    #[must_use]
     pub fn zone_type(mut self, t: PullZoneType) -> Self {
         self.zone_type = Some(t);
         self
     }
 
+    #[must_use]
     pub fn monthly_bandwidth_limit(mut self, limit: i64) -> Self {
         self.monthly_bandwidth_limit = Some(limit);
         self
     }
 
+    #[must_use]
     pub fn zone_security_enabled(mut self, enabled: bool) -> Self {
         self.zone_security_enabled = Some(enabled);
         self
@@ -260,31 +265,37 @@ impl UpdatePullZone {
         Self::default()
     }
 
+    #[must_use]
     pub fn origin_url(mut self, url: impl Into<String>) -> Self {
         self.origin_url = Some(url.into());
         self
     }
 
+    #[must_use]
     pub fn origin_type(mut self, t: OriginType) -> Self {
         self.origin_type = Some(t);
         self
     }
 
+    #[must_use]
     pub fn storage_zone_id(mut self, id: i64) -> Self {
         self.storage_zone_id = Some(id);
         self
     }
 
+    #[must_use]
     pub fn monthly_bandwidth_limit(mut self, limit: i64) -> Self {
         self.monthly_bandwidth_limit = Some(limit);
         self
     }
 
+    #[must_use]
     pub fn cache_expiration_time(mut self, secs: i64) -> Self {
         self.cache_expiration_time = Some(secs);
         self
     }
 
+    #[must_use]
     pub fn zone_security_enabled(mut self, enabled: bool) -> Self {
         self.zone_security_enabled = Some(enabled);
         self

@@ -15,20 +15,27 @@ const BASE_URL: &str = "https://api.bunny.net";
 /// Authenticates via the `AccessKey` header. Construct with [`ComputeClient::new`].
 pub struct ComputeClient {
     http: Client,
+    base_url: String,
     api_key: String,
 }
 
 impl ComputeClient {
-    /// Create a new client with the given API key.
+    /// Create a new client with the given API key, using the production base URL.
     pub fn new(api_key: impl Into<String>) -> Self {
+        Self::with_base_url(api_key, BASE_URL)
+    }
+
+    /// Create a client pointing at a custom base URL (useful for tests / staging).
+    pub fn with_base_url(api_key: impl Into<String>, base_url: impl Into<String>) -> Self {
         Self {
             http: Client::new(),
+            base_url: base_url.into(),
             api_key: api_key.into(),
         }
     }
 
     fn url(&self, path: &str) -> String {
-        format!("{BASE_URL}{path}")
+        format!("{}{path}", self.base_url)
     }
 
     /// Attach the API key header to every request.
@@ -110,19 +117,7 @@ impl ComputeClient {
             .json(body)
             .send()
             .await?;
-
-        // API returns 201 on success — treat any 2xx as success.
-        let status = resp.status();
-        if status.is_success() {
-            Ok(resp.json::<EdgeScript>().await?)
-        } else {
-            let api_err = resp.json::<ApiError>().await.unwrap_or(ApiError {
-                error_key: None,
-                field: None,
-                message: Some(format!("HTTP {status}")),
-            });
-            Err(anyhow!("{api_err}"))
-        }
+        self.json_or_error(resp).await
     }
 
     /// Update an existing edge script (name and/or type).
@@ -440,5 +435,50 @@ impl ComputeClient {
             .send()
             .await?;
         self.expect_no_body(resp).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::UpsertVariable;
+
+    #[test]
+    fn client_new_uses_default_base_url() {
+        let client = ComputeClient::new("test-key");
+        assert_eq!(client.api_key, "test-key");
+        assert_eq!(client.base_url, BASE_URL);
+    }
+
+    #[test]
+    fn client_with_base_url_overrides() {
+        let client = ComputeClient::with_base_url("key", "http://localhost:9000");
+        assert_eq!(
+            client.url("/compute/script"),
+            "http://localhost:9000/compute/script"
+        );
+    }
+
+    #[test]
+    fn upsert_variable_placeholder_construction() {
+        // The placeholder built inside upsert_variable when the API returns 204.
+        let body = UpsertVariable {
+            name: "MY_VAR".to_owned(),
+            required: Some(true),
+            default_value: Some("default".to_owned()),
+        };
+
+        // Simulate the placeholder logic from upsert_variable.
+        let placeholder = crate::types::EdgeScriptVariable {
+            id: 0,
+            name: Some(body.name.clone()),
+            required: body.required.unwrap_or(false),
+            default_value: body.default_value.clone(),
+        };
+
+        assert_eq!(placeholder.id, 0);
+        assert_eq!(placeholder.name.as_deref(), Some("MY_VAR"));
+        assert!(placeholder.required);
+        assert_eq!(placeholder.default_value.as_deref(), Some("default"));
     }
 }

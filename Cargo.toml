@@ -1,11 +1,11 @@
 [workspace]
 members = [
     ".",
-    "crates/hoppy-api-compute",
-    "crates/hoppy-api-core",
-    "crates/hoppy-api-shield",
-    "crates/hoppy-api-storage",
-    "crates/hoppy-api-stream",
+    "crates/bunny-api-compute",
+    "crates/bunny-api-core",
+    "crates/bunny-api-shield",
+    "crates/bunny-api-storage",
+    "crates/bunny-api-stream",
 ]
 resolver = "2"
 
@@ -23,3 +23,5 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 tabled = "0.17"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+bunny-api-core = { path = "crates/bunny-api-core" }

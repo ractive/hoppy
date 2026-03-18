@@ -99,11 +99,21 @@ pub enum Commands {
 #[derive(Subcommand)]
 pub enum PullZoneAction {
     /// List all pull zones
-    List,
+    List {
+        /// Filter by name
+        #[arg(long)]
+        search: Option<String>,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
+    },
     /// Get a specific pull zone
     Get {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
     /// Create a new pull zone
     Create {
@@ -115,17 +125,38 @@ pub enum PullZoneAction {
     /// Update a pull zone
     Update {
         #[arg(long)]
-        id: u64,
+        id: i64,
+        #[arg(long)]
+        origin_url: Option<String>,
+        #[arg(long)]
+        monthly_bandwidth_limit: Option<i64>,
+        #[arg(long)]
+        cache_expiration_time: Option<i64>,
+        #[arg(long)]
+        zone_security_enabled: Option<bool>,
+        #[arg(long)]
+        enable_geo_zone_us: Option<bool>,
+        #[arg(long)]
+        enable_geo_zone_eu: Option<bool>,
+        #[arg(long)]
+        enable_geo_zone_asia: Option<bool>,
+        #[arg(long)]
+        enable_geo_zone_sa: Option<bool>,
+        #[arg(long)]
+        enable_geo_zone_af: Option<bool>,
     },
     /// Delete a pull zone
     Delete {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
     /// Purge pull zone cache
     Purge {
         #[arg(long)]
-        id: u64,
+        id: i64,
+        /// Limit purge to a specific cache tag
+        #[arg(long)]
+        cache_tag: Option<String>,
     },
 }
 
