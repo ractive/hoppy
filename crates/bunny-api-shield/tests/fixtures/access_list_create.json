@@ -1,0 +1,12 @@
+{
+  "data": {
+    "id": 9002,
+    "name": "Allowed IPs",
+    "description": null,
+    "type": 0,
+    "content": "192.168.1.1\n10.0.0.1",
+    "checksum": null,
+    "entryCount": 2,
+    "lastModified": "2025-03-01T12:00:00Z"
+  }
+}

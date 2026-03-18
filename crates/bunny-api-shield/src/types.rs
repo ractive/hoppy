@@ -227,6 +227,18 @@ pub enum WafRuleActionType {
     Allow = 5,
 }
 
+impl std::fmt::Display for WafRuleActionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WafRuleActionType::Block => write!(f, "Block"),
+            WafRuleActionType::LogOnly => write!(f, "LogOnly"),
+            WafRuleActionType::Challenge => write!(f, "Challenge"),
+            WafRuleActionType::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
+            WafRuleActionType::Allow => write!(f, "Allow"),
+        }
+    }
+}
+
 /// Operator used to match a WAF rule variable against a value.
 ///
 /// Values from the spec: 0 = Eq, 1 = NotEq, 2 = Contains, 3 = NotContains,
@@ -853,7 +865,7 @@ pub struct BotDetectionConfigurationState {
 }
 
 /// Response wrapper for bot detection configuration.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BotDetectionConfigurationResponse {
     #[serde(default)]
@@ -878,7 +890,7 @@ pub struct UpdateBotDetection {
 }
 
 /// Response wrapper for update bot detection.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBotDetectionResponse {
     #[serde(default)]

@@ -1,0 +1,13 @@
+{
+  "id": 7003,
+  "shieldZoneId": 55001,
+  "userId": "user-abc-123",
+  "ruleName": "Block Bad UA",
+  "ruleDescription": null,
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 2,
+    "severityType": 1,
+    "value": "BadBot/1.0"
+  }
+}

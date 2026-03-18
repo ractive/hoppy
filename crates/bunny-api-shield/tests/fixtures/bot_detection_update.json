@@ -1,0 +1,17 @@
+{
+  "data": {
+    "shieldZoneId": 55001,
+    "executionMode": 1,
+    "requestIntegrity": {
+      "sensitivity": 3
+    },
+    "ipAddress": {
+      "sensitivity": 2
+    },
+    "browserFingerprint": {
+      "sensitivity": 3,
+      "aggression": 3,
+      "complexEnabled": true
+    }
+  }
+}

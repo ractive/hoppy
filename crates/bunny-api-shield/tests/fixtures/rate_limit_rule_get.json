@@ -1,0 +1,16 @@
+{
+  "id": 8001,
+  "shieldZoneId": 55001,
+  "userId": "user-abc-123",
+  "ruleName": "Limit Login Attempts",
+  "ruleDescription": "Block after 10 requests in 60 seconds",
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 0,
+    "severityType": 1,
+    "requestCount": 10,
+    "counterKeyType": 1,
+    "timeframe": 60,
+    "blockTime": 300
+  }
+}
