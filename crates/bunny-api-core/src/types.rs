@@ -730,6 +730,7 @@ pub struct CreateVideoLibrary {
 }
 
 impl CreateVideoLibrary {
+    #[must_use]
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
