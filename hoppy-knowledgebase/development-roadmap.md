@@ -146,18 +146,18 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Manage storage zones and upload/download files — this exercises the Storage API (different base URL, different auth key).
 
-- [ ] Storage Zone commands (Core API):
-  - [ ] `storage-zone list|get|create|update|delete`
-- [ ] Storage file commands (Storage API — different base URL):
-  - [ ] `storage upload --zone <name> --remote-path <path> --file <local-path>`
-  - [ ] `storage download --zone <name> --remote-path <path> [--output <local-path>]`
-  - [ ] `storage ls --zone <name> [--path <dir>]`
-  - [ ] `storage rm --zone <name> --remote-path <path> [--yes]`
-- [ ] Handle per-zone storage API key (from zone details or `BUNNY_STORAGE_KEY` env var)
-- [ ] Progress bar for upload/download (stderr, only if TTY)
-- [ ] JSON list output should include pagination envelope (`current_page`, `total_items`, `has_more_items`), not just the items array — apply consistently across all list commands including pull zones
+- [x] Storage Zone commands (Core API):
+  - [x] `storage-zone list|get|create|update|delete`
+- [x] Storage file commands (Storage API — different base URL):
+  - [x] `storage upload --zone <name> --remote-path <path> --file <local-path>`
+  - [x] `storage download --zone <name> --remote-path <path> [--output <local-path>]`
+  - [x] `storage ls --zone <name> [--path <dir>]`
+  - [x] `storage rm --zone <name> --remote-path <path> [--yes]`
+- [x] Handle per-zone storage API key (from zone details or `BUNNY_STORAGE_KEY` env var)
+- [ ] Progress bar for upload/download (stderr, only if TTY) — deferred to iter 7 polish
+- [x] JSON list output should include pagination envelope (`current_page`, `total_items`, `has_more_items`), not just the items array — apply consistently across all list commands including pull zones
 - [x] Integration tests with mock HTTP server (carried from iter 1 — record real API responses as fixtures first)
-- [ ] Consolidate duplicate `PaginatedList` and `ApiError` types across `bunny-api-core` and `bunny-api-compute` (carried from iter 1 code review)
+- [x] Consolidate duplicate `PaginatedList` and `ApiError` types across `bunny-api-core` and `bunny-api-compute` — investigated, intentionally kept separate with documentation (crates are independent, no shared dependency warranted)
 
 **Deliverable:** Upload and download files to/from bunny.net storage.
 
@@ -291,3 +291,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-18 | Mock tests deferred until real API fixtures available | Synthetic mocks test assumptions, not reality — record real responses via `--debug` first |
 | 2026-03-18 | wiremock for integration tests | Real API responses recorded as sanitized JSON fixtures, served by wiremock MockServer; client's `with_base_url` points at mock |
 | 2026-03-18 | Always send pagination params on list endpoints | bunny.net API returns bare array without `page`/`perPage`, but paginated envelope with them — always send defaults to get consistent `PaginatedList` response |
+| 2026-03-18 | Storage auth resolution: env var → Core API fallback | `BUNNY_STORAGE_KEY` checked first; if absent, fetch zone via Core API and use its `Password` field. Keeps simple case fast, complex case automatic. |
+| 2026-03-18 | Streaming upload deferred | Attempted reqwest `Body::wrap_stream` but it added unnecessary deps to root crate. `tokio::fs::read` is simpler and sufficient until progress bar work in iter 7. |
+| 2026-03-18 | PaginatedList/ApiError kept separate per crate | Intentionally duplicated across bunny-api-core and bunny-api-compute — crates are independent workspace members, shared extraction would add coupling without benefit. Documented in source. |
+| 2026-03-18 | Storage zone list API rejects Accept header | bunny.net returns 401 if `Accept: application/json` header is sent on `/storagezone` endpoint — removed Accept header for this endpoint |
