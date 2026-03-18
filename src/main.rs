@@ -12,7 +12,9 @@ async fn main() {
     let cli = Cli::parse();
 
     let result = match &cli.command {
-        Commands::PullZone { action } => commands::pull_zone::handle(action, cli.format).await,
+        Commands::PullZone { action } => {
+            commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes).await
+        }
         Commands::StorageZone { action } => commands::storage_zone::handle(action, cli.format),
         Commands::Storage { action } => commands::storage::handle(action, cli.format),
         Commands::Dns { action } => commands::dns::handle(action, cli.format),

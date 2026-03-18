@@ -17,6 +17,7 @@ pub struct CoreClient {
     http: reqwest::Client,
     base_url: String,
     api_key: String,
+    debug: bool,
 }
 
 impl CoreClient {
@@ -32,7 +33,14 @@ impl CoreClient {
             http: reqwest::Client::new(),
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
+            debug: false,
         }
+    }
+
+    /// Enable or disable debug logging of HTTP requests and responses to stderr.
+    pub fn with_debug(mut self, debug: bool) -> Self {
+        self.debug = debug;
+        self
     }
 
     // -----------------------------------------------------------------------
@@ -59,30 +67,23 @@ impl CoreClient {
         if let Some(q) = search {
             rb = rb.query(&[("search", q)]);
         }
-        let response = rb.send().await.context("HTTP request failed")?;
+        let response = self.send(rb).await?;
         self.handle_response(response).await
     }
 
     /// Fetch a single Pull Zone by its numeric ID.
     pub async fn get_pull_zone(&self, id: i64) -> Result<PullZone> {
         let url = format!("{}/pullzone/{id}", self.base_url);
-        let response = self
-            .auth(self.http.get(&url))
-            .send()
-            .await
-            .context("HTTP request failed")?;
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
         self.handle_response(response).await
     }
 
     /// Create a new Pull Zone.
     pub async fn create_pull_zone(&self, body: &CreatePullZone) -> Result<PullZone> {
         let url = format!("{}/pullzone", self.base_url);
-        let response = self
-            .auth(self.http.post(&url))
-            .json(body)
-            .send()
-            .await
-            .context("HTTP request failed")?;
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
         self.handle_response(response).await
     }
 
@@ -91,23 +92,16 @@ impl CoreClient {
     /// The bunny.net API uses `POST` (not `PATCH`) for updates.
     pub async fn update_pull_zone(&self, id: i64, body: &UpdatePullZone) -> Result<PullZone> {
         let url = format!("{}/pullzone/{id}", self.base_url);
-        let response = self
-            .auth(self.http.post(&url))
-            .json(body)
-            .send()
-            .await
-            .context("HTTP request failed")?;
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
         self.handle_response(response).await
     }
 
     /// Delete a Pull Zone permanently.
     pub async fn delete_pull_zone(&self, id: i64) -> Result<()> {
         let url = format!("{}/pullzone/{id}", self.base_url);
-        let response = self
-            .auth(self.http.delete(&url))
-            .send()
-            .await
-            .context("HTTP request failed")?;
+        let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
         self.handle_empty_response(response).await
     }
 
@@ -117,18 +111,35 @@ impl CoreClient {
     /// [`PurgeCache::by_tag()`] to limit the purge to a cache tag.
     pub async fn purge_pull_zone_cache(&self, id: i64, body: &PurgeCache) -> Result<()> {
         let url = format!("{}/pullzone/{id}/purgeCache", self.base_url);
-        let response = self
-            .auth(self.http.post(&url))
-            .json(body)
-            .send()
-            .await
-            .context("HTTP request failed")?;
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
         self.handle_empty_response(response).await
     }
 
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    /// Execute a prepared request, logging method and URL before sending and
+    /// status after receiving when debug mode is enabled.
+    ///
+    /// Only method, URL, and status are logged — the `AccessKey` header value
+    /// is never included.
+    async fn send(&self, rb: reqwest::RequestBuilder) -> Result<reqwest::Response> {
+        let request = rb.build().context("failed to build request")?;
+        if self.debug {
+            eprintln!(">> {} {}", request.method(), request.url());
+        }
+        let response = self
+            .http
+            .execute(request)
+            .await
+            .context("HTTP request failed")?;
+        if self.debug {
+            eprintln!("<< {}", response.status());
+        }
+        Ok(response)
+    }
 
     fn auth(&self, rb: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         rb.header("AccessKey", &self.api_key)

@@ -124,18 +124,19 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Full CRUD for pull zones against the live API. This proves out the entire vertical stack.
 
-- [ ] HTTP client setup (using generated client if codegen succeeded, or hand-written reqwest)
-- [ ] Shared request/response plumbing: base URL, auth, error mapping, debug logging of requests
-- [ ] Pull Zone commands:
-  - [ ] `list` — paginated listing
-  - [ ] `get --id <id>` — single pull zone details
-  - [ ] `create --name <name> --origin-url <url> [options]` — create pull zone
-  - [ ] `update --id <id> [options]` — update pull zone settings
-  - [ ] `delete --id <id> [--yes]` — delete with confirmation
-  - [ ] `purge --id <id> [--urls <url>...]` — purge cache
-- [ ] Table output: pick sensible default columns (id, name, origin URL, status)
-- [ ] Pagination: `--page`, `--per-page` flags
-- [ ] Integration test: at least one test that mocks the API response
+- [x] HTTP client setup (hand-written reqwest — codegen abandoned in iter 0.5)
+- [x] Shared request/response plumbing: base URL, auth, error mapping
+- [x] Debug logging of HTTP requests (`--debug` flag)
+- [x] Pull Zone commands:
+  - [x] `list` — paginated listing with `--search`, `--page`, `--per-page`
+  - [x] `get --id <id>` — single pull zone details
+  - [x] `create --name <name> --origin-url <url> [options]` — create pull zone
+  - [x] `update --id <id> [options]` — update pull zone settings
+  - [x] `delete --id <id> [--yes]` — delete with confirmation prompt
+  - [x] `purge --id <id> [--cache-tag <tag>]` — purge cache (by tag or all)
+- [x] Table output: pick sensible default columns (id, name, origin URL, status)
+- [x] Pagination: `--page`, `--per-page` flags
+- [ ] Integration test: at least one test that mocks the API response (deferred — need real API responses as fixtures first)
 
 **Deliverable:** `BUNNY_API_KEY=xxx hoppy pull-zone list --format json` returns real data.
 
@@ -154,6 +155,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
   - [ ] `storage rm --zone <name> --remote-path <path> [--yes]`
 - [ ] Handle per-zone storage API key (from zone details or `BUNNY_STORAGE_KEY` env var)
 - [ ] Progress bar for upload/download (stderr, only if TTY)
+- [ ] JSON list output should include pagination envelope (`current_page`, `total_items`, `has_more_items`), not just the items array — apply consistently across all list commands including pull zones
 
 **Deliverable:** Upload and download files to/from bunny.net storage.
 
