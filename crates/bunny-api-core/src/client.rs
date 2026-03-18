@@ -5,9 +5,10 @@ use reqwest::{
 };
 
 use crate::types::{
-    AddDnsRecord, ApiError, CreateDnsZone, CreatePullZone, CreateStorageZone, CreateVideoLibrary,
-    DnsRecord, DnsZone, PaginatedList, PullZone, PurgeCache, StorageZone, UpdateDnsRecord,
-    UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
+    AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone, CreateStorageZone,
+    CreateVideoLibrary, DnsRecord, DnsZone, PaginatedList, PullZone, PurgeCache, StorageZone,
+    UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary,
+    VideoLibrary,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -345,6 +346,21 @@ impl CoreClient {
         let rb = self.auth(self.http.delete(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Billing / account endpoints
+    // -----------------------------------------------------------------------
+
+    /// Fetch account billing details including balance and monthly charges.
+    ///
+    /// A successful response confirms that the API key is valid and returns
+    /// the current account financial summary.
+    pub async fn get_billing(&self) -> Result<BillingDetails> {
+        let url = format!("{}/billing", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
     }
 
     // -----------------------------------------------------------------------

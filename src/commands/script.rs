@@ -9,7 +9,7 @@ use bunny_api_compute::ComputeClient;
 use bunny_api_compute::{
     AddSecret, AddVariable, CreateEdgeScript, EdgeScript, EdgeScriptCode, EdgeScriptRelease,
     EdgeScriptSecret, EdgeScriptStatistics, EdgeScriptVariable, PublishScript, ScriptType,
-    SecretList, UpdateEdgeScript, UpdateSecret, UpdateVariable,
+    SecretList, UpdateEdgeScript, UpdateSecret, UpdateVariable, UpsertSecret, UpsertVariable,
 };
 use std::io::{self, BufRead, Write};
 
@@ -620,6 +620,28 @@ async fn handle_variable(
             c.delete_variable(*id, *variable_id).await?;
             eprintln!("Deleted variable {variable_id} from script {id}");
         }
+        ScriptVariableAction::Upsert {
+            id,
+            name,
+            required,
+            default_value,
+        } => {
+            let body = UpsertVariable {
+                name: name.clone(),
+                required: *required,
+                default_value: default_value.clone(),
+            };
+            let var = c.upsert_variable(*id, &body).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&var).expect("failed to serialize to JSON")
+                );
+            } else {
+                let row = VariableRow::from(&var);
+                output::print_single(&row, format);
+            }
+        }
     }
     Ok(())
 }
@@ -697,6 +719,22 @@ async fn handle_secret(
             }
             c.delete_secret(*id, *secret_id).await?;
             eprintln!("Deleted secret {secret_id} from script {id}");
+        }
+        ScriptSecretAction::Upsert { id, name, value } => {
+            let body = UpsertSecret {
+                name: Some(name.clone()),
+                secret: Some(value.clone()),
+            };
+            let secret = c.upsert_secret(*id, &body).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&secret).expect("failed to serialize to JSON")
+                );
+            } else {
+                let row = SecretRow::from(&secret);
+                output::print_single(&row, format);
+            }
         }
     }
     Ok(())

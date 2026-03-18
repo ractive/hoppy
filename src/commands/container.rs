@@ -8,10 +8,12 @@ use crate::output;
 use anyhow::{Context, Result, bail};
 use bunny_api_containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
-    AutoscalingSettings, CdnEndpointRequest, ContainerPortMappingRequest, ContainerRegistryRequest,
-    ContainersClient, CursorList, EndpointRequest, Granularity, LogForwardingRequest,
-    LogForwardingType, PatchApplicationRequest, PatchContainerRequest, PatchVolumeRequest,
-    RegistryCredentials, RegistryType, RuntimeType, SyslogFormat, UpdateRegionSettingsRequest,
+    AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions, ContainerImage,
+    ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest, ContainersClient,
+    EndpointRequest, GetContainerConfigSuggestionsRequest, GetContainerImageDigestRequest,
+    Granularity, ImageTagInfo, ListContainerImageTagsRequest, LogForwardingRequest,
+    PatchApplicationRequest, PatchContainerRequest, PatchVolumeRequest, RegionSettings,
+    RegistryCredentials, SearchPublicContainerImagesRequest, UpdateRegionSettingsRequest,
 };
 use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
@@ -22,28 +24,6 @@ use std::io::{self, BufRead, Write};
 
 fn client(debug: bool) -> Result<ContainersClient> {
     Ok(ContainersClient::new(auth::get_api_key()?).with_debug(debug))
-}
-
-// ---------------------------------------------------------------------------
-// JSON envelope for cursor-based lists
-// ---------------------------------------------------------------------------
-
-#[derive(serde::Serialize)]
-struct CursorListJson<'a, T: serde::Serialize> {
-    items: &'a [T],
-    total_items: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_cursor: &'a Option<String>,
-}
-
-impl<'a, T: serde::Serialize> CursorListJson<'a, T> {
-    fn from_list(list: &'a CursorList<T>) -> Self {
-        Self {
-            items: &list.items,
-            total_items: list.meta.as_ref().map(|m| m.total_items).unwrap_or(0),
-            next_cursor: &list.cursor,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -312,49 +292,163 @@ impl From<&bunny_api_containers::LogForwardingConfiguration> for LogForwardingRo
 }
 
 // ---------------------------------------------------------------------------
-// Enum parsing helpers
+// Display rows — Autoscaling
 // ---------------------------------------------------------------------------
 
-fn parse_runtime_type(s: &str) -> Result<RuntimeType> {
-    match s {
-        "Shared" => Ok(RuntimeType::Shared),
-        "Reserved" => Ok(RuntimeType::Reserved),
-        other => bail!("invalid runtime-type '{other}': must be Shared or Reserved"),
+#[derive(serde::Serialize, tabled::Tabled)]
+struct AutoscalingRow {
+    #[tabled(rename = "Min Instances")]
+    min: i32,
+    #[tabled(rename = "Max Instances")]
+    max: i32,
+}
+
+impl From<&AutoscalingSettings> for AutoscalingRow {
+    fn from(s: &AutoscalingSettings) -> Self {
+        Self {
+            min: s.min,
+            max: s.max,
+        }
     }
 }
 
-fn parse_granularity(s: &str) -> Result<Granularity> {
-    match s {
-        "Daily" => Ok(Granularity::Daily),
-        "Hourly" => Ok(Granularity::Hourly),
-        "Minute" => Ok(Granularity::Minute),
-        other => bail!("invalid granularity '{other}': must be Daily, Hourly, or Minute"),
+// ---------------------------------------------------------------------------
+// Display rows — Region Settings
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct RegionSettingsRow {
+    #[tabled(rename = "Allowed Regions")]
+    allowed_region_ids: String,
+    #[tabled(rename = "Required Regions")]
+    required_region_ids: String,
+    #[tabled(rename = "Max Allowed")]
+    max_allowed_regions: String,
+    #[tabled(rename = "Provisioning Type")]
+    provisioning_type: String,
+}
+
+impl From<&RegionSettings> for RegionSettingsRow {
+    fn from(s: &RegionSettings) -> Self {
+        Self {
+            allowed_region_ids: if s.allowed_region_ids.is_empty() {
+                "-".to_owned()
+            } else {
+                s.allowed_region_ids.join(", ")
+            },
+            required_region_ids: if s.required_region_ids.is_empty() {
+                "-".to_owned()
+            } else {
+                s.required_region_ids.join(", ")
+            },
+            max_allowed_regions: s
+                .max_allowed_regions
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            provisioning_type: s
+                .provisioning_type
+                .map(|p| format!("{p:?}"))
+                .unwrap_or_else(|| "-".to_owned()),
+        }
     }
 }
 
-fn parse_registry_type(s: &str) -> Result<RegistryType> {
-    match s {
-        "DockerHub" => Ok(RegistryType::DockerHub),
-        "GitHub" => Ok(RegistryType::GitHub),
-        other => bail!("invalid registry-type '{other}': must be DockerHub or GitHub"),
+// ---------------------------------------------------------------------------
+// Display rows — Container image tags
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct ImageTagRow {
+    #[tabled(rename = "Tag")]
+    name: String,
+}
+
+impl From<&ContainerImageTag> for ImageTagRow {
+    fn from(t: &ContainerImageTag) -> Self {
+        Self {
+            name: t.name.clone(),
+        }
     }
 }
 
-fn parse_log_forwarding_type(s: &str) -> Result<LogForwardingType> {
-    match s {
-        "SyslogUdp" => Ok(LogForwardingType::SyslogUdp),
-        "SyslogTcp" => Ok(LogForwardingType::SyslogTcp),
-        other => bail!("invalid forwarding-type '{other}': must be SyslogUdp or SyslogTcp"),
+// ---------------------------------------------------------------------------
+// Display rows — Image digest
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct ImageDigestRow {
+    #[tabled(rename = "Namespace")]
+    image_namespace: String,
+    #[tabled(rename = "Image")]
+    image: String,
+    #[tabled(rename = "Tag")]
+    tag: String,
+    #[tabled(rename = "Digest")]
+    digest: String,
+}
+
+impl From<&ImageTagInfo> for ImageDigestRow {
+    fn from(i: &ImageTagInfo) -> Self {
+        Self {
+            image_namespace: i.image_namespace.as_deref().unwrap_or("-").to_owned(),
+            image: i.image.as_deref().unwrap_or("-").to_owned(),
+            tag: i.tag.as_deref().unwrap_or("-").to_owned(),
+            digest: i.digest.as_deref().unwrap_or("-").to_owned(),
+        }
     }
 }
 
-fn parse_syslog_format(s: &str) -> Result<SyslogFormat> {
-    match s {
-        "SyslogRfc3164" => Ok(SyslogFormat::SyslogRfc3164),
-        "SyslogRfc5424" => Ok(SyslogFormat::SyslogRfc5424),
-        other => bail!("invalid format '{other}': must be SyslogRfc3164 or SyslogRfc5424"),
+// ---------------------------------------------------------------------------
+// Display rows — Config suggestions
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct ConfigSuggestionsRow {
+    #[tabled(rename = "App Name")]
+    app_name: String,
+    #[tabled(rename = "Description")]
+    description: String,
+    #[tabled(rename = "Registry URL")]
+    registry_url: String,
+    #[tabled(rename = "Env Suggestions")]
+    env_suggestions_count: usize,
+}
+
+impl From<&ContainerConfigSuggestions> for ConfigSuggestionsRow {
+    fn from(s: &ContainerConfigSuggestions) -> Self {
+        Self {
+            app_name: s.app_name.as_deref().unwrap_or("-").to_owned(),
+            description: s.description.as_deref().unwrap_or("-").to_owned(),
+            registry_url: s.registry_url.as_deref().unwrap_or("-").to_owned(),
+            env_suggestions_count: s.environment_variables_suggestions.len(),
+        }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Display rows — Public container images
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct PublicImageRow {
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Namespace")]
+    namespace: String,
+}
+
+impl From<&ContainerImage> for PublicImageRow {
+    fn from(i: &ContainerImage) -> Self {
+        Self {
+            id: i.id.clone(),
+            namespace: i.namespace.clone(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Enum parsing helpers
+// ---------------------------------------------------------------------------
 
 fn parse_env_pairs(pairs: &[String]) -> Result<HashMap<String, String>> {
     let mut map = HashMap::new();
@@ -427,11 +521,9 @@ async fn handle_app(
                 .list_applications(cursor.as_deref(), limit.as_ref().copied())
                 .await?;
             if let OutputFormat::Json = format {
-                let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope)
-                        .context("failed to serialize to JSON")?
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<AppRow> = result.items.iter().map(AppRow::from).collect();
@@ -459,7 +551,7 @@ async fn handle_app(
         } => {
             let body = AddApplicationRequest {
                 name: name.clone(),
-                runtime_type: parse_runtime_type(runtime_type)?,
+                runtime_type: runtime_type.parse()?,
                 auto_scaling: AutoscalingSettings {
                     min: *min,
                     max: *max,
@@ -500,9 +592,7 @@ async fn handle_app(
                 let current = c.get_application(id).await?;
                 let current_scaling = current.auto_scaling.as_ref().map(|s| (s.min, s.max));
                 let (resolved_min, resolved_max) = match current_scaling {
-                    Some((cur_min, cur_max)) => {
-                        (min.unwrap_or(cur_min), max.unwrap_or(cur_max))
-                    }
+                    Some((cur_min, cur_max)) => (min.unwrap_or(cur_min), max.unwrap_or(cur_max)),
                     None => match (min, max) {
                         (Some(lo), Some(hi)) => (*lo, *hi),
                         _ => bail!(
@@ -520,10 +610,7 @@ async fn handle_app(
             };
             let body = PatchApplicationRequest {
                 name: name.clone(),
-                runtime_type: runtime_type
-                    .as_deref()
-                    .map(parse_runtime_type)
-                    .transpose()?,
+                runtime_type: runtime_type.as_deref().map(|s| s.parse()).transpose()?,
                 auto_scaling,
                 ..Default::default()
             };
@@ -604,7 +691,7 @@ async fn handle_app(
         } => {
             let gran = granularity
                 .as_deref()
-                .map(parse_granularity)
+                .map(|s| s.parse())
                 .transpose()?
                 .unwrap_or(Granularity::Daily);
             let stats = c
@@ -620,6 +707,64 @@ async fn handle_app(
                     "Statistics data contains time-series charts — use --format json for full output"
                 );
             }
+        }
+        ContainerAppAction::AutoscalingGet { app_id } => {
+            let settings = c.get_autoscaling(app_id).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&settings)
+                        .context("failed to serialize to JSON")?
+                );
+            } else {
+                let row = AutoscalingRow::from(&settings);
+                output::print_single(&row, format);
+            }
+        }
+        ContainerAppAction::AutoscalingUpdate { app_id, min, max } => {
+            let body = AutoscalingSettings {
+                min: *min,
+                max: *max,
+            };
+            c.update_autoscaling(app_id, &body).await?;
+            eprintln!("Updated autoscaling for application {app_id}");
+        }
+        ContainerAppAction::RegionSettingsGet { app_id } => {
+            let settings = c.get_region_settings(app_id).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&settings)
+                        .context("failed to serialize to JSON")?
+                );
+            } else {
+                let row = RegionSettingsRow::from(&settings);
+                output::print_single(&row, format);
+            }
+        }
+        ContainerAppAction::RegionSettingsUpdate {
+            app_id,
+            allowed_region_ids,
+            required_region_ids,
+            max_allowed_regions,
+        } => {
+            if allowed_region_ids.is_none()
+                && required_region_ids.is_none()
+                && max_allowed_regions.is_none()
+            {
+                bail!(
+                    "at least one update flag is required \
+                     (--allowed-region, --required-region, --max-allowed-regions)"
+                );
+            }
+            let body = UpdateRegionSettingsRequest {
+                allowed_region_ids: allowed_region_ids.clone(),
+                required_region_ids: required_region_ids.clone(),
+                max_allowed_regions: *max_allowed_regions,
+                node_selectors: None,
+            };
+            c.update_region_settings(app_id, &body).await?;
+            eprintln!("Updated region settings for application {app_id}");
         }
     }
     Ok(())
@@ -822,11 +967,9 @@ async fn handle_endpoint(
         ContainerEndpointAction::List { app_id } => {
             let result = c.list_endpoints(app_id).await?;
             if let OutputFormat::Json = format {
-                let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope)
-                        .context("failed to serialize to JSON")?
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<EndpointRow> = result.items.iter().map(EndpointRow::from).collect();
@@ -990,11 +1133,9 @@ async fn handle_registry(
         ContainerRegistryAction::List => {
             let result = c.list_registries().await?;
             if let OutputFormat::Json = format {
-                let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope)
-                        .context("failed to serialize to JSON")?
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<RegistryRow> = result.items.iter().map(RegistryRow::from).collect();
@@ -1030,10 +1171,7 @@ async fn handle_registry(
             };
             let body = ContainerRegistryRequest {
                 display_name: name.clone(),
-                registry_type: registry_type
-                    .as_deref()
-                    .map(parse_registry_type)
-                    .transpose()?,
+                registry_type: registry_type.as_deref().map(|s| s.parse()).transpose()?,
                 password_credentials: credentials,
             };
             let resp = c.add_registry(&body).await?;
@@ -1087,6 +1225,97 @@ async fn handle_registry(
             let resp = c.delete_registry(*id).await?;
             eprintln!("Deleted registry (status: {:?})", resp.status);
         }
+        ContainerRegistryAction::ImageTags {
+            registry_id,
+            image_name,
+            image_namespace,
+        } => {
+            let body = ListContainerImageTagsRequest {
+                registry_id: registry_id.clone(),
+                image_name: image_name.clone(),
+                image_namespace: image_namespace.clone(),
+            };
+            let tags = c.list_container_image_tags(&body).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&tags).context("failed to serialize to JSON")?
+                );
+            } else {
+                let rows: Vec<ImageTagRow> = tags.iter().map(ImageTagRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        ContainerRegistryAction::ImageDigest {
+            registry_id,
+            image_name,
+            image_namespace,
+            tag,
+        } => {
+            let body = GetContainerImageDigestRequest {
+                registry_id: registry_id.clone(),
+                image_name: image_name.clone(),
+                image_namespace: image_namespace.clone(),
+                tag: tag.clone(),
+            };
+            let info = c.get_container_image_digest(&body).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&info).context("failed to serialize to JSON")?
+                );
+            } else {
+                let row = ImageDigestRow::from(&info);
+                output::print_single(&row, format);
+            }
+        }
+        ContainerRegistryAction::ConfigSuggestions {
+            registry_id,
+            image_name,
+            image_namespace,
+            tag,
+        } => {
+            let body = GetContainerConfigSuggestionsRequest {
+                registry_id: registry_id.clone(),
+                image_name: image_name.clone(),
+                image_namespace: image_namespace.clone(),
+                tag: tag.clone(),
+            };
+            let suggestions = c.get_config_suggestions(&body).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&suggestions)
+                        .context("failed to serialize to JSON")?
+                );
+            } else {
+                let row = ConfigSuggestionsRow::from(&suggestions);
+                output::print_single(&row, format);
+            }
+        }
+        ContainerRegistryAction::SearchPublic {
+            registry_id,
+            query,
+            size,
+            page,
+        } => {
+            let body = SearchPublicContainerImagesRequest {
+                registry_id: registry_id.clone(),
+                prefix: query.clone(),
+                size: *size,
+                page: *page,
+            };
+            let images = c.search_public_images(&body).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&images).context("failed to serialize to JSON")?
+                );
+            } else {
+                let rows: Vec<PublicImageRow> = images.iter().map(PublicImageRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
     }
     Ok(())
 }
@@ -1107,11 +1336,9 @@ async fn handle_region(
                 .list_regions(cursor.as_deref(), limit.as_ref().copied())
                 .await?;
             if let OutputFormat::Json = format {
-                let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope)
-                        .context("failed to serialize to JSON")?
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
@@ -1150,11 +1377,9 @@ async fn handle_node(
                 .list_nodes(cursor.as_deref(), limit.as_ref().copied())
                 .await?;
             if let OutputFormat::Json = format {
-                let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope)
-                        .context("failed to serialize to JSON")?
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
                 );
             } else {
                 // Nodes are strings — print one per line
@@ -1250,11 +1475,11 @@ async fn handle_log_forwarding(
         } => {
             let body = LogForwardingRequest {
                 app: app_id.clone(),
-                forwarding_type: parse_log_forwarding_type(forwarding_type)?,
+                forwarding_type: forwarding_type.parse()?,
                 endpoint: endpoint.clone(),
                 port: *port,
                 token: token.clone(),
-                format: parse_syslog_format(fmt_str)?,
+                format: fmt_str.parse()?,
                 enabled: *enabled,
             };
             let config = c.create_log_forwarding(&body).await?;
@@ -1279,11 +1504,11 @@ async fn handle_log_forwarding(
         } => {
             let body = LogForwardingRequest {
                 app: app_id.clone(),
-                forwarding_type: parse_log_forwarding_type(forwarding_type)?,
+                forwarding_type: forwarding_type.parse()?,
                 endpoint: endpoint.clone(),
                 port: *port,
                 token: token.clone(),
-                format: parse_syslog_format(fmt_str)?,
+                format: fmt_str.parse()?,
                 enabled: *enabled,
             };
             let config = c.update_log_forwarding(app_id, &body).await?;

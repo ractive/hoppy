@@ -1,12 +1,14 @@
 use crate::auth;
 use crate::cli::{OutputFormat, StreamAction, StreamLibraryAction, StreamVideoAction};
 use crate::output::{self, PaginatedListJson};
+use crate::progress;
 use anyhow::{Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
 use bunny_api_stream::types::{Collection, Video};
 use bunny_api_stream::{CreateVideo, StreamClient};
 use std::io::{self, BufRead, Write};
+use tokio_util::io::ReaderStream;
 
 // ---------------------------------------------------------------------------
 // Display structs — Video Libraries
@@ -155,10 +157,11 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    quiet: bool,
 ) -> Result<()> {
     match action {
         StreamAction::Library { action } => handle_library(action, format, debug, yes).await,
-        StreamAction::Video { action } => handle_video(action, format, debug, yes).await,
+        StreamAction::Video { action } => handle_video(action, format, debug, yes, quiet).await,
     }
 }
 
@@ -272,6 +275,7 @@ async fn handle_video(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    quiet: bool,
 ) -> Result<()> {
     match action {
         StreamVideoAction::List {
@@ -342,11 +346,37 @@ async fn handle_video(
                 create_body = create_body.collection_id(cid);
             }
             let video = stream.create_video(*library_id, &create_body).await?;
-            let bytes = tokio::fs::read(file)
+
+            // Open the file and get its size for the progress bar.
+            let fh = tokio::fs::File::open(file)
                 .await
-                .map_err(|e| anyhow::anyhow!("failed to read file {file}: {e}"))?;
-            stream.upload_video(*library_id, &video.guid, bytes).await?;
-            eprintln!("Uploaded video {} ({})", video.guid, video.title);
+                .map_err(|e| anyhow::anyhow!("failed to open file {file}: {e}"))?;
+            let file_size = fh
+                .metadata()
+                .await
+                .map_err(|e| anyhow::anyhow!("failed to read metadata for {file}: {e}"))?
+                .len();
+
+            let pb = progress::file_progress(file_size, quiet);
+
+            let body: reqwest::Body = match &pb {
+                Some(bar) => {
+                    let reader = bar.wrap_async_read(fh);
+                    reqwest::Body::wrap_stream(ReaderStream::new(reader))
+                }
+                None => reqwest::Body::wrap_stream(ReaderStream::new(fh)),
+            };
+
+            stream.upload_video(*library_id, &video.guid, body).await?;
+
+            progress::finish_with_message(
+                pb.as_ref(),
+                format!("Uploaded {} ({})", video.guid, video.title),
+            );
+            if pb.is_none() && !quiet {
+                eprintln!("Uploaded video {} ({})", video.guid, video.title);
+            }
+
             if let OutputFormat::Json = format {
                 let json =
                     serde_json::to_string_pretty(&video).expect("failed to serialize to JSON");
