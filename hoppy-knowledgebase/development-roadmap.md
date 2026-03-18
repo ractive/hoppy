@@ -167,14 +167,20 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Manage DNS zones and records.
 
-- [ ] DNS zone commands:
-  - [ ] `dns zone list|get|create|update|delete`
-- [ ] DNS record commands:
-  - [ ] `dns record list --zone-id <id>`
-  - [ ] `dns record add --zone-id <id> --type <A|AAAA|CNAME|...> --name <name> --value <value> [--ttl <seconds>]`
-  - [ ] `dns record update --zone-id <id> --record-id <id> [options]`
-  - [ ] `dns record delete --zone-id <id> --record-id <id> [--yes]`
-- [ ] Import/export zone files (if API supports it)
+- [x] DNS zone commands:
+  - [x] `dns zone list|get|create|update|delete`
+  - [x] Zone update flags: custom nameservers, SOA email, logging, IP anonymization
+  - [x] Pagination and search support
+- [x] DNS record commands:
+  - [x] `dns record list --zone-id <id>`
+  - [x] `dns record add --zone-id <id> --type <A|AAAA|CNAME|...> --name <name> --value <value> [--ttl <seconds>]`
+  - [x] `dns record update --zone-id <id> --record-id <id> [options]`
+  - [x] `dns record delete --zone-id <id> --record-id <id> [--yes]`
+  - [x] All record types: A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA + bunny-specific (Redirect, Flatten, PullZone, Script)
+  - [x] Record add supports priority, weight, port, flags, tag, comment
+- [x] Confirmation prompts for destructive operations (--yes to skip)
+- [x] 15 wiremock integration tests with fixture-based responses
+- [ ] Import/export zone files — deferred (API supports export as BIND file, import endpoint exists but not documented well enough for safe implementation)
 
 **Deliverable:** Full DNS management via CLI.
 
@@ -295,3 +301,6 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-18 | Streaming upload deferred | Attempted reqwest `Body::wrap_stream` but it added unnecessary deps to root crate. `tokio::fs::read` is simpler and sufficient until progress bar work in iter 7. |
 | 2026-03-18 | PaginatedList/ApiError kept separate per crate | Intentionally duplicated across bunny-api-core and bunny-api-compute — crates are independent workspace members, shared extraction would add coupling without benefit. Documented in source. |
 | 2026-03-18 | Storage zone list API rejects Accept header | bunny.net returns 401 if `Accept: application/json` header is sent on `/storagezone` endpoint — removed Accept header for this endpoint |
+| 2026-03-18 | DNS record creation uses PUT | bunny.net uses `PUT /dnszone/{zoneId}/records` for record creation, not POST — unusual but documented in their OpenAPI spec |
+| 2026-03-18 | DNS records embedded in zone response | No separate list-records endpoint — `GET /dnszone/{id}` returns the zone with all records in a `Records` array. `dns record list` fetches the full zone and extracts records. |
+| 2026-03-18 | DNS zone import/export deferred | API supports `GET /dnszone/{id}/export` (BIND file) and `POST /dnszone/{zoneId}/import` but import endpoint lacks documentation detail. Deferred to avoid risky implementation. |
