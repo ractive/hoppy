@@ -1,6 +1,6 @@
 use crate::auth;
 use crate::cli::{OutputFormat, StorageZoneAction};
-use crate::output;
+use crate::output::{self, PaginatedListJson};
 use anyhow::Result;
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
@@ -96,21 +96,6 @@ impl From<&StorageZone> for StorageZoneDetail {
             deleted: sz.deleted,
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// JSON envelope for paginated list
-// ---------------------------------------------------------------------------
-
-/// Wrapper so the JSON list output includes the pagination envelope
-/// (CurrentPage, TotalItems, HasMoreItems) instead of just the items array.
-#[derive(serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-struct PaginatedListJson<'a, T> {
-    items: &'a [T],
-    current_page: i64,
-    total_items: i64,
-    has_more_items: bool,
 }
 
 // ---------------------------------------------------------------------------

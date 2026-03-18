@@ -1,20 +1,10 @@
 use crate::auth;
 use crate::cli::{OutputFormat, PullZoneAction};
-use crate::output;
+use crate::output::{self, PaginatedListJson};
 use anyhow::Result;
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreatePullZone, PullZone, PurgeCache, UpdatePullZone};
 use std::io::{self, BufRead, Write};
-
-/// Wrapper for JSON list output — includes the pagination envelope.
-#[derive(serde::Serialize)]
-#[serde(rename_all = "PascalCase")]
-struct PaginatedListJson<'a, T> {
-    items: &'a [T],
-    current_page: i64,
-    total_items: i64,
-    has_more_items: bool,
-}
 
 // ---------------------------------------------------------------------------
 // Display structs
