@@ -50,7 +50,9 @@ impl CoreClient {
 
     /// List Pull Zones with optional pagination and search.
     ///
-    /// `page` is 1-based. Pass `None` to use the API default (page 1).
+    /// `page` is 1-based; defaults to 1. `per_page` defaults to 1000 (the API
+    /// maximum). Both are always sent so the API returns a paginated envelope.
+    /// Callers with more than 1000 zones must page manually.
     pub async fn list_pull_zones(
         &self,
         page: Option<u32>,
