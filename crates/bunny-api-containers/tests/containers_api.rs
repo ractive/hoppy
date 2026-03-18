@@ -147,8 +147,14 @@ async fn get_application_overview() {
 
     assert_eq!(overview.regions.len(), 1);
     assert_eq!(overview.regions[0].region.as_deref(), Some("DE"));
-    assert!(overview.average_cpu.is_some(), "averageCPU should deserialize");
-    assert!(overview.average_ram.is_some(), "averageRAM should deserialize");
+    assert!(
+        overview.average_cpu.is_some(),
+        "averageCPU should deserialize"
+    );
+    assert!(
+        overview.average_ram.is_some(),
+        "averageRAM should deserialize"
+    );
     let chart = overview.latency_chart.unwrap();
     assert_eq!(chart.len(), 3);
 }
@@ -941,8 +947,8 @@ async fn list_registries() {
     let result = test_client(&server.uri()).list_registries().await.unwrap();
 
     assert_eq!(result.items.len(), 3);
-    assert_eq!(result.items[0].display_name, "GitHub Packages ractive");
-    assert_eq!(result.items[0].id, Some(5602));
+    assert_eq!(result.items[0].display_name, "GitHub Packages testuser");
+    assert_eq!(result.items[0].id, Some(9999));
 }
 
 #[tokio::test]
@@ -950,7 +956,7 @@ async fn get_registry() {
     let server = MockServer::start().await;
 
     Mock::given(method("GET"))
-        .and(path("/registries/5602"))
+        .and(path("/registries/9999"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_REGISTRY_GET, "application/json"),
@@ -959,10 +965,10 @@ async fn get_registry() {
         .mount(&server)
         .await;
 
-    let reg = test_client(&server.uri()).get_registry(5602).await.unwrap();
+    let reg = test_client(&server.uri()).get_registry(9999).await.unwrap();
 
-    assert_eq!(reg.id, Some(5602));
-    assert_eq!(reg.display_name, "GitHub Packages ractive");
+    assert_eq!(reg.id, Some(9999));
+    assert_eq!(reg.display_name, "GitHub Packages testuser");
     assert_eq!(reg.host_name, "ghcr.io");
     assert_eq!(reg.is_public, Some(false));
 }
@@ -977,8 +983,8 @@ async fn add_registry() {
         .and(body_json(serde_json::json!({
             "displayName": "My Registry",
             "passwordCredentials": {
-                "userName": "ractive",
-                "password": "ghp_secret"
+                "userName": "testuser",
+                "password": "test-password"
             }
         })))
         .respond_with(
@@ -992,8 +998,8 @@ async fn add_registry() {
         display_name: "My Registry".to_owned(),
         registry_type: None,
         password_credentials: Some(RegistryCredentials {
-            user_name: "ractive".to_owned(),
-            password: "ghp_secret".to_owned(),
+            user_name: "testuser".to_owned(),
+            password: "test-password".to_owned(),
         }),
     };
 
@@ -1010,7 +1016,7 @@ async fn update_registry() {
     let server = MockServer::start().await;
 
     Mock::given(method("PUT"))
-        .and(path("/registries/5602"))
+        .and(path("/registries/9999"))
         .and(header("AccessKey", "test-api-key"))
         .and(body_json(serde_json::json!({
             "displayName": "Updated Registry",
@@ -1030,7 +1036,7 @@ async fn update_registry() {
     };
 
     let resp = test_client(&server.uri())
-        .update_registry(5602, &body)
+        .update_registry(9999, &body)
         .await
         .unwrap();
 
@@ -1042,7 +1048,7 @@ async fn delete_registry() {
     let server = MockServer::start().await;
 
     Mock::given(method("DELETE"))
-        .and(path("/registries/5602"))
+        .and(path("/registries/9999"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_REGISTRY_DELETE, "application/json"),
@@ -1052,7 +1058,7 @@ async fn delete_registry() {
         .await;
 
     let resp = test_client(&server.uri())
-        .delete_registry(5602)
+        .delete_registry(9999)
         .await
         .unwrap();
 
@@ -1577,10 +1583,7 @@ async fn unauthorized_returns_error() {
         .await
         .unwrap_err();
 
-    assert!(
-        err.to_string().contains("401"),
-        "unexpected error: {err}"
-    );
+    assert!(err.to_string().contains("401"), "unexpected error: {err}");
 }
 
 #[tokio::test]

@@ -26,9 +26,10 @@ impl ContainersClient {
 
     /// Create a client pointing at a custom base URL (useful for tests / staging).
     pub fn with_base_url(api_key: impl Into<String>, base_url: impl Into<String>) -> Self {
+        let base_url = base_url.into();
         Self {
             http: Client::new(),
-            base_url: base_url.into(),
+            base_url: base_url.trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
         }

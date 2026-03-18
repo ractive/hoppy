@@ -251,9 +251,9 @@ The CLI crate depends on the generated crates and wraps their clients with our a
   - [x] 13 unit tests (serde roundtrip, client construction, auth header)
   - [x] 57 wiremock integration tests with real API fixtures (all 47 endpoints + error handling + debug mode)
   - [x] Fix enum serde casing: API returns camelCase, added `rename_all = "camelCase"` to 10 enums
-  - [ ] CLI commands for Magic Containers — not yet wired (API client ready, CLI integration pending)
+  - [x] CLI commands for Magic Containers — full `container` command tree wired (apps, templates, endpoints, volumes, registries, regions, nodes, pods, limits, log forwarding)
 
-**Deliverable:** Deploy and manage edge scripts. Magic Containers API client implemented; CLI commands pending.
+**Deliverable:** Deploy and manage edge scripts. Magic Containers API client and CLI commands fully implemented.
 
 ---
 

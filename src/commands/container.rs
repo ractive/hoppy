@@ -5,7 +5,7 @@ use crate::cli::{
     ContainerTemplateAction, ContainerVolumeAction, OutputFormat,
 };
 use crate::output;
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use bunny_api_containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
     AutoscalingSettings, CdnEndpointRequest, ContainerPortMappingRequest, ContainerRegistryRequest,
@@ -44,15 +44,6 @@ impl<'a, T: serde::Serialize> CursorListJson<'a, T> {
             next_cursor: &list.cursor,
         }
     }
-}
-
-// Variant for ListVolumesResponse (which has its own structure)
-#[derive(serde::Serialize)]
-struct VolumesListJson<'a, T: serde::Serialize> {
-    items: &'a [T],
-    total_items: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_cursor: &'a Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -381,12 +372,16 @@ fn is_confirmed(input: &str) -> bool {
     answer == "y" || answer == "yes"
 }
 
-fn confirm(prompt: &str) -> Result<bool> {
-    eprint!("{prompt} [y/N] ");
-    io::stderr().flush()?;
-    let mut line = String::new();
-    io::stdin().lock().read_line(&mut line)?;
-    Ok(is_confirmed(&line))
+async fn confirm(prompt: String) -> Result<bool> {
+    tokio::task::spawn_blocking(move || {
+        eprint!("{prompt} [y/N] ");
+        io::stderr().flush()?;
+        let mut line = String::new();
+        io::stdin().lock().read_line(&mut line)?;
+        Ok(is_confirmed(&line))
+    })
+    .await
+    .context("confirm task panicked")?
 }
 
 // ---------------------------------------------------------------------------
@@ -435,7 +430,8 @@ async fn handle_app(
                 let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<AppRow> = result.items.iter().map(AppRow::from).collect();
@@ -447,7 +443,7 @@ async fn handle_app(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&app).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&app).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = AppDetail::from(&app);
@@ -481,7 +477,7 @@ async fn handle_app(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&resp).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
                 eprintln!("Created application: {}", resp.id);
@@ -527,7 +523,7 @@ async fn handle_app(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&resp).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
                 eprintln!("Updated application: {}", resp.id);
@@ -538,7 +534,7 @@ async fn handle_app(
             eprintln!("Deployed application {id}");
         }
         ContainerAppAction::Undeploy { id } => {
-            if !yes && !confirm(&format!("Undeploy application {id}?"))? {
+            if !yes && !confirm(format!("Undeploy application {id}?")).await? {
                 eprintln!("Aborted.");
                 return Ok(());
             }
@@ -550,7 +546,7 @@ async fn handle_app(
             eprintln!("Restarted application {id}");
         }
         ContainerAppAction::Delete { id } => {
-            if !yes && !confirm(&format!("Delete application {id}?"))? {
+            if !yes && !confirm(format!("Delete application {id}?")).await? {
                 eprintln!("Aborted.");
                 return Ok(());
             }
@@ -562,7 +558,8 @@ async fn handle_app(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&overview).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&overview)
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 // Overview is complex — show as JSON-style key/value in text mode
@@ -607,7 +604,7 @@ async fn handle_app(
                 .await?;
             println!(
                 "{}",
-                serde_json::to_string_pretty(&stats).expect("failed to serialize to JSON")
+                serde_json::to_string_pretty(&stats).context("failed to serialize to JSON")?
             );
         }
     }
@@ -634,7 +631,7 @@ async fn handle_template(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&tmpl).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = ContainerTemplateRow::from(&tmpl);
@@ -668,7 +665,7 @@ async fn handle_template(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&tmpl).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = ContainerTemplateRow::from(&tmpl);
@@ -704,7 +701,7 @@ async fn handle_template(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&tmpl).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = ContainerTemplateRow::from(&tmpl);
@@ -716,9 +713,10 @@ async fn handle_template(
             container_id,
         } => {
             if !yes
-                && !confirm(&format!(
+                && !confirm(format!(
                     "Delete container template {container_id} from app {app_id}?"
-                ))?
+                ))
+                .await?
             {
                 eprintln!("Aborted.");
                 return Ok(());
@@ -736,7 +734,7 @@ async fn handle_template(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&tmpl).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = ContainerTemplateRow::from(&tmpl);
@@ -813,7 +811,8 @@ async fn handle_endpoint(
                 let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<EndpointRow> = result.items.iter().map(EndpointRow::from).collect();
@@ -835,7 +834,7 @@ async fn handle_endpoint(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&resp).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
                 eprintln!("Created endpoint: {}", resp.id);
@@ -859,7 +858,8 @@ async fn handle_endpoint(
             app_id,
             endpoint_id,
         } => {
-            if !yes && !confirm(&format!("Delete endpoint {endpoint_id} from app {app_id}?"))? {
+            if !yes && !confirm(format!("Delete endpoint {endpoint_id} from app {app_id}?")).await?
+            {
                 eprintln!("Aborted.");
                 return Ok(());
             }
@@ -885,14 +885,9 @@ async fn handle_volume(
         ContainerVolumeAction::List { app_id } => {
             let result = c.list_volumes(app_id).await?;
             if let OutputFormat::Json = format {
-                let envelope = VolumesListJson {
-                    items: &result.items,
-                    total_items: result.meta.as_ref().map(|m| m.total_items).unwrap_or(0),
-                    next_cursor: &result.cursor,
-                };
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<VolumeRow> = result.items.iter().map(VolumeRow::from).collect();
@@ -916,14 +911,14 @@ async fn handle_volume(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&resp).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
                 eprintln!("Updated volume: {} ({:.1} GB)", resp.name, resp.size);
             }
         }
         ContainerVolumeAction::Detach { app_id, volume_id } => {
-            if !yes && !confirm(&format!("Detach volume {volume_id} from app {app_id}?"))? {
+            if !yes && !confirm(format!("Detach volume {volume_id} from app {app_id}?")).await? {
                 eprintln!("Aborted.");
                 return Ok(());
             }
@@ -932,9 +927,10 @@ async fn handle_volume(
         }
         ContainerVolumeAction::Delete { app_id, volume_id } => {
             if !yes
-                && !confirm(&format!(
+                && !confirm(format!(
                     "Delete all instances of volume {volume_id} from app {app_id}?"
-                ))?
+                ))
+                .await?
             {
                 eprintln!("Aborted.");
                 return Ok(());
@@ -948,9 +944,10 @@ async fn handle_volume(
             instance_id,
         } => {
             if !yes
-                && !confirm(&format!(
+                && !confirm(format!(
                     "Delete volume instance {instance_id} from volume {volume_id}?"
-                ))?
+                ))
+                .await?
             {
                 eprintln!("Aborted.");
                 return Ok(());
@@ -982,7 +979,8 @@ async fn handle_registry(
                 let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<RegistryRow> = result.items.iter().map(RegistryRow::from).collect();
@@ -994,7 +992,8 @@ async fn handle_registry(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&registry).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&registry)
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 let row = RegistryRow::from(&registry);
@@ -1027,7 +1026,7 @@ async fn handle_registry(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&resp).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
                 let id_str = resp
@@ -1060,14 +1059,14 @@ async fn handle_registry(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&resp).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
                 eprintln!("Updated registry {} (status: {:?})", id, resp.status);
             }
         }
         ContainerRegistryAction::Delete { id } => {
-            if !yes && !confirm(&format!("Delete registry {id}?"))? {
+            if !yes && !confirm(format!("Delete registry {id}?")).await? {
                 eprintln!("Aborted.");
                 return Ok(());
             }
@@ -1097,7 +1096,8 @@ async fn handle_region(
                 let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
@@ -1109,7 +1109,7 @@ async fn handle_region(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&resp).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = RegionRow::from(&resp.region);
@@ -1139,7 +1139,8 @@ async fn handle_node(
                 let envelope = CursorListJson::from_list(&result);
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 // Nodes are strings — print one per line
@@ -1177,7 +1178,7 @@ async fn handle_limits(format: OutputFormat, debug: bool) -> Result<()> {
     if let OutputFormat::Json = format {
         println!(
             "{}",
-            serde_json::to_string_pretty(&limits).expect("failed to serialize to JSON")
+            serde_json::to_string_pretty(&limits).context("failed to serialize to JSON")?
         );
     } else {
         let row = UserLimitsRow::from(&limits);
@@ -1204,7 +1205,7 @@ async fn handle_log_forwarding(
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&result.items)
-                        .expect("failed to serialize to JSON")
+                        .context("failed to serialize to JSON")?
                 );
             } else {
                 let rows: Vec<LogForwardingRow> =
@@ -1217,7 +1218,7 @@ async fn handle_log_forwarding(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&config).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&config).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = LogForwardingRow::from(&config);
@@ -1246,7 +1247,7 @@ async fn handle_log_forwarding(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&config).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&config).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = LogForwardingRow::from(&config);
@@ -1275,7 +1276,7 @@ async fn handle_log_forwarding(
             if let OutputFormat::Json = format {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&config).expect("failed to serialize to JSON")
+                    serde_json::to_string_pretty(&config).context("failed to serialize to JSON")?
                 );
             } else {
                 let row = LogForwardingRow::from(&config);
@@ -1283,7 +1284,7 @@ async fn handle_log_forwarding(
             }
         }
         ContainerLogForwardingAction::Delete { app_id } => {
-            if !yes && !confirm(&format!("Delete log forwarding config for app {app_id}?"))? {
+            if !yes && !confirm(format!("Delete log forwarding config for app {app_id}?")).await? {
                 eprintln!("Aborted.");
                 return Ok(());
             }
