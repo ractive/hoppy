@@ -154,7 +154,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
   - [x] `storage ls --zone <name> [--path <dir>]`
   - [x] `storage rm --zone <name> --remote-path <path> [--yes]`
 - [x] Handle per-zone storage API key (from zone details or `BUNNY_STORAGE_KEY` env var)
-- [ ] Progress bar for upload/download (stderr, only if TTY) — deferred to iter 7 polish
+- [x] Progress bar for upload/download (stderr, only if TTY) — done in iter 7
 - [x] JSON list output should include pagination envelope (`current_page`, `total_items`, `has_more_items`), not just the items array — apply consistently across all list commands including pull zones
 - [x] Integration tests with mock HTTP server (carried from iter 1 — record real API responses as fixtures first)
 - [x] Consolidate duplicate `PaginatedList` and `ApiError` types across `bunny-api-core` and `bunny-api-compute` — investigated, intentionally kept separate with documentation (crates are independent, no shared dependency warranted)
@@ -198,7 +198,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
   - [x] `stream video upload --library-id <id> --file <path>`
   - [x] `stream video delete --library-id <id> --video-id <id> [--yes]`
 - [x] Handle stream API key (`BUNNY_STREAM_KEY` or derived from library)
-- [ ] Video upload with progress bar — deferred to iter 7 polish
+- [x] Video upload with progress bar — done in iter 7
 
 **Deliverable:** Upload and manage videos via CLI.
 
@@ -220,7 +220,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 - [x] Confirmation prompts for destructive operations (`--yes` to skip)
 - [x] 27 wiremock integration tests with fixture-based responses
 - [x] Error handling tests (401 unauthorized, 404 not found)
-- [ ] WAF profiles command (`shield waf profiles`) — API client implemented, CLI not wired yet
+- [x] WAF profiles command (`shield waf profiles`) — wired in iter 7
 
 **Deliverable:** Security configuration via CLI.
 
@@ -261,13 +261,18 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Quick wins — clean up deferred tech debt, add small features. No release infrastructure yet.
 
-- [ ] `hoppy auth check` — validate API key and print account info (new Core API endpoint + CLI command)
-- [ ] Replace `endpoint_suggestions: Vec<serde_json::Value>` in `bunny-api-containers` types with a concrete type once API shape is confirmed
-- [ ] Remove `CursorListJson` wrapper in CLI — serialize `CursorList<T>` directly in JSON mode (already done for volumes, 5 remaining call sites)
-- [ ] Add `FromStr` impls to container enums (`RuntimeType`, `Granularity`, `RegistryType`, `LogForwardingType`, `SyslogFormat`) to replace hand-written `parse_*` helpers
-- [ ] Wire WAF profiles CLI command (`shield waf profiles`) — API client already implemented in iter 5, just needs CLI wiring
-- [ ] Progress bars for storage upload/download and video upload (`indicatif` crate, stderr only when TTY)
-- [ ] `bunny-api-containers` wiremock integration tests (pattern established in other crates)
+- [x] `hoppy auth check` — validate API key and print billing/account info (`GET /billing` endpoint + CLI command + 3 wiremock tests)
+- [x] Replace `endpoint_suggestions: Vec<serde_json::Value>` in `bunny-api-containers` types with concrete `EndpointSuggestion` struct
+- [x] Remove `CursorListJson` wrapper in CLI — serialize `CursorList<T>` directly in JSON mode (5 call sites updated)
+- [x] Add `FromStr` impls to container enums (`RuntimeType`, `Granularity`, `RegistryType`, `LogForwardingType`, `SyslogFormat`) — replaced 5 hand-written `parse_*` helpers + 5 unit tests
+- [x] Wire WAF profiles CLI command (`shield waf profiles`)
+- [x] Wire Shield zone lookup by pull zone (`shield zone get-by-pullzone`) — already existed from iter 5
+- [x] Wire container autoscaling commands (`container app autoscaling-get|autoscaling-update`)
+- [x] Wire container region settings commands (`container app region-settings-get|region-settings-update`)
+- [x] Wire container registry image commands (`container registry image-tags|image-digest|config-suggestions|search-public`)
+- [x] Wire compute upsert commands (`script variable upsert`, `script secret upsert`)
+- [x] Progress bars for storage upload/download and video upload (`indicatif` crate, streaming uploads, stderr only when TTY, suppressed by `--quiet`)
+- [x] `bunny-api-containers` wiremock integration tests — already had 57 tests covering all endpoints (confirmed, no gaps)
 
 **Deliverable:** Cleaner codebase, all deferred small items resolved.
 

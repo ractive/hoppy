@@ -1,0 +1,12 @@
+{
+  "Balance": 42.50,
+  "ThisMonthCharges": 7.12,
+  "BillingEnabled": true,
+  "MinimumMonthlyCommit": 0.0,
+  "AutomaticRechargeEnabled": true,
+  "AutomaticRechargeTreshold": 5.0,
+  "AutomaticPaymentAmount": 25.0,
+  "AutomaticPaymentCardType": "Visa",
+  "AutomaticPaymentIdentifier": "****1234",
+  "MonthlyBandwidthUsed": 10737418240
+}

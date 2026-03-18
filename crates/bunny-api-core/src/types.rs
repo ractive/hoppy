@@ -792,6 +792,54 @@ impl UpdateVideoLibrary {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Billing / account types
+// ---------------------------------------------------------------------------
+
+/// Key account and billing details returned by `GET /billing`.
+///
+/// Only the most actionable fields are modelled here. All are marked
+/// `#[serde(default)]` because bunny.net may omit optional fields on some
+/// account types.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BillingDetails {
+    /// Current account credit balance (USD).
+    #[serde(default)]
+    pub balance: f64,
+    /// Charges accumulated so far this calendar month (USD).
+    #[serde(default)]
+    pub this_month_charges: f64,
+    /// Whether billing is enabled on the account.
+    #[serde(default)]
+    pub billing_enabled: bool,
+    /// Minimum monthly spending commitment (USD), 0 if none.
+    #[serde(default)]
+    pub minimum_monthly_commit: f64,
+    /// Whether automatic recharge is enabled.
+    #[serde(default)]
+    pub automatic_recharge_enabled: bool,
+    /// Balance threshold that triggers an automatic recharge (USD).
+    #[serde(default)]
+    pub automatic_recharge_treshold: f64,
+    /// Amount charged on each automatic recharge (USD).
+    #[serde(default)]
+    pub automatic_payment_amount: f64,
+    /// Card/payment-method type string (e.g. "Visa"), if on file.
+    #[serde(default)]
+    pub automatic_payment_card_type: Option<String>,
+    /// Masked card or account identifier, if on file.
+    #[serde(default)]
+    pub automatic_payment_identifier: Option<String>,
+    /// Total bandwidth used this month (bytes).
+    #[serde(default)]
+    pub monthly_bandwidth_used: i64,
+}
+
+// ---------------------------------------------------------------------------
+// Request bodies
+// ---------------------------------------------------------------------------
+
 /// Request body for `PUT /dnszone/{zoneId}/records` — add a DNS record.
 /// Note: bunny.net uses PUT for record creation, not POST.
 #[derive(Debug, Clone, Serialize)]
