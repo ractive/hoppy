@@ -5,7 +5,8 @@ use reqwest::{
 };
 
 use crate::types::{
-    ApiError, CreatePullZone, CreateStorageZone, PaginatedList, PullZone, PurgeCache, StorageZone,
+    AddDnsRecord, ApiError, CreateDnsZone, CreatePullZone, CreateStorageZone, DnsRecord, DnsZone,
+    PaginatedList, PullZone, PurgeCache, StorageZone, UpdateDnsRecord, UpdateDnsZone,
     UpdatePullZone, UpdateStorageZone,
 };
 
@@ -186,6 +187,98 @@ impl CoreClient {
     /// Delete a Storage Zone permanently.
     pub async fn delete_storage_zone(&self, id: i64) -> Result<()> {
         let url = format!("{}/storagezone/{id}", self.base_url);
+        let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // DNS Zone endpoints
+    // -----------------------------------------------------------------------
+
+    /// List DNS Zones with optional pagination and search.
+    pub async fn list_dns_zones(
+        &self,
+        page: Option<u32>,
+        per_page: Option<u32>,
+        search: Option<&str>,
+    ) -> Result<PaginatedList<DnsZone>> {
+        let url = format!("{}/dnszone", self.base_url);
+        let page = page.unwrap_or(1);
+        let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
+        let mut rb = self.auth(self.http.get(&url)).query(&[
+            ("page", page.to_string()),
+            ("perPage", per_page.to_string()),
+        ]);
+        if let Some(q) = search {
+            rb = rb.query(&[("search", q)]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch a single DNS Zone by its numeric ID.
+    pub async fn get_dns_zone(&self, id: i64) -> Result<DnsZone> {
+        let url = format!("{}/dnszone/{id}", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Create a new DNS Zone.
+    pub async fn create_dns_zone(&self, body: &CreateDnsZone) -> Result<DnsZone> {
+        let url = format!("{}/dnszone", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Update an existing DNS Zone.
+    pub async fn update_dns_zone(&self, id: i64, body: &UpdateDnsZone) -> Result<DnsZone> {
+        let url = format!("{}/dnszone/{id}", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Delete a DNS Zone permanently.
+    pub async fn delete_dns_zone(&self, id: i64) -> Result<()> {
+        let url = format!("{}/dnszone/{id}", self.base_url);
+        let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // DNS Record endpoints
+    // -----------------------------------------------------------------------
+
+    /// Add a DNS record to a zone.
+    ///
+    /// Note: bunny.net uses `PUT` (not `POST`) for record creation.
+    pub async fn add_dns_record(&self, zone_id: i64, body: &AddDnsRecord) -> Result<DnsRecord> {
+        let url = format!("{}/dnszone/{zone_id}/records", self.base_url);
+        let rb = self.auth(self.http.put(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Update a DNS record.
+    pub async fn update_dns_record(
+        &self,
+        zone_id: i64,
+        record_id: i64,
+        body: &UpdateDnsRecord,
+    ) -> Result<()> {
+        let url = format!("{}/dnszone/{zone_id}/records/{record_id}", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Delete a DNS record.
+    pub async fn delete_dns_record(&self, zone_id: i64, record_id: i64) -> Result<()> {
+        let url = format!("{}/dnszone/{zone_id}/records/{record_id}", self.base_url);
         let rb = self.auth(self.http.delete(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await

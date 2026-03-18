@@ -460,3 +460,368 @@ impl PurgeCache {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// DNS Zone types
+// ---------------------------------------------------------------------------
+
+/// DNS record type values used by the bunny.net API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum DnsRecordType {
+    A = 0,
+    AAAA = 1,
+    CNAME = 2,
+    TXT = 3,
+    MX = 4,
+    Redirect = 5,
+    Flatten = 6,
+    PullZone = 7,
+    SRV = 8,
+    CAA = 9,
+    PTR = 10,
+    Script = 11,
+    NS = 12,
+}
+
+impl std::fmt::Display for DnsRecordType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DnsRecordType::A => write!(f, "A"),
+            DnsRecordType::AAAA => write!(f, "AAAA"),
+            DnsRecordType::CNAME => write!(f, "CNAME"),
+            DnsRecordType::TXT => write!(f, "TXT"),
+            DnsRecordType::MX => write!(f, "MX"),
+            DnsRecordType::Redirect => write!(f, "Redirect"),
+            DnsRecordType::Flatten => write!(f, "Flatten"),
+            DnsRecordType::PullZone => write!(f, "PullZone"),
+            DnsRecordType::SRV => write!(f, "SRV"),
+            DnsRecordType::CAA => write!(f, "CAA"),
+            DnsRecordType::PTR => write!(f, "PTR"),
+            DnsRecordType::Script => write!(f, "Script"),
+            DnsRecordType::NS => write!(f, "NS"),
+        }
+    }
+}
+
+impl std::str::FromStr for DnsRecordType {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "A" => Ok(DnsRecordType::A),
+            "AAAA" => Ok(DnsRecordType::AAAA),
+            "CNAME" => Ok(DnsRecordType::CNAME),
+            "TXT" => Ok(DnsRecordType::TXT),
+            "MX" => Ok(DnsRecordType::MX),
+            "REDIRECT" => Ok(DnsRecordType::Redirect),
+            "FLATTEN" => Ok(DnsRecordType::Flatten),
+            "PULLZONE" => Ok(DnsRecordType::PullZone),
+            "SRV" => Ok(DnsRecordType::SRV),
+            "CAA" => Ok(DnsRecordType::CAA),
+            "PTR" => Ok(DnsRecordType::PTR),
+            "SCRIPT" => Ok(DnsRecordType::Script),
+            "NS" => Ok(DnsRecordType::NS),
+            _ => anyhow::bail!("unknown DNS record type: {s}"),
+        }
+    }
+}
+
+/// A DNS record within a zone.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsRecord {
+    pub id: i64,
+    #[serde(rename = "Type")]
+    pub record_type: DnsRecordType,
+    #[serde(default)]
+    pub ttl: i32,
+    #[serde(default)]
+    pub value: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub weight: i32,
+    #[serde(default)]
+    pub priority: i32,
+    #[serde(default)]
+    pub port: i32,
+    #[serde(default)]
+    pub flags: u8,
+    #[serde(default)]
+    pub tag: Option<String>,
+    #[serde(default)]
+    pub accelerated: bool,
+    #[serde(default)]
+    pub accelerated_pull_zone_id: i64,
+    #[serde(default)]
+    pub link_name: Option<String>,
+    #[serde(default)]
+    pub disabled: bool,
+    #[serde(default)]
+    pub comment: Option<String>,
+}
+
+/// A bunny.net DNS zone.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsZone {
+    pub id: i64,
+    #[serde(default)]
+    pub domain: String,
+    #[serde(default)]
+    pub records: Vec<DnsRecord>,
+    #[serde(default)]
+    pub date_modified: String,
+    #[serde(default)]
+    pub date_created: String,
+    #[serde(default)]
+    pub nameservers_detected: bool,
+    #[serde(default)]
+    pub custom_nameservers_enabled: bool,
+    #[serde(default)]
+    pub nameserver1: Option<String>,
+    #[serde(default)]
+    pub nameserver2: Option<String>,
+    #[serde(default)]
+    pub soa_email: Option<String>,
+    #[serde(default)]
+    pub nameservers_next_check: String,
+    #[serde(default)]
+    pub logging_enabled: bool,
+    #[serde(default)]
+    pub logging_ip_anonymization_enabled: bool,
+    #[serde(default)]
+    pub dns_sec_enabled: bool,
+}
+
+/// Request body for `POST /dnszone` — create a new DNS zone.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct CreateDnsZone {
+    pub domain: String,
+}
+
+impl CreateDnsZone {
+    pub fn new(domain: impl Into<String>) -> Self {
+        Self {
+            domain: domain.into(),
+        }
+    }
+}
+
+/// Request body for `POST /dnszone/{id}` — update a DNS zone.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateDnsZone {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_nameservers_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nameserver1: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nameserver2: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub soa_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logging_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logging_ip_anonymization_enabled: Option<bool>,
+}
+
+impl UpdateDnsZone {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn custom_nameservers_enabled(mut self, enabled: bool) -> Self {
+        self.custom_nameservers_enabled = Some(enabled);
+        self
+    }
+
+    #[must_use]
+    pub fn nameserver1(mut self, ns: impl Into<String>) -> Self {
+        self.nameserver1 = Some(ns.into());
+        self
+    }
+
+    #[must_use]
+    pub fn nameserver2(mut self, ns: impl Into<String>) -> Self {
+        self.nameserver2 = Some(ns.into());
+        self
+    }
+
+    #[must_use]
+    pub fn soa_email(mut self, email: impl Into<String>) -> Self {
+        self.soa_email = Some(email.into());
+        self
+    }
+
+    #[must_use]
+    pub fn logging_enabled(mut self, enabled: bool) -> Self {
+        self.logging_enabled = Some(enabled);
+        self
+    }
+
+    #[must_use]
+    pub fn logging_ip_anonymization_enabled(mut self, enabled: bool) -> Self {
+        self.logging_ip_anonymization_enabled = Some(enabled);
+        self
+    }
+}
+
+/// Request body for `PUT /dnszone/{zoneId}/records` — add a DNS record.
+/// Note: bunny.net uses PUT for record creation, not POST.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AddDnsRecord {
+    #[serde(rename = "Type")]
+    pub record_type: DnsRecordType,
+    pub value: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ttl: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flags: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+impl AddDnsRecord {
+    pub fn new(record_type: DnsRecordType, value: impl Into<String>) -> Self {
+        Self {
+            record_type,
+            value: value.into(),
+            name: None,
+            ttl: None,
+            priority: None,
+            weight: None,
+            port: None,
+            flags: None,
+            tag: None,
+            comment: None,
+        }
+    }
+
+    #[must_use]
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[must_use]
+    pub fn ttl(mut self, ttl: i32) -> Self {
+        self.ttl = Some(ttl);
+        self
+    }
+
+    #[must_use]
+    pub fn priority(mut self, priority: i32) -> Self {
+        self.priority = Some(priority);
+        self
+    }
+
+    #[must_use]
+    pub fn weight(mut self, weight: i32) -> Self {
+        self.weight = Some(weight);
+        self
+    }
+
+    #[must_use]
+    pub fn port(mut self, port: i32) -> Self {
+        self.port = Some(port);
+        self
+    }
+
+    #[must_use]
+    pub fn flags(mut self, flags: u8) -> Self {
+        self.flags = Some(flags);
+        self
+    }
+
+    #[must_use]
+    pub fn tag(mut self, tag: impl Into<String>) -> Self {
+        self.tag = Some(tag.into());
+        self
+    }
+
+    #[must_use]
+    pub fn comment(mut self, comment: impl Into<String>) -> Self {
+        self.comment = Some(comment.into());
+        self
+    }
+}
+
+/// Request body for `POST /dnszone/{zoneId}/records/{id}` — update a DNS record.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateDnsRecord {
+    pub id: i64,
+    #[serde(rename = "Type")]
+    pub record_type: DnsRecordType,
+    pub value: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ttl: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+impl UpdateDnsRecord {
+    pub fn new(id: i64, record_type: DnsRecordType, value: impl Into<String>) -> Self {
+        Self {
+            id,
+            record_type,
+            value: value.into(),
+            name: None,
+            ttl: None,
+            priority: None,
+            weight: None,
+            comment: None,
+        }
+    }
+
+    #[must_use]
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[must_use]
+    pub fn ttl(mut self, ttl: i32) -> Self {
+        self.ttl = Some(ttl);
+        self
+    }
+
+    #[must_use]
+    pub fn priority(mut self, priority: i32) -> Self {
+        self.priority = Some(priority);
+        self
+    }
+
+    #[must_use]
+    pub fn weight(mut self, weight: i32) -> Self {
+        self.weight = Some(weight);
+        self
+    }
+
+    #[must_use]
+    pub fn comment(mut self, comment: impl Into<String>) -> Self {
+        self.comment = Some(comment.into());
+        self
+    }
+}
