@@ -287,7 +287,10 @@ async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: boo
                         .as_ref()
                         .map(|p| p.total_count as i64)
                         .unwrap_or(zones.len() as i64),
-                    has_more_items: page.as_ref().and_then(|p| p.next_page).is_some(),
+                    has_more_items: page
+                        .as_ref()
+                        .map(|p| p.next_page.is_some() || p.current_page < p.total_pages)
+                        .unwrap_or(false),
                 };
                 let json =
                     serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
@@ -342,6 +345,16 @@ async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: boo
             ddos_challenge_window,
             learning_mode,
         } => {
+            if waf_enabled.is_none()
+                && waf_execution_mode.is_none()
+                && ddos_sensitivity.is_none()
+                && ddos_execution_mode.is_none()
+                && ddos_challenge_window.is_none()
+                && learning_mode.is_none()
+            {
+                bail!("at least one update flag is required (--waf-enabled, --waf-execution-mode, --ddos-sensitivity, --ddos-execution-mode, --ddos-challenge-window, --learning-mode)");
+            }
+
             let mut zone_req = ShieldZoneRequest::default();
 
             if let Some(v) = waf_enabled {
@@ -696,6 +709,9 @@ async fn handle_access_list(
             is_enabled,
             action,
         } => {
+            if is_enabled.is_none() && action.is_none() {
+                bail!("at least one update flag is required (--is-enabled, --action)");
+            }
             let body = UpdateAccessListConfiguration {
                 is_enabled: *is_enabled,
                 action: action
@@ -749,6 +765,16 @@ async fn handle_bot_detection(
             fingerprint_aggression,
             fingerprint_complex_enabled,
         } => {
+            if execution_mode.is_none()
+                && request_integrity_sensitivity.is_none()
+                && ip_address_sensitivity.is_none()
+                && fingerprint_sensitivity.is_none()
+                && fingerprint_aggression.is_none()
+                && fingerprint_complex_enabled.is_none()
+            {
+                bail!("at least one update flag is required (--execution-mode, --request-integrity-sensitivity, --ip-address-sensitivity, --fingerprint-sensitivity, --fingerprint-aggression, --fingerprint-complex-enabled)");
+            }
+
             let request_integrity = request_integrity_sensitivity
                 .map(|v| {
                     u8_to_enum::<BotDetectionSensitivity>(v, "request-integrity-sensitivity").map(
