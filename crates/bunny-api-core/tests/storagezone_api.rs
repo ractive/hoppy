@@ -42,8 +42,13 @@ async fn list_storage_zones_returns_paginated_items() {
     assert_eq!(first.id, 9001);
     assert_eq!(first.name, "test-storage-zone-1");
     assert_eq!(first.region, "DE");
-    // Password must NOT be present in the deserialized struct but the field
-    // itself exists — we just verify the type was parsed successfully.
+    // Password is deserialized but skip_serializing prevents it from appearing
+    // in JSON output — verify that here.
+    let json_output = serde_json::to_string(&first).unwrap();
+    assert!(
+        !json_output.contains("redacted-storage-password"),
+        "password should not appear in serialized output"
+    );
     assert_eq!(first.files_stored, 46);
     assert_eq!(first.storage_used, 5635181);
 }
