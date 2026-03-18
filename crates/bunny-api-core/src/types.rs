@@ -109,7 +109,7 @@ pub struct PullZone {
     // Security
     #[serde(default)]
     pub zone_security_enabled: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub zone_security_key: String,
 
     // Geo zones

@@ -38,6 +38,7 @@ impl CoreClient {
     }
 
     /// Enable or disable debug logging of HTTP requests and responses to stderr.
+    #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
         self
