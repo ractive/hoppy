@@ -1,11 +1,11 @@
 [workspace]
 members = [
     ".",
-    "crates/hoppy-api-compute",
-    "crates/hoppy-api-core",
-    "crates/hoppy-api-shield",
-    "crates/hoppy-api-storage",
-    "crates/hoppy-api-stream",
+    "crates/bunny-api-compute",
+    "crates/bunny-api-core",
+    "crates/bunny-api-shield",
+    "crates/bunny-api-storage",
+    "crates/bunny-api-stream",
 ]
 resolver = "2"
 

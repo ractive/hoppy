@@ -106,10 +106,11 @@ hoppy/
   Cargo.toml          (workspace)
   crates/
     hoppy-cli/        (the CLI binary)
-    hoppy-api-core/   (generated from Core Platform spec)
-    hoppy-api-stream/ (generated from Stream spec)
-    hoppy-api-shield/ (generated from Shield spec)
-    hoppy-api-compute/(generated from Edge Scripting spec)
+    bunny-api-core/   (Core Platform API client)
+    bunny-api-stream/ (Stream API client)
+    bunny-api-shield/ (Shield API client)
+    bunny-api-compute/(Edge Scripting API client)
+    bunny-api-storage/(Edge Storage API client)
   specs/              (downloaded OpenAPI JSON files)
 ```
 

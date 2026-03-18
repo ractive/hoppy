@@ -1,8 +1,8 @@
 [package]
-name = "hoppy-api-shield"
+name = "bunny-api-compute"
 version = "0.1.0"
 edition = "2024"
-description = "Hand-written bunny.net Shield API client (WAF, DDoS, Rate Limiting, Bot Detection, Access Lists)"
+description = "Hand-written bunny.net Edge Scripting (Compute) API client"
 license = "MIT"
 
 [dependencies]

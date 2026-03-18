@@ -83,6 +83,66 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d20789868f4b01b2f2caec9f5c4e0213b41e3e5702a50157d699ae31ced2fcb"
 
 [[package]]
+name = "bunny-api-compute"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "tokio",
+]
+
+[[package]]
+name = "bunny-api-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "tokio",
+]
+
+[[package]]
+name = "bunny-api-shield"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "tokio",
+]
+
+[[package]]
+name = "bunny-api-storage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "bunny-api-stream"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "tokio",
+]
+
+[[package]]
 name = "bytecount"
 version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -394,66 +454,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tabled",
-]
-
-[[package]]
-name = "hoppy-api-compute"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
- "tokio",
-]
-
-[[package]]
-name = "hoppy-api-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
- "tokio",
-]
-
-[[package]]
-name = "hoppy-api-shield"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
- "tokio",
-]
-
-[[package]]
-name = "hoppy-api-storage"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "hoppy-api-stream"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "reqwest",
- "serde",
- "serde_json",
- "serde_repr",
- "tokio",
 ]
 
 [[package]]
