@@ -1,0 +1,6 @@
+{
+  "Id": 201,
+  "Name": "API_URL",
+  "Required": true,
+  "DefaultValue": "https://api.example.com"
+}
