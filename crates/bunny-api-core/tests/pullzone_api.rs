@@ -44,7 +44,7 @@ async fn get_pull_zone_returns_single_zone() {
     let server = MockServer::start().await;
 
     Mock::given(method("GET"))
-        .and(path("/pullzone/5480795"))
+        .and(path("/pullzone/1001"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -55,11 +55,11 @@ async fn get_pull_zone_returns_single_zone() {
         .await;
 
     let zone = test_client(&server.uri())
-        .get_pull_zone(5480795)
+        .get_pull_zone(1001)
         .await
         .unwrap();
 
-    assert_eq!(zone.id, 5480795);
+    assert_eq!(zone.id, 1001);
     assert_eq!(zone.name, "test-zone-19");
     assert!(zone.enabled);
 }

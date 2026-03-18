@@ -1,14 +1,14 @@
 {
   "Items": [
     {
-      "Id": 5489503,
+      "Id": 1002,
       "Name": "test-zone-10",
       "OriginUrl": "https://origin.example.com",
       "Enabled": true,
       "Suspended": false,
       "Hostnames": [
         {
-          "Id": 9033959,
+          "Id": 2002,
           "Value": "test-11.b-cdn.net",
           "ForceSSL": false,
           "IsSystemHostname": true,
@@ -20,7 +20,7 @@
           "CertificateProvisionType": 0
         },
         {
-          "Id": 9033960,
+          "Id": 2003,
           "Value": "test-12.b-cdn.net",
           "ForceSSL": true,
           "IsSystemHostname": false,
@@ -32,7 +32,7 @@
           "CertificateProvisionType": 0
         }
       ],
-      "StorageZoneId": 1422994,
+      "StorageZoneId": 3002,
       "EdgeScriptId": -1,
       "EdgeScriptExecutionPhase": 0,
       "MiddlewareScriptId": null,
@@ -218,7 +218,7 @@
       "StickySessionType": 0,
       "StickySessionCookieName": null,
       "StickySessionClientHeaders": null,
-      "UserId": "f848a143-72a5-4190-b35f-f30b59b0f7f9",
+      "UserId": "00000000-0000-0000-0000-000000000001",
       "CacheVersion": 54411230,
       "OptimizerEnableUpscaling": false,
       "EnableWebSockets": true,
@@ -226,14 +226,14 @@
       "EnableExtendedLogging": false
     },
     {
-      "Id": 5480795,
+      "Id": 1001,
       "Name": "test-zone-15",
       "OriginUrl": "https://origin.example.com",
       "Enabled": true,
       "Suspended": false,
       "Hostnames": [
         {
-          "Id": 9019134,
+          "Id": 2001,
           "Value": "test-16.b-cdn.net",
           "ForceSSL": true,
           "IsSystemHostname": true,
@@ -245,7 +245,7 @@
           "CertificateProvisionType": 0
         }
       ],
-      "StorageZoneId": 1420430,
+      "StorageZoneId": 3001,
       "EdgeScriptId": -1,
       "EdgeScriptExecutionPhase": 0,
       "MiddlewareScriptId": null,
@@ -431,7 +431,7 @@
       "StickySessionType": 0,
       "StickySessionCookieName": null,
       "StickySessionClientHeaders": null,
-      "UserId": "f848a143-72a5-4190-b35f-f30b59b0f7f9",
+      "UserId": "00000000-0000-0000-0000-000000000001",
       "CacheVersion": 54374850,
       "OptimizerEnableUpscaling": false,
       "EnableWebSockets": true,

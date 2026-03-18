@@ -1,12 +1,12 @@
 {
-  "Id": 5480795,
+  "Id": 1001,
   "Name": "test-zone-19",
   "OriginUrl": "https://origin.example.com",
   "Enabled": true,
   "Suspended": false,
   "Hostnames": [
     {
-      "Id": 9019134,
+      "Id": 2001,
       "Value": "test-20.b-cdn.net",
       "ForceSSL": true,
       "IsSystemHostname": true,
@@ -18,7 +18,7 @@
       "CertificateProvisionType": 0
     }
   ],
-  "StorageZoneId": 1420430,
+  "StorageZoneId": 3001,
   "EdgeScriptId": -1,
   "EdgeScriptExecutionPhase": 0,
   "MiddlewareScriptId": null,
@@ -204,7 +204,7 @@
   "StickySessionType": 0,
   "StickySessionCookieName": null,
   "StickySessionClientHeaders": null,
-  "UserId": "f848a143-72a5-4190-b35f-f30b59b0f7f9",
+  "UserId": "00000000-0000-0000-0000-000000000001",
   "CacheVersion": 54374850,
   "OptimizerEnableUpscaling": false,
   "EnableWebSockets": true,
