@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::cli::{AuthAction, OutputFormat};
 use crate::output;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use bunny_api_core::client::CoreClient;
 use bunny_api_core::types::BillingDetails;
 
@@ -21,7 +21,7 @@ fn billing_to_rows(b: &BillingDetails) -> Vec<AccountRow> {
     let auto_pay = if b.automatic_recharge_enabled {
         format!(
             "enabled (threshold ${:.2}, amount ${:.2})",
-            b.automatic_recharge_treshold, b.automatic_payment_amount
+            b.automatic_recharge_threshold, b.automatic_payment_amount
         )
     } else {
         "disabled".to_owned()
@@ -93,7 +93,7 @@ async fn handle_check(format: OutputFormat, debug: bool) -> Result<()> {
         OutputFormat::Json => {
             println!(
                 "{}",
-                serde_json::to_string_pretty(&billing).expect("failed to serialize to JSON")
+                serde_json::to_string_pretty(&billing).context("failed to serialize to JSON")?
             );
         }
         _ => {

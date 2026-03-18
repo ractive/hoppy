@@ -551,7 +551,7 @@ async fn handle_app(
         } => {
             let body = AddApplicationRequest {
                 name: name.clone(),
-                runtime_type: runtime_type.parse()?,
+                runtime_type: runtime_type.parse().map_err(anyhow::Error::msg)?,
                 auto_scaling: AutoscalingSettings {
                     min: *min,
                     max: *max,
@@ -610,7 +610,7 @@ async fn handle_app(
             };
             let body = PatchApplicationRequest {
                 name: name.clone(),
-                runtime_type: runtime_type.as_deref().map(|s| s.parse()).transpose()?,
+                runtime_type: runtime_type.as_deref().map(|s| s.parse().map_err(anyhow::Error::msg)).transpose()?,
                 auto_scaling,
                 ..Default::default()
             };
@@ -691,7 +691,7 @@ async fn handle_app(
         } => {
             let gran = granularity
                 .as_deref()
-                .map(|s| s.parse())
+                .map(|s| s.parse().map_err(anyhow::Error::msg))
                 .transpose()?
                 .unwrap_or(Granularity::Daily);
             let stats = c
@@ -1171,7 +1171,7 @@ async fn handle_registry(
             };
             let body = ContainerRegistryRequest {
                 display_name: name.clone(),
-                registry_type: registry_type.as_deref().map(|s| s.parse()).transpose()?,
+                registry_type: registry_type.as_deref().map(|s| s.parse().map_err(anyhow::Error::msg)).transpose()?,
                 password_credentials: credentials,
             };
             let resp = c.add_registry(&body).await?;
@@ -1475,11 +1475,11 @@ async fn handle_log_forwarding(
         } => {
             let body = LogForwardingRequest {
                 app: app_id.clone(),
-                forwarding_type: forwarding_type.parse()?,
+                forwarding_type: forwarding_type.parse().map_err(anyhow::Error::msg)?,
                 endpoint: endpoint.clone(),
                 port: *port,
                 token: token.clone(),
-                format: fmt_str.parse()?,
+                format: fmt_str.parse().map_err(anyhow::Error::msg)?,
                 enabled: *enabled,
             };
             let config = c.create_log_forwarding(&body).await?;
@@ -1504,11 +1504,11 @@ async fn handle_log_forwarding(
         } => {
             let body = LogForwardingRequest {
                 app: app_id.clone(),
-                forwarding_type: forwarding_type.parse()?,
+                forwarding_type: forwarding_type.parse().map_err(anyhow::Error::msg)?,
                 endpoint: endpoint.clone(),
                 port: *port,
                 token: token.clone(),
-                format: fmt_str.parse()?,
+                format: fmt_str.parse().map_err(anyhow::Error::msg)?,
                 enabled: *enabled,
             };
             let config = c.update_log_forwarding(app_id, &body).await?;

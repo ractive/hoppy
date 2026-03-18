@@ -820,8 +820,9 @@ pub struct BillingDetails {
     #[serde(default)]
     pub automatic_recharge_enabled: bool,
     /// Balance threshold that triggers an automatic recharge (USD).
-    #[serde(default)]
-    pub automatic_recharge_treshold: f64,
+    // bunny.net misspells "threshold" as "Treshold" in the API JSON key.
+    #[serde(rename = "AutomaticRechargeTreshold", default)]
+    pub automatic_recharge_threshold: f64,
     /// Amount charged on each automatic recharge (USD).
     #[serde(default)]
     pub automatic_payment_amount: f64,

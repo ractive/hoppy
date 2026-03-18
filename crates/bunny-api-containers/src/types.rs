@@ -258,70 +258,72 @@ pub enum SyslogFormat {
 // ---------------------------------------------------------------------------
 
 impl std::str::FromStr for RuntimeType {
-    type Err = anyhow::Error;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "shared" => Ok(RuntimeType::Shared),
             "reserved" => Ok(RuntimeType::Reserved),
-            other => anyhow::bail!("invalid runtime-type '{other}': must be Shared or Reserved"),
+            other => Err(format!(
+                "invalid runtime-type '{other}': must be Shared or Reserved"
+            )),
         }
     }
 }
 
 impl std::str::FromStr for Granularity {
-    type Err = anyhow::Error;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "daily" => Ok(Granularity::Daily),
             "hourly" => Ok(Granularity::Hourly),
             "minute" => Ok(Granularity::Minute),
-            other => {
-                anyhow::bail!("invalid granularity '{other}': must be Daily, Hourly, or Minute")
-            }
+            other => Err(format!(
+                "invalid granularity '{other}': must be Daily, Hourly, or Minute"
+            )),
         }
     }
 }
 
 impl std::str::FromStr for RegistryType {
-    type Err = anyhow::Error;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "dockerhub" => Ok(RegistryType::DockerHub),
             "github" => Ok(RegistryType::GitHub),
-            other => {
-                anyhow::bail!("invalid registry-type '{other}': must be DockerHub or GitHub")
-            }
+            other => Err(format!(
+                "invalid registry-type '{other}': must be DockerHub or GitHub"
+            )),
         }
     }
 }
 
 impl std::str::FromStr for LogForwardingType {
-    type Err = anyhow::Error;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "syslogudp" => Ok(LogForwardingType::SyslogUdp),
             "syslogtcp" => Ok(LogForwardingType::SyslogTcp),
-            other => {
-                anyhow::bail!("invalid forwarding-type '{other}': must be SyslogUdp or SyslogTcp")
-            }
+            other => Err(format!(
+                "invalid forwarding-type '{other}': must be SyslogUdp or SyslogTcp"
+            )),
         }
     }
 }
 
 impl std::str::FromStr for SyslogFormat {
-    type Err = anyhow::Error;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "syslogrfc3164" => Ok(SyslogFormat::SyslogRfc3164),
             "syslogrfc5424" => Ok(SyslogFormat::SyslogRfc5424),
-            other => {
-                anyhow::bail!("invalid format '{other}': must be SyslogRfc3164 or SyslogRfc5424")
-            }
+            other => Err(format!(
+                "invalid format '{other}': must be SyslogRfc3164 or SyslogRfc5424"
+            )),
         }
     }
 }
@@ -338,6 +340,11 @@ pub struct ListMeta {
 }
 
 /// Generic cursor-paginated list response.
+///
+/// When serialized to JSON this produces a nested shape:
+/// `{"items": [...], "meta": {"totalItems": N}, "cursor": "..."}`.
+/// This differs from the old flat `CursorListJson` wrapper that had a top-level
+/// `total_items` field; the nested shape is intentional and matches the API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(deserialize = "T: for<'a> serde::Deserialize<'a>"))]
