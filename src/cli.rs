@@ -490,10 +490,10 @@ pub enum StreamVideoAction {
         library_id: i64,
         /// Page number (1-based)
         #[arg(long)]
-        page: Option<i32>,
+        page: Option<u32>,
         /// Items per page
         #[arg(long)]
-        items_per_page: Option<i32>,
+        items_per_page: Option<u32>,
         /// Filter by title
         #[arg(long)]
         search: Option<String>,
