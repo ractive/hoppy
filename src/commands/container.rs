@@ -498,14 +498,22 @@ async fn handle_app(
             let auto_scaling = if min.is_some() || max.is_some() {
                 // Fetch current values for the fields not being changed
                 let current = c.get_application(id).await?;
-                let current_scaling = current
-                    .auto_scaling
-                    .as_ref()
-                    .map(|s| (s.min, s.max))
-                    .unwrap_or((0, 0));
+                let current_scaling = current.auto_scaling.as_ref().map(|s| (s.min, s.max));
+                let (resolved_min, resolved_max) = match current_scaling {
+                    Some((cur_min, cur_max)) => {
+                        (min.unwrap_or(cur_min), max.unwrap_or(cur_max))
+                    }
+                    None => match (min, max) {
+                        (Some(lo), Some(hi)) => (*lo, *hi),
+                        _ => bail!(
+                            "application has no autoscaling configured; \
+                             provide both --min and --max to set it"
+                        ),
+                    },
+                };
                 Some(AutoscalingSettings {
-                    min: min.unwrap_or(current_scaling.0),
-                    max: max.unwrap_or(current_scaling.1),
+                    min: resolved_min,
+                    max: resolved_max,
                 })
             } else {
                 None
@@ -602,10 +610,16 @@ async fn handle_app(
             let stats = c
                 .get_application_statistics(id, from, gran, to.as_deref())
                 .await?;
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&stats).context("failed to serialize to JSON")?
-            );
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&stats).context("failed to serialize to JSON")?
+                );
+            } else {
+                eprintln!(
+                    "Statistics data contains time-series charts — use --format json for full output"
+                );
+            }
         }
     }
     Ok(())
