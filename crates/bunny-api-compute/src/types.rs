@@ -228,11 +228,23 @@ pub struct EdgeScriptStatistics {
     pub total_cpu_time_chart: Option<HashMap<String, f64>>,
 }
 
+pub(crate) fn deserialize_null_as_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::Deserialize<'de>,
+{
+    Ok(Option::<Vec<T>>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 /// Generic pagination wrapper used by list endpoints.
+///
+/// `items` defaults to an empty `Vec` when the API returns `null` or omits the key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
+#[serde(bound(deserialize = "T: for<'a> serde::Deserialize<'a>"))]
 pub struct PaginatedList<T> {
-    pub items: Option<Vec<T>>,
+    #[serde(default, deserialize_with = "deserialize_null_as_empty_vec")]
+    pub items: Vec<T>,
     pub current_page: i32,
     pub total_items: i32,
     pub has_more_items: bool,
@@ -254,5 +266,72 @@ impl std::fmt::Display for ApiError {
             (None, Some(key)) => write!(f, "API error: {key}"),
             (None, None) => write!(f, "unknown API error"),
         }
+    }
+}
+
+impl std::error::Error for ApiError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn script_type_roundtrip() {
+        for variant in [ScriptType::Dns, ScriptType::Cdn, ScriptType::Middleware] {
+            let json = serde_json::to_string(&variant).unwrap();
+            let decoded: ScriptType = serde_json::from_str(&json).unwrap();
+            assert_eq!(decoded, variant);
+        }
+        // Dns = 0, Cdn = 1, Middleware = 2
+        assert_eq!(serde_json::to_string(&ScriptType::Dns).unwrap(), "0");
+        assert_eq!(serde_json::to_string(&ScriptType::Cdn).unwrap(), "1");
+        assert_eq!(serde_json::to_string(&ScriptType::Middleware).unwrap(), "2");
+    }
+
+    #[test]
+    fn create_edge_script_serializes() {
+        let body = CreateEdgeScript {
+            name: Some("my-script".to_owned()),
+            code: None,
+            script_type: ScriptType::Cdn,
+            create_linked_pull_zone: false,
+            linked_pull_zone_name: None,
+            integration: None,
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("\"Name\":\"my-script\""));
+        assert!(json.contains("\"ScriptType\":1"));
+        assert!(json.contains("\"CreateLinkedPullZone\":false"));
+    }
+
+    #[test]
+    fn paginated_list_handles_null_items() {
+        // When Items is null in the JSON, it should deserialize to an empty Vec.
+        let json = r#"{"Items":null,"CurrentPage":1,"TotalItems":0,"HasMoreItems":false}"#;
+        let list: PaginatedList<EdgeScript> = serde_json::from_str(json).unwrap();
+        assert!(list.items.is_empty());
+        assert_eq!(list.current_page, 1);
+        assert_eq!(list.total_items, 0);
+    }
+
+    #[test]
+    fn paginated_list_missing_items_key() {
+        // When Items key is absent entirely, it should also default to empty Vec.
+        let json = r#"{"CurrentPage":2,"TotalItems":5,"HasMoreItems":true}"#;
+        let list: PaginatedList<EdgeScript> = serde_json::from_str(json).unwrap();
+        assert!(list.items.is_empty());
+        assert_eq!(list.current_page, 2);
+    }
+
+    #[test]
+    fn api_error_implements_std_error() {
+        let err = ApiError {
+            error_key: Some("auth.invalid".to_owned()),
+            field: None,
+            message: Some("Unauthorized".to_owned()),
+        };
+        // Verify it satisfies std::error::Error (compile-time check via trait object).
+        let _: &dyn std::error::Error = &err;
+        assert_eq!(err.to_string(), "Unauthorized");
     }
 }

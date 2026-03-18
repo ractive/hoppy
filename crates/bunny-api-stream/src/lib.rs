@@ -3,7 +3,7 @@
 //! # Quick start
 //!
 //! ```rust,no_run
-//! use hoppy_api_stream::{StreamClient, CreateVideo};
+//! use bunny_api_stream::{StreamClient, CreateVideo};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> anyhow::Result<()> {

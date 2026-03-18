@@ -12,7 +12,7 @@ use crate::types::{StorageError, StorageObject};
 /// # Example
 ///
 /// ```no_run
-/// use hoppy_api_storage::StorageClient;
+/// use bunny_api_storage::StorageClient;
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -190,5 +190,50 @@ impl StorageClient {
             ),
             Err(_) => anyhow!("Storage API returned HTTP {}", status),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn client() -> StorageClient {
+        StorageClient::new("storage", "test-key")
+    }
+
+    #[test]
+    fn listing_url_empty_path() {
+        let c = client();
+        assert_eq!(
+            c.listing_url("my-zone", ""),
+            "https://storage.bunnycdn.com/my-zone/"
+        );
+    }
+
+    #[test]
+    fn listing_url_with_path() {
+        let c = client();
+        assert_eq!(
+            c.listing_url("my-zone", "images/2024"),
+            "https://storage.bunnycdn.com/my-zone/images/2024/"
+        );
+    }
+
+    #[test]
+    fn file_url_empty_path() {
+        let c = client();
+        assert_eq!(
+            c.file_url("my-zone", "", "photo.jpg"),
+            "https://storage.bunnycdn.com/my-zone/photo.jpg"
+        );
+    }
+
+    #[test]
+    fn file_url_with_path() {
+        let c = client();
+        assert_eq!(
+            c.file_url("my-zone", "images/2024", "photo.jpg"),
+            "https://storage.bunnycdn.com/my-zone/images/2024/photo.jpg"
+        );
     }
 }
