@@ -14,8 +14,8 @@ use bunny_api_shield::types::{
     IpAddressConfiguration, RateLimitCounterKey, RateLimitRule, RateLimitRuleConfiguration,
     RequestIntegrityConfiguration, ShieldZoneRequest, ShieldZoneResponse,
     UpdateAccessListConfiguration, UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule,
-    UpdateRateLimitRule, UpdateShieldZoneRequest, WafExecutionMode, WafRuleActionType,
-    WafRuleConfiguration, WafRuleOperatorType, WafRuleSeverityType,
+    UpdateRateLimitRule, UpdateShieldZoneRequest, WafExecutionMode, WafProfileMinimal,
+    WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType, WafRuleSeverityType,
 };
 use std::io::{self, BufRead, Write};
 
@@ -88,6 +88,36 @@ impl From<&CustomWafRule> for WafRuleRow {
                 .as_ref()
                 .map(|c| c.action_type.to_string())
                 .unwrap_or_else(|| "-".to_owned()),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display rows — WAF profiles
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct WafProfileRow {
+    #[tabled(rename = "ID")]
+    id: i32,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Category")]
+    profile_category: String,
+    #[tabled(rename = "Premium")]
+    is_premium: bool,
+    #[tabled(rename = "Description")]
+    description: String,
+}
+
+impl From<&WafProfileMinimal> for WafProfileRow {
+    fn from(p: &WafProfileMinimal) -> Self {
+        Self {
+            id: p.id,
+            name: p.name.as_deref().unwrap_or("-").to_owned(),
+            profile_category: p.profile_category.as_deref().unwrap_or("-").to_owned(),
+            is_premium: p.is_premium,
+            description: p.description.as_deref().unwrap_or("-").to_owned(),
         }
     }
 }
@@ -405,6 +435,18 @@ async fn handle_waf(
     let client = ShieldClient::new(auth::get_api_key()?).with_debug(debug);
 
     match action {
+        ShieldWafAction::Profiles => {
+            let profiles = client.list_waf_profiles().await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&profiles).expect("failed to serialize to JSON")
+                );
+            } else {
+                let rows: Vec<WafProfileRow> = profiles.iter().map(WafProfileRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
         ShieldWafAction::ListRules { shield_zone_id } => {
             let rules = client.list_waf_rules(*shield_zone_id).await?;
             let rows: Vec<WafRuleRow> = rules.iter().map(WafRuleRow::from).collect();

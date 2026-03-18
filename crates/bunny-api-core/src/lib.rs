@@ -31,8 +31,8 @@ pub mod types;
 // Flat re-exports for ergonomic `use bunny_api_core::CoreClient` imports.
 pub use client::CoreClient;
 pub use types::{
-    AddDnsRecord, ApiError, CreateDnsZone, CreatePullZone, CreateStorageZone, CreateVideoLibrary,
-    DnsRecord, DnsRecordType, DnsZone, HostnameInfo, OriginType, PaginatedList, PullZone,
-    PullZoneType, PurgeCache, StorageZone, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone,
-    UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
+    AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone, CreateStorageZone,
+    CreateVideoLibrary, DnsRecord, DnsRecordType, DnsZone, HostnameInfo, OriginType, PaginatedList,
+    PullZone, PullZoneType, PurgeCache, StorageZone, UpdateDnsRecord, UpdateDnsZone,
+    UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
 };
