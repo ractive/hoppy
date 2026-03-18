@@ -3,11 +3,8 @@ use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn fixture(name: &str) -> String {
-    std::fs::read_to_string(format!(
-        "{}/tests/fixtures/{name}",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .unwrap()
+    let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read fixture {path}: {e}"))
 }
 
 fn test_client(uri: &str) -> CoreClient {

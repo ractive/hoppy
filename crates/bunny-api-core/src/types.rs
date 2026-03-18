@@ -261,6 +261,7 @@ pub struct UpdatePullZone {
 }
 
 impl UpdatePullZone {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -313,6 +314,7 @@ pub struct PurgeCache {
 
 impl PurgeCache {
     /// Purge everything (no tag filter).
+    #[must_use]
     pub fn all() -> Self {
         Self::default()
     }
