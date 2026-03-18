@@ -36,7 +36,9 @@ fn billing_to_rows(b: &BillingDetails) -> Vec<AccountRow> {
         _ => "-".to_owned(),
     };
 
-    let bandwidth_gb = b.monthly_bandwidth_used as f64 / 1_073_741_824.0;
+    let bandwidth_gb = b.monthly_bandwidth_used / 1_073_741_824;
+    let bandwidth_remainder =
+        (b.monthly_bandwidth_used % 1_073_741_824) * 100 / 1_073_741_824;
 
     vec![
         AccountRow {
@@ -65,7 +67,7 @@ fn billing_to_rows(b: &BillingDetails) -> Vec<AccountRow> {
         },
         AccountRow {
             field: "Monthly Bandwidth".to_owned(),
-            value: format!("{bandwidth_gb:.2} GB"),
+            value: format!("{bandwidth_gb}.{bandwidth_remainder:02} GB"),
         },
     ]
 }

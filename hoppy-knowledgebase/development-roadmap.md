@@ -271,7 +271,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 - [x] Wire container region settings commands (`container app region-settings-get|region-settings-update`)
 - [x] Wire container registry image commands (`container registry image-tags|image-digest|config-suggestions|search-public`)
 - [x] Wire compute upsert commands (`script variable upsert`, `script secret upsert`)
-- [x] Progress bars for storage upload/download and video upload (`indicatif` crate, streaming uploads, stderr only when TTY, suppressed by `--quiet`)
+- [x] Progress bars for storage upload and video upload (`indicatif` crate, streaming uploads with determinate bar, stderr only when TTY, suppressed by `--quiet`); storage download uses an indeterminate spinner (client buffers the full response before writing)
 - [x] `bunny-api-containers` wiremock integration tests — already had 57 tests covering all endpoints (confirmed, no gaps)
 
 **Deliverable:** Cleaner codebase, all deferred small items resolved.
