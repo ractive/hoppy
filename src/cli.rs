@@ -816,26 +816,223 @@ pub enum ShieldBotDetectionAction {
 #[derive(Subcommand)]
 pub enum ScriptAction {
     /// List edge scripts
-    List,
-    /// Get an edge script
+    List {
+        /// Filter by name
+        #[arg(long)]
+        search: Option<String>,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<i32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<i32>,
+    },
+    /// Get an edge script by ID
     Get {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
-    /// Create an edge script
+    /// Create a new edge script
     Create {
         #[arg(long)]
         name: String,
+        /// Script type (0 = Dns, 1 = Cdn, 2 = Middleware)
+        #[arg(long)]
+        script_type: u8,
+        /// Initial source code
+        #[arg(long)]
+        code: Option<String>,
+        /// Create a linked pull zone automatically
+        #[arg(long)]
+        create_linked_pull_zone: bool,
+        /// Name for the linked pull zone
+        #[arg(long)]
+        linked_pull_zone_name: Option<String>,
+    },
+    /// Update an edge script
+    Update {
+        #[arg(long)]
+        id: i64,
+        /// New name for the script
+        #[arg(long)]
+        name: Option<String>,
+        /// Script type (0 = Dns, 1 = Cdn, 2 = Middleware)
+        #[arg(long)]
+        script_type: Option<u8>,
     },
     /// Delete an edge script
     Delete {
         #[arg(long)]
-        id: u64,
-    },
-    /// Deploy an edge script
-    Deploy {
+        id: i64,
+        /// Also delete linked pull zones
         #[arg(long)]
-        id: u64,
+        delete_linked_pull_zones: bool,
+    },
+    /// Manage script source code
+    Code {
+        #[command(subcommand)]
+        action: ScriptCodeAction,
+    },
+    /// Publish a new release of the script
+    Publish {
+        #[arg(long)]
+        id: i64,
+        /// Release note
+        #[arg(long)]
+        note: Option<String>,
+    },
+    /// Manage script releases
+    Release {
+        #[command(subcommand)]
+        action: ScriptReleaseAction,
+    },
+    /// Manage script environment variables
+    Variable {
+        #[command(subcommand)]
+        action: ScriptVariableAction,
+    },
+    /// Manage script secrets
+    Secret {
+        #[command(subcommand)]
+        action: ScriptSecretAction,
+    },
+    /// Get script usage statistics
+    Statistics {
+        #[arg(long)]
+        id: i64,
+        /// Start date (YYYY-MM-DD)
+        #[arg(long)]
+        date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
+        #[arg(long)]
+        date_to: Option<String>,
+        /// Return hourly breakdowns
+        #[arg(long)]
+        hourly: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ScriptCodeAction {
+    /// Get the current draft source code
+    Get {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Update the draft source code
+    Update {
+        #[arg(long)]
+        id: i64,
+        /// Inline source code
+        #[arg(long, conflicts_with = "file")]
+        code: Option<String>,
+        /// Read source code from a file
+        #[arg(long, conflicts_with = "code")]
+        file: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ScriptReleaseAction {
+    /// List all releases for a script
+    List {
+        #[arg(long)]
+        id: i64,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<i32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<i32>,
+    },
+    /// Get the active (live) release for a script
+    GetActive {
+        #[arg(long)]
+        id: i64,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ScriptVariableAction {
+    /// List environment variables for a script
+    List {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Add an environment variable to a script
+    Add {
+        #[arg(long)]
+        id: i64,
+        /// Variable name
+        #[arg(long)]
+        name: String,
+        /// Mark this variable as required
+        #[arg(long)]
+        required: bool,
+        /// Default value for the variable
+        #[arg(long)]
+        default_value: Option<String>,
+    },
+    /// Update an environment variable
+    Update {
+        #[arg(long)]
+        id: i64,
+        /// Variable ID
+        #[arg(long)]
+        variable_id: i64,
+        /// Mark required (true/false)
+        #[arg(long)]
+        required: Option<bool>,
+        /// New default value
+        #[arg(long)]
+        default_value: Option<String>,
+    },
+    /// Delete an environment variable
+    Delete {
+        #[arg(long)]
+        id: i64,
+        /// Variable ID
+        #[arg(long)]
+        variable_id: i64,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ScriptSecretAction {
+    /// List secrets for a script
+    List {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Add a secret to a script
+    Add {
+        #[arg(long)]
+        id: i64,
+        /// Secret name
+        #[arg(long)]
+        name: String,
+        /// Secret value
+        #[arg(long)]
+        value: String,
+    },
+    /// Update a secret's value
+    Update {
+        #[arg(long)]
+        id: i64,
+        /// Secret ID
+        #[arg(long)]
+        secret_id: i64,
+        /// New secret value
+        #[arg(long)]
+        value: String,
+    },
+    /// Delete a secret
+    Delete {
+        #[arg(long)]
+        id: i64,
+        /// Secret ID
+        #[arg(long)]
+        secret_id: i64,
     },
 }
 

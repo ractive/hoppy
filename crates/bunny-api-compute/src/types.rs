@@ -83,6 +83,7 @@ pub struct EdgeScript {
     pub integration: Option<SourceCodeIntegration>,
     pub default_hostname: Option<String>,
     pub system_hostname: Option<String>,
+    #[serde(skip_serializing)]
     pub deployment_key: Option<String>,
     pub repository_id: Option<i64>,
     pub integration_id: Option<i64>,

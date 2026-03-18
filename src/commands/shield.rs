@@ -352,7 +352,9 @@ async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: boo
                 && ddos_challenge_window.is_none()
                 && learning_mode.is_none()
             {
-                bail!("at least one update flag is required (--waf-enabled, --waf-execution-mode, --ddos-sensitivity, --ddos-execution-mode, --ddos-challenge-window, --learning-mode)");
+                bail!(
+                    "at least one update flag is required (--waf-enabled, --waf-execution-mode, --ddos-sensitivity, --ddos-execution-mode, --ddos-challenge-window, --learning-mode)"
+                );
             }
 
             let mut zone_req = ShieldZoneRequest::default();
@@ -772,7 +774,9 @@ async fn handle_bot_detection(
                 && fingerprint_aggression.is_none()
                 && fingerprint_complex_enabled.is_none()
             {
-                bail!("at least one update flag is required (--execution-mode, --request-integrity-sensitivity, --ip-address-sensitivity, --fingerprint-sensitivity, --fingerprint-aggression, --fingerprint-complex-enabled)");
+                bail!(
+                    "at least one update flag is required (--execution-mode, --request-integrity-sensitivity, --ip-address-sensitivity, --fingerprint-sensitivity, --fingerprint-aggression, --fingerprint-complex-enabled)"
+                );
             }
 
             let request_integrity = request_integrity_sensitivity

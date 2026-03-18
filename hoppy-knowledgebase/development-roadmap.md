@@ -230,16 +230,26 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 **Goal:** Manage serverless scripts and containers.
 
-- [ ] Edge scripting commands:
-  - [ ] `script list|get|create|update|delete|deploy`
-  - [ ] `script variable list|set|delete`
-  - [ ] `script secret set|delete`
-- [ ] Magic container commands:
+- [x] Edge scripting commands:
+  - [x] `script list|get|create|update|delete` with full options (pagination, search, linked pull zones)
+  - [x] `script publish` (replaces `deploy` — matches API endpoint name)
+  - [x] `script code get|update` (update supports `--code` inline or `--file` path)
+  - [x] `script release list|get-active` with pagination
+  - [x] `script variable list|add|update|delete`
+  - [x] `script secret list|add|update|delete`
+  - [x] `script statistics` with `--date-from`, `--date-to`, `--hourly`
+- [x] Debug mode support (`--debug` flag) added to ComputeClient
+- [x] Confirmation prompts for destructive operations (`--yes` to skip)
+- [x] `deployment_key` excluded from JSON output (`#[serde(skip_serializing)]`)
+- [x] 28 wiremock integration tests with fixture-based responses
+- [x] Error handling tests (401 unauthorized, 404 not found)
+- [x] Request body validation in tests (body_json matchers)
+- [ ] Magic container commands — deferred (API exists but no OpenAPI spec provided; see https://docs.bunny.net/api-reference/magic-containers/overview.md)
   - [ ] `container list|get|create|update|delete`
   - [ ] `container logs --id <id> [--follow]`
   - [ ] `container scale --id <id> --replicas <n>`
 
-**Deliverable:** Deploy and manage edge scripts and containers.
+**Deliverable:** Deploy and manage edge scripts. Containers deferred pending API availability.
 
 ---
 
@@ -320,3 +330,8 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-18 | DDoS has no dedicated CRUD — configured via Shield Zone update | DDoS sensitivity, execution mode, and challenge window are fields on the Shield Zone, not separate resources. CLI exposes them as `shield zone update` flags. |
 | 2026-03-18 | Shield block-vpn/tor/datacentre are read-only on API responses | These fields appear in `ShieldZoneResponse` but cannot be set via the update endpoint's `ShieldZoneRequest`. CLI does not expose them as update flags. |
 | 2026-03-18 | Shield enum values passed as integers on CLI | WAF action types, operator types, sensitivity levels etc. are passed as numeric values (matching the API's integer enum representation). `serde_json::from_value` converts to typed enums with descriptive error messages. |
+| 2026-03-18 | Magic Containers deferred — no OpenAPI spec available | The Magic Containers API exists (see https://docs.bunny.net/api-reference/magic-containers/overview.md) but no OpenAPI spec is provided, unlike the other 5 APIs. Hand-writing a client from docs alone is possible but deferred. |
+| 2026-03-18 | `Deploy` renamed to `Publish` for edge scripts | The bunny.net API endpoint is `POST /compute/script/{id}/publish`, not "deploy". CLI command renamed to match. |
+| 2026-03-18 | `deployment_key` excluded from JSON output | `#[serde(skip_serializing)]` on `EdgeScript.deployment_key` to prevent leaking deployment credentials. Same pattern as other crates. |
+| 2026-03-18 | Compute API uses PascalCase like Core API | Confirmed via OpenAPI spec and fixture recording. All types use `#[serde(rename_all = "PascalCase")]`. |
+| 2026-03-18 | Compute API `Items` can be null in paginated responses | Unlike Core API, Compute API may return `"Items": null` instead of `[]`. Custom `deserialize_null_as_empty_vec` handles this. PaginatedList intentionally kept separate from Core's version. |

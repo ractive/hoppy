@@ -1,5 +1,5 @@
-use anyhow::{Result, anyhow};
-use reqwest::{Client, StatusCode};
+use anyhow::{Context, Result, anyhow};
+use reqwest::{Client, Request, StatusCode};
 
 use crate::types::{
     AddSecret, AddVariable, ApiError, CreateEdgeScript, EdgeScript, EdgeScriptCode,
@@ -17,6 +17,7 @@ pub struct ComputeClient {
     http: Client,
     base_url: String,
     api_key: String,
+    debug: bool,
 }
 
 impl ComputeClient {
@@ -31,7 +32,15 @@ impl ComputeClient {
             http: Client::new(),
             base_url: base_url.into(),
             api_key: api_key.into(),
+            debug: false,
         }
+    }
+
+    /// Enable or disable debug logging of HTTP method and URL to stderr.
+    #[must_use]
+    pub fn with_debug(mut self, debug: bool) -> Self {
+        self.debug = debug;
+        self
     }
 
     fn url(&self, path: &str) -> String {
@@ -41,6 +50,15 @@ impl ComputeClient {
     /// Attach the API key header to every request.
     fn auth(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         req.header("AccessKey", &self.api_key)
+    }
+
+    /// Build and execute a request, printing method and URL to stderr when debug is enabled.
+    async fn execute(&self, rb: reqwest::RequestBuilder) -> Result<reqwest::Response> {
+        let req: Request = rb.build().context("failed to build request")?;
+        if self.debug {
+            eprintln!(">> {} {}", req.method(), req.url());
+        }
+        self.http.execute(req).await.context("request failed")
     }
 
     /// Deserialise a successful JSON body, or surface a structured [`ApiError`] on 4xx.
@@ -88,24 +106,19 @@ impl ComputeClient {
         search: Option<&str>,
     ) -> Result<PaginatedList<EdgeScript>> {
         let mut req = self.auth(self.http.get(self.url("/compute/script")));
-        if let Some(p) = page {
-            req = req.query(&[("page", p.to_string())]);
-        }
-        if let Some(pp) = per_page {
-            req = req.query(&[("perPage", pp.to_string())]);
-        }
+        req = req.query(&[("page", page.unwrap_or(1).to_string())]);
+        req = req.query(&[("perPage", per_page.unwrap_or(1000).to_string())]);
         if let Some(s) = search {
             req = req.query(&[("search", s)]);
         }
-        let resp = req.send().await?;
+        let resp = self.execute(req).await?;
         self.json_or_error(resp).await
     }
 
     /// Get a single edge script by ID.
     pub async fn get_script(&self, id: i64) -> Result<EdgeScript> {
         let resp = self
-            .auth(self.http.get(self.url(&format!("/compute/script/{id}"))))
-            .send()
+            .execute(self.auth(self.http.get(self.url(&format!("/compute/script/{id}")))))
             .await?;
         self.json_or_error(resp).await
     }
@@ -113,9 +126,10 @@ impl ComputeClient {
     /// Create a new edge script.
     pub async fn create_script(&self, body: &CreateEdgeScript) -> Result<EdgeScript> {
         let resp = self
-            .auth(self.http.post(self.url("/compute/script")))
-            .json(body)
-            .send()
+            .execute(
+                self.auth(self.http.post(self.url("/compute/script")))
+                    .json(body),
+            )
             .await?;
         self.json_or_error(resp).await
     }
@@ -123,9 +137,10 @@ impl ComputeClient {
     /// Update an existing edge script (name and/or type).
     pub async fn update_script(&self, id: i64, body: &UpdateEdgeScript) -> Result<EdgeScript> {
         let resp = self
-            .auth(self.http.post(self.url(&format!("/compute/script/{id}"))))
-            .json(body)
-            .send()
+            .execute(
+                self.auth(self.http.post(self.url(&format!("/compute/script/{id}"))))
+                    .json(body),
+            )
             .await?;
         self.json_or_error(resp).await
     }
@@ -134,15 +149,16 @@ impl ComputeClient {
     /// remove any pull zones linked to this script.
     pub async fn delete_script(&self, id: i64, delete_linked_pull_zones: bool) -> Result<()> {
         let resp = self
-            .auth(
-                self.http
-                    .delete(self.url(&format!("/compute/script/{id}")))
-                    .query(&[(
-                        "deleteLinkedPullZones",
-                        delete_linked_pull_zones.to_string(),
-                    )]),
+            .execute(
+                self.auth(
+                    self.http
+                        .delete(self.url(&format!("/compute/script/{id}")))
+                        .query(&[(
+                            "deleteLinkedPullZones",
+                            delete_linked_pull_zones.to_string(),
+                        )]),
+                ),
             )
-            .send()
             .await?;
         self.expect_no_body(resp).await
     }
@@ -150,11 +166,12 @@ impl ComputeClient {
     /// Get the current (draft) source code of a script.
     pub async fn get_script_code(&self, id: i64) -> Result<EdgeScriptCode> {
         let resp = self
-            .auth(
-                self.http
-                    .get(self.url(&format!("/compute/script/{id}/code"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .get(self.url(&format!("/compute/script/{id}/code"))),
+                ),
             )
-            .send()
             .await?;
         self.json_or_error(resp).await
     }
@@ -165,12 +182,13 @@ impl ComputeClient {
             code: Some(code.to_owned()),
         };
         let resp = self
-            .auth(
-                self.http
-                    .post(self.url(&format!("/compute/script/{id}/code"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .post(self.url(&format!("/compute/script/{id}/code"))),
+                )
+                .json(&body),
             )
-            .json(&body)
-            .send()
             .await?;
         self.expect_no_body(resp).await
     }
@@ -178,12 +196,13 @@ impl ComputeClient {
     /// Publish the current draft code as a new release.
     pub async fn publish_script(&self, id: i64, body: &PublishScript) -> Result<()> {
         let resp = self
-            .auth(
-                self.http
-                    .post(self.url(&format!("/compute/script/{id}/publish"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .post(self.url(&format!("/compute/script/{id}/publish"))),
+                )
+                .json(body),
             )
-            .json(body)
-            .send()
             .await?;
         self.expect_no_body(resp).await
     }
@@ -191,11 +210,12 @@ impl ComputeClient {
     /// Rotate the deployment key for a script.
     pub async fn rotate_deployment_key(&self, id: i64) -> Result<()> {
         let resp = self
-            .auth(
-                self.http
-                    .post(self.url(&format!("/compute/script/{id}/deploymentKey/rotate"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .post(self.url(&format!("/compute/script/{id}/deploymentKey/rotate"))),
+                ),
             )
-            .send()
             .await?;
         self.expect_no_body(resp).await
     }
@@ -223,7 +243,7 @@ impl ComputeClient {
             req = req.query(&[("dateTo", dt)]);
         }
         req = req.query(&[("hourly", hourly.to_string())]);
-        let resp = req.send().await?;
+        let resp = self.execute(req).await?;
         self.json_or_error(resp).await
     }
 
@@ -242,24 +262,21 @@ impl ComputeClient {
             self.http
                 .get(self.url(&format!("/compute/script/{id}/releases"))),
         );
-        if let Some(p) = page {
-            req = req.query(&[("page", p.to_string())]);
-        }
-        if let Some(pp) = per_page {
-            req = req.query(&[("perPage", pp.to_string())]);
-        }
-        let resp = req.send().await?;
+        req = req.query(&[("page", page.unwrap_or(1).to_string())]);
+        req = req.query(&[("perPage", per_page.unwrap_or(1000).to_string())]);
+        let resp = self.execute(req).await?;
         self.json_or_error(resp).await
     }
 
     /// Get the currently active (live) release for a script.
     pub async fn get_active_release(&self, id: i64) -> Result<EdgeScriptRelease> {
         let resp = self
-            .auth(
-                self.http
-                    .get(self.url(&format!("/compute/script/{id}/releases/active"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .get(self.url(&format!("/compute/script/{id}/releases/active"))),
+                ),
             )
-            .send()
             .await?;
         self.json_or_error(resp).await
     }
@@ -271,12 +288,13 @@ impl ComputeClient {
     /// Add a new environment variable to a script.
     pub async fn add_variable(&self, id: i64, body: &AddVariable) -> Result<EdgeScriptVariable> {
         let resp = self
-            .auth(
-                self.http
-                    .post(self.url(&format!("/compute/script/{id}/variables/add"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .post(self.url(&format!("/compute/script/{id}/variables/add"))),
+                )
+                .json(body),
             )
-            .json(body)
-            .send()
             .await?;
         self.json_or_error(resp).await
     }
@@ -288,10 +306,9 @@ impl ComputeClient {
         variable_id: i64,
     ) -> Result<EdgeScriptVariable> {
         let resp = self
-            .auth(self.http.get(self.url(&format!(
+            .execute(self.auth(self.http.get(self.url(&format!(
                 "/compute/script/{script_id}/variables/{variable_id}"
-            ))))
-            .send()
+            )))))
             .await?;
         self.json_or_error(resp).await
     }
@@ -304,11 +321,12 @@ impl ComputeClient {
         body: &UpdateVariable,
     ) -> Result<EdgeScriptVariable> {
         let resp = self
-            .auth(self.http.post(self.url(&format!(
-                "/compute/script/{script_id}/variables/{variable_id}"
-            ))))
-            .json(body)
-            .send()
+            .execute(
+                self.auth(self.http.post(self.url(&format!(
+                    "/compute/script/{script_id}/variables/{variable_id}"
+                ))))
+                .json(body),
+            )
             .await?;
         self.json_or_error(resp).await
     }
@@ -320,12 +338,13 @@ impl ComputeClient {
         body: &UpsertVariable,
     ) -> Result<EdgeScriptVariable> {
         let resp = self
-            .auth(
-                self.http
-                    .put(self.url(&format!("/compute/script/{id}/variables"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .put(self.url(&format!("/compute/script/{id}/variables"))),
+                )
+                .json(body),
             )
-            .json(body)
-            .send()
             .await?;
         // 200 = created, 204 = updated (both may carry a body per spec)
         let status = resp.status();
@@ -347,10 +366,9 @@ impl ComputeClient {
     /// Delete a variable by its ID.
     pub async fn delete_variable(&self, script_id: i64, variable_id: i64) -> Result<()> {
         let resp = self
-            .auth(self.http.delete(self.url(&format!(
+            .execute(self.auth(self.http.delete(self.url(&format!(
                 "/compute/script/{script_id}/variables/{variable_id}"
-            ))))
-            .send()
+            )))))
             .await?;
         self.expect_no_body(resp).await
     }
@@ -362,11 +380,12 @@ impl ComputeClient {
     /// List all secrets for a script (values are never returned).
     pub async fn list_secrets(&self, id: i64) -> Result<SecretList> {
         let resp = self
-            .auth(
-                self.http
-                    .get(self.url(&format!("/compute/script/{id}/secrets"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .get(self.url(&format!("/compute/script/{id}/secrets"))),
+                ),
             )
-            .send()
             .await?;
         self.json_or_error(resp).await
     }
@@ -374,12 +393,13 @@ impl ComputeClient {
     /// Add a new secret to a script.
     pub async fn add_secret(&self, id: i64, body: &AddSecret) -> Result<EdgeScriptSecret> {
         let resp = self
-            .auth(
-                self.http
-                    .post(self.url(&format!("/compute/script/{id}/secrets"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .post(self.url(&format!("/compute/script/{id}/secrets"))),
+                )
+                .json(body),
             )
-            .json(body)
-            .send()
             .await?;
         self.json_or_error(resp).await
     }
@@ -387,12 +407,13 @@ impl ComputeClient {
     /// Upsert (create or update) a secret identified by name.
     pub async fn upsert_secret(&self, id: i64, body: &UpsertSecret) -> Result<EdgeScriptSecret> {
         let resp = self
-            .auth(
-                self.http
-                    .put(self.url(&format!("/compute/script/{id}/secrets"))),
+            .execute(
+                self.auth(
+                    self.http
+                        .put(self.url(&format!("/compute/script/{id}/secrets"))),
+                )
+                .json(body),
             )
-            .json(body)
-            .send()
             .await?;
         // 200 = created (body returned), 204 = updated (no body per spec)
         let status = resp.status();
@@ -415,12 +436,14 @@ impl ComputeClient {
         body: &UpdateSecret,
     ) -> Result<EdgeScriptSecret> {
         let resp = self
-            .auth(
-                self.http
-                    .post(self.url(&format!("/compute/script/{script_id}/secrets/{secret_id}"))),
+            .execute(
+                self.auth(
+                    self.http.post(
+                        self.url(&format!("/compute/script/{script_id}/secrets/{secret_id}")),
+                    ),
+                )
+                .json(body),
             )
-            .json(body)
-            .send()
             .await?;
         self.json_or_error(resp).await
     }
@@ -428,11 +451,13 @@ impl ComputeClient {
     /// Delete a secret by its ID.
     pub async fn delete_secret(&self, script_id: i64, secret_id: i64) -> Result<()> {
         let resp = self
-            .auth(
-                self.http
-                    .delete(self.url(&format!("/compute/script/{script_id}/secrets/{secret_id}"))),
+            .execute(
+                self.auth(
+                    self.http.delete(
+                        self.url(&format!("/compute/script/{script_id}/secrets/{secret_id}")),
+                    ),
+                ),
             )
-            .send()
             .await?;
         self.expect_no_body(resp).await
     }
@@ -457,6 +482,18 @@ mod tests {
             client.url("/compute/script"),
             "http://localhost:9000/compute/script"
         );
+    }
+
+    #[test]
+    fn client_debug_defaults_false() {
+        let client = ComputeClient::new("key");
+        assert!(!client.debug);
+    }
+
+    #[test]
+    fn client_with_debug_sets_flag() {
+        let client = ComputeClient::new("key").with_debug(true);
+        assert!(client.debug);
     }
 
     #[test]
