@@ -1,0 +1,18 @@
+{
+  "data": {
+    "shieldZoneId": 55001,
+    "pullZoneId": 100001,
+    "wafEnabled": true,
+    "wafExecutionMode": 1,
+    "learningMode": false,
+    "planType": 1,
+    "dDoSShieldSensitivity": 2,
+    "dDoSExecutionMode": 1,
+    "dDoSChallengeWindow": 60,
+    "blockVpn": false,
+    "blockTor": false,
+    "blockDatacentre": false,
+    "rateLimitRulesLimit": 20,
+    "customWafRulesLimit": 50
+  }
+}

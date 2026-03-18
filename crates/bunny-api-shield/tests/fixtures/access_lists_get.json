@@ -1,0 +1,30 @@
+{
+  "managedLists": [
+    {
+      "listId": 1,
+      "configurationId": 201,
+      "name": "Known Bad IPs",
+      "description": "Bunny-managed list of known malicious IPs",
+      "isEnabled": true,
+      "type": 0,
+      "action": 1,
+      "entryCount": 5000
+    }
+  ],
+  "customLists": [
+    {
+      "listId": 9001,
+      "configurationId": 901,
+      "name": "Blocked Countries",
+      "description": "Block traffic from specific countries",
+      "isEnabled": true,
+      "type": 1,
+      "action": 1,
+      "entryCount": 3
+    }
+  ],
+  "customEntryCount": 3,
+  "customEntryLimit": 10000,
+  "customListCount": 1,
+  "customListLimit": 10
+}

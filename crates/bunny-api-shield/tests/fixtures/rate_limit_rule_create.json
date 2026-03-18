@@ -1,0 +1,16 @@
+{
+  "id": 8002,
+  "shieldZoneId": 55001,
+  "userId": "user-abc-123",
+  "ruleName": "API Rate Limit",
+  "ruleDescription": null,
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 0,
+    "severityType": 0,
+    "requestCount": 100,
+    "counterKeyType": 1,
+    "timeframe": 3600,
+    "blockTime": 900
+  }
+}

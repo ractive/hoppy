@@ -92,6 +92,18 @@ pub enum DdosShieldSensitivity {
     VeryHigh = 4,
 }
 
+impl std::fmt::Display for DdosShieldSensitivity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DdosShieldSensitivity::Disabled => write!(f, "Disabled"),
+            DdosShieldSensitivity::Low => write!(f, "Low"),
+            DdosShieldSensitivity::Medium => write!(f, "Medium"),
+            DdosShieldSensitivity::High => write!(f, "High"),
+            DdosShieldSensitivity::VeryHigh => write!(f, "VeryHigh"),
+        }
+    }
+}
+
 /// Action to take when an access list entry matches a request.
 ///
 /// Values from the spec: 0 = NoAction, 1 = Block, 2 = Allow, 3 = LogOnly,
@@ -182,6 +194,19 @@ pub enum RateLimitTimeframe {
     Sec3600 = 3600,
 }
 
+impl std::fmt::Display for RateLimitTimeframe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RateLimitTimeframe::Sec1 => write!(f, "1s"),
+            RateLimitTimeframe::Sec10 => write!(f, "10s"),
+            RateLimitTimeframe::Sec60 => write!(f, "60s"),
+            RateLimitTimeframe::Sec300 => write!(f, "5m"),
+            RateLimitTimeframe::Sec900 => write!(f, "15m"),
+            RateLimitTimeframe::Sec3600 => write!(f, "1h"),
+        }
+    }
+}
+
 /// Duration (in seconds) to block after a rate limit breach.
 ///
 /// Values from the spec: 30, 60, 300, 900, 1800, 3600.
@@ -194,6 +219,19 @@ pub enum RateLimitBlockDuration {
     Sec900 = 900,
     Sec1800 = 1800,
     Sec3600 = 3600,
+}
+
+impl std::fmt::Display for RateLimitBlockDuration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RateLimitBlockDuration::Sec30 => write!(f, "30s"),
+            RateLimitBlockDuration::Sec60 => write!(f, "60s"),
+            RateLimitBlockDuration::Sec300 => write!(f, "5m"),
+            RateLimitBlockDuration::Sec900 => write!(f, "15m"),
+            RateLimitBlockDuration::Sec1800 => write!(f, "30m"),
+            RateLimitBlockDuration::Sec3600 => write!(f, "1h"),
+        }
+    }
 }
 
 /// What key to count requests by for rate limiting.
@@ -213,6 +251,21 @@ pub enum RateLimitCounterKey {
     PerFingerprint = 7,
 }
 
+impl std::fmt::Display for RateLimitCounterKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RateLimitCounterKey::Global => write!(f, "Global"),
+            RateLimitCounterKey::PerIp => write!(f, "PerIp"),
+            RateLimitCounterKey::PerCountry => write!(f, "PerCountry"),
+            RateLimitCounterKey::PerAsn => write!(f, "PerAsn"),
+            RateLimitCounterKey::PerHeader => write!(f, "PerHeader"),
+            RateLimitCounterKey::PerCookie => write!(f, "PerCookie"),
+            RateLimitCounterKey::PerQuery => write!(f, "PerQuery"),
+            RateLimitCounterKey::PerFingerprint => write!(f, "PerFingerprint"),
+        }
+    }
+}
+
 /// Action taken by a custom WAF rule.
 ///
 /// Values from the spec: 1 = Block, 2 = LogOnly, 3 = Challenge,
@@ -225,6 +278,18 @@ pub enum WafRuleActionType {
     Challenge = 3,
     ChallengeInterstitial = 4,
     Allow = 5,
+}
+
+impl std::fmt::Display for WafRuleActionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WafRuleActionType::Block => write!(f, "Block"),
+            WafRuleActionType::LogOnly => write!(f, "LogOnly"),
+            WafRuleActionType::Challenge => write!(f, "Challenge"),
+            WafRuleActionType::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
+            WafRuleActionType::Allow => write!(f, "Allow"),
+        }
+    }
 }
 
 /// Operator used to match a WAF rule variable against a value.
@@ -302,6 +367,15 @@ pub enum BotDetectionExecutionMode {
     Enabled = 1,
 }
 
+impl std::fmt::Display for BotDetectionExecutionMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BotDetectionExecutionMode::Disabled => write!(f, "Disabled"),
+            BotDetectionExecutionMode::Enabled => write!(f, "Enabled"),
+        }
+    }
+}
+
 /// Sensitivity level for bot detection signals.
 ///
 /// Values from the spec: 0 = Disabled, 1 = Low, 2 = Medium, 3 = High.
@@ -312,6 +386,17 @@ pub enum BotDetectionSensitivity {
     Low = 1,
     Medium = 2,
     High = 3,
+}
+
+impl std::fmt::Display for BotDetectionSensitivity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BotDetectionSensitivity::Disabled => write!(f, "Disabled"),
+            BotDetectionSensitivity::Low => write!(f, "Low"),
+            BotDetectionSensitivity::Medium => write!(f, "Medium"),
+            BotDetectionSensitivity::High => write!(f, "High"),
+        }
+    }
 }
 
 /// Aggressiveness of browser fingerprint challenge injection.
@@ -325,6 +410,18 @@ pub enum BrowserFingerprintAggression {
     Low = 2,
     Medium = 3,
     High = 4,
+}
+
+impl std::fmt::Display for BrowserFingerprintAggression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BrowserFingerprintAggression::Disabled => write!(f, "Disabled"),
+            BrowserFingerprintAggression::VeryLow => write!(f, "VeryLow"),
+            BrowserFingerprintAggression::Low => write!(f, "Low"),
+            BrowserFingerprintAggression::Medium => write!(f, "Medium"),
+            BrowserFingerprintAggression::High => write!(f, "High"),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
