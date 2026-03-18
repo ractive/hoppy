@@ -441,11 +441,21 @@ pub enum StreamAction {
 #[derive(Subcommand)]
 pub enum StreamLibraryAction {
     /// List video libraries
-    List,
+    List {
+        /// Filter by name
+        #[arg(long)]
+        search: Option<String>,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
+    },
     /// Get a specific video library
     Get {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
     /// Create a video library
     Create {
@@ -455,12 +465,20 @@ pub enum StreamLibraryAction {
     /// Update a video library
     Update {
         #[arg(long)]
-        id: u64,
+        id: i64,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        allow_direct_play: Option<bool>,
+        #[arg(long)]
+        enable_mp4_fallback: Option<bool>,
+        #[arg(long)]
+        has_watermark: Option<bool>,
     },
     /// Delete a video library
     Delete {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
 }
 
@@ -469,26 +487,48 @@ pub enum StreamVideoAction {
     /// List videos in a library
     List {
         #[arg(long)]
-        library_id: u64,
+        library_id: i64,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<i32>,
+        /// Items per page
+        #[arg(long)]
+        items_per_page: Option<i32>,
+        /// Filter by title
+        #[arg(long)]
+        search: Option<String>,
+        /// Filter by collection GUID
+        #[arg(long)]
+        collection: Option<String>,
+        /// Sort order
+        #[arg(long)]
+        order_by: Option<String>,
     },
     /// Get a specific video
     Get {
         #[arg(long)]
-        library_id: u64,
+        library_id: i64,
         #[arg(long)]
         video_id: String,
     },
-    /// Upload a video
+    /// Upload a video file (two-step: create + upload binary)
     Upload {
         #[arg(long)]
-        library_id: u64,
+        library_id: i64,
+        /// Local file path to upload
         #[arg(long)]
         file: String,
+        /// Title for the video (defaults to filename)
+        #[arg(long)]
+        title: Option<String>,
+        /// Collection GUID to assign the video to
+        #[arg(long)]
+        collection_id: Option<String>,
     },
     /// Delete a video
     Delete {
         #[arg(long)]
-        library_id: u64,
+        library_id: i64,
         #[arg(long)]
         video_id: String,
     },
