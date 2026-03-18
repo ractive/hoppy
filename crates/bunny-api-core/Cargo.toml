@@ -1,8 +1,8 @@
 [package]
-name = "hoppy-api-compute"
+name = "bunny-api-core"
 version = "0.1.0"
 edition = "2024"
-description = "Hand-written bunny.net Edge Scripting (Compute) API client"
+description = "Hand-written bunny.net API client (Pull Zone and related resources)"
 license = "MIT"
 
 [dependencies]

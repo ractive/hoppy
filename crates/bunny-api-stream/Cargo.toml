@@ -1,5 +1,5 @@
 [package]
-name = "hoppy-api-stream"
+name = "bunny-api-stream"
 version = "0.1.0"
 edition = "2024"
 description = "Hand-written bunny.net Stream (Video) API client"
