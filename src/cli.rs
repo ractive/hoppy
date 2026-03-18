@@ -354,10 +354,10 @@ pub enum DnsRecordAction {
     Add {
         #[arg(long)]
         zone_id: i64,
-        /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA, Redirect, Flatten)
+        /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA, Redirect, Flatten, PullZone, Script; case-insensitive)
         #[arg(long, value_name = "TYPE")]
         r#type: String,
-        /// Record name (subdomain, empty for apex)
+        /// Record name (subdomain, omit for apex)
         #[arg(long)]
         name: Option<String>,
         /// Record value (IP address, hostname, text, etc.)
@@ -391,7 +391,7 @@ pub enum DnsRecordAction {
         zone_id: i64,
         #[arg(long)]
         record_id: i64,
-        /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA)
+        /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA, Redirect, Flatten, PullZone, Script; case-insensitive)
         #[arg(long, value_name = "TYPE")]
         r#type: String,
         /// Record value
