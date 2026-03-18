@@ -6,7 +6,7 @@ use bunny_api_shield::types::{
     UpdateShieldZoneRequest, WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType,
     WafRuleSeverityType,
 };
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const FIXTURE_SHIELD_ZONE_GET: &str = include_str!("fixtures/shield_zone_get.json");
@@ -221,6 +221,16 @@ async fn create_waf_rule_returns_created_rule() {
     Mock::given(method("POST"))
         .and(path("/shield/waf/custom-rule"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "shieldZoneId": 55001,
+            "ruleName": "Block Bad UA",
+            "ruleConfiguration": {
+                "actionType": 1,
+                "operatorType": 2,
+                "severityType": 1,
+                "value": "BadBot/1.0"
+            }
+        })))
         .respond_with(
             ResponseTemplate::new(201).set_body_raw(FIXTURE_WAF_RULE_CREATE, "application/json"),
         )
@@ -359,6 +369,19 @@ async fn create_rate_limit_rule_returns_created_rule() {
     Mock::given(method("POST"))
         .and(path("/shield/rate-limit"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "shieldZoneId": 55001,
+            "ruleName": "API Rate Limit",
+            "ruleConfiguration": {
+                "actionType": 1,
+                "operatorType": 0,
+                "severityType": 0,
+                "requestCount": 100,
+                "counterKeyType": 1,
+                "timeframe": 3600,
+                "blockTime": 900
+            }
+        })))
         .respond_with(
             ResponseTemplate::new(201)
                 .set_body_raw(FIXTURE_RATE_LIMIT_RULE_CREATE, "application/json"),

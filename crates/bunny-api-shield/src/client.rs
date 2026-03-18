@@ -269,9 +269,9 @@ impl ShieldClient {
             .execute(
                 self.auth(
                     self.client
-                        .patch(self.url(&format!("/shield/waf/custom-rule/{id}"))),
-                )
-                .json(&body),
+                        .patch(self.url(&format!("/shield/waf/custom-rule/{id}")))
+                        .json(&body),
+                ),
             )
             .await?;
 
@@ -357,9 +357,9 @@ impl ShieldClient {
             .execute(
                 self.auth(
                     self.client
-                        .patch(self.url(&format!("/shield/rate-limit/{id}"))),
-                )
-                .json(&body),
+                        .patch(self.url(&format!("/shield/rate-limit/{id}")))
+                        .json(&body),
+                ),
             )
             .await?;
 

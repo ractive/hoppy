@@ -606,15 +606,6 @@ pub enum ShieldZoneAction {
         /// Enable or disable learning mode
         #[arg(long)]
         learning_mode: Option<bool>,
-        /// Block VPN traffic
-        #[arg(long)]
-        block_vpn: Option<bool>,
-        /// Block Tor exit node traffic
-        #[arg(long)]
-        block_tor: Option<bool>,
-        /// Block known datacentre IP ranges
-        #[arg(long)]
-        block_datacentre: Option<bool>,
     },
 }
 
@@ -746,7 +737,7 @@ pub enum ShieldAccessListAction {
         #[arg(long)]
         name: String,
         /// List type (0 = Ip, 1 = Country, 2 = Asn, 3 = Hostname, 4 = UserAgent, 5 = Custom)
-        #[arg(long, rename_all = "lower")]
+        #[arg(long)]
         r#type: u8,
         /// List content (newline-separated entries)
         #[arg(long)]

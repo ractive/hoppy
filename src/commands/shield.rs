@@ -3,7 +3,7 @@ use crate::cli::{
     OutputFormat, ShieldAccessListAction, ShieldAction, ShieldBotDetectionAction,
     ShieldRateLimitAction, ShieldWafAction, ShieldZoneAction,
 };
-use crate::output;
+use crate::output::{self, PaginatedListJson};
 use anyhow::{Result, bail};
 use bunny_api_shield::ShieldClient;
 use bunny_api_shield::types::{
@@ -55,7 +55,7 @@ impl From<&ShieldZoneResponse> for ShieldZoneRow {
                 .unwrap_or_else(|| "-".to_owned()),
             ddos_sensitivity: z
                 .d_do_s_shield_sensitivity
-                .map(|s| format!("{s:?}"))
+                .map(|s| s.to_string())
                 .unwrap_or_else(|| "-".to_owned()),
         }
     }
@@ -124,7 +124,7 @@ impl From<&RateLimitRule> for RateLimitRuleRow {
             timeframe: r
                 .rule_configuration
                 .as_ref()
-                .map(|c| format!("{:?}", c.timeframe))
+                .map(|c| c.timeframe.to_string())
                 .unwrap_or_else(|| "-".to_owned()),
         }
     }
@@ -213,22 +213,22 @@ impl From<&BotDetectionConfigurationState> for BotDetectionRow {
             shield_zone_id: s.shield_zone_id,
             execution_mode: s
                 .execution_mode
-                .map(|m| format!("{m:?}"))
+                .map(|m| m.to_string())
                 .unwrap_or_else(|| "-".to_owned()),
             request_integrity: s
                 .request_integrity
                 .sensitivity
-                .map(|v| format!("{v:?}"))
+                .map(|v| v.to_string())
                 .unwrap_or_else(|| "-".to_owned()),
             ip_address: s
                 .ip_address
                 .sensitivity
-                .map(|v| format!("{v:?}"))
+                .map(|v| v.to_string())
                 .unwrap_or_else(|| "-".to_owned()),
             fingerprint: s
                 .browser_fingerprint
                 .sensitivity
-                .map(|v| format!("{v:?}"))
+                .map(|v| v.to_string())
                 .unwrap_or_else(|| "-".to_owned()),
         }
     }
@@ -238,14 +238,14 @@ impl From<&BotDetectionConfigurationState> for BotDetectionRow {
 // Enum conversion helpers (integer -> serde_repr enum via serde_json)
 // ---------------------------------------------------------------------------
 
-fn u8_to_enum<T: serde::de::DeserializeOwned>(n: u8) -> Result<T> {
+fn u8_to_enum<T: serde::de::DeserializeOwned>(n: u8, type_name: &str) -> Result<T> {
     serde_json::from_value(serde_json::json!(n))
-        .map_err(|_| anyhow::anyhow!("invalid value {n} for enum"))
+        .map_err(|_| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
-fn u16_to_enum<T: serde::de::DeserializeOwned>(n: u16) -> Result<T> {
+fn u16_to_enum<T: serde::de::DeserializeOwned>(n: u16, type_name: &str) -> Result<T> {
     serde_json::from_value(serde_json::json!(n))
-        .map_err(|_| anyhow::anyhow!("invalid value {n} for enum"))
+        .map_err(|_| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
 // ---------------------------------------------------------------------------
@@ -278,8 +278,24 @@ async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: boo
         ShieldZoneAction::List => {
             let result = client.list_shield_zones().await?;
             let zones = result.data.unwrap_or_default();
-            let rows: Vec<ShieldZoneRow> = zones.iter().map(ShieldZoneRow::from).collect();
-            output::print_data(&rows, format);
+            if let OutputFormat::Json = format {
+                let page = result.page;
+                let envelope = PaginatedListJson {
+                    items: &zones,
+                    current_page: page.as_ref().map(|p| p.current_page as i64).unwrap_or(1),
+                    total_items: page
+                        .as_ref()
+                        .map(|p| p.total_count as i64)
+                        .unwrap_or(zones.len() as i64),
+                    has_more_items: page.as_ref().and_then(|p| p.next_page).is_some(),
+                };
+                let json =
+                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let rows: Vec<ShieldZoneRow> = zones.iter().map(ShieldZoneRow::from).collect();
+                output::print_data(&rows, format);
+            }
         }
         ShieldZoneAction::Get { shield_zone_id } => {
             let zone = client.get_shield_zone(*shield_zone_id).await?;
@@ -325,9 +341,6 @@ async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: boo
             ddos_execution_mode,
             ddos_challenge_window,
             learning_mode,
-            block_vpn,
-            block_tor,
-            block_datacentre,
         } => {
             let mut zone_req = ShieldZoneRequest::default();
 
@@ -335,27 +348,22 @@ async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: boo
                 zone_req.waf_enabled = Some(*v);
             }
             if let Some(v) = waf_execution_mode {
-                zone_req.waf_execution_mode = Some(u8_to_enum::<WafExecutionMode>(*v)?);
+                zone_req.waf_execution_mode =
+                    Some(u8_to_enum::<WafExecutionMode>(*v, "waf-execution-mode")?);
             }
             if let Some(v) = ddos_sensitivity {
-                zone_req.d_do_s_shield_sensitivity = Some(u8_to_enum::<DdosShieldSensitivity>(*v)?);
+                zone_req.d_do_s_shield_sensitivity =
+                    Some(u8_to_enum::<DdosShieldSensitivity>(*v, "ddos-sensitivity")?);
             }
             if let Some(v) = ddos_execution_mode {
-                zone_req.d_do_s_execution_mode = Some(u8_to_enum::<DdosExecutionMode>(*v)?);
+                zone_req.d_do_s_execution_mode =
+                    Some(u8_to_enum::<DdosExecutionMode>(*v, "ddos-execution-mode")?);
             }
             if let Some(v) = ddos_challenge_window {
                 zone_req.d_do_s_challenge_window = Some(*v);
             }
             if let Some(v) = learning_mode {
                 zone_req.learning_mode = Some(*v);
-            }
-
-            // block_vpn / block_tor / block_datacentre are not in ShieldZoneRequest
-            // so we warn if supplied
-            if block_vpn.is_some() || block_tor.is_some() || block_datacentre.is_some() {
-                eprintln!(
-                    "Note: --block-vpn, --block-tor, --block-datacentre are not currently supported in Shield Zone update"
-                );
             }
 
             let body = UpdateShieldZoneRequest {
@@ -408,10 +416,10 @@ async fn handle_waf(
             value,
         } => {
             let config = WafRuleConfiguration {
-                action_type: u8_to_enum::<WafRuleActionType>(*action_type)?,
+                action_type: u8_to_enum::<WafRuleActionType>(*action_type, "action-type")?,
                 variable_types: None,
-                operator_type: u8_to_enum::<WafRuleOperatorType>(*operator_type)?,
-                severity_type: u8_to_enum::<WafRuleSeverityType>(*severity_type)?,
+                operator_type: u8_to_enum::<WafRuleOperatorType>(*operator_type, "operator-type")?,
+                severity_type: u8_to_enum::<WafRuleSeverityType>(*severity_type, "severity-type")?,
                 transformation_types: None,
                 value: value.clone(),
                 chained_rule_conditions: None,
@@ -514,16 +522,19 @@ async fn handle_rate_limit(
             block_time,
         } => {
             let config = RateLimitRuleConfiguration {
-                action_type: u8_to_enum(*action_type)?,
+                action_type: u8_to_enum(*action_type, "action-type")?,
                 variable_types: None,
-                operator_type: u8_to_enum(*operator_type)?,
-                severity_type: u8_to_enum(*severity_type)?,
+                operator_type: u8_to_enum(*operator_type, "operator-type")?,
+                severity_type: u8_to_enum(*severity_type, "severity-type")?,
                 transformation_types: None,
                 value: value.clone(),
                 request_count: *request_count,
-                counter_key_type: u8_to_enum::<RateLimitCounterKey>(*counter_key_type)?,
-                timeframe: u16_to_enum(*timeframe)?,
-                block_time: u16_to_enum(*block_time)?,
+                counter_key_type: u8_to_enum::<RateLimitCounterKey>(
+                    *counter_key_type,
+                    "counter-key-type",
+                )?,
+                timeframe: u16_to_enum(*timeframe, "timeframe")?,
+                block_time: u16_to_enum(*block_time, "block-time")?,
                 chained_rule_conditions: None,
             };
             let body = CreateRateLimitRule {
@@ -623,7 +634,7 @@ async fn handle_access_list(
             let body = CreateCustomAccessList {
                 name: name.clone(),
                 description: None,
-                list_type: u8_to_enum::<AccessListType>(*r#type)?,
+                list_type: u8_to_enum::<AccessListType>(*r#type, "list-type")?,
                 content: content.clone(),
                 checksum: None,
             };
@@ -687,7 +698,9 @@ async fn handle_access_list(
         } => {
             let body = UpdateAccessListConfiguration {
                 is_enabled: *is_enabled,
-                action: action.map(u8_to_enum::<AccessListAction>).transpose()?,
+                action: action
+                    .map(|v| u8_to_enum::<AccessListAction>(v, "action"))
+                    .transpose()?,
             };
             client
                 .update_access_list_configuration(*shield_zone_id, *configuration_id, body)
@@ -713,10 +726,13 @@ async fn handle_bot_detection(
         ShieldBotDetectionAction::Get { shield_zone_id } => {
             let result = client.get_bot_detection(*shield_zone_id).await?;
             if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).expect("failed to serialize to JSON")
-                );
+                match &result.data {
+                    Some(state) => println!(
+                        "{}",
+                        serde_json::to_string_pretty(state).expect("failed to serialize to JSON")
+                    ),
+                    None => eprintln!("No bot detection data returned."),
+                }
             } else if let Some(state) = &result.data {
                 let row = BotDetectionRow::from(state);
                 output::print_single(&row, format);
@@ -735,27 +751,29 @@ async fn handle_bot_detection(
         } => {
             let request_integrity = request_integrity_sensitivity
                 .map(|v| {
-                    u8_to_enum::<BotDetectionSensitivity>(v).map(|s| {
-                        RequestIntegrityConfiguration {
+                    u8_to_enum::<BotDetectionSensitivity>(v, "request-integrity-sensitivity").map(
+                        |s| RequestIntegrityConfiguration {
+                            sensitivity: Some(s),
+                        },
+                    )
+                })
+                .transpose()?;
+
+            let ip_address = ip_address_sensitivity
+                .map(|v| {
+                    u8_to_enum::<BotDetectionSensitivity>(v, "ip-address-sensitivity").map(|s| {
+                        IpAddressConfiguration {
                             sensitivity: Some(s),
                         }
                     })
                 })
                 .transpose()?;
 
-            let ip_address = ip_address_sensitivity
-                .map(|v| {
-                    u8_to_enum::<BotDetectionSensitivity>(v).map(|s| IpAddressConfiguration {
-                        sensitivity: Some(s),
-                    })
-                })
-                .transpose()?;
-
             let fingerprint_sens = fingerprint_sensitivity
-                .map(u8_to_enum::<BotDetectionSensitivity>)
+                .map(|v| u8_to_enum::<BotDetectionSensitivity>(v, "fingerprint-sensitivity"))
                 .transpose()?;
             let fingerprint_aggr = fingerprint_aggression
-                .map(u8_to_enum::<BrowserFingerprintAggression>)
+                .map(|v| u8_to_enum::<BrowserFingerprintAggression>(v, "fingerprint-aggression"))
                 .transpose()?;
 
             let browser_fingerprint = if fingerprint_sens.is_some()
@@ -774,7 +792,7 @@ async fn handle_bot_detection(
             let body = UpdateBotDetection {
                 shield_zone_id: *shield_zone_id,
                 execution_mode: execution_mode
-                    .map(u8_to_enum::<BotDetectionExecutionMode>)
+                    .map(|v| u8_to_enum::<BotDetectionExecutionMode>(v, "execution-mode"))
                     .transpose()?,
                 request_integrity,
                 ip_address,
@@ -782,10 +800,13 @@ async fn handle_bot_detection(
             };
             let result = client.update_bot_detection(*shield_zone_id, body).await?;
             if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).expect("failed to serialize to JSON")
-                );
+                match &result.data {
+                    Some(state) => println!(
+                        "{}",
+                        serde_json::to_string_pretty(state).expect("failed to serialize to JSON")
+                    ),
+                    None => eprintln!("Updated bot detection for Shield Zone {shield_zone_id}"),
+                }
             } else if let Some(state) = &result.data {
                 let row = BotDetectionRow::from(state);
                 output::print_single(&row, format);
