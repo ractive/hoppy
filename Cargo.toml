@@ -7,6 +7,7 @@ members = [
     "crates/bunny-api-shield",
     "crates/bunny-api-storage",
     "crates/bunny-api-stream",
+    "xtask",
 ]
 resolver = "2"
 
@@ -16,6 +17,11 @@ version = "0.1.0"
 edition = "2024"
 description = "CLI for bunny.net services"
 license = "MIT"
+repository = "https://github.com/ractive/hoppy"
+homepage = "https://github.com/ractive/hoppy"
+readme = "README.md"
+keywords = ["bunny", "cdn", "cli", "dns", "edge"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4", features = ["derive", "env"] }
@@ -35,3 +41,29 @@ indicatif = { version = "0.18.4", features = ["tokio"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 console = "0.16.3"
 reqwest = { version = "0.12", features = ["stream"] }
+
+[package.metadata.deb]
+maintainer = "ractive"
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/hoppy", "usr/bin/", "755"],
+    ["completions/hoppy.bash", "usr/share/bash-completion/completions/hoppy", "644"],
+    ["completions/_hoppy", "usr/share/zsh/vendor-completions/_hoppy", "644"],
+    ["completions/hoppy.fish", "usr/share/fish/vendor_completions.d/hoppy.fish", "644"],
+    ["man/*.1", "usr/share/man/man1/", "644"],
+    ["LICENSE", "usr/share/doc/hoppy/", "644"],
+    ["README.md", "usr/share/doc/hoppy/", "644"],
+]
+extended-description = "A CLI tool for managing bunny.net cloud and edge services including CDN pull zones, storage, DNS, video streaming, security (WAF/DDoS), edge scripting, and magic containers."
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/hoppy", dest = "/usr/bin/hoppy", mode = "755" },
+    { source = "completions/hoppy.bash", dest = "/usr/share/bash-completion/completions/hoppy", mode = "644" },
+    { source = "completions/_hoppy", dest = "/usr/share/zsh/site-functions/_hoppy", mode = "644" },
+    { source = "completions/hoppy.fish", dest = "/usr/share/fish/vendor_completions.d/hoppy.fish", mode = "644" },
+    { source = "man/*.1", dest = "/usr/share/man/man1/", mode = "644" },
+    { source = "LICENSE", dest = "/usr/share/doc/hoppy/LICENSE", mode = "644", doc = true },
+    { source = "README.md", dest = "/usr/share/doc/hoppy/README.md", mode = "644", doc = true },
+]

@@ -1,0 +1,315 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: true
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-13
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # cross is used only for aarch64-linux; Docker is pre-installed on ubuntu-latest
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      # Build the release binary for the matrix target
+      - name: Build release binary
+        run: ${{ matrix.cross && 'cross' || 'cargo' }} build --release --target ${{ matrix.target }}
+
+      # Generate shell completions by running a native host build.
+      # For cross-compiled targets the matrix binary cannot run on the host, so we
+      # build natively (no --target flag) just to produce completions. The
+      # completions output is architecture-independent.
+      - name: Generate shell completions
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p completions
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cargo run --release -- completions bash  > completions/hoppy.bash
+            cargo run --release -- completions zsh   > completions/_hoppy
+            cargo run --release -- completions fish  > completions/hoppy.fish
+          else
+            ./target/${{ matrix.target }}/release/hoppy completions bash  > completions/hoppy.bash
+            ./target/${{ matrix.target }}/release/hoppy completions zsh   > completions/_hoppy
+            ./target/${{ matrix.target }}/release/hoppy completions fish  > completions/hoppy.fish
+          fi
+        env:
+          BUNNY_API_KEY: placeholder
+
+      # Windows: run the native x86_64 binary to generate completions
+      - name: Generate shell completions (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path completions | Out-Null
+          if ("${{ matrix.target }}" -eq "aarch64-pc-windows-msvc") {
+            cargo run --release -- completions bash  | Set-Content -NoNewline completions/hoppy.bash
+            cargo run --release -- completions zsh   | Set-Content -NoNewline completions/_hoppy
+            cargo run --release -- completions fish  | Set-Content -NoNewline completions/hoppy.fish
+          } else {
+            .\target\${{ matrix.target }}\release\hoppy.exe completions bash  | Set-Content -NoNewline completions/hoppy.bash
+            .\target\${{ matrix.target }}\release\hoppy.exe completions zsh   | Set-Content -NoNewline completions/_hoppy
+            .\target\${{ matrix.target }}\release\hoppy.exe completions fish  | Set-Content -NoNewline completions/hoppy.fish
+          }
+        env:
+          BUNNY_API_KEY: placeholder
+
+      # Man pages are generated via xtask (uses Clap's Command builder, no binary
+      # execution required). Skipped on Windows — man pages are not used there.
+      - name: Generate man pages
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p man
+          cargo xtask man-pages --output-dir man
+
+      # Package Linux / macOS archives (.tar.gz)
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ARCHIVE="hoppy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          mkdir -p archive/completions archive/man
+          cp target/${{ matrix.target }}/release/hoppy archive/hoppy
+          cp completions/hoppy.bash completions/_hoppy completions/hoppy.fish archive/completions/
+          cp man/* archive/man/
+          cp LICENSE README.md archive/
+          tar czf "$ARCHIVE" -C archive .
+          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      # Package Windows archives (.zip)
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = "hoppy-${{ github.ref_name }}-${{ matrix.target }}.zip"
+          New-Item -ItemType Directory -Force -Path archive/completions | Out-Null
+          Copy-Item target/${{ matrix.target }}/release/hoppy.exe archive/hoppy.exe
+          Copy-Item completions/hoppy.bash, completions/_hoppy, completions/hoppy.fish archive/completions/
+          Copy-Item LICENSE, README.md archive/
+          Compress-Archive -Path archive/* -DestinationPath $archive
+          "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hoppy-${{ matrix.target }}
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error
+
+  # Build .deb and .rpm packages from the native x86_64-linux build
+  linux-packages:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Generate shell completions
+        run: |
+          mkdir -p completions
+          ./target/release/hoppy completions bash > completions/hoppy.bash
+          ./target/release/hoppy completions zsh  > completions/_hoppy
+          ./target/release/hoppy completions fish > completions/hoppy.fish
+        env:
+          BUNNY_API_KEY: placeholder
+
+      - name: Generate man pages
+        run: |
+          mkdir -p man
+          cargo xtask man-pages --output-dir man
+
+      - name: Install packaging tools
+        run: cargo install cargo-deb cargo-generate-rpm
+
+      - name: Build deb package
+        run: cargo deb --no-build --no-strip
+        # cargo-deb picks up the binary from target/release/ and assets from
+        # the paths listed in [package.metadata.deb]
+
+      - name: Build rpm package
+        run: cargo generate-rpm
+        # cargo-generate-rpm reads [package.metadata.generate-rpm] from Cargo.toml
+
+      - name: Rename packages with version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # cargo-deb outputs to target/debian/
+          mv target/debian/hoppy_${VERSION}-1_amd64.deb hoppy_${VERSION}_amd64.deb
+          # cargo-generate-rpm outputs to target/generate-rpm/
+          mv target/generate-rpm/hoppy-${VERSION}-1.x86_64.rpm hoppy-${VERSION}-1.x86_64.rpm
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hoppy-deb
+          path: "*.deb"
+          if-no-files-found: error
+
+      - name: Upload rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hoppy-rpm
+          path: "*.rpm"
+          if-no-files-found: error
+
+  release:
+    needs: [build, linux-packages]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: artifacts
+
+      - name: Generate SHA-256 checksums
+        working-directory: artifacts
+        run: sha256sum hoppy-* *.deb *.rpm > sha256sums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/hoppy-*
+            artifacts/*.deb
+            artifacts/*.rpm
+            artifacts/sha256sums.txt
+          generate_release_notes: true
+
+  # Update the Homebrew tap formula with new version and checksums
+  homebrew:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release checksums
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          gh release download "$VERSION" --repo ractive/hoppy --pattern sha256sums.txt --dir .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: ractive/homebrew-hoppy
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME}"
+          BASE_URL="https://github.com/ractive/hoppy/releases/download/${TAG}"
+
+          # Extract checksums from sha256sums.txt
+          SHA_LINUX_X86=$(grep "x86_64-unknown-linux-gnu.tar.gz" sha256sums.txt | awk '{print $1}')
+          SHA_LINUX_ARM=$(grep "aarch64-unknown-linux-gnu.tar.gz" sha256sums.txt | awk '{print $1}')
+          SHA_MAC_X86=$(grep "x86_64-apple-darwin.tar.gz" sha256sums.txt | awk '{print $1}')
+          SHA_MAC_ARM=$(grep "aarch64-apple-darwin.tar.gz" sha256sums.txt | awk '{print $1}')
+
+          cat > homebrew-tap/Formula/hoppy.rb << FORMULA
+          class Hoppy < Formula
+            desc "CLI for bunny.net cloud and edge services"
+            homepage "https://github.com/ractive/hoppy"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/hoppy-${TAG}-aarch64-apple-darwin.tar.gz"
+                sha256 "${SHA_MAC_ARM}"
+              else
+                url "${BASE_URL}/hoppy-${TAG}-x86_64-apple-darwin.tar.gz"
+                sha256 "${SHA_MAC_X86}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/hoppy-${TAG}-aarch64-unknown-linux-gnu.tar.gz"
+                sha256 "${SHA_LINUX_ARM}"
+              else
+                url "${BASE_URL}/hoppy-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
+                sha256 "${SHA_LINUX_X86}"
+              end
+            end
+
+            def install
+              bin.install "hoppy"
+              bash_completion.install "completions/hoppy.bash" => "hoppy"
+              zsh_completion.install "completions/_hoppy"
+              fish_completion.install "completions/hoppy.fish"
+              man1.install Dir["man/*.1"]
+            end
+
+            test do
+              assert_match "hoppy", shell_output("#{bin}/hoppy --version")
+            end
+          end
+          FORMULA
+
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' homebrew-tap/Formula/hoppy.rb
+
+      - name: Commit and push formula
+        working-directory: homebrew-tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/hoppy.rb
+          git commit -m "Update hoppy to ${GITHUB_REF_NAME}"
+          git push
