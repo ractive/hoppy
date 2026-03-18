@@ -1,0 +1,9 @@
+{
+    "region": {
+        "id": "DE",
+        "name": "DE",
+        "group": "EU",
+        "hasAnycastSupport": true,
+        "hasCapacity": true
+    }
+}

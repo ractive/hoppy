@@ -94,6 +94,7 @@ pub struct ValidationError {
 
 /// Application lifecycle status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ApplicationStatus {
     Unknown,
     Active,
@@ -105,6 +106,7 @@ pub enum ApplicationStatus {
 
 /// Application runtime type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum RuntimeType {
     Shared,
     Reserved,
@@ -112,7 +114,9 @@ pub enum RuntimeType {
 
 /// Endpoint type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum EndpointType {
+    #[serde(rename = "cdn")]
     CDN,
     Anycast,
     PublicIp,
@@ -120,6 +124,7 @@ pub enum EndpointType {
 
 /// Region provisioning type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum RegionProvisioningType {
     Static,
     Dynamic,
@@ -127,6 +132,7 @@ pub enum RegionProvisioningType {
 
 /// Container image pull policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ImagePullPolicy {
     Always,
     IfNotPresent,
@@ -148,6 +154,7 @@ pub enum AnycastIpProtocolVersion {
 
 /// Overview status grade.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Grade {
     CouldBeBetter,
     NotBad,
@@ -156,6 +163,7 @@ pub enum Grade {
 
 /// Deployment status for a region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum DeploymentStatus {
     Unknown,
     Active,
@@ -166,6 +174,7 @@ pub enum DeploymentStatus {
 
 /// Pod lifecycle status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum PodStatus {
     NotScheduled,
     Scheduled,
@@ -175,6 +184,7 @@ pub enum PodStatus {
 
 /// Container status within a pod.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ContainerStatus {
     NotStarted,
     Started,
@@ -191,6 +201,7 @@ pub enum Granularity {
 
 /// Volume instance status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum VolumeInstanceStatus {
     Unknown,
     Attached,
@@ -1401,7 +1412,7 @@ mod tests {
     #[test]
     fn runtime_type_roundtrip() {
         let json = serde_json::to_string(&RuntimeType::Shared).unwrap();
-        assert_eq!(json, "\"Shared\"");
+        assert_eq!(json, "\"shared\"");
         let decoded: RuntimeType = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded, RuntimeType::Shared);
     }
@@ -1455,13 +1466,13 @@ mod tests {
         };
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("\"name\":\"my-app\""));
-        assert!(json.contains("\"runtimeType\":\"Shared\""));
+        assert!(json.contains("\"runtimeType\":\"shared\""));
         assert!(json.contains("\"min\":1"));
     }
 
     #[test]
     fn cursor_list_deserializes() {
-        let json = r#"{"items":[{"id":"a","name":"test","status":"Active"}],"meta":{"totalItems":1},"cursor":null}"#;
+        let json = r#"{"items":[{"id":"a","name":"test","status":"active"}],"meta":{"totalItems":1},"cursor":null}"#;
         let list: CursorList<AppListItem> = serde_json::from_str(json).unwrap();
         assert_eq!(list.items.len(), 1);
         assert_eq!(list.items[0].name, "test");

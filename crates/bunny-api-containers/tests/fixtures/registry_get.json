@@ -1,0 +1,14 @@
+{
+    "accountId": "f848a143-72a5-4190-b35f-f30b59b0f7f9",
+    "userId": "f848a143-72a5-4190-b35f-f30b59b0f7f9",
+    "namespaceId": "default",
+    "displayName": "GitHub Packages ractive",
+    "hostName": "ghcr.io",
+    "userName": "ractive",
+    "firstPasswordSymbols": null,
+    "lastPasswordSymbols": "ghp",
+    "createdAt": "2026-03-15T13:42:45.575302",
+    "isPublic": false,
+    "lastUpdatedAt": null,
+    "id": 5602
+}
