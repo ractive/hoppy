@@ -1,0 +1,21 @@
+{
+  "TotalRequestsServed": 125000,
+  "TotalCpuUsed": 45.75,
+  "TotalMonthlyCost": 0.0125,
+  "AverageCpuTimePerExecution": 0.000366,
+  "RequestsServedChart": {
+    "2024-01-01": 4500.0,
+    "2024-01-02": 5200.0,
+    "2024-01-03": 4800.0
+  },
+  "AverageCpuTimeChart": {
+    "2024-01-01": 0.00035,
+    "2024-01-02": 0.00038,
+    "2024-01-03": 0.00036
+  },
+  "TotalCpuTimeChart": {
+    "2024-01-01": 1.575,
+    "2024-01-02": 1.976,
+    "2024-01-03": 1.728
+  }
+}

@@ -30,7 +30,9 @@ async fn main() {
         Commands::Shield { action } => {
             commands::shield::handle(action, cli.format, cli.debug, cli.yes).await
         }
-        Commands::Script { action } => commands::script::handle(action, cli.format),
+        Commands::Script { action } => {
+            commands::script::handle(action, cli.format, cli.debug, cli.yes).await
+        }
         Commands::Container { action } => commands::container::handle(action, cli.format),
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();
