@@ -156,6 +156,8 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 - [ ] Handle per-zone storage API key (from zone details or `BUNNY_STORAGE_KEY` env var)
 - [ ] Progress bar for upload/download (stderr, only if TTY)
 - [ ] JSON list output should include pagination envelope (`current_page`, `total_items`, `has_more_items`), not just the items array — apply consistently across all list commands including pull zones
+- [ ] Integration tests with mock HTTP server (carried from iter 1 — record real API responses as fixtures first)
+- [ ] Consolidate duplicate `PaginatedList` and `ApiError` types across `bunny-api-core` and `bunny-api-compute` (carried from iter 1 code review)
 
 **Deliverable:** Upload and download files to/from bunny.net storage.
 
@@ -284,3 +286,6 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 2026-03-17 | No `--api-key` flag | clig.dev: don't pass secrets via flags (visible in ps/history). Use `BUNNY_API_KEY` env var only. |
 | 2026-03-17 | Table output as default for TTY | Follows az/gcloud/clig.dev pattern. JSON auto-default when piped. |
 | 2026-03-17 | Branch per iteration | Keeps main stable. Branch naming: `iter-N/description`. Merge via PR. |
+| 2026-03-18 | Hand-written API clients confirmed | Codegen (Progenitor) abandoned in iter 0.5 — hand-written reqwest clients with serde types proved cleaner for bunny.net's PascalCase API |
+| 2026-03-18 | `zone_security_key` excluded from JSON output | Security keys in API responses are deserialized but `#[serde(skip_serializing)]` prevents leaking them in CLI output |
+| 2026-03-18 | Mock tests deferred until real API fixtures available | Synthetic mocks test assumptions, not reality — record real responses via `--debug` first |
