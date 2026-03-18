@@ -6,6 +6,7 @@ use bunny_api_core::CoreClient;
 use bunny_api_storage::StorageClient;
 use bunny_api_storage::StorageObject;
 use std::io::{self, BufRead, Write};
+use tokio::fs;
 
 // ---------------------------------------------------------------------------
 // Display structs
@@ -68,7 +69,7 @@ pub async fn handle(
             let client = build_storage_client(zone, region, debug).await?;
             let (dir, name) = split_remote_path(remote_path)?;
             let bytes =
-                std::fs::read(file).with_context(|| format!("reading local file: {file}"))?;
+                fs::read(file).await.with_context(|| format!("reading local file: {file}"))?;
             eprintln!("Uploading {file} → {zone}/{remote_path} ...");
             client.upload_file(zone, dir, name, bytes, None).await?;
             eprintln!("Done.");
@@ -85,7 +86,8 @@ pub async fn handle(
             let bytes = client.download_file(zone, dir, name).await?;
             match output {
                 Some(path) => {
-                    std::fs::write(path, &bytes)
+                    fs::write(path, &bytes)
+                        .await
                         .with_context(|| format!("writing output file: {path}"))?;
                     eprintln!("Saved to {path} ({} bytes)", bytes.len());
                 }
