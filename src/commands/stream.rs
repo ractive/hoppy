@@ -298,7 +298,8 @@ async fn handle_video(
                     items: &result.items,
                     current_page: result.current_page,
                     total_items: result.total_items,
-                    has_more_items: false,
+                    has_more_items: (result.current_page * result.items_per_page as i64)
+                        < result.total_items,
                 };
                 let json =
                     serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
