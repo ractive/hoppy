@@ -113,7 +113,7 @@ pub enum PullZoneAction {
     /// Get a specific pull zone
     Get {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
     /// Create a new pull zone
     Create {
@@ -125,7 +125,7 @@ pub enum PullZoneAction {
     /// Update a pull zone
     Update {
         #[arg(long)]
-        id: u64,
+        id: i64,
         #[arg(long)]
         origin_url: Option<String>,
         #[arg(long)]
@@ -148,12 +148,12 @@ pub enum PullZoneAction {
     /// Delete a pull zone
     Delete {
         #[arg(long)]
-        id: u64,
+        id: i64,
     },
     /// Purge pull zone cache
     Purge {
         #[arg(long)]
-        id: u64,
+        id: i64,
         /// Limit purge to a specific cache tag
         #[arg(long)]
         cache_tag: Option<String>,
