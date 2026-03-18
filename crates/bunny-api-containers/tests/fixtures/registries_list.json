@@ -1,0 +1,50 @@
+{
+    "items": [
+        {
+            "accountId": "00000000-0000-0000-0000-000000000000",
+            "userId": "00000000-0000-0000-0000-000000000000",
+            "namespaceId": "default",
+            "displayName": "GitHub Packages testuser",
+            "hostName": "ghcr.io",
+            "userName": "testuser",
+            "firstPasswordSymbols": null,
+            "lastPasswordSymbols": null,
+            "createdAt": "2024-01-01T00:00:00.000000",
+            "isPublic": false,
+            "lastUpdatedAt": null,
+            "id": 9999
+        },
+        {
+            "accountId": "global",
+            "userId": null,
+            "namespaceId": "default",
+            "displayName": "DockerHub Public",
+            "hostName": "docker.io",
+            "userName": null,
+            "firstPasswordSymbols": null,
+            "lastPasswordSymbols": null,
+            "createdAt": "2024-04-29T09:25:34.402443",
+            "isPublic": true,
+            "lastUpdatedAt": "2024-04-29T09:25:34.402443",
+            "id": 1155
+        },
+        {
+            "accountId": "global",
+            "userId": null,
+            "namespaceId": "default",
+            "displayName": "GitHub Public",
+            "hostName": "ghcr.io",
+            "userName": null,
+            "firstPasswordSymbols": null,
+            "lastPasswordSymbols": null,
+            "createdAt": "2024-04-29T09:25:34.402443",
+            "isPublic": true,
+            "lastUpdatedAt": "2024-04-29T09:25:34.402443",
+            "id": 1156
+        }
+    ],
+    "meta": {
+        "totalItems": 3
+    },
+    "cursor": null
+}

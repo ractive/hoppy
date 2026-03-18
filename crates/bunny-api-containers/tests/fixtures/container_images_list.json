@@ -1,0 +1,14 @@
+[
+    {
+        "id": "nginx",
+        "namespace": "library"
+    },
+    {
+        "id": "alpine",
+        "namespace": "library"
+    },
+    {
+        "id": "redis",
+        "namespace": "library"
+    }
+]

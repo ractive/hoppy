@@ -33,7 +33,9 @@ async fn main() {
         Commands::Script { action } => {
             commands::script::handle(action, cli.format, cli.debug, cli.yes).await
         }
-        Commands::Container { action } => commands::container::handle(action, cli.format),
+        Commands::Container { action } => {
+            commands::container::handle(action, cli.format, cli.debug, cli.yes).await
+        }
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();
             generate(*shell, &mut cmd, "hoppy", &mut std::io::stdout());
