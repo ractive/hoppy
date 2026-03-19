@@ -1,5 +1,3 @@
-mod e2e_support;
-
 use assert_cmd::Command;
 use predicates::prelude::*;
 

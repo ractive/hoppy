@@ -175,11 +175,13 @@ async fn handle_library(
     debug: bool,
     yes: bool,
 ) -> Result<()> {
+    let api_key = auth::get_api_key()?;
     let core = if let Some(url) = auth::get_api_url() {
-        CoreClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+        CoreClient::with_base_url(api_key, url)
     } else {
-        CoreClient::new(auth::get_api_key()?).with_debug(debug)
-    };
+        CoreClient::new(api_key)
+    }
+    .with_debug(debug);
 
     match action {
         StreamLibraryAction::List {
@@ -276,11 +278,13 @@ async fn resolve_stream_client(library_id: i64, debug: bool) -> Result<StreamCli
         };
         return Ok(client.with_debug(debug));
     }
+    let api_key = auth::get_api_key()?;
     let core = if let Some(url) = auth::get_api_url() {
-        CoreClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+        CoreClient::with_base_url(api_key, url)
     } else {
-        CoreClient::new(auth::get_api_key()?).with_debug(debug)
-    };
+        CoreClient::new(api_key)
+    }
+    .with_debug(debug);
     let lib = core.get_video_library(library_id).await?;
     if lib.api_key.is_empty() {
         bail!("could not determine stream API key for library {library_id}; set BUNNY_STREAM_KEY");

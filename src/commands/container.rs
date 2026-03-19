@@ -23,11 +23,13 @@ use std::io::{self, BufRead, Write};
 // ---------------------------------------------------------------------------
 
 fn client(debug: bool) -> Result<ContainersClient> {
+    let api_key = auth::get_api_key()?;
     Ok(if let Some(url) = auth::get_containers_url() {
-        ContainersClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+        ContainersClient::with_base_url(api_key, url)
     } else {
-        ContainersClient::new(auth::get_api_key()?).with_debug(debug)
-    })
+        ContainersClient::new(api_key)
+    }
+    .with_debug(debug))
 }
 
 // ---------------------------------------------------------------------------
