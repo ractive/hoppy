@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use bytes::Bytes;
 
 use bunny_api_recording::{capture_request, maybe_record_response};
@@ -18,6 +18,22 @@ fn encode_path_segments(path: &str) -> String {
         .join("/")
 }
 
+/// Known Bunny CDN storage region prefixes.
+///
+/// These are the only accepted values for the `region` parameter of
+/// [`StorageClient::new`]. Each entry maps to a specific data center.
+pub const VALID_REGIONS: &[&str] = &[
+    "storage", // Falkenstein (default/primary)
+    "uk",      // London
+    "ny",      // New York
+    "la",      // Los Angeles
+    "sg",      // Singapore
+    "syd",     // Sydney / Oceania
+    "br",      // São Paulo
+    "jh",      // Johannesburg / Africa
+    "se",      // Stockholm
+];
+
 /// Client for the bunny.net Edge Storage API.
 ///
 /// Each storage zone has a primary region, which determines the API hostname.
@@ -31,7 +47,7 @@ fn encode_path_segments(path: &str) -> String {
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let client = StorageClient::new("storage", "my-access-key");
+///     let client = StorageClient::new("storage", "my-access-key").unwrap();
 ///     let files = client.list_files("my-zone", "images").await.unwrap();
 /// }
 /// ```
@@ -47,23 +63,32 @@ pub struct StorageClient {
 impl StorageClient {
     /// Creates a new `StorageClient`.
     ///
-    /// `region` is the subdomain prefix for the storage endpoint:
-    /// - `"storage"` — Falkenstein (default)
-    /// - `"la"` — New York / Los Angeles
-    /// - `"sg"` — Singapore
-    /// - `"syd"` — Sydney
+    /// `region` must be one of the known Bunny CDN storage region prefixes
+    /// (see [`VALID_REGIONS`]). An unknown value is rejected with an error to
+    /// prevent hostname injection via caller-controlled input.
     ///
     /// `access_key` is the storage zone password shown in the bunny.net dashboard.
-    pub fn new(region: &str, access_key: impl Into<String>) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `region` is not a recognised Bunny CDN region.
+    pub fn new(region: &str, access_key: impl Into<String>) -> Result<Self> {
+        if !VALID_REGIONS.contains(&region) {
+            bail!(
+                "unknown storage region {:?}; valid regions are: {}",
+                region,
+                VALID_REGIONS.join(", ")
+            );
+        }
         let base_url = format!("https://{region}.bunnycdn.com");
-        Self {
+        Ok(Self {
             http: reqwest::Client::new(),
             base_url,
             access_key: access_key.into(),
             debug: false,
             record_dir: None,
             last_request: Mutex::new(None),
-        }
+        })
     }
 
     /// Creates a client pointing at a custom base URL (useful for tests /
@@ -276,7 +301,37 @@ mod tests {
     use super::*;
 
     fn client() -> StorageClient {
-        StorageClient::new("storage", "test-key")
+        StorageClient::new("storage", "test-key").unwrap()
+    }
+
+    #[test]
+    fn new_accepts_valid_regions() {
+        for &region in VALID_REGIONS {
+            assert!(
+                StorageClient::new(region, "key").is_ok(),
+                "expected region {region:?} to be accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn new_rejects_unknown_region() {
+        let result = StorageClient::new("evil.com", "key");
+        assert!(result.is_err(), "expected an error for unknown region");
+        let msg = result.err().unwrap().to_string();
+        assert!(
+            msg.contains("evil.com"),
+            "error message should contain the bad region: {msg}"
+        );
+        assert!(
+            msg.contains("valid regions"),
+            "error message should list valid regions: {msg}"
+        );
+    }
+
+    #[test]
+    fn new_rejects_empty_region() {
+        assert!(StorageClient::new("", "key").is_err());
     }
 
     #[test]
