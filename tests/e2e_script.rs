@@ -1,6 +1,6 @@
 mod e2e_support;
 
-use e2e_support::{cmd, server};
+use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
@@ -18,6 +18,7 @@ const FIXTURE_SECRETS_LIST: &str = include_str!("fixtures/compute/secrets_list.j
 
 #[tokio::test]
 async fn script_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -42,10 +43,12 @@ async fn script_list_table_output() {
 
 #[tokio::test]
 async fn script_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/compute/script"))
+        .and(header("AccessKey", "test-api-key"))
         .and(query_param("page", "1"))
         .and(query_param("perPage", "1000"))
         .respond_with(
@@ -69,6 +72,7 @@ async fn script_list_json_output() {
 
 #[tokio::test]
 async fn script_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -91,10 +95,12 @@ async fn script_get_table_output() {
 
 #[tokio::test]
 async fn script_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/compute/script/1001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPT_GET, "application/json"),
         )
@@ -111,10 +117,12 @@ async fn script_get_json_output() {
 
 #[tokio::test]
 async fn script_get_not_found() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/compute/script/99999"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(404).set_body_raw(
             include_str!("fixtures/compute/error_not_found.json"),
             "application/json",
@@ -135,6 +143,7 @@ async fn script_get_not_found() {
 
 #[tokio::test]
 async fn script_create() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("POST"))
@@ -167,6 +176,7 @@ async fn script_create() {
 
 #[tokio::test]
 async fn script_delete_with_yes_flag() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("DELETE"))
@@ -190,6 +200,7 @@ async fn script_delete_with_yes_flag() {
 
 #[tokio::test]
 async fn script_code_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -211,10 +222,12 @@ async fn script_code_get_table_output() {
 
 #[tokio::test]
 async fn script_code_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/compute/script/1001/code"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPT_CODE_GET, "application/json"),
         )
@@ -235,6 +248,7 @@ async fn script_code_get_json_output() {
 
 #[tokio::test]
 async fn script_variable_list() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     // variable list fetches the script and reads EdgeScriptVariables from it
@@ -257,11 +271,13 @@ async fn script_variable_list() {
 
 #[tokio::test]
 async fn script_variable_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     // variable list with --format json also goes through get_script
     Mock::given(method("GET"))
         .and(path("/compute/script/1001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPT_GET, "application/json"),
         )
@@ -284,6 +300,7 @@ async fn script_variable_get_json_output() {
 
 #[tokio::test]
 async fn script_secret_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -306,10 +323,12 @@ async fn script_secret_list_table_output() {
 
 #[tokio::test]
 async fn script_secret_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/compute/script/1001/secrets"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SECRETS_LIST, "application/json"),
         )
@@ -332,6 +351,7 @@ async fn script_secret_list_json_output() {
 
 #[tokio::test]
 async fn script_release_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -354,10 +374,12 @@ async fn script_release_list_table_output() {
 
 #[tokio::test]
 async fn script_release_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/compute/script/1001/releases"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_RELEASES_LIST, "application/json"),
         )

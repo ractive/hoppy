@@ -1,12 +1,13 @@
 mod e2e_support;
 
-use e2e_support::{cmd, server};
+use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
 #[tokio::test]
 async fn auth_check_shows_billing_info() {
+    skip_in_live_mode!();
     let mock = server::start().await;
     let body = include_str!("fixtures/core/billing_get.json");
 
@@ -27,6 +28,7 @@ async fn auth_check_shows_billing_info() {
 
 #[tokio::test]
 async fn auth_check_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
     let body = include_str!("fixtures/core/billing_get.json");
 
@@ -47,10 +49,12 @@ async fn auth_check_json_output() {
 
 #[tokio::test]
 async fn auth_check_unauthorized() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/billing"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(401).set_body_string("{\"Message\":\"Unauthorized\"}"))
         .expect(1)
         .mount(&mock)

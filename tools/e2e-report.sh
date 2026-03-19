@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # Generate an Obsidian-compatible markdown report from E2E test results.
+# Output is written to hoppy-knowledgebase/e2e-test-report.md (gitignored).
 #
 # Usage:
 #   bash tools/e2e-report.sh

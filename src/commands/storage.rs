@@ -3,7 +3,6 @@ use crate::cli::{OutputFormat, StorageAction};
 use crate::output;
 use crate::progress;
 use anyhow::{Context, Result, bail};
-use bunny_api_core::CoreClient;
 use bunny_api_storage::StorageClient;
 use bunny_api_storage::StorageObject;
 use std::io::{self, BufRead, Write};
@@ -197,15 +196,9 @@ async fn build_storage_client(zone_name: &str, region: &str, debug: bool) -> Res
         key
     } else {
         // Fall back to fetching the password from the Core API.
-        let api_key = auth::get_api_key().context(
+        let core = auth::core_client(debug).context(
             "BUNNY_STORAGE_KEY is not set and BUNNY_API_KEY is needed to fetch the storage key",
         )?;
-        let core = if let Some(url) = auth::get_api_url() {
-            CoreClient::with_base_url(api_key, url)
-        } else {
-            CoreClient::new(api_key)
-        }
-        .with_debug(debug);
         let result = core
             .list_storage_zones(None, None, Some(zone_name), None)
             .await

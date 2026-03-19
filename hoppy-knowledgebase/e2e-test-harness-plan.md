@@ -137,15 +137,13 @@ tests/fixtures/
 
 ### Step 6: Report generator script
 
-**`tools/e2e-report.sh`** — Runs `cargo test --test 'e2e_*'` with JSON output, parses pass/fail, writes `hoppy-knowledgebase/e2e-test-report.md` with Obsidian frontmatter and checkboxes grouped by test file.
+**`tools/e2e-report.sh`** — Runs `cargo test --test 'e2e_*'` with `--no-fail-fast` so all results are collected even when some tests fail. Captures plain-text test output, parses `test ... ok` and `test ... FAILED` lines with bash regex, and writes `hoppy-knowledgebase/e2e-test-report.md` with Obsidian-compatible YAML frontmatter and a flat (ungrouped) checkbox list. The report file is gitignored.
 
 Example output:
 ```markdown
-### e2e_pull_zone
-
-- [x] pull_zone_list_table_output (0.12s)
-- [x] pull_zone_list_json_output (0.08s)
-- [ ] pull_zone_get_not_found (0.03s)
+- [x] `pull_zone_list_table_output`
+- [x] `pull_zone_list_json_output`
+- [ ] `pull_zone_get_not_found` **FAILED**
 ```
 
 ### Step 7: Dual mode support

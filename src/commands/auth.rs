@@ -2,7 +2,6 @@ use crate::auth;
 use crate::cli::{AuthAction, OutputFormat};
 use crate::output;
 use anyhow::{Context, Result};
-use bunny_api_core::client::CoreClient;
 use bunny_api_core::types::BillingDetails;
 
 // ---------------------------------------------------------------------------
@@ -87,13 +86,7 @@ pub async fn handle(
 }
 
 async fn handle_check(format: OutputFormat, debug: bool) -> Result<()> {
-    let api_key = auth::get_api_key()?;
-    let client = if let Some(url) = auth::get_api_url() {
-        CoreClient::with_base_url(api_key, url)
-    } else {
-        CoreClient::new(api_key)
-    }
-    .with_debug(debug);
+    let client = auth::core_client(debug)?;
     let billing = client.get_billing().await?;
 
     match format {
