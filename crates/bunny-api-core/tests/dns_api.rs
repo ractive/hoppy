@@ -448,7 +448,7 @@ async fn debug_mode_logs_to_stderr() {
     // client still returns the correct result (the send() impl logs to stderr
     // but we can't trivially capture it in-process). We confirm debug mode
     // doesn't break anything.
-    let client = CoreClient::with_base_url("test-api-key", &server.uri()).with_debug(true);
+    let client = CoreClient::with_base_url("test-api-key", server.uri()).with_debug(true);
     let zone = client.get_dns_zone(50001).await.unwrap();
     assert_eq!(zone.id, 50001);
     assert_eq!(zone.domain, "example.com");
