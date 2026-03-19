@@ -441,7 +441,7 @@ testbooks/
   pull-zone.test.ts        # pull zone lifecycle
   storage-zone.test.ts     # storage zone + file operations
   dns-zone.test.ts         # DNS zone + record lifecycle
-  stream.test.ts           # library + video + collection lifecycle
+  stream.test.ts           # library + collection lifecycle (video deferred)
   script.test.ts           # script + code + variable + secret lifecycle
   shield.test.ts           # shield zone + WAF + rate limit + access list
   __snapshots__/           # auto-generated, committed to git
@@ -457,9 +457,10 @@ Provides:
 - `hoppyRaw(args)` — runs hoppy without `--format json` (for delete, purge, etc.)
 - `onCleanupDelete(args)` — registers a `--yes` delete command for `afterAll` cleanup
 - `runCleanups()` — runs all registered cleanups in reverse order (call from `afterAll`)
-- `testName(prefix)` — generates `"prefix-{timestamp}"` for unique resource names
+- `testName(prefix)` — generates `"prefix-{timestamp}-{counter}"` for unique resource names
 
 Invokes the pre-built `target/debug/hoppy` binary directly (not `cargo run`) for fast execution.
+Override with `HOPPY_BIN` env var to point at a different binary.
 
 ### Test Book Structure
 
@@ -471,7 +472,7 @@ Each test book has two `describe` blocks:
 #### Pull Zone (`testbooks/pull-zone.test.ts`) — done
 - [x] Lifecycle: create → get → list → update → verify update → purge → delete (7 steps)
 - [x] Snapshot on create response with property matchers for dynamic fields
-- [x] Error cases: get non-existent ID, update non-existent ID
+- [x] Error cases: get non-existent ID, update non-existent ID, delete non-existent ID
 
 #### DNS Zone + Records (`testbooks/dns-zone.test.ts`) — done
 - [x] Zone lifecycle: create → get → list → update → verify update → delete
