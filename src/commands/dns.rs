@@ -135,7 +135,7 @@ pub async fn handle(
     debug: bool,
     yes: bool,
 ) -> Result<()> {
-    let client = CoreClient::new(auth::get_api_key()?).with_debug(debug);
+    let client = auth::core_client(debug)?;
 
     match action {
         DnsAction::Zone { action } => handle_zone(&client, action, format, yes).await,
