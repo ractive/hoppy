@@ -312,6 +312,12 @@ pub async fn handle(
             )
             .await
         }
+        ScriptAction::RotateDeploymentKey { id } => {
+            let c = client(debug)?;
+            c.rotate_deployment_key(*id).await?;
+            eprintln!("Rotated deployment key for script {id}");
+            Ok(())
+        }
     }
 }
 

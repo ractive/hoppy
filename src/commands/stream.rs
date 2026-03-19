@@ -1,12 +1,16 @@
 use crate::auth;
-use crate::cli::{OutputFormat, StreamAction, StreamLibraryAction, StreamVideoAction};
+use crate::cli::{
+    OutputFormat, StreamAction, StreamCollectionAction, StreamLibraryAction, StreamVideoAction,
+};
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
 use anyhow::{Context as _, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
 use bunny_api_stream::types::{Collection, Video};
-use bunny_api_stream::{CreateVideo, StreamClient};
+use bunny_api_stream::{
+    CreateCollection, CreateVideo, FetchVideo, StreamClient, UpdateCollection, UpdateVideo,
+};
 use std::io::{self, BufRead, Write};
 use tokio_util::io::ReaderStream;
 
@@ -125,7 +129,6 @@ impl From<&Video> for VideoRow {
 // ---------------------------------------------------------------------------
 
 #[derive(serde::Serialize, tabled::Tabled)]
-#[allow(dead_code)]
 struct CollectionRow {
     #[tabled(rename = "GUID")]
     guid: String,
@@ -162,6 +165,7 @@ pub async fn handle(
     match action {
         StreamAction::Library { action } => handle_library(action, format, debug, yes).await,
         StreamAction::Video { action } => handle_video(action, format, debug, yes, quiet).await,
+        StreamAction::Collection { action } => handle_collection(action, format, debug, yes).await,
     }
 }
 
@@ -384,6 +388,43 @@ async fn handle_video(
                 output::print_single(&row, format);
             }
         }
+        StreamVideoAction::Update {
+            library_id,
+            video_id,
+            title,
+            collection_id,
+        } => {
+            if title.is_none() && collection_id.is_none() {
+                bail!("at least one update flag is required (--title or --collection-id)");
+            }
+            let stream = resolve_stream_client(*library_id, debug).await?;
+            let mut body = UpdateVideo::new();
+            if let Some(t) = title {
+                body = body.title(t);
+            }
+            if let Some(cid) = collection_id {
+                body = body.collection_id(cid);
+            }
+            let status = stream.update_video(*library_id, video_id, &body).await?;
+            eprintln!(
+                "Updated video {video_id}: {}",
+                status.message.as_deref().unwrap_or("ok")
+            );
+        }
+        StreamVideoAction::Fetch {
+            library_id,
+            url,
+            title,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug).await?;
+            let mut body = FetchVideo::new(url);
+            if let Some(t) = title {
+                body = body.title(t);
+            }
+            eprintln!("Fetching video from {url}");
+            let status = stream.fetch_video(*library_id, &body).await?;
+            eprintln!("{}", status.message.as_deref().unwrap_or("ok"));
+        }
         StreamVideoAction::Delete {
             library_id,
             video_id,
@@ -402,6 +443,123 @@ async fn handle_video(
             let stream = resolve_stream_client(*library_id, debug).await?;
             stream.delete_video(*library_id, video_id).await?;
             eprintln!("Deleted video {video_id} from library {library_id}");
+        }
+    }
+    Ok(())
+}
+
+async fn handle_collection(
+    action: &StreamCollectionAction,
+    format: OutputFormat,
+    debug: bool,
+    yes: bool,
+) -> Result<()> {
+    match action {
+        StreamCollectionAction::List {
+            library_id,
+            page,
+            items_per_page,
+            search,
+            order_by,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug).await?;
+            let result = stream
+                .list_collections(
+                    *library_id,
+                    *page,
+                    *items_per_page,
+                    search.as_deref(),
+                    order_by.as_deref(),
+                )
+                .await?;
+            if let OutputFormat::Json = format {
+                let envelope = PaginatedListJson {
+                    items: &result.items,
+                    current_page: result.current_page,
+                    total_items: result.total_items,
+                    has_more_items: (result.current_page * result.items_per_page as i64)
+                        < result.total_items,
+                };
+                let json =
+                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let rows: Vec<CollectionRow> =
+                    result.items.iter().map(CollectionRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        StreamCollectionAction::Get {
+            library_id,
+            collection_id,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug).await?;
+            let collection = stream.get_collection(*library_id, collection_id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&collection).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let row = CollectionRow::from(&collection);
+                output::print_single(&row, format);
+            }
+        }
+        StreamCollectionAction::Create { library_id, name } => {
+            let stream = resolve_stream_client(*library_id, debug).await?;
+            let body = CreateCollection::new(name);
+            let collection = stream.create_collection(*library_id, &body).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&collection).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let row = CollectionRow::from(&collection);
+                output::print_single(&row, format);
+            }
+        }
+        StreamCollectionAction::Update {
+            library_id,
+            collection_id,
+            name,
+        } => {
+            if name.is_none() {
+                bail!("at least one update flag is required (--name)");
+            }
+            let stream = resolve_stream_client(*library_id, debug).await?;
+            let mut body = UpdateCollection::new();
+            if let Some(n) = name {
+                body = body.name(n);
+            }
+            let collection = stream
+                .update_collection(*library_id, collection_id, &body)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&collection).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let row = CollectionRow::from(&collection);
+                output::print_single(&row, format);
+            }
+        }
+        StreamCollectionAction::Delete {
+            library_id,
+            collection_id,
+        } => {
+            if !yes {
+                eprint!("Delete collection {collection_id} from library {library_id}? [y/N] ");
+                io::stderr().flush()?;
+                let mut line = String::new();
+                io::stdin().lock().read_line(&mut line)?;
+                let answer = line.trim().to_lowercase();
+                if answer != "y" && answer != "yes" {
+                    eprintln!("Aborted.");
+                    return Ok(());
+                }
+            }
+            let stream = resolve_stream_client(*library_id, debug).await?;
+            stream.delete_collection(*library_id, collection_id).await?;
+            eprintln!("Deleted collection {collection_id} from library {library_id}");
         }
     }
     Ok(())

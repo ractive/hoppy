@@ -450,6 +450,11 @@ pub enum StreamAction {
         #[command(subcommand)]
         action: StreamVideoAction,
     },
+    /// Manage video collections
+    Collection {
+        #[command(subcommand)]
+        action: StreamCollectionAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -539,12 +544,88 @@ pub enum StreamVideoAction {
         #[arg(long)]
         collection_id: Option<String>,
     },
+    /// Update video title or collection
+    Update {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        /// New title for the video
+        #[arg(long)]
+        title: Option<String>,
+        /// Collection GUID to assign the video to
+        #[arg(long)]
+        collection_id: Option<String>,
+    },
+    /// Fetch (ingest) a video from a remote URL
+    Fetch {
+        #[arg(long)]
+        library_id: i64,
+        /// Public URL to pull the video from
+        #[arg(long)]
+        url: String,
+        /// Title for the created video
+        #[arg(long)]
+        title: Option<String>,
+    },
     /// Delete a video
     Delete {
         #[arg(long)]
         library_id: i64,
         #[arg(long)]
         video_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum StreamCollectionAction {
+    /// List collections in a library
+    List {
+        #[arg(long)]
+        library_id: i64,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        items_per_page: Option<u32>,
+        /// Filter by name
+        #[arg(long)]
+        search: Option<String>,
+        /// Sort order
+        #[arg(long)]
+        order_by: Option<String>,
+    },
+    /// Get a specific collection
+    Get {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        collection_id: String,
+    },
+    /// Create a new collection
+    Create {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        name: String,
+    },
+    /// Update a collection
+    Update {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        collection_id: String,
+        /// New name for the collection
+        #[arg(long)]
+        name: Option<String>,
+    },
+    /// Delete a collection
+    Delete {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        collection_id: String,
     },
 }
 
@@ -925,6 +1006,11 @@ pub enum ScriptAction {
         /// Return hourly breakdowns
         #[arg(long)]
         hourly: bool,
+    },
+    /// Rotate the deployment key for a script
+    RotateDeploymentKey {
+        #[arg(long)]
+        id: i64,
     },
 }
 
