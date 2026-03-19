@@ -12,36 +12,31 @@ pub fn get_api_key() -> Result<String> {
     }
 }
 
-/// Read a custom base URL for the bunny.net Core/Compute/Shield API.
-pub fn get_api_url() -> Option<String> {
-    match env::var("BUNNY_API_URL") {
+fn get_env_url(var: &str) -> Option<String> {
+    match env::var(var) {
         Ok(url) if !url.is_empty() => Some(url),
         _ => None,
     }
+}
+
+/// Read a custom base URL for the bunny.net Core/Compute/Shield API.
+pub fn get_api_url() -> Option<String> {
+    get_env_url("BUNNY_API_URL")
 }
 
 /// Read a custom base URL for the bunny.net Containers API.
 pub fn get_containers_url() -> Option<String> {
-    match env::var("BUNNY_CONTAINERS_URL") {
-        Ok(url) if !url.is_empty() => Some(url),
-        _ => None,
-    }
+    get_env_url("BUNNY_CONTAINERS_URL")
 }
 
 /// Read a custom base URL for the bunny.net Stream API.
 pub fn get_stream_url() -> Option<String> {
-    match env::var("BUNNY_STREAM_URL") {
-        Ok(url) if !url.is_empty() => Some(url),
-        _ => None,
-    }
+    get_env_url("BUNNY_STREAM_URL")
 }
 
 /// Read a custom base URL for the bunny.net Storage API.
 pub fn get_storage_url() -> Option<String> {
-    match env::var("BUNNY_STORAGE_URL") {
-        Ok(url) if !url.is_empty() => Some(url),
-        _ => None,
-    }
+    get_env_url("BUNNY_STORAGE_URL")
 }
 
 /// Read the bunny.net Storage Zone access key from the BUNNY_STORAGE_KEY
