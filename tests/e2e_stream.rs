@@ -5,13 +5,13 @@ use predicates::prelude::*;
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
-const FIXTURE_LIBRARY_LIST: &str = include_str!("fixtures/core/videolibrary_list_paginated.json");
-const FIXTURE_LIBRARY_GET: &str = include_str!("fixtures/core/videolibrary_get.json");
-const FIXTURE_VIDEO_LIST: &str = include_str!("fixtures/stream/video_list_paginated.json");
-const FIXTURE_VIDEO_GET: &str = include_str!("fixtures/stream/video_get.json");
+const FIXTURE_LIBRARY_LIST: &str = include_str!("../crates/bunny-api-core/tests/fixtures/videolibrary_list_paginated.json");
+const FIXTURE_LIBRARY_GET: &str = include_str!("../crates/bunny-api-core/tests/fixtures/videolibrary_get.json");
+const FIXTURE_VIDEO_LIST: &str = include_str!("../crates/bunny-api-stream/tests/fixtures/video_list_paginated.json");
+const FIXTURE_VIDEO_GET: &str = include_str!("../crates/bunny-api-stream/tests/fixtures/video_get.json");
 const FIXTURE_COLLECTION_LIST: &str =
-    include_str!("fixtures/stream/collection_list_paginated.json");
-const FIXTURE_COLLECTION_GET: &str = include_str!("fixtures/stream/collection_get.json");
+    include_str!("../crates/bunny-api-stream/tests/fixtures/collection_list_paginated.json");
+const FIXTURE_COLLECTION_GET: &str = include_str!("../crates/bunny-api-stream/tests/fixtures/collection_get.json");
 
 // ---------------------------------------------------------------------------
 // Library — List
@@ -127,7 +127,7 @@ async fn stream_library_get_not_found() {
         .and(path("/videolibrary/99999"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(404).set_body_raw(
-            include_str!("fixtures/core/error_not_found_videolibrary.json"),
+            include_str!("../crates/bunny-api-core/tests/fixtures/error_not_found_videolibrary.json"),
             "application/json",
         ))
         .expect(1)
@@ -282,7 +282,7 @@ async fn stream_video_get_not_found() {
         .and(path("/library/10001/videos/no-such-guid"))
         .and(header("AccessKey", "test-stream-key"))
         .respond_with(ResponseTemplate::new(404).set_body_raw(
-            include_str!("fixtures/stream/error_not_found_video.json"),
+            include_str!("../crates/bunny-api-stream/tests/fixtures/error_not_found_video.json"),
             "application/json",
         ))
         .expect(1)

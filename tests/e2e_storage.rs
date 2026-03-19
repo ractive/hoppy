@@ -5,8 +5,8 @@ use predicates::prelude::*;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-const FIXTURE_LIST_FILES: &str = include_str!("fixtures/storage/storage_list_files.json");
-const FIXTURE_DELETE_SUCCESS: &str = include_str!("fixtures/storage/storage_delete_success.json");
+const FIXTURE_LIST_FILES: &str = include_str!("../crates/bunny-api-storage/tests/fixtures/storage_list_files.json");
+const FIXTURE_DELETE_SUCCESS: &str = include_str!("../crates/bunny-api-storage/tests/fixtures/storage_delete_success.json");
 
 // ---------------------------------------------------------------------------
 // ls

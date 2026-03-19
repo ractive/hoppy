@@ -5,12 +5,12 @@ use predicates::prelude::*;
 use wiremock::matchers::{body_partial_json, header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
-const FIXTURE_SCRIPTS_LIST: &str = include_str!("fixtures/compute/scripts_list.json");
-const FIXTURE_SCRIPT_GET: &str = include_str!("fixtures/compute/script_get.json");
-const FIXTURE_SCRIPT_CREATE: &str = include_str!("fixtures/compute/script_create.json");
-const FIXTURE_SCRIPT_CODE_GET: &str = include_str!("fixtures/compute/script_code_get.json");
-const FIXTURE_RELEASES_LIST: &str = include_str!("fixtures/compute/releases_list.json");
-const FIXTURE_SECRETS_LIST: &str = include_str!("fixtures/compute/secrets_list.json");
+const FIXTURE_SCRIPTS_LIST: &str = include_str!("../crates/bunny-api-compute/tests/fixtures/scripts_list.json");
+const FIXTURE_SCRIPT_GET: &str = include_str!("../crates/bunny-api-compute/tests/fixtures/script_get.json");
+const FIXTURE_SCRIPT_CREATE: &str = include_str!("../crates/bunny-api-compute/tests/fixtures/script_create.json");
+const FIXTURE_SCRIPT_CODE_GET: &str = include_str!("../crates/bunny-api-compute/tests/fixtures/script_code_get.json");
+const FIXTURE_RELEASES_LIST: &str = include_str!("../crates/bunny-api-compute/tests/fixtures/releases_list.json");
+const FIXTURE_SECRETS_LIST: &str = include_str!("../crates/bunny-api-compute/tests/fixtures/secrets_list.json");
 
 // ---------------------------------------------------------------------------
 // List
@@ -124,7 +124,7 @@ async fn script_get_not_found() {
         .and(path("/compute/script/99999"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(404).set_body_raw(
-            include_str!("fixtures/compute/error_not_found.json"),
+            include_str!("../crates/bunny-api-compute/tests/fixtures/error_not_found.json"),
             "application/json",
         ))
         .expect(1)
