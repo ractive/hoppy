@@ -46,6 +46,9 @@ Alternatively, use `--record` to capture fixtures automatically:
 hoppy --record=fixtures/ --format json <your-new-command>
 ```
 
+> **Warning:** Recorded responses may contain secrets (e.g. `Password`, `ApiKey` fields).
+> Always review and redact sensitive fields before committing fixture files.
+
 ### 4. Rust wiremock test
 
 - [ ] Add `include_str!("../../../fixtures/<service>/<resource>_<action>.json")` constant
