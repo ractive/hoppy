@@ -1253,6 +1253,18 @@ pub enum ContainerAppAction {
         /// Region IDs (may be repeated)
         #[arg(long = "region")]
         regions: Vec<String>,
+        /// Container image name (e.g. "nginx")
+        #[arg(long)]
+        image_name: Option<String>,
+        /// Container image namespace (e.g. "library")
+        #[arg(long)]
+        image_namespace: Option<String>,
+        /// Container image tag (e.g. "alpine")
+        #[arg(long)]
+        image_tag: Option<String>,
+        /// Container image registry ID (e.g. "1155" for DockerHub)
+        #[arg(long)]
+        registry_id: Option<String>,
     },
     /// Update an application
     Update {
@@ -1686,8 +1698,8 @@ pub enum ContainerLogForwardingAction {
         #[arg(long)]
         port: i32,
         /// Syslog format (SyslogRfc3164 or SyslogRfc5424)
-        #[arg(long)]
-        format: String,
+        #[arg(long = "syslog-format")]
+        syslog_format: String,
         /// Optional authentication token
         #[arg(long)]
         token: Option<String>,
@@ -1709,8 +1721,8 @@ pub enum ContainerLogForwardingAction {
         #[arg(long)]
         port: i32,
         /// Syslog format (SyslogRfc3164 or SyslogRfc5424)
-        #[arg(long)]
-        format: String,
+        #[arg(long = "syslog-format")]
+        syslog_format: String,
         /// Optional authentication token
         #[arg(long)]
         token: Option<String>,
