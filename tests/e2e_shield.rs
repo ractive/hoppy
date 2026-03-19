@@ -1,6 +1,6 @@
 mod e2e_support;
 
-use e2e_support::{cmd, server};
+use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -22,6 +22,7 @@ const FIXTURE_BOT_DETECTION_GET: &str = include_str!("fixtures/shield/bot_detect
 
 #[tokio::test]
 async fn shield_zone_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -44,10 +45,12 @@ async fn shield_zone_list_table_output() {
 
 #[tokio::test]
 async fn shield_zone_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/shield/shield-zones"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_ZONES_LIST, "application/json"),
         )
@@ -69,6 +72,7 @@ async fn shield_zone_list_json_output() {
 
 #[tokio::test]
 async fn shield_zone_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -89,10 +93,12 @@ async fn shield_zone_get_table_output() {
 
 #[tokio::test]
 async fn shield_zone_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/shield/shield-zone/55001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_ZONE_GET, "application/json"))
         .expect(1)
         .mount(&mock)
@@ -116,10 +122,12 @@ async fn shield_zone_get_json_output() {
 
 #[tokio::test]
 async fn shield_zone_get_not_found() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/shield/shield-zone/99999"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(404)
                 .set_body_string("{\"Message\":\"Object with the requested ID does not exist.\"}"),
@@ -140,6 +148,7 @@ async fn shield_zone_get_not_found() {
 
 #[tokio::test]
 async fn shield_waf_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -166,6 +175,7 @@ async fn shield_waf_list_table_output() {
 
 #[tokio::test]
 async fn shield_waf_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -188,10 +198,12 @@ async fn shield_waf_get_table_output() {
 
 #[tokio::test]
 async fn shield_waf_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/shield/waf/custom-rule/7001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_WAF_RULE_GET, "application/json"),
         )
@@ -215,6 +227,7 @@ async fn shield_waf_get_json_output() {
 
 #[tokio::test]
 async fn shield_rate_limit_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -242,6 +255,7 @@ async fn shield_rate_limit_list_table_output() {
 
 #[tokio::test]
 async fn shield_rate_limit_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -265,10 +279,12 @@ async fn shield_rate_limit_get_table_output() {
 
 #[tokio::test]
 async fn shield_rate_limit_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/shield/rate-limit/8001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_raw(FIXTURE_RATE_LIMIT_RULE_GET, "application/json"),
@@ -299,6 +315,7 @@ async fn shield_rate_limit_get_json_output() {
 
 #[tokio::test]
 async fn shield_access_list_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -325,6 +342,7 @@ async fn shield_access_list_get_table_output() {
 
 #[tokio::test]
 async fn shield_access_list_get_custom_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -355,10 +373,12 @@ async fn shield_access_list_get_custom_table_output() {
 
 #[tokio::test]
 async fn shield_access_list_get_custom_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/shield/shield-zone/55001/access-lists/9001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_ACCESS_LIST_GET, "application/json"),
         )
@@ -390,6 +410,7 @@ async fn shield_access_list_get_custom_json_output() {
 
 #[tokio::test]
 async fn shield_bot_detection_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -417,10 +438,12 @@ async fn shield_bot_detection_get_table_output() {
 
 #[tokio::test]
 async fn shield_bot_detection_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/shield/shield-zone/55001/bot-detection"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_BOT_DETECTION_GET, "application/json"),
         )

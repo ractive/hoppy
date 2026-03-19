@@ -1,6 +1,6 @@
 mod e2e_support;
 
-use e2e_support::{cmd, server};
+use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
@@ -15,6 +15,7 @@ const FIXTURE_CREATE: &str = include_str!("fixtures/core/storagezone_create.json
 
 #[tokio::test]
 async fn storage_zone_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -37,10 +38,12 @@ async fn storage_zone_list_table_output() {
 
 #[tokio::test]
 async fn storage_zone_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/storagezone"))
+        .and(header("AccessKey", "test-api-key"))
         .and(query_param("page", "1"))
         .and(query_param("perPage", "1000"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_LIST, "application/json"))
@@ -58,10 +61,12 @@ async fn storage_zone_list_json_output() {
 
 #[tokio::test]
 async fn storage_zone_list_with_search() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/storagezone"))
+        .and(header("AccessKey", "test-api-key"))
         .and(query_param("search", "test-storage-zone-1"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_LIST, "application/json"))
         .expect(1)
@@ -80,6 +85,7 @@ async fn storage_zone_list_with_search() {
 
 #[tokio::test]
 async fn storage_zone_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -100,10 +106,12 @@ async fn storage_zone_get_table_output() {
 
 #[tokio::test]
 async fn storage_zone_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
         .expect(1)
         .mount(&mock)
@@ -122,6 +130,7 @@ async fn storage_zone_get_json_output() {
 
 #[tokio::test]
 async fn storage_zone_create() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("POST"))
@@ -152,6 +161,7 @@ async fn storage_zone_create() {
 
 #[tokio::test]
 async fn storage_zone_delete_with_yes_flag() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("DELETE"))
@@ -175,10 +185,12 @@ async fn storage_zone_delete_with_yes_flag() {
 
 #[tokio::test]
 async fn storage_zone_get_not_found() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/storagezone/99999"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(404)
                 .set_body_string("{\"Message\":\"Object with the requested ID does not exist.\"}"),

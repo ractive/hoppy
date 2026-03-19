@@ -1,6 +1,6 @@
 mod e2e_support;
 
-use e2e_support::{cmd, server};
+use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -14,6 +14,7 @@ const FIXTURE_DELETE_SUCCESS: &str = include_str!("fixtures/storage/storage_dele
 
 #[tokio::test]
 async fn storage_ls_root_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -35,10 +36,12 @@ async fn storage_ls_root_table_output() {
 
 #[tokio::test]
 async fn storage_ls_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/hoppy-test-zone/"))
+        .and(header("AccessKey", "test-storage-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_LIST_FILES, "application/json"),
         )
@@ -63,6 +66,7 @@ async fn storage_ls_json_output() {
 
 #[tokio::test]
 async fn storage_ls_subdir() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -95,6 +99,7 @@ async fn storage_ls_subdir() {
 
 #[tokio::test]
 async fn storage_rm_with_yes_flag() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("DELETE"))
@@ -130,10 +135,12 @@ async fn storage_rm_with_yes_flag() {
 
 #[tokio::test]
 async fn storage_ls_not_found() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/hoppy-test-zone/missing/"))
+        .and(header("AccessKey", "test-storage-key"))
         .respond_with(
             ResponseTemplate::new(404).set_body_string("{\"Message\":\"Object Not Found\"}"),
         )

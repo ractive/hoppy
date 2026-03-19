@@ -1,4 +1,8 @@
 use anyhow::{Result, bail};
+use bunny_api_compute::ComputeClient;
+use bunny_api_containers::ContainersClient;
+use bunny_api_core::CoreClient;
+use bunny_api_shield::ShieldClient;
 use std::env;
 
 /// Read the bunny.net API key from the BUNNY_API_KEY environment variable.
@@ -50,6 +54,50 @@ pub fn get_storage_key() -> Option<String> {
         Ok(key) if !key.is_empty() => Some(key),
         _ => None,
     }
+}
+
+/// Build a `CoreClient` with optional base URL override.
+pub fn core_client(debug: bool) -> Result<CoreClient> {
+    let api_key = get_api_key()?;
+    Ok(if let Some(url) = get_api_url() {
+        CoreClient::with_base_url(api_key, url)
+    } else {
+        CoreClient::new(api_key)
+    }
+    .with_debug(debug))
+}
+
+/// Build a `ShieldClient` with optional base URL override.
+pub fn shield_client(debug: bool) -> Result<ShieldClient> {
+    let api_key = get_api_key()?;
+    Ok(if let Some(url) = get_api_url() {
+        ShieldClient::with_base_url(api_key, url)
+    } else {
+        ShieldClient::new(api_key)
+    }
+    .with_debug(debug))
+}
+
+/// Build a `ComputeClient` with optional base URL override.
+pub fn compute_client(debug: bool) -> Result<ComputeClient> {
+    let api_key = get_api_key()?;
+    Ok(if let Some(url) = get_api_url() {
+        ComputeClient::with_base_url(api_key, url)
+    } else {
+        ComputeClient::new(api_key)
+    }
+    .with_debug(debug))
+}
+
+/// Build a `ContainersClient` with optional base URL override.
+pub fn containers_client(debug: bool) -> Result<ContainersClient> {
+    let api_key = get_api_key()?;
+    Ok(if let Some(url) = get_containers_url() {
+        ContainersClient::with_base_url(api_key, url)
+    } else {
+        ContainersClient::new(api_key)
+    }
+    .with_debug(debug))
 }
 
 /// Read the bunny.net Stream API key from the BUNNY_STREAM_KEY environment variable.

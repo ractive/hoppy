@@ -2,7 +2,6 @@ use crate::auth;
 use crate::cli::{OutputFormat, StorageZoneAction};
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Result, bail};
-use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
 use std::io::{self, BufRead, Write};
 
@@ -108,13 +107,7 @@ pub async fn handle(
     debug: bool,
     yes: bool,
 ) -> Result<()> {
-    let api_key = auth::get_api_key()?;
-    let client = if let Some(url) = auth::get_api_url() {
-        CoreClient::with_base_url(api_key, url)
-    } else {
-        CoreClient::new(api_key)
-    }
-    .with_debug(debug);
+    let client = auth::core_client(debug)?;
 
     match action {
         StorageZoneAction::List {

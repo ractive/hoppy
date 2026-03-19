@@ -1,6 +1,11 @@
 use assert_cmd::Command;
 use wiremock::MockServer;
 
+/// Returns true if running in live mode (`HOPPY_E2E_LIVE=1`).
+pub fn is_live_mode() -> bool {
+    std::env::var("HOPPY_E2E_LIVE").as_deref() == Ok("1")
+}
+
 /// Build a `Command` for the `hoppy` binary with all env vars pointing at the
 /// mock server, or pass through real env vars when `HOPPY_E2E_LIVE=1`.
 pub fn hoppy(mock: &MockServer) -> Command {

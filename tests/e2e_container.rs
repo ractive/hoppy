@@ -1,6 +1,6 @@
 mod e2e_support;
 
-use e2e_support::{cmd, server};
+use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -21,6 +21,7 @@ const FIXTURE_NODES_LIST: &str = include_str!("fixtures/containers/nodes_list.js
 
 #[tokio::test]
 async fn container_app_list() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -43,6 +44,7 @@ async fn container_app_list() {
 
 #[tokio::test]
 async fn container_app_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -69,6 +71,7 @@ async fn container_app_list_json_output() {
 
 #[tokio::test]
 async fn container_app_get() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -88,6 +91,7 @@ async fn container_app_get() {
 
 #[tokio::test]
 async fn container_app_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -116,10 +120,12 @@ async fn container_app_get_json_output() {
 
 #[tokio::test]
 async fn container_app_get_not_found() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/apps/does-not-exist"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(404)
                 .set_body_string("{\"message\":\"Object with the requested ID does not exist.\"}"),
@@ -140,6 +146,7 @@ async fn container_app_get_not_found() {
 
 #[tokio::test]
 async fn container_app_create() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("POST"))
@@ -177,6 +184,7 @@ async fn container_app_create() {
 
 #[tokio::test]
 async fn container_endpoint_list() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -203,6 +211,7 @@ async fn container_endpoint_list() {
 
 #[tokio::test]
 async fn container_endpoint_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -236,6 +245,7 @@ async fn container_endpoint_list_json_output() {
 
 #[tokio::test]
 async fn container_volume_list() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -256,6 +266,7 @@ async fn container_volume_list() {
 
 #[tokio::test]
 async fn container_volume_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -289,6 +300,7 @@ async fn container_volume_list_json_output() {
 
 #[tokio::test]
 async fn container_registry_list() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -311,6 +323,7 @@ async fn container_registry_list() {
 
 #[tokio::test]
 async fn container_registry_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -337,6 +350,7 @@ async fn container_registry_list_json_output() {
 
 #[tokio::test]
 async fn container_registry_get() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -359,6 +373,7 @@ async fn container_registry_get() {
 
 #[tokio::test]
 async fn container_registry_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -392,6 +407,7 @@ async fn container_registry_get_json_output() {
 
 #[tokio::test]
 async fn container_region_list() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -414,6 +430,7 @@ async fn container_region_list() {
 
 #[tokio::test]
 async fn container_region_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -440,6 +457,7 @@ async fn container_region_list_json_output() {
 
 #[tokio::test]
 async fn container_node_list() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -462,6 +480,7 @@ async fn container_node_list() {
 
 #[tokio::test]
 async fn container_node_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))

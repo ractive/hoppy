@@ -1,6 +1,6 @@
 mod e2e_support;
 
-use e2e_support::{cmd, server};
+use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
@@ -16,6 +16,7 @@ const FIXTURE_RECORD_ADD: &str = include_str!("fixtures/core/dnsrecord_add.json"
 
 #[tokio::test]
 async fn dns_zone_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -38,6 +39,7 @@ async fn dns_zone_list_table_output() {
 
 #[tokio::test]
 async fn dns_zone_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -64,6 +66,7 @@ async fn dns_zone_list_json_output() {
 
 #[tokio::test]
 async fn dns_zone_get_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
@@ -84,10 +87,12 @@ async fn dns_zone_get_table_output() {
 
 #[tokio::test]
 async fn dns_zone_get_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
         .expect(1)
         .mount(&mock)
@@ -107,6 +112,7 @@ async fn dns_zone_get_json_output() {
 
 #[tokio::test]
 async fn dns_zone_create() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("POST"))
@@ -130,6 +136,7 @@ async fn dns_zone_create() {
 
 #[tokio::test]
 async fn dns_zone_delete_with_yes_flag() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("DELETE"))
@@ -153,6 +160,7 @@ async fn dns_zone_delete_with_yes_flag() {
 
 #[tokio::test]
 async fn dns_record_list_table_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     // Records are embedded in the zone response; the CLI calls GET /dnszone/{id}
@@ -174,10 +182,12 @@ async fn dns_record_list_table_output() {
 
 #[tokio::test]
 async fn dns_record_list_json_output() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
         .expect(1)
         .mount(&mock)
@@ -204,6 +214,7 @@ async fn dns_record_list_json_output() {
 
 #[tokio::test]
 async fn dns_record_add() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("PUT"))
@@ -243,6 +254,7 @@ async fn dns_record_add() {
 
 #[tokio::test]
 async fn dns_record_delete_with_yes_flag() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("DELETE"))
@@ -277,10 +289,12 @@ async fn dns_record_delete_with_yes_flag() {
 
 #[tokio::test]
 async fn dns_zone_get_not_found() {
+    skip_in_live_mode!();
     let mock = server::start().await;
 
     Mock::given(method("GET"))
         .and(path("/dnszone/99999"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(404)
                 .set_body_string("{\"Message\":\"Object with the requested ID does not exist.\"}"),
