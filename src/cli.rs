@@ -25,6 +25,10 @@ pub struct Cli {
     #[arg(long, short = 'y', global = true)]
     pub yes: bool,
 
+    /// Record API responses to files in the given directory
+    #[arg(long, value_name = "DIR", global = true)]
+    pub record: Option<String>,
+
     #[command(subcommand)]
     pub command: Commands,
 }

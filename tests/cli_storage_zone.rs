@@ -206,3 +206,64 @@ async fn storage_zone_get_not_found() {
 
     assert!(!output.status.success());
 }
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_storage_zone_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let raw_name = support::unique_name("hpst");
+        let name: String = raw_name.chars().take(20).collect();
+
+        // 1. Create
+        let create = support::hoppy_live_json(&[
+            "storage-zone",
+            "create",
+            "--name",
+            &name,
+            "--region",
+            "DE",
+        ]);
+        assert!(create.success, "create failed: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"]
+            .as_u64()
+            .expect("Id missing from create response");
+        let id_str = id.to_string();
+
+        // Register cleanup early
+        cleanup.push(&["storage-zone", "delete", "--id", &id_str]);
+
+        // 2. Get by id
+        let get = support::hoppy_live_json(&["storage-zone", "get", "--id", &id_str]);
+        assert!(get.success, "get failed: {}", get.stderr);
+
+        // 3. List — verify zone appears
+        let list = support::hoppy_live_json(&["storage-zone", "list"]);
+        assert!(list.success, "list failed: {}", list.stderr);
+        let items = list.json.as_ref().unwrap()["Items"]
+            .as_array()
+            .expect("Items missing from list response");
+        let found = items.iter().any(|z| z["Id"].as_u64() == Some(id));
+        assert!(found, "created zone {id} not found in list");
+
+        // 4. Update
+        let update = support::hoppy_live_json(&[
+            "storage-zone",
+            "update",
+            "--id",
+            &id_str,
+            "--rewrite-404-to-200",
+            "true",
+        ]);
+        assert!(update.success, "update failed: {}", update.stderr);
+
+        // 5. Get and verify Rewrite404To200
+        let get2 = support::hoppy_live_json(&["storage-zone", "get", "--id", &id_str]);
+        assert!(get2.success, "second get failed: {}", get2.stderr);
+        let rewrite = get2.json.as_ref().unwrap()["Rewrite404To200"]
+            .as_bool()
+            .unwrap_or(false);
+        assert!(rewrite, "Rewrite404To200 should be true after update");
+
+        // 6. Delete is handled by cleanup
+    });
+}

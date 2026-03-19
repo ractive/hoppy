@@ -730,3 +730,394 @@ async fn shield_bot_detection_update() {
 
     assert!(output.status.success());
 }
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_shield_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let pz_name = support::unique_name("hoppy-shield-test");
+
+        // 1. Create pull zone
+        let pz_create = support::hoppy_live_json(&[
+            "pull-zone",
+            "create",
+            "--name",
+            &pz_name,
+            "--origin-url",
+            "https://example.com",
+        ]);
+        assert!(
+            pz_create.success,
+            "pull-zone create failed — stderr: {}",
+            pz_create.stderr
+        );
+        let pz_id = pz_create.json.as_ref().unwrap()["Id"].as_i64().unwrap();
+        let pz_id_str = pz_id.to_string();
+
+        // Register pull zone cleanup immediately — Shield zone is deleted with it
+        cleanup.push(&["pull-zone", "delete", "--id", &pz_id_str]);
+
+        // 2. Create Shield zone
+        let sz_create =
+            support::hoppy_live_json(&["shield", "zone", "create", "--pull-zone-id", &pz_id_str]);
+        assert!(
+            sz_create.success,
+            "shield zone create failed — stderr: {}",
+            sz_create.stderr
+        );
+        let sz_json = sz_create.json.as_ref().unwrap();
+        let sz_id = sz_json["shieldZoneId"]
+            .as_i64()
+            .or_else(|| sz_json["id"].as_i64())
+            .expect("no shieldZoneId or id in shield zone create response");
+        let sz_id_str = sz_id.to_string();
+
+        // 3. Get Shield zone
+        let sz_get =
+            support::hoppy_live_json(&["shield", "zone", "get", "--shield-zone-id", &sz_id_str]);
+        assert!(
+            sz_get.success,
+            "shield zone get failed — stderr: {}",
+            sz_get.stderr
+        );
+
+        // 4. Get by pull zone
+        let sz_get_by_pz = support::hoppy_live_json(&[
+            "shield",
+            "zone",
+            "get-by-pullzone",
+            "--pull-zone-id",
+            &pz_id_str,
+        ]);
+        assert!(
+            sz_get_by_pz.success,
+            "shield zone get-by-pullzone failed — stderr: {}",
+            sz_get_by_pz.stderr
+        );
+
+        // 5. List Shield zones and verify ours appears
+        let sz_list = support::hoppy_live_json(&["shield", "zone", "list"]);
+        assert!(
+            sz_list.success,
+            "shield zone list failed — stderr: {}",
+            sz_list.stderr
+        );
+        let found = sz_list
+            .json
+            .as_ref()
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter().any(|z| {
+                    z["shieldZoneId"].as_i64() == Some(sz_id) || z["id"].as_i64() == Some(sz_id)
+                })
+            })
+            .unwrap_or(false);
+        assert!(found, "shield zone {sz_id} not found in list output");
+
+        // 6. Update Shield zone
+        let sz_update = support::hoppy_live_json(&[
+            "shield",
+            "zone",
+            "update",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--learning-mode",
+            "true",
+        ]);
+        assert!(
+            sz_update.success,
+            "shield zone update failed — stderr: {}",
+            sz_update.stderr
+        );
+
+        // 7. WAF profiles
+        let waf_profiles = support::hoppy_live_json(&["shield", "waf", "profiles"]);
+        assert!(
+            waf_profiles.success,
+            "shield waf profiles failed — stderr: {}",
+            waf_profiles.stderr
+        );
+
+        // 8. Add WAF rule
+        let waf_add = support::hoppy_live_json(&[
+            "shield",
+            "waf",
+            "add-rule",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--action-type",
+            "1",
+            "--operator-type",
+            "0",
+            "--severity-type",
+            "0",
+            "--value",
+            "test-block",
+        ]);
+        assert!(
+            waf_add.success,
+            "shield waf add-rule failed — stderr: {}",
+            waf_add.stderr
+        );
+        let waf_id = waf_add.json.as_ref().unwrap()["id"]
+            .as_i64()
+            .expect("no id in waf add-rule response");
+        let waf_id_str = waf_id.to_string();
+
+        // 9. List WAF rules and verify ours appears
+        let waf_list = support::hoppy_live_json(&[
+            "shield",
+            "waf",
+            "list-rules",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            waf_list.success,
+            "shield waf list-rules failed — stderr: {}",
+            waf_list.stderr
+        );
+        let waf_found = waf_list
+            .json
+            .as_ref()
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().any(|r| r["id"].as_i64() == Some(waf_id)))
+            .unwrap_or(false);
+        assert!(
+            waf_found,
+            "waf rule {waf_id} not found in list-rules output"
+        );
+
+        // 10. Get WAF rule
+        let waf_get = support::hoppy_live_json(&["shield", "waf", "get-rule", "--id", &waf_id_str]);
+        assert!(
+            waf_get.success,
+            "shield waf get-rule failed — stderr: {}",
+            waf_get.stderr
+        );
+
+        // 11. Update WAF rule
+        let waf_update = support::hoppy_live_json(&[
+            "shield",
+            "waf",
+            "update-rule",
+            "--id",
+            &waf_id_str,
+            "--name",
+            "updated-rule",
+        ]);
+        assert!(
+            waf_update.success,
+            "shield waf update-rule failed — stderr: {}",
+            waf_update.stderr
+        );
+
+        // 12. Delete WAF rule
+        let waf_delete =
+            support::hoppy_live_json_yes(&["shield", "waf", "delete-rule", "--id", &waf_id_str]);
+        assert!(
+            waf_delete.success,
+            "shield waf delete-rule failed — stderr: {}",
+            waf_delete.stderr
+        );
+
+        // 13. Create rate limit
+        let rl_create = support::hoppy_live_json(&[
+            "shield",
+            "rate-limit",
+            "create",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--action-type",
+            "1",
+            "--operator-type",
+            "0",
+            "--severity-type",
+            "0",
+            "--request-count",
+            "100",
+            "--counter-key-type",
+            "1",
+            "--timeframe",
+            "60",
+            "--block-time",
+            "300",
+        ]);
+        assert!(
+            rl_create.success,
+            "shield rate-limit create failed — stderr: {}",
+            rl_create.stderr
+        );
+        let rl_id = rl_create.json.as_ref().unwrap()["id"]
+            .as_i64()
+            .expect("no id in rate-limit create response");
+        let rl_id_str = rl_id.to_string();
+
+        // 14. List rate limits
+        let rl_list = support::hoppy_live_json(&[
+            "shield",
+            "rate-limit",
+            "list",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            rl_list.success,
+            "shield rate-limit list failed — stderr: {}",
+            rl_list.stderr
+        );
+
+        // 15. Get rate limit
+        let rl_get = support::hoppy_live_json(&["shield", "rate-limit", "get", "--id", &rl_id_str]);
+        assert!(
+            rl_get.success,
+            "shield rate-limit get failed — stderr: {}",
+            rl_get.stderr
+        );
+
+        // 16. Update rate limit
+        let rl_update = support::hoppy_live_json(&[
+            "shield",
+            "rate-limit",
+            "update",
+            "--id",
+            &rl_id_str,
+            "--name",
+            "updated-rl",
+        ]);
+        assert!(
+            rl_update.success,
+            "shield rate-limit update failed — stderr: {}",
+            rl_update.stderr
+        );
+
+        // 17. Delete rate limit
+        let rl_delete =
+            support::hoppy_live_json_yes(&["shield", "rate-limit", "delete", "--id", &rl_id_str]);
+        assert!(
+            rl_delete.success,
+            "shield rate-limit delete failed — stderr: {}",
+            rl_delete.stderr
+        );
+
+        // 18. Create access list
+        let acl_create = support::hoppy_live_json(&[
+            "shield",
+            "access-list",
+            "create",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--name",
+            "test-acl",
+            "--type",
+            "0",
+            "--content",
+            "1.2.3.4",
+        ]);
+        assert!(
+            acl_create.success,
+            "shield access-list create failed — stderr: {}",
+            acl_create.stderr
+        );
+        let acl_id = acl_create.json.as_ref().unwrap()["id"]
+            .as_i64()
+            .expect("no id in access-list create response");
+        let acl_id_str = acl_id.to_string();
+
+        // 19. List access lists
+        let acl_list = support::hoppy_live_json(&[
+            "shield",
+            "access-list",
+            "list",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            acl_list.success,
+            "shield access-list list failed — stderr: {}",
+            acl_list.stderr
+        );
+
+        // 20. Get access list
+        let acl_get = support::hoppy_live_json(&[
+            "shield",
+            "access-list",
+            "get",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--id",
+            &acl_id_str,
+        ]);
+        assert!(
+            acl_get.success,
+            "shield access-list get failed — stderr: {}",
+            acl_get.stderr
+        );
+
+        // 21. Update access list
+        let acl_update = support::hoppy_live_json(&[
+            "shield",
+            "access-list",
+            "update",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--id",
+            &acl_id_str,
+            "--content",
+            "5.6.7.8",
+        ]);
+        assert!(
+            acl_update.success,
+            "shield access-list update failed — stderr: {}",
+            acl_update.stderr
+        );
+
+        // 22. Delete access list
+        let acl_delete = support::hoppy_live_json_yes(&[
+            "shield",
+            "access-list",
+            "delete",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--id",
+            &acl_id_str,
+        ]);
+        assert!(
+            acl_delete.success,
+            "shield access-list delete failed — stderr: {}",
+            acl_delete.stderr
+        );
+
+        // 23. Get bot detection
+        let bd_get = support::hoppy_live_json(&[
+            "shield",
+            "bot-detection",
+            "get",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            bd_get.success,
+            "shield bot-detection get failed — stderr: {}",
+            bd_get.stderr
+        );
+
+        // 24. Update bot detection
+        let bd_update = support::hoppy_live_json(&[
+            "shield",
+            "bot-detection",
+            "update",
+            "--shield-zone-id",
+            &sz_id_str,
+            "--execution-mode",
+            "1",
+        ]);
+        assert!(
+            bd_update.success,
+            "shield bot-detection update failed — stderr: {}",
+            bd_update.stderr
+        );
+
+        // 25. Cleanup runs via CleanupStack: pull-zone delete removes the Shield zone too
+    });
+}

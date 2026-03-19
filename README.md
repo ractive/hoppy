@@ -176,6 +176,45 @@ hoppy container limits
 | `BUNNY_STORAGE_KEY` | Storage zone API key (optional — auto-resolved from zone details if not set). |
 | `BUNNY_STREAM_KEY` | Stream library API key (optional — auto-resolved from library details if not set). |
 
+## Testing
+
+### Mock tests (default)
+
+All CLI tests use [wiremock](https://crates.io/crates/wiremock) to mock the Bunny API, so they run instantly without network access:
+
+```bash
+cargo test
+```
+
+### Live API tests
+
+Tests can also run against the real bunny.net API using the `live-api` Cargo feature. This requires a `BUNNY_API_KEY` environment variable set to a valid API key.
+
+> **Warning:** Use a dedicated test/sandbox account — live tests may create, modify, and delete real resources.
+
+```bash
+export BUNNY_API_KEY=your-test-api-key
+cargo test --features live-api
+```
+
+The `live-api` feature enables additional test helpers:
+
+| Helper | Purpose |
+|--------|---------|
+| `hoppy_live_cmd()` | Builds the CLI binary with your real `BUNNY_API_KEY` |
+| `unique_name(prefix)` | Generates collision-free resource names (e.g. `my-zone-1710849600000-0`) |
+
+### Environment variable overrides for testing
+
+You can point any API client at a custom endpoint (useful for proxies, staging, or local mocks):
+
+| Variable | Default |
+|----------|---------|
+| `BUNNY_API_URL` | `https://api.bunny.net` (core, compute, shield) |
+| `BUNNY_STORAGE_URL` | `https://{region}.storage.bunnycdn.com` |
+| `BUNNY_STREAM_URL` | `https://video.bunnycdn.com` |
+| `BUNNY_CONTAINERS_URL` | `https://api.bunny.net` |
+
 ## Shell completions
 
 ```bash

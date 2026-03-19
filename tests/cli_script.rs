@@ -623,3 +623,319 @@ async fn script_secret_delete() {
 
     assert!(output.status.success());
 }
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_script_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let name = support::unique_name("hpsc");
+
+        // 1. Create script
+        let create =
+            support::hoppy_live_json(&["script", "create", "--name", &name, "--script-type", "1"]);
+        assert!(create.success, "create failed: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"]
+            .as_i64()
+            .expect("Id missing from create response");
+        let id_str = id.to_string();
+
+        // Register cleanup early
+        cleanup.push(&[
+            "script",
+            "delete",
+            "--id",
+            &id_str,
+            "--delete-linked-pull-zones",
+        ]);
+
+        // 2. Get by id
+        let get = support::hoppy_live_json(&["script", "get", "--id", &id_str]);
+        assert!(get.success, "get failed: {}", get.stderr);
+        assert_eq!(
+            get.json.as_ref().unwrap()["Id"].as_i64(),
+            Some(id),
+            "Id mismatch in get response"
+        );
+        assert!(
+            get.json.as_ref().unwrap()["Name"].as_str().is_some(),
+            "Name missing from get response"
+        );
+
+        // 3. List — verify script appears
+        let list = support::hoppy_live_json(&["script", "list"]);
+        assert!(list.success, "list failed: {}", list.stderr);
+        let items = list
+            .json
+            .as_ref()
+            .unwrap()
+            .as_array()
+            .expect("list response should be an array");
+        let found = items.iter().any(|s| s["Id"].as_i64() == Some(id));
+        assert!(found, "created script {id} not found in list");
+
+        // 4. Update name
+        let updated_name = format!("{name}-updated");
+        let update = support::hoppy_live_json(&[
+            "script",
+            "update",
+            "--id",
+            &id_str,
+            "--name",
+            &updated_name,
+        ]);
+        assert!(update.success, "update failed: {}", update.stderr);
+
+        // 5. Update code
+        let code = "export default { async fetch(req) { return new Response('hello'); } }";
+        let code_update = support::hoppy_live_json(&[
+            "script", "code", "update", "--id", &id_str, "--code", code,
+        ]);
+        assert!(
+            code_update.success,
+            "code update failed: {}",
+            code_update.stderr
+        );
+
+        // 6. Get code — stdout is plain text
+        let code_get = support::hoppy_live_raw(&["script", "code", "get", "--id", &id_str]);
+        assert!(code_get.success, "code get failed: {}", code_get.stderr);
+        assert!(
+            code_get.stdout.contains("hello"),
+            "expected 'hello' in code output, got: {}",
+            code_get.stdout
+        );
+
+        // 7. Publish
+        let publish = support::hoppy_live_json(&[
+            "script",
+            "publish",
+            "--id",
+            &id_str,
+            "--note",
+            "test release",
+        ]);
+        assert!(publish.success, "publish failed: {}", publish.stderr);
+
+        // 8. List releases — verify non-empty
+        let releases = support::hoppy_live_json(&["script", "release", "list", "--id", &id_str]);
+        assert!(releases.success, "release list failed: {}", releases.stderr);
+        let release_items = releases
+            .json
+            .as_ref()
+            .unwrap()
+            .as_array()
+            .expect("release list response should be an array");
+        assert!(
+            !release_items.is_empty(),
+            "expected at least one release after publish"
+        );
+
+        // 9. Delete handled by cleanup
+    });
+}
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_script_variable_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let name = support::unique_name("hpscv");
+
+        // 1. Create script
+        let create =
+            support::hoppy_live_json(&["script", "create", "--name", &name, "--script-type", "1"]);
+        assert!(create.success, "create failed: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"]
+            .as_i64()
+            .expect("Id missing from create response");
+        let id_str = id.to_string();
+
+        // Register cleanup early
+        cleanup.push(&[
+            "script",
+            "delete",
+            "--id",
+            &id_str,
+            "--delete-linked-pull-zones",
+        ]);
+
+        // 2. Add variable
+        let add = support::hoppy_live_json(&[
+            "script",
+            "variable",
+            "add",
+            "--id",
+            &id_str,
+            "--name",
+            "TEST_VAR",
+            "--default-value",
+            "hello",
+        ]);
+        assert!(add.success, "variable add failed: {}", add.stderr);
+
+        // 3. List variables — verify TEST_VAR appears
+        let list = support::hoppy_live_json(&["script", "variable", "list", "--id", &id_str]);
+        assert!(list.success, "variable list failed: {}", list.stderr);
+        let vars = list
+            .json
+            .as_ref()
+            .unwrap()
+            .as_array()
+            .expect("variable list response should be an array");
+        let found = vars.iter().any(|v| v["Name"].as_str() == Some("TEST_VAR"));
+        assert!(found, "TEST_VAR not found in variable list");
+
+        // 4. Extract variable id
+        let vid = vars
+            .iter()
+            .find(|v| v["Name"].as_str() == Some("TEST_VAR"))
+            .and_then(|v| v["Id"].as_i64())
+            .expect("Id missing from TEST_VAR entry");
+        let vid_str = vid.to_string();
+
+        // 5. Update variable
+        let update = support::hoppy_live_json(&[
+            "script",
+            "variable",
+            "update",
+            "--id",
+            &id_str,
+            "--variable-id",
+            &vid_str,
+            "--default-value",
+            "world",
+        ]);
+        assert!(update.success, "variable update failed: {}", update.stderr);
+
+        // 6. Upsert variable
+        let upsert = support::hoppy_live_json(&[
+            "script",
+            "variable",
+            "upsert",
+            "--id",
+            &id_str,
+            "--name",
+            "TEST_VAR2",
+            "--default-value",
+            "upserted",
+        ]);
+        assert!(upsert.success, "variable upsert failed: {}", upsert.stderr);
+
+        // 7. Delete variable
+        let delete = support::hoppy_live_json_yes(&[
+            "script",
+            "variable",
+            "delete",
+            "--id",
+            &id_str,
+            "--variable-id",
+            &vid_str,
+        ]);
+        assert!(delete.success, "variable delete failed: {}", delete.stderr);
+
+        // 8. Delete script handled by cleanup
+    });
+}
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_script_secret_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let name = support::unique_name("hpscs");
+
+        // 1. Create script
+        let create =
+            support::hoppy_live_json(&["script", "create", "--name", &name, "--script-type", "1"]);
+        assert!(create.success, "create failed: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"]
+            .as_i64()
+            .expect("Id missing from create response");
+        let id_str = id.to_string();
+
+        // Register cleanup early
+        cleanup.push(&[
+            "script",
+            "delete",
+            "--id",
+            &id_str,
+            "--delete-linked-pull-zones",
+        ]);
+
+        // 2. Add secret
+        let add = support::hoppy_live_json(&[
+            "script",
+            "secret",
+            "add",
+            "--id",
+            &id_str,
+            "--name",
+            "MY_SECRET",
+            "--value",
+            "s3cret",
+        ]);
+        assert!(add.success, "secret add failed: {}", add.stderr);
+
+        // 3. List secrets — verify MY_SECRET appears
+        let list = support::hoppy_live_json(&["script", "secret", "list", "--id", &id_str]);
+        assert!(list.success, "secret list failed: {}", list.stderr);
+        let secrets = list
+            .json
+            .as_ref()
+            .unwrap()
+            .as_array()
+            .expect("secret list response should be an array");
+        let found = secrets
+            .iter()
+            .any(|s| s["Name"].as_str() == Some("MY_SECRET"));
+        assert!(found, "MY_SECRET not found in secret list");
+
+        // 4. Extract secret id
+        let sid = secrets
+            .iter()
+            .find(|s| s["Name"].as_str() == Some("MY_SECRET"))
+            .and_then(|s| s["Id"].as_i64())
+            .expect("Id missing from MY_SECRET entry");
+        let sid_str = sid.to_string();
+
+        // 5. Update secret
+        let update = support::hoppy_live_json(&[
+            "script",
+            "secret",
+            "update",
+            "--id",
+            &id_str,
+            "--secret-id",
+            &sid_str,
+            "--value",
+            "new-s3cret",
+        ]);
+        assert!(update.success, "secret update failed: {}", update.stderr);
+
+        // 6. Upsert secret
+        let upsert = support::hoppy_live_json(&[
+            "script",
+            "secret",
+            "upsert",
+            "--id",
+            &id_str,
+            "--name",
+            "MY_SECRET2",
+            "--value",
+            "upserted",
+        ]);
+        assert!(upsert.success, "secret upsert failed: {}", upsert.stderr);
+
+        // 7. Delete secret
+        let delete = support::hoppy_live_json_yes(&[
+            "script",
+            "secret",
+            "delete",
+            "--id",
+            &id_str,
+            "--secret-id",
+            &sid_str,
+        ]);
+        assert!(delete.success, "secret delete failed: {}", delete.stderr);
+
+        // 8. Delete script handled by cleanup
+    });
+}

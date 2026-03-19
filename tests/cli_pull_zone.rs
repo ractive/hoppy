@@ -260,3 +260,96 @@ async fn pull_zone_update_not_found() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("not_found") || stderr.contains("not found") || stderr.contains("404"));
 }
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_pull_zone_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let name = support::unique_name("hoppy-test");
+
+        // 1. Create
+        let create = support::hoppy_live_json(&[
+            "pull-zone",
+            "create",
+            "--name",
+            &name,
+            "--origin-url",
+            "https://example.com",
+        ]);
+        assert!(create.success, "create failed — stderr: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"].as_i64().unwrap();
+        let id_str = id.to_string();
+
+        // Register cleanup early so it runs even on panic
+        cleanup.push(&["pull-zone", "delete", "--id", &id_str]);
+
+        // 2. Get by id
+        let get = support::hoppy_live_json(&["pull-zone", "get", "--id", &id_str]);
+        assert!(get.success, "get failed — stderr: {}", get.stderr);
+
+        // 3. List and verify zone appears
+        let list = support::hoppy_live_json(&["pull-zone", "list"]);
+        assert!(list.success, "list failed — stderr: {}", list.stderr);
+        let zones = list.json.as_ref().unwrap();
+        let found = zones
+            .as_array()
+            .map(|arr| arr.iter().any(|z| z["Id"].as_i64() == Some(id)))
+            .unwrap_or(false);
+        assert!(found, "zone {id} not found in list output");
+
+        // 4. Update origin URL
+        let update = support::hoppy_live_json(&[
+            "pull-zone",
+            "update",
+            "--id",
+            &id_str,
+            "--origin-url",
+            "https://new.example.com",
+        ]);
+        assert!(update.success, "update failed — stderr: {}", update.stderr);
+
+        // 5. Get again and verify OriginUrl changed
+        let get2 = support::hoppy_live_json(&["pull-zone", "get", "--id", &id_str]);
+        assert!(get2.success, "second get failed — stderr: {}", get2.stderr);
+        let origin = get2.json.as_ref().unwrap()["OriginUrl"]
+            .as_str()
+            .unwrap_or("");
+        assert!(
+            origin.contains("new.example.com"),
+            "expected updated OriginUrl, got: {origin}"
+        );
+
+        // 6. Purge
+        let purge = support::hoppy_live_json(&["pull-zone", "purge", "--id", &id_str]);
+        assert!(purge.success, "purge failed — stderr: {}", purge.stderr);
+
+        // 7. Cleanup runs via CleanupStack on exit
+    });
+}
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_pull_zone_get_nonexistent() {
+    let result = support::hoppy_live_json(&["pull-zone", "get", "--id", "999999999"]);
+    assert!(
+        !result.success,
+        "expected failure for nonexistent pull zone"
+    );
+}
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_pull_zone_update_nonexistent() {
+    let result = support::hoppy_live_json(&[
+        "pull-zone",
+        "update",
+        "--id",
+        "999999999",
+        "--origin-url",
+        "https://example.com",
+    ]);
+    assert!(
+        !result.success,
+        "expected failure for nonexistent pull zone update"
+    );
+}

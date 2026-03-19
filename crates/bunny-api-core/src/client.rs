@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+use std::sync::Mutex;
+
 use anyhow::{Context, Result};
 use reqwest::{
     StatusCode,
@@ -19,12 +22,36 @@ const DEFAULT_PER_PAGE: u32 = 1000;
 ///
 /// Create one instance per application and reuse it — the underlying
 /// `reqwest::Client` manages a connection pool.
-#[derive(Debug, Clone)]
 pub struct CoreClient {
     http: reqwest::Client,
     base_url: String,
     api_key: String,
     debug: bool,
+    record_dir: Option<PathBuf>,
+    last_request: Mutex<Option<(String, String)>>,
+}
+
+impl Clone for CoreClient {
+    fn clone(&self) -> Self {
+        Self {
+            http: self.http.clone(),
+            base_url: self.base_url.clone(),
+            api_key: self.api_key.clone(),
+            debug: self.debug,
+            record_dir: self.record_dir.clone(),
+            last_request: Mutex::new(None),
+        }
+    }
+}
+
+impl std::fmt::Debug for CoreClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CoreClient")
+            .field("base_url", &self.base_url)
+            .field("debug", &self.debug)
+            .field("record_dir", &self.record_dir)
+            .finish()
+    }
 }
 
 impl CoreClient {
@@ -41,6 +68,8 @@ impl CoreClient {
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
+            record_dir: None,
+            last_request: Mutex::new(None),
         }
     }
 
@@ -48,6 +77,13 @@ impl CoreClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Enable recording API responses to files in the given directory.
+    #[must_use]
+    pub fn with_record(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.record_dir = Some(dir.into());
         self
     }
 
@@ -379,6 +415,12 @@ impl CoreClient {
         if self.debug {
             eprintln!(">> {} {}", request.method(), request.url());
         }
+        if self.record_dir.is_some() {
+            *self.last_request.lock().unwrap() = Some((
+                request.method().to_string(),
+                request.url().path().to_string(),
+            ));
+        }
         self.http
             .execute(request)
             .await
@@ -388,6 +430,44 @@ impl CoreClient {
     fn auth(&self, rb: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         rb.header("AccessKey", &self.api_key)
             .header(header::ACCEPT, "application/json")
+    }
+
+    /// Write the response body to a fixture file if recording is enabled.
+    fn maybe_record_response(&self, status: StatusCode, bytes: &bytes::Bytes) {
+        if !status.is_success() {
+            return;
+        }
+        let Some(ref dir) = self.record_dir else {
+            return;
+        };
+        let Some((method, path)) = self.last_request.lock().unwrap().take() else {
+            return;
+        };
+        // Only record JSON responses
+        let body = bytes.as_ref();
+        if body.first().is_none_or(|b| *b != b'{' && *b != b'[') {
+            return;
+        }
+        // Build filename: METHOD_sanitized_path.json
+        let sanitized = path.trim_matches('/').replace('/', "_");
+        let filename = if sanitized.is_empty() {
+            format!("{method}_root.json")
+        } else {
+            format!("{method}_{sanitized}.json")
+        };
+        let file_path = dir.join(&filename);
+        // Best-effort: create parent dirs and write
+        if let Some(parent) = file_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        // Pretty-print if valid JSON
+        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(body)
+            && let Ok(pretty) = serde_json::to_string_pretty(&value)
+        {
+            let _ = std::fs::write(&file_path, format!("{pretty}\n"));
+            return;
+        }
+        let _ = std::fs::write(&file_path, body);
     }
 
     /// Read the response body, logging status and body when debug is enabled.
@@ -401,6 +481,7 @@ impl CoreClient {
             eprintln!("<< {status}");
             eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
+        self.maybe_record_response(status, &bytes);
         Ok((status, bytes))
     }
 

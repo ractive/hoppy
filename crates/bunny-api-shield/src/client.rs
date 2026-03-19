@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+use std::sync::Mutex;
+
 use anyhow::{Context, Result, bail};
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
 
@@ -18,12 +21,36 @@ const BASE_URL: &str = "https://api.bunny.net";
 /// All methods are `async` and return `anyhow::Result<T>`. HTTP errors are
 /// surfaced either as [`ProblemDetails`] (when the server returns a
 /// problem+json body) or as a plain anyhow error with the status code.
-#[derive(Debug, Clone)]
 pub struct ShieldClient {
     client: Client,
     api_key: String,
     base_url: String,
     debug: bool,
+    record_dir: Option<PathBuf>,
+    last_request: Mutex<Option<(String, String)>>,
+}
+
+impl Clone for ShieldClient {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+            api_key: self.api_key.clone(),
+            base_url: self.base_url.clone(),
+            debug: self.debug,
+            record_dir: self.record_dir.clone(),
+            last_request: Mutex::new(None),
+        }
+    }
+}
+
+impl std::fmt::Debug for ShieldClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ShieldClient")
+            .field("base_url", &self.base_url)
+            .field("debug", &self.debug)
+            .field("record_dir", &self.record_dir)
+            .finish()
+    }
 }
 
 impl ShieldClient {
@@ -41,6 +68,8 @@ impl ShieldClient {
             api_key: api_key.into(),
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             debug: false,
+            record_dir: None,
+            last_request: Mutex::new(None),
         }
     }
 
@@ -48,6 +77,13 @@ impl ShieldClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Enable recording API responses to files in the given directory.
+    #[must_use]
+    pub fn with_record(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.record_dir = Some(dir.into());
         self
     }
 
@@ -63,11 +99,53 @@ impl ShieldClient {
         rb.header("AccessKey", &self.api_key)
     }
 
+    /// Write the response body to a fixture file if recording is enabled.
+    fn maybe_record_response(&self, status: StatusCode, bytes: &bytes::Bytes) {
+        if !status.is_success() {
+            return;
+        }
+        let Some(ref dir) = self.record_dir else {
+            return;
+        };
+        let Some((method, path)) = self.last_request.lock().unwrap().take() else {
+            return;
+        };
+        // Only record JSON responses
+        let body = bytes.as_ref();
+        if body.first().is_none_or(|b| *b != b'{' && *b != b'[') {
+            return;
+        }
+        // Build filename: METHOD_sanitized_path.json
+        let sanitized = path.trim_matches('/').replace('/', "_");
+        let filename = if sanitized.is_empty() {
+            format!("{method}_root.json")
+        } else {
+            format!("{method}_{sanitized}.json")
+        };
+        let file_path = dir.join(&filename);
+        // Best-effort: create parent dirs and write
+        if let Some(parent) = file_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        // Pretty-print if valid JSON
+        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(body)
+            && let Ok(pretty) = serde_json::to_string_pretty(&value)
+        {
+            let _ = std::fs::write(&file_path, format!("{pretty}\n"));
+            return;
+        }
+        let _ = std::fs::write(&file_path, body);
+    }
+
     /// Build and execute a request, printing method and URL to stderr when debug is enabled.
     async fn execute(&self, rb: RequestBuilder) -> Result<Response> {
         let req = rb.build().context("failed to build request")?;
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
+        }
+        if self.record_dir.is_some() {
+            *self.last_request.lock().unwrap() =
+                Some((req.method().to_string(), req.url().path().to_string()));
         }
         self.client.execute(req).await.context("request failed")
     }
@@ -80,6 +158,7 @@ impl ShieldClient {
             eprintln!("<< {status}");
             eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
+        self.maybe_record_response(status, &bytes);
         Ok((status, bytes))
     }
 
