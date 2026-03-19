@@ -1,0 +1,47 @@
+---
+source: tests/cli_script.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Items": [
+    {
+      "Id": 1001,
+      "Name": "my-cdn-script",
+      "LastModified": "2024-01-15T10:00:00Z",
+      "ScriptType": 1,
+      "CurrentReleaseId": 501,
+      "EdgeScriptVariables": null,
+      "Deleted": false,
+      "LinkedPullZones": null,
+      "Integration": null,
+      "DefaultHostname": "my-cdn-script.b-cdn.net",
+      "SystemHostname": null,
+      "RepositoryId": null,
+      "IntegrationId": null,
+      "MonthlyCost": 0.0,
+      "MonthlyRequestCount": 12500,
+      "MonthlyCpuTime": 3200
+    },
+    {
+      "Id": 1002,
+      "Name": "my-dns-script",
+      "LastModified": "2024-01-16T12:30:00Z",
+      "ScriptType": 0,
+      "CurrentReleaseId": 502,
+      "EdgeScriptVariables": null,
+      "Deleted": false,
+      "LinkedPullZones": null,
+      "Integration": null,
+      "DefaultHostname": "my-dns-script.b-cdn.net",
+      "SystemHostname": null,
+      "RepositoryId": null,
+      "IntegrationId": null,
+      "MonthlyCost": 0.0025,
+      "MonthlyRequestCount": 5000,
+      "MonthlyCpuTime": 1100
+    }
+  ],
+  "CurrentPage": 1,
+  "TotalItems": 2,
+  "HasMoreItems": false
+}

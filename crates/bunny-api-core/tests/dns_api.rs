@@ -5,12 +5,13 @@ use bunny_api_core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const FIXTURE_LIST_PAGINATED: &str = include_str!("fixtures/dnszone_list_paginated.json");
-const FIXTURE_GET: &str = include_str!("fixtures/dnszone_get.json");
-const FIXTURE_CREATE: &str = include_str!("fixtures/dnszone_create.json");
-const FIXTURE_RECORD_ADD: &str = include_str!("fixtures/dnsrecord_add.json");
-const FIXTURE_NOT_FOUND: &str = include_str!("fixtures/error_not_found_dnszone.json");
-const FIXTURE_UNAUTHORIZED: &str = include_str!("fixtures/error_unauthorized.json");
+const FIXTURE_LIST_PAGINATED: &str =
+    include_str!("../../../fixtures/core/dnszone_list_paginated.json");
+const FIXTURE_GET: &str = include_str!("../../../fixtures/core/dnszone_get.json");
+const FIXTURE_CREATE: &str = include_str!("../../../fixtures/core/dnszone_create.json");
+const FIXTURE_RECORD_ADD: &str = include_str!("../../../fixtures/core/dnsrecord_add.json");
+const FIXTURE_NOT_FOUND: &str = include_str!("../../../fixtures/core/error_not_found_dnszone.json");
+const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)

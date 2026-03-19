@@ -1,0 +1,9 @@
+---
+source: tests/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "id": 9999,
+  "error": null,
+  "status": "Saved"
+}

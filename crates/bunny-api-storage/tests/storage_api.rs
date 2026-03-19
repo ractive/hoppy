@@ -2,11 +2,14 @@ use bunny_api_storage::StorageClient;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const FIXTURE_LIST_FILES: &str = include_str!("fixtures/storage_list_files.json");
-const FIXTURE_UPLOAD_SUCCESS: &str = include_str!("fixtures/storage_upload_success.json");
-const FIXTURE_DELETE_SUCCESS: &str = include_str!("fixtures/storage_delete_success.json");
-const FIXTURE_UNAUTHORIZED: &str = include_str!("fixtures/storage_unauthorized.json");
-const FIXTURE_NOT_FOUND: &str = include_str!("fixtures/storage_not_found.json");
+const FIXTURE_LIST_FILES: &str = include_str!("../../../fixtures/storage/storage_list_files.json");
+const FIXTURE_UPLOAD_SUCCESS: &str =
+    include_str!("../../../fixtures/storage/storage_upload_success.json");
+const FIXTURE_DELETE_SUCCESS: &str =
+    include_str!("../../../fixtures/storage/storage_delete_success.json");
+const FIXTURE_UNAUTHORIZED: &str =
+    include_str!("../../../fixtures/storage/storage_unauthorized.json");
+const FIXTURE_NOT_FOUND: &str = include_str!("../../../fixtures/storage/storage_not_found.json");
 
 fn test_client(uri: &str) -> StorageClient {
     StorageClient::with_base_url("test-access-key", uri)

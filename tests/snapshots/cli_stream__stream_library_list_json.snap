@@ -1,0 +1,44 @@
+---
+source: tests/cli_stream.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Items": [
+    {
+      "Id": 10001,
+      "Name": "main-library",
+      "VideoCount": 42,
+      "TrafficUsage": 1073741824,
+      "StorageUsage": 536870912,
+      "DateCreated": "2024-01-01T00:00:00Z",
+      "HasWatermark": false,
+      "PullZoneId": 5001,
+      "StorageZoneId": 7001,
+      "EnabledResolutions": "240p,360p,480p,720p,1080p",
+      "ReplicationRegions": [],
+      "AllowDirectPlay": true,
+      "EnableMP4Fallback": false
+    },
+    {
+      "Id": 10002,
+      "Name": "archive-library",
+      "VideoCount": 5,
+      "TrafficUsage": 0,
+      "StorageUsage": 104857600,
+      "DateCreated": "2024-03-15T00:00:00Z",
+      "HasWatermark": true,
+      "PullZoneId": 5002,
+      "StorageZoneId": 7002,
+      "EnabledResolutions": "720p,1080p",
+      "ReplicationRegions": [
+        "DE",
+        "NY"
+      ],
+      "AllowDirectPlay": false,
+      "EnableMP4Fallback": true
+    }
+  ],
+  "CurrentPage": 1,
+  "TotalItems": 2,
+  "HasMoreItems": false
+}

@@ -134,8 +134,9 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(debug)?;
+    let client = auth::core_client(debug, record)?;
 
     match action {
         DnsAction::Zone { action } => handle_zone(&client, action, format, yes).await,

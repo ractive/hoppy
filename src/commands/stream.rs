@@ -160,11 +160,18 @@ pub async fn handle(
     debug: bool,
     yes: bool,
     quiet: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
-        StreamAction::Library { action } => handle_library(action, format, debug, yes).await,
-        StreamAction::Video { action } => handle_video(action, format, debug, yes, quiet).await,
-        StreamAction::Collection { action } => handle_collection(action, format, debug, yes).await,
+        StreamAction::Library { action } => {
+            handle_library(action, format, debug, yes, record).await
+        }
+        StreamAction::Video { action } => {
+            handle_video(action, format, debug, yes, quiet, record).await
+        }
+        StreamAction::Collection { action } => {
+            handle_collection(action, format, debug, yes, record).await
+        }
     }
 }
 
@@ -173,8 +180,9 @@ async fn handle_library(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let core = auth::core_client(debug)?;
+    let core = auth::core_client(debug, record)?;
 
     match action {
         StreamLibraryAction::List {
@@ -261,28 +269,40 @@ async fn handle_library(
     Ok(())
 }
 
-async fn resolve_stream_client(library_id: i64, debug: bool) -> Result<StreamClient> {
+async fn resolve_stream_client(
+    library_id: i64,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<StreamClient> {
     if let Some(key) = auth::get_stream_key() {
-        let client = StreamClient::new(key);
-        let client = if let Some(url) = auth::get_stream_url() {
+        let mut client = StreamClient::new(key);
+        client = if let Some(url) = auth::get_stream_url() {
             client.with_base_url(url)
         } else {
             client
         };
-        return Ok(client.with_debug(debug));
+        client = client.with_debug(debug);
+        if let Some(dir) = record {
+            client = client.with_record(dir);
+        }
+        return Ok(client);
     }
-    let core = auth::core_client(debug)?;
+    let core = auth::core_client(debug, record)?;
     let lib = core.get_video_library(library_id).await?;
     if lib.api_key.is_empty() {
         bail!("could not determine stream API key for library {library_id}; set BUNNY_STREAM_KEY");
     }
-    let client = StreamClient::new(&lib.api_key);
-    let client = if let Some(url) = auth::get_stream_url() {
+    let mut client = StreamClient::new(&lib.api_key);
+    client = if let Some(url) = auth::get_stream_url() {
         client.with_base_url(url)
     } else {
         client
     };
-    Ok(client.with_debug(debug))
+    client = client.with_debug(debug);
+    if let Some(dir) = record {
+        client = client.with_record(dir);
+    }
+    Ok(client)
 }
 
 async fn handle_video(
@@ -291,6 +311,7 @@ async fn handle_video(
     debug: bool,
     yes: bool,
     quiet: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
         StreamVideoAction::List {
@@ -301,7 +322,7 @@ async fn handle_video(
             collection,
             order_by,
         } => {
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let result = stream
                 .list_videos(
                     *library_id,
@@ -331,7 +352,7 @@ async fn handle_video(
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let video = stream.get_video(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json =
@@ -348,7 +369,7 @@ async fn handle_video(
             title,
             collection_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let video_title = title.as_deref().unwrap_or_else(|| {
                 std::path::Path::new(file)
                     .file_name()
@@ -407,7 +428,7 @@ async fn handle_video(
             if title.is_none() && collection_id.is_none() {
                 bail!("at least one update flag is required (--title or --collection-id)");
             }
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let mut body = UpdateVideo::new();
             if let Some(t) = title {
                 body = body.title(t);
@@ -431,7 +452,7 @@ async fn handle_video(
             url,
             title,
         } => {
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let mut body = FetchVideo::new(url);
             if let Some(t) = title {
                 body = body.title(t);
@@ -465,7 +486,7 @@ async fn handle_video(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             stream.delete_video(*library_id, video_id).await?;
             eprintln!("Deleted video {video_id} from library {library_id}");
         }
@@ -478,6 +499,7 @@ async fn handle_collection(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
         StreamCollectionAction::List {
@@ -487,7 +509,7 @@ async fn handle_collection(
             search,
             order_by,
         } => {
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let result = stream
                 .list_collections(
                     *library_id,
@@ -517,7 +539,7 @@ async fn handle_collection(
             library_id,
             collection_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let collection = stream.get_collection(*library_id, collection_id).await?;
             if let OutputFormat::Json = format {
                 let json =
@@ -529,7 +551,7 @@ async fn handle_collection(
             }
         }
         StreamCollectionAction::Create { library_id, name } => {
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let body = CreateCollection::new(name);
             let collection = stream.create_collection(*library_id, &body).await?;
             if let OutputFormat::Json = format {
@@ -549,7 +571,7 @@ async fn handle_collection(
             if name.is_none() {
                 bail!("at least one update flag is required (--name)");
             }
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             let mut body = UpdateCollection::new();
             if let Some(n) = name {
                 body = body.name(n);
@@ -581,7 +603,7 @@ async fn handle_collection(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug).await?;
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
             stream.delete_collection(*library_id, collection_id).await?;
             eprintln!("Deleted collection {collection_id} from library {library_id}");
         }

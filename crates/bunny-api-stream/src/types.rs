@@ -132,25 +132,25 @@ pub struct Video {
 #[serde(rename_all = "PascalCase")]
 pub struct Collection {
     /// The ID of the library that owns this collection.
-    #[serde(default)]
+    #[serde(default, alias = "videoLibraryId")]
     pub video_library_id: i64,
     /// Unique GUID of the collection.
-    #[serde(default)]
+    #[serde(default, alias = "guid")]
     pub guid: Option<String>,
     /// Human-readable name.
-    #[serde(default)]
+    #[serde(default, alias = "name")]
     pub name: Option<String>,
     /// Number of videos in the collection.
-    #[serde(default)]
+    #[serde(default, alias = "videoCount")]
     pub video_count: i64,
     /// Total storage size of all videos in the collection in bytes.
-    #[serde(default)]
+    #[serde(default, alias = "totalSize")]
     pub total_size: i64,
     /// Comma-separated video IDs used as preview thumbnails.
-    #[serde(default)]
+    #[serde(default, alias = "previewVideoIds")]
     pub preview_video_ids: Option<String>,
     /// URLs of preview images for videos in the collection.
-    #[serde(default)]
+    #[serde(default, alias = "previewImageUrls")]
     pub preview_image_urls: Vec<String>,
 }
 
@@ -163,14 +163,16 @@ pub struct PaginatedList<T> {
     /// The bunny.net API marks this field nullable in its schema but always
     /// returns an array. We use a dedicated default fn so serde does not
     /// require `T: Default`.
-    #[serde(default = "Vec::new")]
+    #[serde(default = "Vec::new", alias = "items")]
     pub items: Vec<T>,
     /// The current page number.
+    #[serde(alias = "currentPage")]
     pub current_page: i64,
     /// The total number of items across all pages.
+    #[serde(alias = "totalItems")]
     pub total_items: i64,
     /// Number of items returned per page.
-    #[serde(default)]
+    #[serde(default, alias = "itemsPerPage")]
     pub items_per_page: i32,
 }
 
@@ -179,12 +181,13 @@ pub struct PaginatedList<T> {
 #[serde(rename_all = "PascalCase")]
 pub struct StatusMessage {
     /// Whether the request succeeded.
+    #[serde(alias = "success")]
     pub success: bool,
     /// Human-readable description of the outcome.
-    #[serde(default)]
+    #[serde(default, alias = "message")]
     pub message: Option<String>,
     /// HTTP-aligned status code echoed in the body.
-    #[serde(default)]
+    #[serde(default, alias = "statusCode")]
     pub status_code: i32,
 }
 

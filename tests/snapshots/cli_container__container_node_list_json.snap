@@ -1,0 +1,15 @@
+---
+source: tests/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "items": [
+    "104.166.147.46",
+    "109.61.83.105",
+    "109.61.83.248"
+  ],
+  "meta": {
+    "totalItems": 131
+  },
+  "cursor": "eyJBUElWZXJzaW9uIjoibWV0YS5ibnkubmV0L3YxIn0"
+}

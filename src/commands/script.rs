@@ -17,8 +17,8 @@ use std::io::{self, BufRead, Write};
 // Helper: build the client
 // ---------------------------------------------------------------------------
 
-fn client(debug: bool) -> Result<ComputeClient> {
-    auth::compute_client(debug)
+fn client(debug: bool, record: Option<&str>) -> Result<ComputeClient> {
+    auth::compute_client(debug, record)
 }
 
 // ---------------------------------------------------------------------------
@@ -256,14 +256,15 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
         ScriptAction::List {
             search,
             page,
             per_page,
-        } => handle_list(search.as_deref(), *page, *per_page, format, debug).await,
-        ScriptAction::Get { id } => handle_get(*id, format, debug).await,
+        } => handle_list(search.as_deref(), *page, *per_page, format, debug, record).await,
+        ScriptAction::Get { id } => handle_get(*id, format, debug, record).await,
         ScriptAction::Create {
             name,
             script_type,
@@ -279,6 +280,7 @@ pub async fn handle(
                 linked_pull_zone_name.as_deref(),
                 format,
                 debug,
+                record,
             )
             .await
         }
@@ -286,16 +288,20 @@ pub async fn handle(
             id,
             name,
             script_type,
-        } => handle_update(*id, name.as_deref(), *script_type, format, debug).await,
+        } => handle_update(*id, name.as_deref(), *script_type, format, debug, record).await,
         ScriptAction::Delete {
             id,
             delete_linked_pull_zones,
-        } => handle_delete(*id, *delete_linked_pull_zones, yes, debug).await,
-        ScriptAction::Code { action } => handle_code(action, format, debug).await,
-        ScriptAction::Publish { id, note } => handle_publish(*id, note.as_deref(), debug).await,
-        ScriptAction::Release { action } => handle_release(action, format, debug).await,
-        ScriptAction::Variable { action } => handle_variable(action, format, debug, yes).await,
-        ScriptAction::Secret { action } => handle_secret(action, format, debug, yes).await,
+        } => handle_delete(*id, *delete_linked_pull_zones, yes, debug, record).await,
+        ScriptAction::Code { action } => handle_code(action, format, debug, record).await,
+        ScriptAction::Publish { id, note } => {
+            handle_publish(*id, note.as_deref(), debug, record).await
+        }
+        ScriptAction::Release { action } => handle_release(action, format, debug, record).await,
+        ScriptAction::Variable { action } => {
+            handle_variable(action, format, debug, yes, record).await
+        }
+        ScriptAction::Secret { action } => handle_secret(action, format, debug, yes, record).await,
         ScriptAction::Statistics {
             id,
             date_from,
@@ -309,6 +315,7 @@ pub async fn handle(
                 *hourly,
                 format,
                 debug,
+                record,
             )
             .await
         }
@@ -325,7 +332,7 @@ pub async fn handle(
                     return Ok(());
                 }
             }
-            let c = client(debug)?;
+            let c = client(debug, record)?;
             c.rotate_deployment_key(*id).await?;
             eprintln!("Rotated deployment key for script {id}");
             Ok(())
@@ -343,8 +350,9 @@ async fn handle_list(
     per_page: Option<i32>,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     let result = c.list_scripts(page, per_page, search).await?;
     if let OutputFormat::Json = format {
         let envelope = PaginatedListJson {
@@ -364,8 +372,13 @@ async fn handle_list(
     Ok(())
 }
 
-async fn handle_get(id: i64, format: OutputFormat, debug: bool) -> Result<()> {
-    let c = client(debug)?;
+async fn handle_get(
+    id: i64,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let c = client(debug, record)?;
     let script = c.get_script(id).await?;
     if let OutputFormat::Json = format {
         println!(
@@ -379,6 +392,7 @@ async fn handle_get(id: i64, format: OutputFormat, debug: bool) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_create(
     name: &str,
     script_type: u8,
@@ -387,8 +401,9 @@ async fn handle_create(
     linked_pull_zone_name: Option<&str>,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     let body = CreateEdgeScript {
         name: Some(name.to_owned()),
         code: code.map(str::to_owned),
@@ -416,12 +431,14 @@ async fn handle_update(
     script_type: Option<u8>,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     if name.is_none() && script_type.is_none() {
         bail!("at least one update flag is required (--name, --script-type)");
     }
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     let body = UpdateEdgeScript {
+        id,
         name: name.map(str::to_owned),
         script_type: script_type.map(u8_to_script_type).transpose()?,
     };
@@ -443,6 +460,7 @@ async fn handle_delete(
     delete_linked_pull_zones: bool,
     yes: bool,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     if !yes {
         eprint!("Delete script {id}? [y/N] ");
@@ -454,7 +472,7 @@ async fn handle_delete(
             return Ok(());
         }
     }
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     c.delete_script(id, delete_linked_pull_zones).await?;
     eprintln!("Deleted script {id}");
     Ok(())
@@ -464,8 +482,13 @@ async fn handle_delete(
 // Code sub-handlers
 // ---------------------------------------------------------------------------
 
-async fn handle_code(action: &ScriptCodeAction, format: OutputFormat, debug: bool) -> Result<()> {
-    let c = client(debug)?;
+async fn handle_code(
+    action: &ScriptCodeAction,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let c = client(debug, record)?;
     match action {
         ScriptCodeAction::Get { id } => {
             let code = c.get_script_code(*id).await?;
@@ -498,8 +521,13 @@ async fn handle_code(action: &ScriptCodeAction, format: OutputFormat, debug: boo
 // Publish handler
 // ---------------------------------------------------------------------------
 
-async fn handle_publish(id: i64, note: Option<&str>, debug: bool) -> Result<()> {
-    let c = client(debug)?;
+async fn handle_publish(
+    id: i64,
+    note: Option<&str>,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let c = client(debug, record)?;
     let body = PublishScript {
         note: note.map(str::to_owned),
     };
@@ -516,8 +544,9 @@ async fn handle_release(
     action: &ScriptReleaseAction,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ScriptReleaseAction::List { id, page, per_page } => {
             let result = c.list_releases(*id, *page, *per_page).await?;
@@ -562,8 +591,9 @@ async fn handle_variable(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ScriptVariableAction::List { id } => {
             let script = c.get_script(*id).await?;
@@ -673,8 +703,9 @@ async fn handle_secret(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ScriptSecretAction::List { id } => {
             let result: SecretList = c.list_secrets(*id).await?;
@@ -769,8 +800,9 @@ async fn handle_statistics(
     hourly: bool,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     let stats = c
         .get_script_statistics(id, date_from, date_to, hourly)
         .await?;

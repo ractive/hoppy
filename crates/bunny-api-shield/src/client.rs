@@ -1,5 +1,10 @@
+use std::path::PathBuf;
+use std::sync::Mutex;
+
 use anyhow::{Context, Result, bail};
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
+
+use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::{
     AccessListsDetailsResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
@@ -18,12 +23,36 @@ const BASE_URL: &str = "https://api.bunny.net";
 /// All methods are `async` and return `anyhow::Result<T>`. HTTP errors are
 /// surfaced either as [`ProblemDetails`] (when the server returns a
 /// problem+json body) or as a plain anyhow error with the status code.
-#[derive(Debug, Clone)]
 pub struct ShieldClient {
     client: Client,
     api_key: String,
     base_url: String,
     debug: bool,
+    record_dir: Option<PathBuf>,
+    last_request: Mutex<Option<(String, String)>>,
+}
+
+impl Clone for ShieldClient {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+            api_key: self.api_key.clone(),
+            base_url: self.base_url.clone(),
+            debug: self.debug,
+            record_dir: self.record_dir.clone(),
+            last_request: Mutex::new(None),
+        }
+    }
+}
+
+impl std::fmt::Debug for ShieldClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ShieldClient")
+            .field("base_url", &self.base_url)
+            .field("debug", &self.debug)
+            .field("record_dir", &self.record_dir)
+            .finish()
+    }
 }
 
 impl ShieldClient {
@@ -41,6 +70,8 @@ impl ShieldClient {
             api_key: api_key.into(),
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             debug: false,
+            record_dir: None,
+            last_request: Mutex::new(None),
         }
     }
 
@@ -48,6 +79,13 @@ impl ShieldClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Enable recording API responses to files in the given directory.
+    #[must_use]
+    pub fn with_record(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.record_dir = Some(dir.into());
         self
     }
 
@@ -69,21 +107,35 @@ impl ShieldClient {
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
         }
+        capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         self.client.execute(req).await.context("request failed")
     }
 
-    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(&self, resp: Response) -> Result<(StatusCode, bytes::Bytes)> {
         let status = resp.status();
+        let bytes = resp.bytes().await.context("failed to read response body")?;
+        if self.debug {
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+        }
+        maybe_record_response(
+            self.record_dir.as_deref(),
+            &self.last_request,
+            status.is_success(),
+            &bytes,
+        );
+        Ok((status, bytes))
+    }
+
+    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() {
-            let body = resp
-                .json::<T>()
-                .await
-                .context("failed to decode success response")?;
-            return Ok(body);
+            return serde_json::from_slice(&bytes).context("failed to decode success response");
         }
 
         // Try to extract RFC 7807 problem details from the error body.
-        if let Ok(problem) = resp.json::<ProblemDetails>().await {
+        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
             bail!(problem);
         }
 
@@ -91,11 +143,11 @@ impl ShieldClient {
     }
 
     async fn handle_empty_response(&self, resp: Response) -> Result<()> {
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() || status == StatusCode::NO_CONTENT {
             return Ok(());
         }
-        if let Ok(problem) = resp.json::<ProblemDetails>().await {
+        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
             bail!(problem);
         }
         bail!("Shield API returned status {status}");

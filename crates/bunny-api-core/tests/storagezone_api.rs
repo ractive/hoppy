@@ -2,11 +2,13 @@ use bunny_api_core::{ApiError, CoreClient, CreateStorageZone, UpdateStorageZone}
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const FIXTURE_LIST_PAGINATED: &str = include_str!("fixtures/storagezone_list_paginated.json");
-const FIXTURE_GET: &str = include_str!("fixtures/storagezone_get.json");
-const FIXTURE_CREATE: &str = include_str!("fixtures/storagezone_create.json");
-const FIXTURE_NOT_FOUND: &str = include_str!("fixtures/error_not_found_storagezone.json");
-const FIXTURE_UNAUTHORIZED: &str = include_str!("fixtures/error_unauthorized.json");
+const FIXTURE_LIST_PAGINATED: &str =
+    include_str!("../../../fixtures/core/storagezone_list_paginated.json");
+const FIXTURE_GET: &str = include_str!("../../../fixtures/core/storagezone_get.json");
+const FIXTURE_CREATE: &str = include_str!("../../../fixtures/core/storagezone_create.json");
+const FIXTURE_NOT_FOUND: &str =
+    include_str!("../../../fixtures/core/error_not_found_storagezone.json");
+const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)

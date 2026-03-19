@@ -1,6 +1,11 @@
 use anyhow::{Context, Result, bail};
-use reqwest::{Client, RequestBuilder, Response};
+use bytes::Bytes;
+use reqwest::{Client, RequestBuilder, Response, StatusCode};
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Mutex;
+
+use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::*;
 
@@ -16,6 +21,8 @@ pub struct ContainersClient {
     base_url: String,
     api_key: String,
     debug: bool,
+    record_dir: Option<PathBuf>,
+    last_request: Mutex<Option<(String, String)>>,
 }
 
 impl ContainersClient {
@@ -32,6 +39,8 @@ impl ContainersClient {
             base_url: base_url.trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
+            record_dir: None,
+            last_request: Mutex::new(None),
         }
     }
 
@@ -39,6 +48,13 @@ impl ContainersClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Enable recording API responses to files in the given directory.
+    #[must_use]
+    pub fn with_record(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.record_dir = Some(dir.into());
         self
     }
 
@@ -55,38 +71,52 @@ impl ContainersClient {
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
         }
+        capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         self.http.execute(req).await.context("request failed")
     }
 
-    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(&self, resp: Response) -> Result<(StatusCode, Bytes)> {
         let status = resp.status();
-        if status.is_success() {
-            return resp
-                .json::<T>()
-                .await
-                .context("failed to decode success response");
+        let bytes = resp.bytes().await.context("failed to read response body")?;
+        if self.debug {
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
-        self.surface_error(resp).await
+        maybe_record_response(
+            self.record_dir.as_deref(),
+            &self.last_request,
+            status.is_success(),
+            &bytes,
+        );
+        Ok((status, bytes))
+    }
+
+    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+        let (status, bytes) = self.read_body(resp).await?;
+        if status.is_success() {
+            return serde_json::from_slice(&bytes).context("failed to decode success response");
+        }
+        self.surface_error(status, &bytes)
     }
 
     async fn handle_empty_response(&self, resp: Response) -> Result<()> {
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() {
             return Ok(());
         }
-        self.surface_error(resp).await
+        self.surface_error(status, &bytes)
     }
 
-    async fn surface_error<T>(&self, resp: Response) -> Result<T> {
-        let status = resp.status();
-        let body = resp.text().await.unwrap_or_default();
+    fn surface_error<T>(&self, status: StatusCode, bytes: &Bytes) -> Result<T> {
+        let body = String::from_utf8_lossy(bytes);
         // Try ErrorDetails first (more structured), then ProblemDetails.
-        if let Ok(err) = serde_json::from_str::<ErrorDetails>(&body)
+        if let Ok(err) = serde_json::from_slice::<ErrorDetails>(bytes)
             && (err.title.is_some() || err.status.is_some())
         {
             bail!(err);
         }
-        if let Ok(problem) = serde_json::from_str::<ProblemDetails>(&body)
+        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(bytes)
             && (problem.title.is_some() || problem.status.is_some())
         {
             bail!(problem);
