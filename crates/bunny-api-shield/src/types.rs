@@ -645,15 +645,15 @@ pub struct WafChainedRuleCondition {
 #[serde(rename_all = "camelCase")]
 pub struct WafRuleConfiguration {
     pub action_type: WafRuleActionType,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variable_types: Option<WafRuleVariableTypes>,
     pub operator_type: WafRuleOperatorType,
     pub severity_type: WafRuleSeverityType,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transformation_types: Option<Vec<WafRuleTransformationType>>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chained_rule_conditions: Option<Vec<WafChainedRuleCondition>>,
 }
 
@@ -682,7 +682,9 @@ pub struct CustomWafRule {
 #[serde(rename_all = "camelCase")]
 pub struct CreateCustomWafRule {
     pub shield_zone_id: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_description: Option<String>,
     pub rule_configuration: WafRuleConfiguration,
 }
@@ -691,8 +693,11 @@ pub struct CreateCustomWafRule {
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateCustomWafRule {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_configuration: Option<WafRuleConfiguration>,
 }
 
@@ -717,19 +722,19 @@ pub struct GetCustomWafRulesResponse {
 #[serde(rename_all = "camelCase")]
 pub struct RateLimitRuleConfiguration {
     pub action_type: RateLimitActionType,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variable_types: Option<WafRuleVariableTypes>,
     pub operator_type: WafRuleOperatorType,
     pub severity_type: WafRuleSeverityType,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transformation_types: Option<Vec<WafRuleTransformationType>>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
     pub request_count: i32,
     pub counter_key_type: RateLimitCounterKey,
     pub timeframe: RateLimitTimeframe,
     pub block_time: RateLimitBlockDuration,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chained_rule_conditions: Option<Vec<WafChainedRuleCondition>>,
 }
 
@@ -758,7 +763,9 @@ pub struct RateLimitRule {
 #[serde(rename_all = "camelCase")]
 pub struct CreateRateLimitRule {
     pub shield_zone_id: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_description: Option<String>,
     pub rule_configuration: RateLimitRuleConfiguration,
 }
@@ -767,8 +774,11 @@ pub struct CreateRateLimitRule {
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateRateLimitRule {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rule_configuration: Option<RateLimitRuleConfiguration>,
 }
 

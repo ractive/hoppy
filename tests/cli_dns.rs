@@ -335,11 +335,10 @@ fn live_dns_zone_lifecycle() {
         // 5. Get again and verify LoggingEnabled is true
         let get2 = support::hoppy_live_json(&["dns", "zone", "get", "--id", &zone_id_str]);
         assert!(get2.success, "second get zone failed: {}", get2.stderr);
-        assert_eq!(
+        assert!(
             get2.json.as_ref().unwrap()["LoggingEnabled"]
                 .as_bool()
                 .unwrap(),
-            true,
             "expected LoggingEnabled to be true after update"
         );
 

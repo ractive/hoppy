@@ -164,8 +164,8 @@ async fn update_script_sends_correct_body() {
         .and(path("/compute/script/1001"))
         .and(header("AccessKey", "test-api-key"))
         .and(body_json(serde_json::json!({
-            "Name": "updated-cdn-script",
-            "ScriptType": null
+            "Id": 1001,
+            "Name": "updated-cdn-script"
         })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPT_UPDATE, "application/json"),

@@ -11,16 +11,12 @@ expression: "String::from_utf8_lossy(&output.stdout)"
   "ruleJson": null,
   "ruleConfiguration": {
     "actionType": 1,
-    "variableTypes": null,
     "operatorType": 0,
     "severityType": 0,
-    "transformationTypes": null,
-    "value": null,
     "requestCount": 100,
     "counterKeyType": 1,
     "timeframe": 3600,
-    "blockTime": 900,
-    "chainedRuleConditions": null
+    "blockTime": 900
   },
   "errorResponse": null
 }

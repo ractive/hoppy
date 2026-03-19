@@ -392,6 +392,7 @@ async fn handle_get(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_create(
     name: &str,
     script_type: u8,

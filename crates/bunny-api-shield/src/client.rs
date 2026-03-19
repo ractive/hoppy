@@ -4,6 +4,8 @@ use std::sync::Mutex;
 use anyhow::{Context, Result, bail};
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
 
+use bunny_api_recording::{capture_request, maybe_record_response};
+
 use crate::types::{
     AccessListsDetailsResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
     CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest, CustomAccessList,
@@ -99,54 +101,13 @@ impl ShieldClient {
         rb.header("AccessKey", &self.api_key)
     }
 
-    /// Write the response body to a fixture file if recording is enabled.
-    fn maybe_record_response(&self, status: StatusCode, bytes: &bytes::Bytes) {
-        if !status.is_success() {
-            return;
-        }
-        let Some(ref dir) = self.record_dir else {
-            return;
-        };
-        let Some((method, path)) = self.last_request.lock().unwrap().take() else {
-            return;
-        };
-        // Only record JSON responses
-        let body = bytes.as_ref();
-        if body.first().is_none_or(|b| *b != b'{' && *b != b'[') {
-            return;
-        }
-        // Build filename: METHOD_sanitized_path.json
-        let sanitized = path.trim_matches('/').replace('/', "_");
-        let filename = if sanitized.is_empty() {
-            format!("{method}_root.json")
-        } else {
-            format!("{method}_{sanitized}.json")
-        };
-        let file_path = dir.join(&filename);
-        // Best-effort: create parent dirs and write
-        if let Some(parent) = file_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        // Pretty-print if valid JSON
-        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(body)
-            && let Ok(pretty) = serde_json::to_string_pretty(&value)
-        {
-            let _ = std::fs::write(&file_path, format!("{pretty}\n"));
-            return;
-        }
-        let _ = std::fs::write(&file_path, body);
-    }
-
     /// Build and execute a request, printing method and URL to stderr when debug is enabled.
     async fn execute(&self, rb: RequestBuilder) -> Result<Response> {
         let req = rb.build().context("failed to build request")?;
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
         }
-        if self.record_dir.is_some() {
-            *self.last_request.lock().unwrap() =
-                Some((req.method().to_string(), req.url().path().to_string()));
-        }
+        capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         self.client.execute(req).await.context("request failed")
     }
 
@@ -158,7 +119,12 @@ impl ShieldClient {
             eprintln!("<< {status}");
             eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
-        self.maybe_record_response(status, &bytes);
+        maybe_record_response(
+            self.record_dir.as_deref(),
+            &self.last_request,
+            status.is_success(),
+            &bytes,
+        );
         Ok((status, bytes))
     }
 
