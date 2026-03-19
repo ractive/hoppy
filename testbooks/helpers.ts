@@ -19,8 +19,15 @@ export interface HoppyResult {
   exitCode: number;
 }
 
-/** Path to the hoppy binary (built by cargo). */
-const hoppyBin = resolve(import.meta.dir, "../target/debug/hoppy");
+/** Path to the hoppy binary — override with HOPPY_BIN env var if needed. */
+const hoppyBin =
+  process.env.HOPPY_BIN ??
+  resolve(
+    import.meta.dir,
+    process.platform === "win32"
+      ? "../target/debug/hoppy.exe"
+      : "../target/debug/hoppy",
+  );
 
 /**
  * Run a hoppy command with `--format json` and return parsed output.
@@ -68,9 +75,12 @@ export function hoppyRaw(args: string[], timeoutMs = 30_000): HoppyResult {
   };
 }
 
-/** Generate a unique resource name with a timestamp to avoid collisions. */
+/** Monotonic counter to guarantee uniqueness even within the same millisecond. */
+let nameCounter = 0;
+
+/** Generate a unique resource name with a timestamp and counter to avoid collisions. */
 export function testName(prefix = "hoppy-e2e"): string {
-  return `${prefix}-${Date.now()}`;
+  return `${prefix}-${Date.now()}-${nameCounter++}`;
 }
 
 /**
