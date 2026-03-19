@@ -11,12 +11,9 @@ expression: "String::from_utf8_lossy(&output.stdout)"
   "ruleJson": null,
   "ruleConfiguration": {
     "actionType": 1,
-    "variableTypes": null,
     "operatorType": 2,
     "severityType": 1,
-    "transformationTypes": null,
-    "value": "BadBot/1.0",
-    "chainedRuleConditions": null
+    "value": "BadBot/1.0"
   },
   "errorResponse": null
 }

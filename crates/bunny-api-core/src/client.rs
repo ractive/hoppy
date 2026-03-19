@@ -7,6 +7,8 @@ use reqwest::{
     header::{self},
 };
 
+use bunny_api_recording::{capture_request, maybe_record_response};
+
 use crate::types::{
     AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone, CreateStorageZone,
     CreateVideoLibrary, DnsRecord, DnsZone, PaginatedList, PullZone, PurgeCache, StorageZone,
@@ -415,12 +417,11 @@ impl CoreClient {
         if self.debug {
             eprintln!(">> {} {}", request.method(), request.url());
         }
-        if self.record_dir.is_some() {
-            *self.last_request.lock().unwrap() = Some((
-                request.method().to_string(),
-                request.url().path().to_string(),
-            ));
-        }
+        capture_request(
+            &self.last_request,
+            request.method().as_ref(),
+            request.url().path(),
+        );
         self.http
             .execute(request)
             .await
@@ -430,44 +431,6 @@ impl CoreClient {
     fn auth(&self, rb: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         rb.header("AccessKey", &self.api_key)
             .header(header::ACCEPT, "application/json")
-    }
-
-    /// Write the response body to a fixture file if recording is enabled.
-    fn maybe_record_response(&self, status: StatusCode, bytes: &bytes::Bytes) {
-        if !status.is_success() {
-            return;
-        }
-        let Some(ref dir) = self.record_dir else {
-            return;
-        };
-        let Some((method, path)) = self.last_request.lock().unwrap().take() else {
-            return;
-        };
-        // Only record JSON responses
-        let body = bytes.as_ref();
-        if body.first().is_none_or(|b| *b != b'{' && *b != b'[') {
-            return;
-        }
-        // Build filename: METHOD_sanitized_path.json
-        let sanitized = path.trim_matches('/').replace('/', "_");
-        let filename = if sanitized.is_empty() {
-            format!("{method}_root.json")
-        } else {
-            format!("{method}_{sanitized}.json")
-        };
-        let file_path = dir.join(&filename);
-        // Best-effort: create parent dirs and write
-        if let Some(parent) = file_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        // Pretty-print if valid JSON
-        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(body)
-            && let Ok(pretty) = serde_json::to_string_pretty(&value)
-        {
-            let _ = std::fs::write(&file_path, format!("{pretty}\n"));
-            return;
-        }
-        let _ = std::fs::write(&file_path, body);
     }
 
     /// Read the response body, logging status and body when debug is enabled.
@@ -481,7 +444,12 @@ impl CoreClient {
             eprintln!("<< {status}");
             eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
-        self.maybe_record_response(status, &bytes);
+        maybe_record_response(
+            self.record_dir.as_deref(),
+            &self.last_request,
+            status.is_success(),
+            &bytes,
+        );
         Ok((status, bytes))
     }
 

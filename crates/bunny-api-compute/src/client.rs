@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, anyhow};
+use bunny_api_recording::{capture_request, maybe_record_response};
 use reqwest::{Client, Request, StatusCode};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -72,8 +73,7 @@ impl ComputeClient {
             eprintln!(">> {} {}", req.method(), req.url());
         }
         if self.record_dir.is_some() {
-            *self.last_request.lock().unwrap() =
-                Some((req.method().to_string(), req.url().path().to_string()));
+            capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         }
         self.http.execute(req).await.context("request failed")
     }
@@ -86,7 +86,12 @@ impl ComputeClient {
             eprintln!("<< {status}");
             eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
-        self.maybe_record_response(status, &bytes);
+        maybe_record_response(
+            self.record_dir.as_deref(),
+            &self.last_request,
+            status.is_success(),
+            &bytes,
+        );
         Ok((status, bytes))
     }
 
@@ -503,39 +508,6 @@ impl ComputeClient {
             )
             .await?;
         self.expect_no_body(resp).await
-    }
-
-    fn maybe_record_response(&self, status: reqwest::StatusCode, bytes: &bytes::Bytes) {
-        if !status.is_success() {
-            return;
-        }
-        let Some(ref dir) = self.record_dir else {
-            return;
-        };
-        let Some((method, path)) = self.last_request.lock().unwrap().take() else {
-            return;
-        };
-        let body = bytes.as_ref();
-        if body.first().is_none_or(|b| *b != b'{' && *b != b'[') {
-            return;
-        }
-        let sanitized = path.trim_matches('/').replace('/', "_");
-        let filename = if sanitized.is_empty() {
-            format!("{method}_root.json")
-        } else {
-            format!("{method}_{sanitized}.json")
-        };
-        let file_path = dir.join(&filename);
-        if let Some(parent) = file_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(body)
-            && let Ok(pretty) = serde_json::to_string_pretty(&value)
-        {
-            let _ = std::fs::write(&file_path, format!("{pretty}\n"));
-            return;
-        }
-        let _ = std::fs::write(&file_path, body);
     }
 }
 

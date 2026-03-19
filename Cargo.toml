@@ -7,6 +7,7 @@ members = [
     "crates/bunny-api-shield",
     "crates/bunny-api-storage",
     "crates/bunny-api-stream",
+    "crates/bunny-api-recording",
     "xtask",
 ]
 resolver = "2"

@@ -147,6 +147,7 @@ name = "bunny-api-compute"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bunny-api-recording",
  "bytes",
  "reqwest",
  "serde",
@@ -161,6 +162,7 @@ name = "bunny-api-containers"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bunny-api-recording",
  "bytes",
  "reqwest",
  "serde",
@@ -174,6 +176,7 @@ name = "bunny-api-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bunny-api-recording",
  "bytes",
  "reqwest",
  "serde",
@@ -184,10 +187,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bunny-api-recording"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "bunny-api-shield"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bunny-api-recording",
  "bytes",
  "reqwest",
  "serde",
@@ -202,6 +213,7 @@ name = "bunny-api-storage"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bunny-api-recording",
  "bytes",
  "reqwest",
  "serde",
@@ -216,6 +228,7 @@ name = "bunny-api-stream"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bunny-api-recording",
  "bytes",
  "reqwest",
  "serde",
