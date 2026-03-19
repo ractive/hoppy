@@ -1,0 +1,72 @@
+---
+source: tests/cli_dns.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Id": 50001,
+  "Domain": "example.com",
+  "Records": [
+    {
+      "Id": 100001,
+      "Type": 0,
+      "Ttl": 300,
+      "Value": "93.184.216.34",
+      "Name": "",
+      "Weight": 0,
+      "Priority": 0,
+      "Port": 0,
+      "Flags": 0,
+      "Tag": null,
+      "Accelerated": false,
+      "AcceleratedPullZoneId": 0,
+      "LinkName": null,
+      "Disabled": false,
+      "Comment": null
+    },
+    {
+      "Id": 100002,
+      "Type": 2,
+      "Ttl": 3600,
+      "Value": "www.example.com",
+      "Name": "www",
+      "Weight": 0,
+      "Priority": 0,
+      "Port": 0,
+      "Flags": 0,
+      "Tag": null,
+      "Accelerated": false,
+      "AcceleratedPullZoneId": 0,
+      "LinkName": null,
+      "Disabled": false,
+      "Comment": "WWW redirect"
+    },
+    {
+      "Id": 100003,
+      "Type": 4,
+      "Ttl": 3600,
+      "Value": "mail.example.com",
+      "Name": "",
+      "Weight": 0,
+      "Priority": 10,
+      "Port": 0,
+      "Flags": 0,
+      "Tag": null,
+      "Accelerated": false,
+      "AcceleratedPullZoneId": 0,
+      "LinkName": null,
+      "Disabled": false,
+      "Comment": null
+    }
+  ],
+  "DateModified": "2024-01-15T10:30:00Z",
+  "DateCreated": "2024-01-01T00:00:00Z",
+  "NameserversDetected": true,
+  "CustomNameserversEnabled": false,
+  "Nameserver1": null,
+  "Nameserver2": null,
+  "SoaEmail": "admin@example.com",
+  "NameserversNextCheck": "2024-01-16T00:00:00Z",
+  "LoggingEnabled": false,
+  "LoggingIpAnonymizationEnabled": false,
+  "DnsSecEnabled": false
+}

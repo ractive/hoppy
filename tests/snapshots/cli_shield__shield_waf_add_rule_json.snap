@@ -1,0 +1,19 @@
+---
+source: tests/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "id": 7003,
+  "shieldZoneId": 55001,
+  "userId": "user-abc-123",
+  "ruleName": "Block Bad UA",
+  "ruleDescription": null,
+  "ruleJson": null,
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 2,
+    "severityType": 1,
+    "value": "BadBot/1.0"
+  },
+  "errorResponse": null
+}

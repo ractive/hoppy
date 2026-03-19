@@ -1,0 +1,30 @@
+---
+source: tests/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "shieldZoneId": 55001,
+  "pullZoneId": null,
+  "learningMode": false,
+  "learningModeUntil": null,
+  "wafEnabled": true,
+  "wafExecutionMode": 1,
+  "wafDisabledRules": null,
+  "wafLogOnlyRules": null,
+  "wafRequestHeaderLoggingEnabled": null,
+  "wafRequestIgnoredHeaders": null,
+  "wafRealtimeThreatIntelligenceEnabled": null,
+  "wafProfileId": null,
+  "wafRequestBodyLimitAction": null,
+  "wafResponseBodyLimitAction": null,
+  "rateLimitRulesLimit": 0,
+  "customWafRulesLimit": 0,
+  "planType": 1,
+  "dDoSShieldSensitivity": 2,
+  "dDoSExecutionMode": 1,
+  "dDoSChallengeWindow": 60,
+  "blockVpn": null,
+  "blockTor": null,
+  "blockDatacentre": null,
+  "whitelabelResponsePages": null
+}

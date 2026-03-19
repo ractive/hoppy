@@ -1,0 +1,19 @@
+---
+source: tests/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "shieldZoneId": 55001,
+  "requestIntegrity": {
+    "sensitivity": 2
+  },
+  "ipAddress": {
+    "sensitivity": 1
+  },
+  "browserFingerprint": {
+    "sensitivity": 2,
+    "aggression": 2,
+    "complexEnabled": false
+  },
+  "executionMode": 1
+}
