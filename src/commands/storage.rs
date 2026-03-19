@@ -226,9 +226,9 @@ async fn build_storage_client(
     let mut client = if let Some(url) = auth::get_storage_url() {
         StorageClient::with_base_url(access_key, url)
     } else {
-        StorageClient::new(region, access_key)
-    }
-    .with_debug(debug);
+        StorageClient::new(region, access_key)?
+    };
+    client = client.with_debug(debug);
     if let Some(dir) = record {
         client = client.with_record(dir);
     }
