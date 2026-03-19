@@ -1,0 +1,17 @@
+{
+  "name": "hoppy-testbooks",
+  "description": "E2E lifecycle tests for the hoppy CLI",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun test",
+    "test:update": "bun test --update-snapshots",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
