@@ -76,6 +76,10 @@ export function testName(prefix = "hoppy-e2e"): string {
 /**
  * Cleanup registry — collects cleanup functions and runs them in reverse
  * order. Use with `afterAll(() => runCleanups())`.
+ *
+ * Note: this is a module-level singleton. Bun runs describe blocks
+ * sequentially within a file, so each afterAll drains before the next
+ * describe registers new cleanups. Do not run test files in parallel.
  */
 const cleanupFns: Array<() => void> = [];
 
@@ -97,7 +101,7 @@ export function onCleanupDelete(args: string[]): void {
 
 /** Run all registered cleanups in reverse order, then clear the list. */
 export function runCleanups(): void {
-  for (const fn of cleanupFns.reverse()) {
+  for (const fn of [...cleanupFns].reverse()) {
     try {
       fn();
     } catch {
