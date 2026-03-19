@@ -1,0 +1,13 @@
+---
+source: tests/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "region": {
+    "id": "DE",
+    "name": "DE",
+    "group": "EU",
+    "hasAnycastSupport": true,
+    "hasCapacity": true
+  }
+}

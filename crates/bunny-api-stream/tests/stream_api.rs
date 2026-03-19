@@ -3,15 +3,19 @@ use bunny_api_stream::{CreateVideo, StreamClient};
 use wiremock::matchers::{body_bytes, body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const FIXTURE_VIDEO_LIST: &str = include_str!("fixtures/video_list_paginated.json");
-const FIXTURE_VIDEO_GET: &str = include_str!("fixtures/video_get.json");
-const FIXTURE_VIDEO_CREATE: &str = include_str!("fixtures/video_create.json");
-const FIXTURE_VIDEO_UPLOAD_STATUS: &str = include_str!("fixtures/video_upload_status.json");
-const FIXTURE_VIDEO_DELETE_STATUS: &str = include_str!("fixtures/video_delete_status.json");
-const FIXTURE_COLLECTION_LIST: &str = include_str!("fixtures/collection_list_paginated.json");
-const FIXTURE_COLLECTION_GET: &str = include_str!("fixtures/collection_get.json");
-const FIXTURE_COLLECTION_CREATE: &str = include_str!("fixtures/collection_create.json");
-const FIXTURE_NOT_FOUND: &str = include_str!("fixtures/error_not_found_video.json");
+const FIXTURE_VIDEO_LIST: &str = include_str!("../../../fixtures/stream/video_list_paginated.json");
+const FIXTURE_VIDEO_GET: &str = include_str!("../../../fixtures/stream/video_get.json");
+const FIXTURE_VIDEO_CREATE: &str = include_str!("../../../fixtures/stream/video_create.json");
+const FIXTURE_VIDEO_UPLOAD_STATUS: &str =
+    include_str!("../../../fixtures/stream/video_upload_status.json");
+const FIXTURE_VIDEO_DELETE_STATUS: &str =
+    include_str!("../../../fixtures/stream/video_delete_status.json");
+const FIXTURE_COLLECTION_LIST: &str =
+    include_str!("../../../fixtures/stream/collection_list_paginated.json");
+const FIXTURE_COLLECTION_GET: &str = include_str!("../../../fixtures/stream/collection_get.json");
+const FIXTURE_COLLECTION_CREATE: &str =
+    include_str!("../../../fixtures/stream/collection_create.json");
+const FIXTURE_NOT_FOUND: &str = include_str!("../../../fixtures/stream/error_not_found_video.json");
 
 fn test_client(uri: &str) -> StreamClient {
     StreamClient::new("stream-test-key").with_base_url(uri)

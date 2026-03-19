@@ -1,0 +1,9 @@
+[package]
+name = "bunny-api-recording"
+version = "0.1.0"
+edition = "2024"
+description = "Shared HTTP response recording helper for bunny-api-* crates"
+license = "MIT"
+
+[dependencies]
+serde_json = "1"

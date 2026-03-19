@@ -1,8 +1,13 @@
+use std::path::PathBuf;
+use std::sync::Mutex;
+
 use anyhow::{Context, Result};
 use reqwest::{
     StatusCode,
     header::{self},
 };
+
+use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::{
     AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone, CreateStorageZone,
@@ -19,12 +24,36 @@ const DEFAULT_PER_PAGE: u32 = 1000;
 ///
 /// Create one instance per application and reuse it — the underlying
 /// `reqwest::Client` manages a connection pool.
-#[derive(Debug, Clone)]
 pub struct CoreClient {
     http: reqwest::Client,
     base_url: String,
     api_key: String,
     debug: bool,
+    record_dir: Option<PathBuf>,
+    last_request: Mutex<Option<(String, String)>>,
+}
+
+impl Clone for CoreClient {
+    fn clone(&self) -> Self {
+        Self {
+            http: self.http.clone(),
+            base_url: self.base_url.clone(),
+            api_key: self.api_key.clone(),
+            debug: self.debug,
+            record_dir: self.record_dir.clone(),
+            last_request: Mutex::new(None),
+        }
+    }
+}
+
+impl std::fmt::Debug for CoreClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CoreClient")
+            .field("base_url", &self.base_url)
+            .field("debug", &self.debug)
+            .field("record_dir", &self.record_dir)
+            .finish()
+    }
 }
 
 impl CoreClient {
@@ -41,6 +70,8 @@ impl CoreClient {
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
+            record_dir: None,
+            last_request: Mutex::new(None),
         }
     }
 
@@ -48,6 +79,13 @@ impl CoreClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Enable recording API responses to files in the given directory.
+    #[must_use]
+    pub fn with_record(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.record_dir = Some(dir.into());
         self
     }
 
@@ -367,25 +405,27 @@ impl CoreClient {
     // Internal helpers
     // -----------------------------------------------------------------------
 
-    /// Execute a prepared request, logging method and URL before sending and
-    /// status after receiving when debug mode is enabled.
+    /// Execute a prepared request, logging method and URL before sending when
+    /// debug mode is enabled.
     ///
-    /// Only method, URL, and status are logged — the `AccessKey` header value
-    /// is never included.
+    /// Only method and URL are logged — the `AccessKey` header value is never
+    /// included. Status and body are logged by [`read_body`].
+    ///
+    /// [`read_body`]: CoreClient::read_body
     async fn send(&self, rb: reqwest::RequestBuilder) -> Result<reqwest::Response> {
         let request = rb.build().context("failed to build request")?;
         if self.debug {
             eprintln!(">> {} {}", request.method(), request.url());
         }
-        let response = self
-            .http
+        capture_request(
+            &self.last_request,
+            request.method().as_ref(),
+            request.url().path(),
+        );
+        self.http
             .execute(request)
             .await
-            .context("HTTP request failed")?;
-        if self.debug {
-            eprintln!("<< {}", response.status());
-        }
-        Ok(response)
+            .context("HTTP request failed")
     }
 
     fn auth(&self, rb: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
@@ -393,57 +433,62 @@ impl CoreClient {
             .header(header::ACCEPT, "application/json")
     }
 
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(&self, response: reqwest::Response) -> Result<(StatusCode, bytes::Bytes)> {
+        let status = response.status();
+        let bytes = response
+            .bytes()
+            .await
+            .context("failed to read response body")?;
+        if self.debug {
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+        }
+        maybe_record_response(
+            self.record_dir.as_deref(),
+            &self.last_request,
+            status.is_success(),
+            &bytes,
+        );
+        Ok((status, bytes))
+    }
+
     /// Convert a successful or error response into `Ok(T)` or an `Err`.
     async fn handle_response<T: serde::de::DeserializeOwned>(
         &self,
         response: reqwest::Response,
     ) -> Result<T> {
-        let status = response.status();
+        let (status, bytes) = self.read_body(response).await?;
 
         if status.is_success() {
-            let body = response
-                .json::<T>()
-                .await
-                .context("failed to deserialise response body")?;
-            return Ok(body);
+            return serde_json::from_slice(&bytes).context("failed to deserialise response body");
         }
 
-        Err(self.extract_api_error(status, response).await)
+        Err(self.extract_api_error(status, &bytes))
     }
 
     /// Convert a successful or error response that carries no JSON body.
     async fn handle_empty_response(&self, response: reqwest::Response) -> Result<()> {
-        let status = response.status();
+        let (status, bytes) = self.read_body(response).await?;
 
         if status.is_success() {
             return Ok(());
         }
 
-        Err(self.extract_api_error(status, response).await)
+        Err(self.extract_api_error(status, &bytes))
     }
 
     /// Try to parse a bunny.net `ApiError` JSON body; fall back to a plain
     /// status-code error when the body is not parseable JSON.
-    async fn extract_api_error(
-        &self,
-        status: StatusCode,
-        response: reqwest::Response,
-    ) -> anyhow::Error {
-        let bytes = match response.bytes().await {
-            Ok(b) => b,
-            Err(e) => {
-                return anyhow::anyhow!("HTTP {status}: (could not read response body: {e})");
-            }
-        };
-
-        if let Ok(mut api_err) = serde_json::from_slice::<ApiError>(&bytes) {
+    fn extract_api_error(&self, status: StatusCode, bytes: &bytes::Bytes) -> anyhow::Error {
+        if let Ok(mut api_err) = serde_json::from_slice::<ApiError>(bytes) {
             // Fill in status code if the body didn't include it.
             if api_err.status_code == 0 {
                 api_err.status_code = status.as_u16();
             }
             anyhow::Error::new(api_err)
         } else {
-            let body_text = String::from_utf8_lossy(&bytes);
+            let body_text = String::from_utf8_lossy(bytes);
             anyhow::anyhow!("HTTP {status}: {body_text}")
         }
     }

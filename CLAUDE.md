@@ -5,3 +5,4 @@ Keep it compatible with obsidian.
 # Rust
 Use the rust-analyzer-lsp plugin with its rust language server for code intelligence and analysis like:
 "analyze this Rust code", "find all references to this function", "go to the definition of this struct", or "check for clippy warnings in my project".
+clippy (with -D warnings) and fmt must have run successfully before commiting or creating a PR.

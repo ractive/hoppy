@@ -108,7 +108,10 @@ pub struct CreateEdgeScript {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct UpdateEdgeScript {
+    pub id: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub script_type: Option<ScriptType>,
 }
 

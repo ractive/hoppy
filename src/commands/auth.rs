@@ -79,14 +79,15 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     _yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
-        AuthAction::Check => handle_check(format, debug).await,
+        AuthAction::Check => handle_check(format, debug, record).await,
     }
 }
 
-async fn handle_check(format: OutputFormat, debug: bool) -> Result<()> {
-    let client = auth::core_client(debug)?;
+async fn handle_check(format: OutputFormat, debug: bool, record: Option<&str>) -> Result<()> {
+    let client = auth::core_client(debug, record)?;
     let billing = client.get_billing().await?;
 
     match format {
