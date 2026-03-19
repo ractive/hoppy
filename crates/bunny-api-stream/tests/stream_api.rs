@@ -381,7 +381,7 @@ async fn debug_mode_works_for_stream_client() {
         .await;
 
     let client = StreamClient::new("stream-test-key")
-        .with_base_url(&server.uri())
+        .with_base_url(server.uri())
         .with_debug(true);
     let video = client
         .get_video(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee")

@@ -64,11 +64,7 @@ sudo rpm -i hoppy-0.1.0-1.x86_64.rpm
 
 Download the `.zip` from [GitHub Releases](https://github.com/ractive/hoppy/releases/latest) and add the binary to your PATH.
 
-Also available via [winget](https://github.com/microsoft/winget-pkgs):
-
-```powershell
-winget install ractive.hoppy
-```
+winget support will be available after the first release.
 
 ## Quick start
 

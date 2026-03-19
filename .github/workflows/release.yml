@@ -47,7 +47,7 @@ jobs:
       # cross is used only for aarch64-linux; Docker is pre-installed on ubuntu-latest
       - name: Install cross
         if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install cross@0.2.5 --locked
 
       # Build the release binary for the matrix target
       - name: Build release binary
@@ -164,7 +164,7 @@ jobs:
           cargo xtask --output-dir man
 
       - name: Install packaging tools
-        run: cargo install cargo-deb cargo-generate-rpm
+        run: cargo install cargo-deb@3 cargo-generate-rpm@0.20 --locked
 
       - name: Build deb package
         run: cargo deb --no-build --no-strip

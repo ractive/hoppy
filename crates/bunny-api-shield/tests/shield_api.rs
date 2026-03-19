@@ -782,11 +782,11 @@ async fn debug_client_works_without_error() {
         .await;
 
     // with_debug(true) should not change behaviour — just emit to stderr
-    let result = ShieldClient::with_base_url("test-api-key", &server.uri())
+    let result = ShieldClient::with_base_url("test-api-key", server.uri())
         .with_debug(true)
         .list_shield_zones()
         .await
         .unwrap();
 
-    assert!(result.data.unwrap().len() > 0);
+    assert!(!result.data.unwrap().is_empty());
 }
