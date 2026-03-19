@@ -290,11 +290,8 @@ fn live_pull_zone_lifecycle() {
         // 3. List and verify zone appears
         let list = support::hoppy_live_json(&["pull-zone", "list"]);
         assert!(list.success, "list failed — stderr: {}", list.stderr);
-        let zones = list.json.as_ref().unwrap();
-        let found = zones
-            .as_array()
-            .map(|arr| arr.iter().any(|z| z["Id"].as_i64() == Some(id)))
-            .unwrap_or(false);
+        let zones = list.json.as_ref().unwrap()["Items"].as_array().unwrap();
+        let found = zones.iter().any(|z| z["Id"].as_i64() == Some(id));
         assert!(found, "zone {id} not found in list output");
 
         // 4. Update origin URL

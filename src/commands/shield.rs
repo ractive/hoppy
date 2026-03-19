@@ -486,17 +486,17 @@ async fn handle_waf(
         } => {
             let config = WafRuleConfiguration {
                 action_type: u8_to_enum::<WafRuleActionType>(*action_type, "action-type")?,
-                variable_types: None,
+                variable_types: Some(Default::default()),
                 operator_type: u8_to_enum::<WafRuleOperatorType>(*operator_type, "operator-type")?,
                 severity_type: u8_to_enum::<WafRuleSeverityType>(*severity_type, "severity-type")?,
-                transformation_types: None,
+                transformation_types: Some(vec![]),
                 value: value.clone(),
                 chained_rule_conditions: None,
             };
             let body = CreateCustomWafRule {
                 shield_zone_id: *shield_zone_id,
                 rule_name: name.clone(),
-                rule_description: None,
+                rule_description: Some(String::new()),
                 rule_configuration: config,
             };
             let rule = client.create_waf_rule(body).await?;
@@ -514,10 +514,16 @@ async fn handle_waf(
             if name.is_none() {
                 bail!("at least one update flag is required (--name)");
             }
+            // The Shield API requires all fields on PATCH, so fetch current state first.
+            let current = client.get_waf_rule(*id).await?;
             let body = UpdateCustomWafRule {
-                rule_name: name.clone(),
-                rule_description: None,
-                rule_configuration: None,
+                rule_name: if name.is_some() {
+                    name.clone()
+                } else {
+                    current.rule_name
+                },
+                rule_description: current.rule_description.or(Some(String::new())),
+                rule_configuration: current.rule_configuration,
             };
             let rule = client.update_waf_rule(*id, body).await?;
             if let OutputFormat::Json = format {
@@ -593,10 +599,10 @@ async fn handle_rate_limit(
         } => {
             let config = RateLimitRuleConfiguration {
                 action_type: u8_to_enum(*action_type, "action-type")?,
-                variable_types: None,
+                variable_types: Some(Default::default()),
                 operator_type: u8_to_enum(*operator_type, "operator-type")?,
                 severity_type: u8_to_enum(*severity_type, "severity-type")?,
-                transformation_types: None,
+                transformation_types: Some(vec![]),
                 value: value.clone(),
                 request_count: *request_count,
                 counter_key_type: u8_to_enum::<RateLimitCounterKey>(
@@ -610,7 +616,7 @@ async fn handle_rate_limit(
             let body = CreateRateLimitRule {
                 shield_zone_id: *shield_zone_id,
                 rule_name: name.clone(),
-                rule_description: None,
+                rule_description: Some(String::new()),
                 rule_configuration: config,
             };
             let rule = client.create_rate_limit_rule(body).await?;
@@ -628,10 +634,16 @@ async fn handle_rate_limit(
             if name.is_none() {
                 bail!("at least one update flag is required (--name)");
             }
+            // The Shield API requires all fields on PATCH, so fetch current state first.
+            let current = client.get_rate_limit_rule(*id).await?;
             let body = UpdateRateLimitRule {
-                rule_name: name.clone(),
-                rule_description: None,
-                rule_configuration: None,
+                rule_name: if name.is_some() {
+                    name.clone()
+                } else {
+                    current.rule_name
+                },
+                rule_description: current.rule_description.or(Some(String::new())),
+                rule_configuration: current.rule_configuration,
             };
             let rule = client.update_rate_limit_rule(*id, body).await?;
             if let OutputFormat::Json = format {

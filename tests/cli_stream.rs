@@ -415,10 +415,7 @@ fn live_stream_library_lifecycle() {
         // 3. List and verify library appears
         let list = support::hoppy_live_json(&["stream", "library", "list"]);
         assert!(list.success, "list failed — stderr: {}", list.stderr);
-        let found = list
-            .json
-            .as_ref()
-            .unwrap()
+        let found = list.json.as_ref().unwrap()["Items"]
             .as_array()
             .map(|arr| arr.iter().any(|lib| lib["Id"].as_i64() == Some(id)))
             .unwrap_or(false);
@@ -487,7 +484,7 @@ fn live_stream_collection_lifecycle() {
             "collection create failed — stderr: {}",
             col_create.stderr
         );
-        let guid = col_create.json.as_ref().unwrap()["guid"]
+        let guid = col_create.json.as_ref().unwrap()["Guid"]
             .as_str()
             .unwrap()
             .to_string();
@@ -519,7 +516,7 @@ fn live_stream_collection_lifecycle() {
             get.stderr
         );
         assert_eq!(
-            get.json.as_ref().unwrap()["guid"].as_str(),
+            get.json.as_ref().unwrap()["Guid"].as_str(),
             Some(guid.as_str()),
             "get returned wrong guid"
         );
@@ -533,14 +530,11 @@ fn live_stream_collection_lifecycle() {
             &lib_id_str,
         ]);
         assert!(list.success, "list failed — stderr: {}", list.stderr);
-        let found = list
-            .json
-            .as_ref()
-            .unwrap()
+        let found = list.json.as_ref().unwrap()["Items"]
             .as_array()
             .map(|arr| {
                 arr.iter()
-                    .any(|c| c["guid"].as_str() == Some(guid.as_str()))
+                    .any(|c| c["Guid"].as_str() == Some(guid.as_str()))
             })
             .unwrap_or(false);
         assert!(found, "collection {guid} not found in list output");
@@ -580,7 +574,7 @@ fn live_stream_collection_lifecycle() {
             get2.stderr
         );
         assert_eq!(
-            get2.json.as_ref().unwrap()["name"].as_str(),
+            get2.json.as_ref().unwrap()["Name"].as_str(),
             Some(updated_col_name.as_str()),
             "collection name was not updated"
         );
