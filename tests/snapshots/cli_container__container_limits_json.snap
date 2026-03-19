@@ -1,0 +1,13 @@
+---
+source: tests/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "maxNumberOfApplications": 10,
+  "existingNumberOfApplications": 2,
+  "maxNumberOfRegionsPerApplication": 5,
+  "maxNumberOfInstancesPerRegion": 3,
+  "maxNumberOfInstancesPerApplication": 15,
+  "maxNumberOfVolumesPerApplication": 2,
+  "maxVolumeSize": 100
+}

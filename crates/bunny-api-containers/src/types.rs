@@ -1,5 +1,10 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+
+/// Deserialise a JSON `null` as an empty `String` instead of failing.
+fn nullable_string<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    Option::<String>::deserialize(deserializer).map(|o| o.unwrap_or_default())
+}
 
 // ---------------------------------------------------------------------------
 // Error types
@@ -536,6 +541,7 @@ pub struct ContainerTemplate {
     pub image_namespace: String,
     pub image_tag: String,
     pub image_registry_id: String,
+    #[serde(default, deserialize_with = "nullable_string")]
     pub image_digest: String,
     pub image_pull_policy: ImagePullPolicy,
     pub entry_point: ContainerEntryPoint,
@@ -811,7 +817,8 @@ pub struct EndpointListItem {
 #[serde(rename_all = "camelCase")]
 pub struct EndpointPortMapping {
     pub container_port: i32,
-    pub exposed_port: i32,
+    #[serde(default)]
+    pub exposed_port: Option<i32>,
     #[serde(default)]
     pub protocols: Vec<Protocol>,
 }

@@ -558,7 +558,37 @@ async fn handle_app(
             min,
             max,
             regions,
+            image_name,
+            image_namespace,
+            image_tag,
+            registry_id,
         } => {
+            let container_templates = match (image_name, image_namespace, image_tag, registry_id) {
+                (Some(img), Some(ns), Some(tag), Some(reg)) => {
+                    use bunny_api_containers::{ContainerRequest, ImagePullPolicy};
+                    Some(vec![ContainerRequest {
+                        id: None,
+                        name: img.clone(),
+                        image_name: img.clone(),
+                        image_namespace: ns.clone(),
+                        image_tag: tag.clone(),
+                        image_registry_id: reg.clone(),
+                        image: None,
+                        image_digest: None,
+                        image_pull_policy: Some(ImagePullPolicy::IfNotPresent),
+                        entry_point: None,
+                        probes: None,
+                        environment_variables: None,
+                        endpoints: None,
+                        volume_mounts: None,
+                    }])
+                }
+                (None, None, None, None) => None,
+                _ => bail!(
+                    "--image-name, --image-namespace, --image-tag, and --registry-id \
+                         must all be provided together"
+                ),
+            };
             let body = AddApplicationRequest {
                 name: name.clone(),
                 runtime_type: runtime_type.parse().map_err(anyhow::Error::msg)?,
@@ -572,7 +602,7 @@ async fn handle_app(
                 },
                 termination_grace_period_seconds: None,
                 repository_settings: None,
-                container_templates: None,
+                container_templates,
                 volumes: None,
             };
             let resp = c.add_application(&body).await?;
@@ -1492,7 +1522,7 @@ async fn handle_log_forwarding(
             forwarding_type,
             endpoint,
             port,
-            format: fmt_str,
+            syslog_format,
             token,
             enabled,
         } => {
@@ -1502,7 +1532,7 @@ async fn handle_log_forwarding(
                 endpoint: endpoint.clone(),
                 port: *port,
                 token: token.clone(),
-                format: fmt_str.parse().map_err(anyhow::Error::msg)?,
+                format: syslog_format.parse().map_err(anyhow::Error::msg)?,
                 enabled: *enabled,
             };
             let config = c.create_log_forwarding(&body).await?;
@@ -1521,7 +1551,7 @@ async fn handle_log_forwarding(
             forwarding_type,
             endpoint,
             port,
-            format: fmt_str,
+            syslog_format,
             token,
             enabled,
         } => {
@@ -1531,7 +1561,7 @@ async fn handle_log_forwarding(
                 endpoint: endpoint.clone(),
                 port: *port,
                 token: token.clone(),
-                format: fmt_str.parse().map_err(anyhow::Error::msg)?,
+                format: syslog_format.parse().map_err(anyhow::Error::msg)?,
                 enabled: *enabled,
             };
             let config = c.update_log_forwarding(app_id, &body).await?;
