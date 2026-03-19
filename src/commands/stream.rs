@@ -306,8 +306,7 @@ async fn handle_video(
                     items: &result.items,
                     current_page: result.current_page,
                     total_items: result.total_items,
-                    has_more_items: (result.current_page * result.items_per_page as i64)
-                        < result.total_items,
+                    has_more_items: has_more_items(&result),
                 };
                 let json =
                     serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
@@ -405,11 +404,16 @@ async fn handle_video(
             if let Some(cid) = collection_id {
                 body = body.collection_id(cid);
             }
-            let status = stream.update_video(*library_id, video_id, &body).await?;
-            eprintln!(
-                "Updated video {video_id}: {}",
-                status.message.as_deref().unwrap_or("ok")
-            );
+            stream.update_video(*library_id, video_id, &body).await?;
+            let video = stream.get_video(*library_id, video_id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&video).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let row = VideoRow::from(&video);
+                output::print_single(&row, format);
+            }
         }
         StreamVideoAction::Fetch {
             library_id,
@@ -421,9 +425,19 @@ async fn handle_video(
             if let Some(t) = title {
                 body = body.title(t);
             }
-            eprintln!("Fetching video from {url}");
             let status = stream.fetch_video(*library_id, &body).await?;
-            eprintln!("{}", status.message.as_deref().unwrap_or("ok"));
+            if status.success {
+                eprintln!("Fetch initiated from {url}");
+                eprintln!("The video will appear in the library once processing completes.");
+                eprintln!(
+                    "Check status with: hoppy stream video list --library-id {library_id}"
+                );
+            } else {
+                bail!(
+                    "fetch failed: {}",
+                    status.message.as_deref().unwrap_or("unknown error")
+                );
+            }
         }
         StreamVideoAction::Delete {
             library_id,
@@ -477,8 +491,7 @@ async fn handle_collection(
                     items: &result.items,
                     current_page: result.current_page,
                     total_items: result.total_items,
-                    has_more_items: (result.current_page * result.items_per_page as i64)
-                        < result.total_items,
+                    has_more_items: has_more_items(&result),
                 };
                 let json =
                     serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
@@ -563,6 +576,13 @@ async fn handle_collection(
         }
     }
     Ok(())
+}
+
+/// Whether a `PaginatedList` has more pages after the current one.
+fn has_more_items<T>(list: &bunny_api_stream::PaginatedList<T>) -> bool {
+    list.current_page
+        .saturating_mul(list.items_per_page as i64)
+        < list.total_items
 }
 
 fn print_library(lib: &VideoLibrary, format: OutputFormat) {
