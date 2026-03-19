@@ -24,10 +24,10 @@ These should be evaluated for inclusion in v0.1.0 or documented as known limitat
 
 | # | Feature | API Client | CLI | Notes |
 |---|---------|-----------|-----|-------|
-| 1 | `stream video update` | `bunny-api-stream::update_video` | Missing | Can't update video title/metadata |
-| 2 | `stream video fetch` (from URL) | `bunny-api-stream::fetch_video` | Missing | Can't fetch video by URL |
-| 3 | Stream collection CRUD | `bunny-api-stream` has full CRUD | Missing | CollectionRow display exists but no commands |
-| 4 | `script rotate-deployment-key` | `bunny-api-compute::rotate_deployment_key` | Missing | Key rotation not exposed |
+| 1 | `stream video update` | `bunny-api-stream::update_video` | **Done** | Added in iter-9 |
+| 2 | `stream video fetch` (from URL) | `bunny-api-stream::fetch_video` | **Done** | Added in iter-9 |
+| 3 | Stream collection CRUD | `bunny-api-stream` has full CRUD | **Done** | Added in iter-9 |
+| 4 | `script rotate-deployment-key` | `bunny-api-compute::rotate_deployment_key` | **Done** | Added in iter-9 |
 | 5 | `list_variables` (compute) | Missing from client | N/A | CLI works around it via `get_script` response |
 | 6 | DNS zone export/import (BIND) | Not implemented | Missing | Documented in Bunny.net API |
 | 7 | Core API statistics | Not implemented | Missing | GET `/statistics` for traffic/bandwidth |
@@ -35,7 +35,7 @@ These should be evaluated for inclusion in v0.1.0 or documented as known limitat
 | 9 | `pull-zone create/update` | Limited fields | Limited | Many pull zone settings not exposed |
 | 10 | Stream advanced features | Not implemented | Missing | Captions, transcribe, re-encode, heatmap, resolutions |
 
-**Recommendation:** Items 1-4 are reasonable v0.1.0 gaps to close. Items 5-10 can be deferred.
+**Status:** Items 1-4 were implemented in this iteration. Items 5-10 are deferred.
 
 ---
 
@@ -112,18 +112,26 @@ Verify that `--help` output for every command is accurate, complete, and consist
 
 | # | Test | Command | Verify |
 |---|------|---------|--------|
-| 1.7.1 | Stream subcommands | `hoppy stream --help` | Lists: library, video |
+| 1.7.1 | Stream subcommands | `hoppy stream --help` | Lists: library, video, collection |
 | 1.7.2 | Stream library subcommands | `hoppy stream library --help` | Lists: list, get, create, update, delete |
 | 1.7.3 | Stream library list flags | `hoppy stream library list --help` | --search, --page, --per-page |
 | 1.7.4 | Stream library get flags | `hoppy stream library get --help` | --id (required) |
 | 1.7.5 | Stream library create flags | `hoppy stream library create --help` | --name (required) |
 | 1.7.6 | Stream library update flags | `hoppy stream library update --help` | --id (required), --name, --allow-direct-play, --enable-mp4-fallback, --has-watermark |
 | 1.7.7 | Stream library delete flags | `hoppy stream library delete --help` | --id (required) |
-| 1.7.8 | Stream video subcommands | `hoppy stream video --help` | Lists: list, get, upload, delete |
+| 1.7.8 | Stream video subcommands | `hoppy stream video --help` | Lists: list, get, upload, update, fetch, delete |
 | 1.7.9 | Stream video list flags | `hoppy stream video list --help` | --library-id (required), --page, --items-per-page, --search, --collection, --order-by |
 | 1.7.10 | Stream video get flags | `hoppy stream video get --help` | --library-id, --video-id (required) |
 | 1.7.11 | Stream video upload flags | `hoppy stream video upload --help` | --library-id, --file (required), --title, --collection-id |
-| 1.7.12 | Stream video delete flags | `hoppy stream video delete --help` | --library-id, --video-id (required) |
+| 1.7.12 | Stream video update flags | `hoppy stream video update --help` | --library-id, --video-id (required), --title, --collection-id |
+| 1.7.13 | Stream video fetch flags | `hoppy stream video fetch --help` | --library-id, --url (required), --title |
+| 1.7.14 | Stream video delete flags | `hoppy stream video delete --help` | --library-id, --video-id (required) |
+| 1.7.15 | Stream collection subcommands | `hoppy stream collection --help` | Lists: list, get, create, update, delete |
+| 1.7.16 | Stream collection list flags | `hoppy stream collection list --help` | --library-id (required), --page, --items-per-page, --search, --order-by |
+| 1.7.17 | Stream collection get flags | `hoppy stream collection get --help` | --library-id, --collection-id (required) |
+| 1.7.18 | Stream collection create flags | `hoppy stream collection create --help` | --library-id, --name (required) |
+| 1.7.19 | Stream collection update flags | `hoppy stream collection update --help` | --library-id, --collection-id (required), --name |
+| 1.7.20 | Stream collection delete flags | `hoppy stream collection delete --help` | --library-id, --collection-id (required) |
 
 ### 1.8 Shield Help
 
@@ -156,7 +164,7 @@ Verify that `--help` output for every command is accurate, complete, and consist
 
 | # | Test | Command | Verify |
 |---|------|---------|--------|
-| 1.9.1 | Script subcommands | `hoppy script --help` | Lists: list, get, create, update, delete, publish, statistics, code, release, variable, secret |
+| 1.9.1 | Script subcommands | `hoppy script --help` | Lists: list, get, create, update, delete, publish, statistics, code, release, variable, secret, rotate-deployment-key |
 | 1.9.2 | Script list flags | `hoppy script list --help` | --search, --page, --per-page |
 | 1.9.3 | Script get flags | `hoppy script get --help` | --id (required) |
 | 1.9.4 | Script create flags | `hoppy script create --help` | --name, --script-type, --create-linked-pull-zone (required), --code, --linked-pull-zone-name |
@@ -553,8 +561,8 @@ All should use wiremock to mock HTTP responses.
 | 6.2.3 | bunny-api-core | `delete_pull_zone` | High |
 | 6.2.4 | bunny-api-core | `purge_pull_zone_cache` | High |
 | 6.2.5 | bunny-api-core | `purge_pull_zone_cache` with tag | Medium |
-| 6.2.6 | bunny-api-stream | `fetch_video` | Low (no CLI command) |
-| 6.2.7 | bunny-api-compute | `rotate_deployment_key` | Low (no CLI command) |
+| 6.2.6 | bunny-api-stream | `fetch_video` | Medium |
+| 6.2.7 | bunny-api-compute | `rotate_deployment_key` | Medium |
 
 ---
 
