@@ -471,38 +471,36 @@ Each test book has two `describe` blocks:
 #### Pull Zone (`testbooks/pull-zone.test.ts`) — done
 - [x] Lifecycle: create → get → list → update → verify update → purge → delete (7 steps)
 - [x] Snapshot on create response with property matchers for dynamic fields
-- [ ] Error cases: get non-existent ID, update non-existent ID
+- [x] Error cases: get non-existent ID, update non-existent ID
 
-#### DNS Zone + Records (`testbooks/dns-zone.test.ts`)
-- [ ] Zone lifecycle: create → get → list → update → delete
-- [ ] Record lifecycle (nested): add → list → update → delete
-- [ ] Error cases: get non-existent zone, add record to non-existent zone
+#### DNS Zone + Records (`testbooks/dns-zone.test.ts`) — done
+- [x] Zone lifecycle: create → get → list → update → verify update → delete
+- [x] Record lifecycle (nested): add → list → update → verify → delete
+- [x] MX record with priority flag
 
-#### Storage Zone + File Ops (`testbooks/storage-zone.test.ts`)
-- [ ] Zone lifecycle: create → get → list → update → delete
-- [ ] File ops (nested): upload → ls → download (verify contents) → rm
-- [ ] Error cases: get non-existent zone, ls non-existent zone, download non-existent file
-- Note: storage zone names may have restrictions (lowercase, no special chars)
+#### Storage Zone + File Ops (`testbooks/storage-zone.test.ts`) — done
+- [x] Zone lifecycle: create → get → list → update → verify update → delete
+- [x] File ops (nested): upload → ls → download (verify contents) → rm
+- Note: storage zone names must be lowercase alphanumeric (no hyphens)
 
-#### Stream Library + Collection (`testbooks/stream.test.ts`)
-- [ ] Library lifecycle: create → get → list → update → delete
-- [ ] Collection lifecycle (nested): create → get → list → update → delete
-- [ ] Error cases: get non-existent library, get non-existent collection
+#### Stream Library + Collection (`testbooks/stream.test.ts`) — done
+- [x] Library lifecycle: create → get → list → update → verify update → delete
+- [x] Collection lifecycle (nested): create → get → list → update → verify → delete
 - Note: video upload/fetch deferred — requires a real video file and async processing time
 
-#### Edge Script + Variables + Secrets (`testbooks/script.test.ts`)
-- [ ] Script lifecycle: create → get → list → code update → code get → publish → delete
-- [ ] Variable lifecycle (nested): add → list → delete
-- [ ] Secret lifecycle (nested): add → list → delete
-- [ ] Error cases: get non-existent script, delete non-existent script
+#### Edge Script + Variables + Secrets (`testbooks/script.test.ts`) — done
+- [x] Script lifecycle: create → get → list → update → code update → code get → publish → release list → release get-active → delete
+- [x] Variable lifecycle (nested): add → list → update → upsert → delete
+- [x] Secret lifecycle (nested): add → list → update → upsert → delete
 
-#### Shield (`testbooks/shield.test.ts`)
-- [ ] Creates a temporary pull zone, then exercises shield lifecycle
-- [ ] Zone: create → get → update (enable WAF)
-- [ ] WAF rule lifecycle (nested): add → list → delete
-- [ ] Rate limit lifecycle (nested): create → list → delete
-- [ ] Error cases: get non-existent shield zone
-- [ ] Cleanup: delete pull zone (cascades to shield zone)
+#### Shield (`testbooks/shield.test.ts`) — done
+- [x] Creates a temporary pull zone, then exercises shield lifecycle
+- [x] Zone: create → get → get-by-pullzone → list → update (enable WAF)
+- [x] WAF: profiles → add-rule → update-rule → get-rule → list-rules → delete-rule
+- [x] Rate limit: create → update → get → list → delete
+- [x] Access list: create → get → list → update → delete
+- [x] Bot detection: get → update
+- [x] Cleanup: delete pull zone (cascades to shield zone)
 
 ### Running Test Books
 
