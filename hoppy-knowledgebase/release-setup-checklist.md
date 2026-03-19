@@ -48,12 +48,14 @@ One-time setup steps before the first release.
 
 1. Update version in `Cargo.toml` (root package)
 2. Update `CHANGELOG.md` with new section
-3. Commit: `git commit -m "Release vX.Y.Z"`
-4. Tag: `git tag vX.Y.Z`
-5. Push: `git push && git push --tags`
-6. The release workflow handles everything else:
+3. Commit and push to main
+4. Go to https://github.com/ractive/hoppy/releases/new
+5. Create a new tag (e.g. `v0.1.0`) targeting `main`
+6. Write release notes (or use "Generate release notes")
+7. Click **Publish release**
+8. The release workflow triggers automatically and:
    - Builds 6 target binaries
    - Creates .tar.gz / .zip archives with completions + man pages
    - Builds .deb and .rpm packages
-   - Creates GitHub Release with all artifacts + checksums
+   - Uploads all artifacts + SHA-256 checksums to the release
    - Updates Homebrew tap formula

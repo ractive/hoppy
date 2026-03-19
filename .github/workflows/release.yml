@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
@@ -209,7 +208,7 @@ jobs:
         working-directory: artifacts
         run: sha256sum hoppy-*.tar.gz hoppy-*.zip *.deb *.rpm > sha256sums.txt
 
-      - name: Create GitHub Release
+      - name: Upload assets to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -217,7 +216,6 @@ jobs:
             artifacts/*.deb
             artifacts/*.rpm
             artifacts/sha256sums.txt
-          generate_release_notes: true
 
   # Update the Homebrew tap formula with new version and checksums
   homebrew:
