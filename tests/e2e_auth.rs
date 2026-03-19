@@ -9,7 +9,7 @@ use wiremock::{Mock, ResponseTemplate};
 async fn auth_check_shows_billing_info() {
     skip_in_live_mode!();
     let mock = server::start().await;
-    let body = include_str!("fixtures/core/billing_get.json");
+    let body = include_str!("../crates/bunny-api-core/tests/fixtures/billing_get.json");
 
     Mock::given(method("GET"))
         .and(path("/billing"))
@@ -30,7 +30,7 @@ async fn auth_check_shows_billing_info() {
 async fn auth_check_json_output() {
     skip_in_live_mode!();
     let mock = server::start().await;
-    let body = include_str!("fixtures/core/billing_get.json");
+    let body = include_str!("../crates/bunny-api-core/tests/fixtures/billing_get.json");
 
     Mock::given(method("GET"))
         .and(path("/billing"))

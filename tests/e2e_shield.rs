@@ -5,16 +5,16 @@ use predicates::prelude::*;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-const FIXTURE_ZONES_LIST: &str = include_str!("fixtures/shield/shield_zones_list.json");
-const FIXTURE_ZONE_GET: &str = include_str!("fixtures/shield/shield_zone_get.json");
-const FIXTURE_WAF_RULES_LIST: &str = include_str!("fixtures/shield/waf_rules_list.json");
-const FIXTURE_WAF_RULE_GET: &str = include_str!("fixtures/shield/waf_rule_get.json");
+const FIXTURE_ZONES_LIST: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/shield_zones_list.json");
+const FIXTURE_ZONE_GET: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/shield_zone_get.json");
+const FIXTURE_WAF_RULES_LIST: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/waf_rules_list.json");
+const FIXTURE_WAF_RULE_GET: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/waf_rule_get.json");
 const FIXTURE_RATE_LIMIT_RULES_LIST: &str =
-    include_str!("fixtures/shield/rate_limit_rules_list.json");
-const FIXTURE_RATE_LIMIT_RULE_GET: &str = include_str!("fixtures/shield/rate_limit_rule_get.json");
-const FIXTURE_ACCESS_LISTS_GET: &str = include_str!("fixtures/shield/access_lists_get.json");
-const FIXTURE_ACCESS_LIST_GET: &str = include_str!("fixtures/shield/access_list_get.json");
-const FIXTURE_BOT_DETECTION_GET: &str = include_str!("fixtures/shield/bot_detection_get.json");
+    include_str!("../crates/bunny-api-shield/tests/fixtures/rate_limit_rules_list.json");
+const FIXTURE_RATE_LIMIT_RULE_GET: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/rate_limit_rule_get.json");
+const FIXTURE_ACCESS_LISTS_GET: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/access_lists_get.json");
+const FIXTURE_ACCESS_LIST_GET: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/access_list_get.json");
+const FIXTURE_BOT_DETECTION_GET: &str = include_str!("../crates/bunny-api-shield/tests/fixtures/bot_detection_get.json");
 
 // ---------------------------------------------------------------------------
 // Shield Zone — list

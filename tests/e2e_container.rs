@@ -5,15 +5,15 @@ use predicates::prelude::*;
 use wiremock::matchers::{body_partial_json, header, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-const FIXTURE_APPS_LIST: &str = include_str!("fixtures/containers/apps_list.json");
-const FIXTURE_APP_GET: &str = include_str!("fixtures/containers/app_get.json");
-const FIXTURE_APP_ADD: &str = include_str!("fixtures/containers/app_add.json");
-const FIXTURE_ENDPOINTS_LIST: &str = include_str!("fixtures/containers/endpoints_list.json");
-const FIXTURE_VOLUMES_LIST: &str = include_str!("fixtures/containers/volumes_list.json");
-const FIXTURE_REGISTRIES_LIST: &str = include_str!("fixtures/containers/registries_list.json");
-const FIXTURE_REGISTRY_GET: &str = include_str!("fixtures/containers/registry_get.json");
-const FIXTURE_REGIONS_LIST: &str = include_str!("fixtures/containers/regions_list.json");
-const FIXTURE_NODES_LIST: &str = include_str!("fixtures/containers/nodes_list.json");
+const FIXTURE_APPS_LIST: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/apps_list.json");
+const FIXTURE_APP_GET: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/app_get.json");
+const FIXTURE_APP_ADD: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/app_add.json");
+const FIXTURE_ENDPOINTS_LIST: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/endpoints_list.json");
+const FIXTURE_VOLUMES_LIST: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/volumes_list.json");
+const FIXTURE_REGISTRIES_LIST: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/registries_list.json");
+const FIXTURE_REGISTRY_GET: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/registry_get.json");
+const FIXTURE_REGIONS_LIST: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/regions_list.json");
+const FIXTURE_NODES_LIST: &str = include_str!("../crates/bunny-api-containers/tests/fixtures/nodes_list.json");
 
 // ---------------------------------------------------------------------------
 // App — List

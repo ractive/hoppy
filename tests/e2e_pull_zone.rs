@@ -5,8 +5,8 @@ use predicates::prelude::*;
 use wiremock::matchers::{body_partial_json, header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
-const FIXTURE_LIST: &str = include_str!("fixtures/core/pullzone_list_paginated.json");
-const FIXTURE_GET: &str = include_str!("fixtures/core/pullzone_get.json");
+const FIXTURE_LIST: &str = include_str!("../crates/bunny-api-core/tests/fixtures/pullzone_list_paginated.json");
+const FIXTURE_GET: &str = include_str!("../crates/bunny-api-core/tests/fixtures/pullzone_get.json");
 
 // ---------------------------------------------------------------------------
 // List
