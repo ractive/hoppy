@@ -2,7 +2,7 @@ mod e2e_support;
 
 use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
-use wiremock::matchers::{header, method, path, query_param};
+use wiremock::matchers::{body_partial_json, header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
 const FIXTURE_SCRIPTS_LIST: &str = include_str!("fixtures/compute/scripts_list.json");
@@ -134,7 +134,8 @@ async fn script_get_not_found() {
     cmd::hoppy(&mock)
         .args(["script", "get", "--id", "99999"])
         .assert()
-        .failure();
+        .failure()
+        .stderr(predicate::str::contains("Error:"));
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +150,10 @@ async fn script_create() {
     Mock::given(method("POST"))
         .and(path("/compute/script"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_partial_json(serde_json::json!({
+            "Name": "new-script",
+            "ScriptType": 1
+        })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPT_CREATE, "application/json"),
         )

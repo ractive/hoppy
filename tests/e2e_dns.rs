@@ -2,7 +2,7 @@ mod e2e_support;
 
 use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
-use wiremock::matchers::{header, method, path, query_param};
+use wiremock::matchers::{body_partial_json, header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
 const FIXTURE_LIST: &str = include_str!("fixtures/core/dnszone_list_paginated.json");
@@ -118,6 +118,9 @@ async fn dns_zone_create() {
     Mock::given(method("POST"))
         .and(path("/dnszone"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_partial_json(serde_json::json!({
+            "Domain": "hoppy-test.example"
+        })))
         .respond_with(ResponseTemplate::new(201).set_body_raw(FIXTURE_CREATE, "application/json"))
         .expect(1)
         .mount(&mock)
@@ -220,6 +223,12 @@ async fn dns_record_add() {
     Mock::given(method("PUT"))
         .and(path("/dnszone/50001/records"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_partial_json(serde_json::json!({
+            "Type": 0,
+            "Value": "192.0.2.1",
+            "Name": "test",
+            "Ttl": 300
+        })))
         .respond_with(
             ResponseTemplate::new(201).set_body_raw(FIXTURE_RECORD_ADD, "application/json"),
         )
@@ -306,5 +315,6 @@ async fn dns_zone_get_not_found() {
     cmd::hoppy(&mock)
         .args(["dns", "zone", "get", "--id", "99999"])
         .assert()
-        .failure();
+        .failure()
+        .stderr(predicate::str::contains("Error:"));
 }
