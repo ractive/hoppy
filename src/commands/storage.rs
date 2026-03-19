@@ -46,10 +46,11 @@ pub async fn handle(
     debug: bool,
     yes: bool,
     quiet: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
         StorageAction::Ls { zone, path, region } => {
-            let client = build_storage_client(zone, region, debug).await?;
+            let client = build_storage_client(zone, region, debug, record).await?;
             let path = path.trim_matches('/');
             let objects = client.list_files(zone, path).await?;
             if let OutputFormat::Json = format {
@@ -68,7 +69,7 @@ pub async fn handle(
             file,
             region,
         } => {
-            let client = build_storage_client(zone, region, debug).await?;
+            let client = build_storage_client(zone, region, debug, record).await?;
             let (dir, name) = split_remote_path(remote_path)?;
 
             // Open the file and get its size for the progress bar.
@@ -110,7 +111,7 @@ pub async fn handle(
             output,
             region,
         } => {
-            let client = build_storage_client(zone, region, debug).await?;
+            let client = build_storage_client(zone, region, debug, record).await?;
             let (dir, name) = split_remote_path(remote_path)?;
 
             let pb = progress::spinner(format!("Downloading {zone}/{remote_path}..."), quiet);
@@ -157,7 +158,7 @@ pub async fn handle(
                     return Ok(());
                 }
             }
-            let client = build_storage_client(zone, region, debug).await?;
+            let client = build_storage_client(zone, region, debug, record).await?;
             let (dir, name) = split_remote_path(remote_path)?;
             client.delete_file(zone, dir, name).await?;
             eprintln!("Deleted {zone}/{remote_path}");
@@ -191,12 +192,17 @@ fn split_remote_path(remote_path: &str) -> Result<(&str, &str)> {
 /// Resolution order:
 /// 1. `BUNNY_STORAGE_KEY` environment variable.
 /// 2. Fetch the storage zone via the Core API and use its `Password` field.
-async fn build_storage_client(zone_name: &str, region: &str, debug: bool) -> Result<StorageClient> {
+async fn build_storage_client(
+    zone_name: &str,
+    region: &str,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<StorageClient> {
     let access_key = if let Some(key) = auth::get_storage_key() {
         key
     } else {
         // Fall back to fetching the password from the Core API.
-        let core = auth::core_client(debug).context(
+        let core = auth::core_client(debug, record).context(
             "BUNNY_STORAGE_KEY is not set and BUNNY_API_KEY is needed to fetch the storage key",
         )?;
         let result = core
@@ -217,10 +223,14 @@ async fn build_storage_client(zone_name: &str, region: &str, debug: bool) -> Res
         zone.password
     };
 
-    Ok(if let Some(url) = auth::get_storage_url() {
+    let mut client = if let Some(url) = auth::get_storage_url() {
         StorageClient::with_base_url(access_key, url)
     } else {
         StorageClient::new(region, access_key)
     }
-    .with_debug(debug))
+    .with_debug(debug);
+    if let Some(dir) = record {
+        client = client.with_record(dir);
+    }
+    Ok(client)
 }

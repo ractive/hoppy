@@ -5,7 +5,7 @@ tags:
   - testing
   - plan
   - e2e
-status: active
+status: complete
 ---
 
 # Plan: Rewrite Bun E2E Tests as Rust Tests

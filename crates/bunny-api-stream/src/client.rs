@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+use std::sync::Mutex;
+
 use anyhow::{Context, Result, bail};
 use reqwest::{Client, RequestBuilder};
 
@@ -21,6 +24,8 @@ pub struct StreamClient {
     base_url: String,
     api_key: String,
     debug: bool,
+    record_dir: Option<PathBuf>,
+    last_request: Mutex<Option<(String, String)>>,
 }
 
 impl StreamClient {
@@ -31,6 +36,8 @@ impl StreamClient {
             base_url: BASE_URL.to_string(),
             api_key: api_key.into(),
             debug: false,
+            record_dir: None,
+            last_request: Mutex::new(None),
         }
     }
 
@@ -45,6 +52,13 @@ impl StreamClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Enable recording API responses to files in the given directory.
+    #[must_use]
+    pub fn with_record(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.record_dir = Some(dir.into());
         self
     }
 
@@ -67,6 +81,12 @@ impl StreamClient {
         if self.debug {
             eprintln!(">> {} {}", request.method(), request.url());
         }
+        if self.record_dir.is_some() {
+            *self.last_request.lock().unwrap() = Some((
+                request.method().to_string(),
+                request.url().path().to_string(),
+            ));
+        }
         self.http
             .execute(request)
             .await
@@ -84,7 +104,40 @@ impl StreamClient {
             eprintln!("<< {status}");
             eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
+        self.maybe_record_response(status, bytes.as_ref());
         Ok((status, bytes))
+    }
+
+    fn maybe_record_response(&self, status: reqwest::StatusCode, bytes: &[u8]) {
+        if !status.is_success() {
+            return;
+        }
+        let Some(ref dir) = self.record_dir else {
+            return;
+        };
+        let Some((method, path)) = self.last_request.lock().unwrap().take() else {
+            return;
+        };
+        if bytes.first().is_none_or(|b| *b != b'{' && *b != b'[') {
+            return;
+        }
+        let sanitized = path.trim_matches('/').replace('/', "_");
+        let filename = if sanitized.is_empty() {
+            format!("{method}_root.json")
+        } else {
+            format!("{method}_{sanitized}.json")
+        };
+        let file_path = dir.join(&filename);
+        if let Some(parent) = file_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Ok(value) = serde_json::from_slice::<serde_json::Value>(bytes)
+            && let Ok(pretty) = serde_json::to_string_pretty(&value)
+        {
+            let _ = std::fs::write(&file_path, format!("{pretty}\n"));
+            return;
+        }
+        let _ = std::fs::write(&file_path, bytes);
     }
 
     /// Deserialise a successful JSON response or surface a meaningful error.

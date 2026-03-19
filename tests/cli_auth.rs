@@ -70,3 +70,15 @@ async fn auth_check_unauthorized() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("rror") || stderr.contains("nauthorized"));
 }
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_auth_check() {
+    let result = support::hoppy_live_json(&["auth", "check"]);
+    assert!(result.success, "stderr: {}", result.stderr);
+    let json = result.json.as_ref().expect("expected JSON output");
+    assert!(
+        json.get("Balance").is_some(),
+        "expected 'Balance' key in response, got: {json}"
+    );
+}

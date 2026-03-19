@@ -40,10 +40,10 @@ The `<<< {...}` line in `debug.log` contains the raw API response body. Save it 
 grep '^<<<' debug.log | sed 's/^<<< //' | jq . > fixtures/<service>/<resource>_<action>.json
 ```
 
-Alternatively, use the capture helper to do this automatically during a Bun E2E test run:
+Alternatively, use `--record` to capture fixtures automatically:
 
 ```bash
-cd testbooks && CAPTURE_FIXTURES=1 bun test
+hoppy --record=fixtures/ --format json <your-new-command>
 ```
 
 ### 4. Rust wiremock test
@@ -52,18 +52,19 @@ cd testbooks && CAPTURE_FIXTURES=1 bun test
 - [ ] Add wiremock test in `crates/bunny-api-*/tests/*_api.rs` using the fixture
 - [ ] Cover both success and error paths (create error fixture manually if needed)
 
-### 5. Bun E2E test book
+### 5. Rust live API test
 
-- [ ] Add lifecycle steps to the appropriate `testbooks/*.test.ts` (or create a new test book)
-- [ ] Follow the two-describe pattern: lifecycle (happy path) + error handling (unhappy path)
-- [ ] Register cleanup with `onCleanupDelete()` in `afterAll`
-- [ ] Update snapshots: `cd testbooks && bun test --update-snapshots`
+- [ ] Add a `#[cfg(feature = "live-api")]` lifecycle test to the appropriate `tests/cli_*.rs`
+- [ ] Use `run_lifecycle(|cleanup| { ... })` for panic-safe cleanup
+- [ ] Register cleanup early with `cleanup.push(&[...])`
+- [ ] Follow the pattern: create → get → list → update → verify → delete
 
 ### 6. Verify
 
 ```bash
 cargo test --workspace
-cd testbooks && bun test
+# Live API tests (optional, requires BUNNY_API_KEY)
+BUNNY_API_KEY=xxx cargo test --features live-api -- --test-threads=1 live_
 ```
 
 ## Fixture naming convention
@@ -85,11 +86,12 @@ Service directories map to crate names:
 - `compute` → bunny-api-compute (edge scripts, variables, secrets)
 - `containers` → bunny-api-containers (Magic Containers)
 
-## Shared fixtures: Rust and Bun
+## Fixture capture with --record
 
-Both test suites use the same `fixtures/` directory as their source of truth for API response shapes:
+The `--record=<dir>` flag records API response bodies to JSON files during any hoppy invocation. This is useful for capturing new fixtures:
 
-- **Rust wiremock tests** use fixtures directly via `include_str!` as mock HTTP responses
-- **Bun E2E tests** capture real API responses that can refresh these fixtures
+```bash
+hoppy --record=fixtures/ --format json pull-zone list
+```
 
-When you capture a new fixture from a Bun test run, the same file is immediately available to Rust wiremock tests. This keeps both test suites in sync without manual copy-paste.
+Recorded files use the naming pattern `{METHOD}_{sanitized_path}.json` and are immediately usable by Rust wiremock tests.

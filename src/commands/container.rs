@@ -22,8 +22,8 @@ use std::io::{self, BufRead, Write};
 // Helper: build the client
 // ---------------------------------------------------------------------------
 
-fn client(debug: bool) -> Result<ContainersClient> {
-    auth::containers_client(debug)
+fn client(debug: bool, record: Option<&str>) -> Result<ContainersClient> {
+    auth::containers_client(debug, record)
 }
 
 // ---------------------------------------------------------------------------
@@ -487,19 +487,28 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
-        ContainerAction::App { action } => handle_app(action, format, debug, yes).await,
-        ContainerAction::Template { action } => handle_template(action, format, debug, yes).await,
-        ContainerAction::Endpoint { action } => handle_endpoint(action, format, debug, yes).await,
-        ContainerAction::Volume { action } => handle_volume(action, format, debug, yes).await,
-        ContainerAction::Registry { action } => handle_registry(action, format, debug, yes).await,
-        ContainerAction::Region { action } => handle_region(action, format, debug).await,
-        ContainerAction::Node { action } => handle_node(action, format, debug).await,
-        ContainerAction::Pod { action } => handle_pod(action, debug).await,
-        ContainerAction::Limits => handle_limits(format, debug).await,
+        ContainerAction::App { action } => handle_app(action, format, debug, yes, record).await,
+        ContainerAction::Template { action } => {
+            handle_template(action, format, debug, yes, record).await
+        }
+        ContainerAction::Endpoint { action } => {
+            handle_endpoint(action, format, debug, yes, record).await
+        }
+        ContainerAction::Volume { action } => {
+            handle_volume(action, format, debug, yes, record).await
+        }
+        ContainerAction::Registry { action } => {
+            handle_registry(action, format, debug, yes, record).await
+        }
+        ContainerAction::Region { action } => handle_region(action, format, debug, record).await,
+        ContainerAction::Node { action } => handle_node(action, format, debug, record).await,
+        ContainerAction::Pod { action } => handle_pod(action, debug, record).await,
+        ContainerAction::Limits => handle_limits(format, debug, record).await,
         ContainerAction::LogForwarding { action } => {
-            handle_log_forwarding(action, format, debug, yes).await
+            handle_log_forwarding(action, format, debug, yes, record).await
         }
     }
 }
@@ -513,8 +522,9 @@ async fn handle_app(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerAppAction::List { cursor, limit } => {
             let result = c
@@ -782,8 +792,9 @@ async fn handle_template(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerTemplateAction::Get {
             app_id,
@@ -964,8 +975,9 @@ async fn handle_endpoint(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerEndpointAction::List { app_id } => {
             let result = c.list_endpoints(app_id).await?;
@@ -1039,8 +1051,9 @@ async fn handle_volume(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerVolumeAction::List { app_id } => {
             let result = c.list_volumes(app_id).await?;
@@ -1130,8 +1143,9 @@ async fn handle_registry(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerRegistryAction::List => {
             let result = c.list_registries().await?;
@@ -1334,8 +1348,9 @@ async fn handle_region(
     action: &ContainerRegionAction,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerRegionAction::List { cursor, limit } => {
             let result = c
@@ -1375,8 +1390,9 @@ async fn handle_node(
     action: &ContainerNodeAction,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerNodeAction::List { cursor, limit } => {
             let result = c
@@ -1402,8 +1418,8 @@ async fn handle_node(
 // Pod sub-handlers
 // ---------------------------------------------------------------------------
 
-async fn handle_pod(action: &ContainerPodAction, debug: bool) -> Result<()> {
-    let c = client(debug)?;
+async fn handle_pod(action: &ContainerPodAction, debug: bool, record: Option<&str>) -> Result<()> {
+    let c = client(debug, record)?;
     match action {
         ContainerPodAction::Recreate { app_id, pod_id } => {
             c.recreate_pod(app_id, pod_id).await?;
@@ -1417,8 +1433,8 @@ async fn handle_pod(action: &ContainerPodAction, debug: bool) -> Result<()> {
 // Limits handler
 // ---------------------------------------------------------------------------
 
-async fn handle_limits(format: OutputFormat, debug: bool) -> Result<()> {
-    let c = client(debug)?;
+async fn handle_limits(format: OutputFormat, debug: bool, record: Option<&str>) -> Result<()> {
+    let c = client(debug, record)?;
     let limits = c.get_user_limits().await?;
     if let OutputFormat::Json = format {
         println!(
@@ -1441,8 +1457,9 @@ async fn handle_log_forwarding(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let c = client(debug)?;
+    let c = client(debug, record)?;
     match action {
         ContainerLogForwardingAction::List => {
             let result = c.list_log_forwarding().await?;

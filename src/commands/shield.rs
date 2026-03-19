@@ -286,13 +286,20 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
     match action {
-        ShieldAction::Zone { action } => handle_zone(action, format, debug).await,
-        ShieldAction::Waf { action } => handle_waf(action, format, debug, yes).await,
-        ShieldAction::RateLimit { action } => handle_rate_limit(action, format, debug, yes).await,
-        ShieldAction::AccessList { action } => handle_access_list(action, format, debug, yes).await,
-        ShieldAction::BotDetection { action } => handle_bot_detection(action, format, debug).await,
+        ShieldAction::Zone { action } => handle_zone(action, format, debug, record).await,
+        ShieldAction::Waf { action } => handle_waf(action, format, debug, yes, record).await,
+        ShieldAction::RateLimit { action } => {
+            handle_rate_limit(action, format, debug, yes, record).await
+        }
+        ShieldAction::AccessList { action } => {
+            handle_access_list(action, format, debug, yes, record).await
+        }
+        ShieldAction::BotDetection { action } => {
+            handle_bot_detection(action, format, debug, record).await
+        }
     }
 }
 
@@ -300,8 +307,13 @@ pub async fn handle(
 // Shield Zone handler
 // ---------------------------------------------------------------------------
 
-async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: bool) -> Result<()> {
-    let client = auth::shield_client(debug)?;
+async fn handle_zone(
+    action: &ShieldZoneAction,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let client = auth::shield_client(debug, record)?;
 
     match action {
         ShieldZoneAction::List => {
@@ -430,8 +442,9 @@ async fn handle_waf(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::shield_client(debug)?;
+    let client = auth::shield_client(debug, record)?;
 
     match action {
         ShieldWafAction::Profiles => {
@@ -544,8 +557,9 @@ async fn handle_rate_limit(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::shield_client(debug)?;
+    let client = auth::shield_client(debug, record)?;
 
     match action {
         ShieldRateLimitAction::List { shield_zone_id } => {
@@ -657,8 +671,9 @@ async fn handle_access_list(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::shield_client(debug)?;
+    let client = auth::shield_client(debug, record)?;
 
     match action {
         ShieldAccessListAction::List { shield_zone_id } => {
@@ -778,8 +793,9 @@ async fn handle_bot_detection(
     action: &ShieldBotDetectionAction,
     format: OutputFormat,
     debug: bool,
+    record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::shield_client(debug)?;
+    let client = auth::shield_client(debug, record)?;
 
     match action {
         ShieldBotDetectionAction::Get { shield_zone_id } => {

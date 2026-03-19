@@ -74,3 +74,132 @@ pub fn unique_name(prefix: &str) -> String {
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
     format!("{prefix}-{ts}-{n}")
 }
+
+// ---------------------------------------------------------------------------
+// Live API test helpers
+// ---------------------------------------------------------------------------
+
+/// Result of a live hoppy command.
+#[cfg(feature = "live-api")]
+#[allow(dead_code)]
+pub struct LiveResult {
+    pub json: Option<serde_json::Value>,
+    pub stdout: String,
+    pub stderr: String,
+    pub success: bool,
+}
+
+/// Run `hoppy --format json <args>` against the live API and parse JSON output.
+#[cfg(feature = "live-api")]
+#[allow(dead_code)]
+pub fn hoppy_live_json(args: &[&str]) -> LiveResult {
+    let output = hoppy_live_cmd()
+        .args(["--format", "json"])
+        .args(args)
+        .output()
+        .expect("failed to run hoppy");
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let json = serde_json::from_str(&stdout).ok();
+    LiveResult {
+        json,
+        stdout,
+        stderr,
+        success: output.status.success(),
+    }
+}
+
+/// Run `hoppy --yes <args>` against the live API (raw, no JSON parsing).
+#[cfg(feature = "live-api")]
+#[allow(dead_code)]
+pub fn hoppy_live_raw(args: &[&str]) -> LiveResult {
+    let output = hoppy_live_cmd()
+        .arg("--yes")
+        .args(args)
+        .output()
+        .expect("failed to run hoppy");
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    LiveResult {
+        json: None,
+        stdout,
+        stderr,
+        success: output.status.success(),
+    }
+}
+
+/// Run `hoppy --yes --format json <args>` against the live API.
+#[cfg(feature = "live-api")]
+#[allow(dead_code)]
+pub fn hoppy_live_json_yes(args: &[&str]) -> LiveResult {
+    let output = hoppy_live_cmd()
+        .args(["--yes", "--format", "json"])
+        .args(args)
+        .output()
+        .expect("failed to run hoppy");
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let json = serde_json::from_str(&stdout).ok();
+    LiveResult {
+        json,
+        stdout,
+        stderr,
+        success: output.status.success(),
+    }
+}
+
+/// Cleanup stack — collects delete commands and runs them in reverse order.
+/// Uses best-effort: failures are printed but don't propagate.
+#[cfg(feature = "live-api")]
+pub struct CleanupStack {
+    actions: Vec<Vec<String>>,
+}
+
+#[cfg(feature = "live-api")]
+impl CleanupStack {
+    pub fn new() -> Self {
+        Self {
+            actions: Vec::new(),
+        }
+    }
+
+    /// Push a cleanup command (args to pass to hoppy --yes).
+    pub fn push(&mut self, args: &[&str]) {
+        self.actions
+            .push(args.iter().map(|s| s.to_string()).collect());
+    }
+
+    /// Run all cleanup commands in reverse order (best-effort).
+    pub fn run(&self) {
+        for args in self.actions.iter().rev() {
+            let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            let result = hoppy_live_raw(&str_args);
+            if !result.success {
+                eprintln!(
+                    "cleanup warning: `hoppy {}` failed: {}",
+                    args.join(" "),
+                    result.stderr.trim()
+                );
+            }
+        }
+    }
+}
+
+/// Run a lifecycle test with panic-safe cleanup.
+/// The closure receives a mutable `CleanupStack` to register teardown actions.
+/// Even if the closure panics, cleanup runs.
+#[cfg(feature = "live-api")]
+pub fn run_lifecycle<F>(f: F)
+where
+    F: FnOnce(&mut CleanupStack) + std::panic::UnwindSafe,
+{
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+    let cleanup = AssertUnwindSafe(std::cell::RefCell::new(CleanupStack::new()));
+    let result = catch_unwind(|| {
+        f(&mut cleanup.borrow_mut());
+    });
+    cleanup.borrow().run();
+    if let Err(e) = result {
+        std::panic::resume_unwind(e);
+    }
+}

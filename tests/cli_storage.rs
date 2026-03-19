@@ -203,3 +203,91 @@ async fn storage_download() {
     let _ = std::fs::remove_file(&temp_path);
     assert_eq!(contents, b"hello world content");
 }
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_storage_file_ops() {
+    support::run_lifecycle(|cleanup| {
+        let raw_name = support::unique_name("hpst");
+        let zone_name: String = raw_name.chars().take(20).collect();
+
+        // 1. Create storage zone
+        let create = support::hoppy_live_json(&[
+            "storage-zone",
+            "create",
+            "--name",
+            &zone_name,
+            "--region",
+            "DE",
+        ]);
+        assert!(create.success, "zone create failed: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"]
+            .as_u64()
+            .expect("Id missing from create response");
+        let id_str = id.to_string();
+
+        // Register zone cleanup early
+        cleanup.push(&["storage-zone", "delete", "--id", &id_str]);
+
+        // Wait for zone to propagate
+        std::thread::sleep(std::time::Duration::from_secs(5));
+
+        // 2. Create a temp file with known content
+        let content = b"hoppy live test content";
+        let upload_path = format!("/tmp/hoppy-test-{}.txt", zone_name);
+        std::fs::write(&upload_path, content).expect("failed to write temp file");
+
+        // 3. Upload
+        let upload = support::hoppy_live_json(&[
+            "storage",
+            "upload",
+            "--zone",
+            &zone_name,
+            "--remote-path",
+            "test/hello.txt",
+            "--file",
+            &upload_path,
+        ]);
+        let _ = std::fs::remove_file(&upload_path);
+        assert!(upload.success, "upload failed: {}", upload.stderr);
+
+        // 4. List — verify hello.txt appears
+        let list =
+            support::hoppy_live_json(&["storage", "ls", "--zone", &zone_name, "--path", "test"]);
+        assert!(list.success, "ls failed: {}", list.stderr);
+        let found = list.stdout.contains("hello.txt");
+        assert!(found, "hello.txt not found in ls output");
+
+        // 5. Download
+        let download_path = format!("/tmp/hoppy-test-dl-{}.txt", zone_name);
+        let download = support::hoppy_live_json(&[
+            "storage",
+            "download",
+            "--zone",
+            &zone_name,
+            "--remote-path",
+            "test/hello.txt",
+            "--output",
+            &download_path,
+        ]);
+        assert!(download.success, "download failed: {}", download.stderr);
+
+        // 6. Verify downloaded content
+        let downloaded = std::fs::read(&download_path).expect("failed to read downloaded file");
+        let _ = std::fs::remove_file(&download_path);
+        assert_eq!(downloaded, content, "downloaded content does not match");
+
+        // 7. Remove file
+        let rm = support::hoppy_live_json_yes(&[
+            "storage",
+            "rm",
+            "--zone",
+            &zone_name,
+            "--remote-path",
+            "test/hello.txt",
+        ]);
+        assert!(rm.success, "rm failed: {}", rm.stderr);
+
+        // 8. Storage zone delete is handled by cleanup
+    });
+}
