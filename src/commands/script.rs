@@ -18,7 +18,11 @@ use std::io::{self, BufRead, Write};
 // ---------------------------------------------------------------------------
 
 fn client(debug: bool) -> Result<ComputeClient> {
-    Ok(ComputeClient::new(auth::get_api_key()?).with_debug(debug))
+    Ok(if let Some(url) = auth::get_api_url() {
+        ComputeClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+    } else {
+        ComputeClient::new(auth::get_api_key()?).with_debug(debug)
+    })
 }
 
 // ---------------------------------------------------------------------------

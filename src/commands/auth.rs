@@ -87,7 +87,11 @@ pub async fn handle(
 }
 
 async fn handle_check(format: OutputFormat, debug: bool) -> Result<()> {
-    let client = CoreClient::new(auth::get_api_key()?).with_debug(debug);
+    let client = if let Some(url) = auth::get_api_url() {
+        CoreClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+    } else {
+        CoreClient::new(auth::get_api_key()?).with_debug(debug)
+    };
     let billing = client.get_billing().await?;
 
     match format {

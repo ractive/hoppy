@@ -302,7 +302,11 @@ pub async fn handle(
 // ---------------------------------------------------------------------------
 
 async fn handle_zone(action: &ShieldZoneAction, format: OutputFormat, debug: bool) -> Result<()> {
-    let client = ShieldClient::new(auth::get_api_key()?).with_debug(debug);
+    let client = if let Some(url) = auth::get_api_url() {
+        ShieldClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+    } else {
+        ShieldClient::new(auth::get_api_key()?).with_debug(debug)
+    };
 
     match action {
         ShieldZoneAction::List => {
@@ -432,7 +436,11 @@ async fn handle_waf(
     debug: bool,
     yes: bool,
 ) -> Result<()> {
-    let client = ShieldClient::new(auth::get_api_key()?).with_debug(debug);
+    let client = if let Some(url) = auth::get_api_url() {
+        ShieldClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+    } else {
+        ShieldClient::new(auth::get_api_key()?).with_debug(debug)
+    };
 
     match action {
         ShieldWafAction::Profiles => {
@@ -546,7 +554,11 @@ async fn handle_rate_limit(
     debug: bool,
     yes: bool,
 ) -> Result<()> {
-    let client = ShieldClient::new(auth::get_api_key()?).with_debug(debug);
+    let client = if let Some(url) = auth::get_api_url() {
+        ShieldClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+    } else {
+        ShieldClient::new(auth::get_api_key()?).with_debug(debug)
+    };
 
     match action {
         ShieldRateLimitAction::List { shield_zone_id } => {
@@ -659,7 +671,11 @@ async fn handle_access_list(
     debug: bool,
     yes: bool,
 ) -> Result<()> {
-    let client = ShieldClient::new(auth::get_api_key()?).with_debug(debug);
+    let client = if let Some(url) = auth::get_api_url() {
+        ShieldClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+    } else {
+        ShieldClient::new(auth::get_api_key()?).with_debug(debug)
+    };
 
     match action {
         ShieldAccessListAction::List { shield_zone_id } => {
@@ -780,7 +796,11 @@ async fn handle_bot_detection(
     format: OutputFormat,
     debug: bool,
 ) -> Result<()> {
-    let client = ShieldClient::new(auth::get_api_key()?).with_debug(debug);
+    let client = if let Some(url) = auth::get_api_url() {
+        ShieldClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
+    } else {
+        ShieldClient::new(auth::get_api_key()?).with_debug(debug)
+    };
 
     match action {
         ShieldBotDetectionAction::Get { shield_zone_id } => {
