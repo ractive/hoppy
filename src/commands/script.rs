@@ -312,6 +312,24 @@ pub async fn handle(
             )
             .await
         }
+        ScriptAction::RotateDeploymentKey { id } => {
+            if !yes {
+                eprint!(
+                    "Rotate deployment key for script {id}? The old key will stop working immediately. [y/N] "
+                );
+                io::stderr().flush()?;
+                let mut line = String::new();
+                io::stdin().lock().read_line(&mut line)?;
+                if !is_confirmed(&line) {
+                    eprintln!("Aborted.");
+                    return Ok(());
+                }
+            }
+            let c = client(debug)?;
+            c.rotate_deployment_key(*id).await?;
+            eprintln!("Rotated deployment key for script {id}");
+            Ok(())
+        }
     }
 }
 
