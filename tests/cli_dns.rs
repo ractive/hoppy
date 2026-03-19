@@ -316,3 +316,44 @@ async fn dns_record_delete() {
 
     assert!(output.status.success());
 }
+
+#[tokio::test]
+async fn dns_record_add_mx_with_priority() {
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/dnszone/50001/records"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(201).set_body_raw(
+            support::fixture("core/dnsrecord_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "record",
+            "add",
+            "--zone-id",
+            "50001",
+            "--type",
+            "MX",
+            "--name",
+            "mail",
+            "--value",
+            "mail.example.com",
+            "--ttl",
+            "300",
+            "--priority",
+            "10",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}

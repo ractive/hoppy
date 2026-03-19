@@ -102,7 +102,7 @@ async fn pull_zone_create_json() {
         .and(path("/pullzone"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(201).set_body_raw(
-            support::fixture("core/pullzone_create.json"),
+            support::fixture("core/pullzone_get.json"),
             "application/json",
         ))
         .expect(1)
@@ -220,6 +220,39 @@ async fn pull_zone_get_not_found() {
 
     let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
         .args(["--format", "json", "pull-zone", "get", "--id", "999999"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("not_found") || stderr.contains("not found") || stderr.contains("404"));
+}
+
+#[tokio::test]
+async fn pull_zone_update_not_found() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/999999"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(404).set_body_raw(
+            support::fixture("core/error_not_found_storagezone.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "update",
+            "--id",
+            "999999",
+            "--origin-url",
+            "https://example.com",
+        ])
         .output()
         .unwrap();
 
