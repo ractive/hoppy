@@ -342,6 +342,24 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 
 ---
 
+## Iteration 9 — Gap Analysis & Missing CLI Commands
+
+**Goal:** Audit all API client methods against wired CLI commands, wire any missing ones.
+
+- [x] Stream video commands:
+  - [x] `stream video update --library-id <id> --video-id <id> [--title <title>] [--collection-id <id>]`
+  - [x] `stream video fetch --library-id <id> --url <url>` — ingest video from remote URL (async)
+- [x] Stream collection commands:
+  - [x] `stream collection list|get|create|update|delete --library-id <id>`
+- [x] Edge scripting commands:
+  - [x] `script rotate-deployment-key --id <id>` — rotate deployment key
+- [x] URL query parameter redaction in `--debug` output (privacy)
+- [x] v0.1.0 test plan document
+
+**Deliverable:** All API client methods have corresponding CLI commands. No gaps between client crates and CLI layer.
+
+---
+
 ## Possible Future Iterations
 
 - **Config file support** — `~/.config/hoppy/config.toml` for defaults (API key, default format, etc.)
@@ -374,6 +392,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 | 6 — Scripting + Containers | Two services, API client + CLI for both scripting and containers | Medium-Large |
 | 7 — Code Cleanup | Tech debt, small features, deferred items | Small |
 | 8 — Release Readiness | CI/CD, packaging, docs, Homebrew | Medium |
+| 9 — Gap Analysis | Wire missing CLI commands from audit | Small |
 
 ## Decision Log
 
