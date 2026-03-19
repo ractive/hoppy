@@ -314,7 +314,7 @@ fn live_dns_zone_lifecycle() {
         // 3. List zones and verify the new zone appears
         let list = support::hoppy_live_json(&["dns", "zone", "list"]);
         assert!(list.success, "list zones failed: {}", list.stderr);
-        let zones = list.json.as_ref().unwrap().as_array().unwrap();
+        let zones = list.json.as_ref().unwrap()["Items"].as_array().unwrap();
         assert!(
             zones.iter().any(|z| z["Id"].as_i64() == Some(zone_id)),
             "created zone {zone_id} not found in list"

@@ -437,6 +437,7 @@ async fn handle_update(
     }
     let c = client(debug, record)?;
     let body = UpdateEdgeScript {
+        id,
         name: name.map(str::to_owned),
         script_type: script_type.map(u8_to_script_type).transpose()?,
     };

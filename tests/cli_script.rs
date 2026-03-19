@@ -664,12 +664,9 @@ fn live_script_lifecycle() {
         // 3. List — verify script appears
         let list = support::hoppy_live_json(&["script", "list"]);
         assert!(list.success, "list failed: {}", list.stderr);
-        let items = list
-            .json
-            .as_ref()
-            .unwrap()
+        let items = list.json.as_ref().unwrap()["Items"]
             .as_array()
-            .expect("list response should be an array");
+            .expect("list response should have Items array");
         let found = items.iter().any(|s| s["Id"].as_i64() == Some(id));
         assert!(found, "created script {id} not found in list");
 
@@ -719,12 +716,9 @@ fn live_script_lifecycle() {
         // 8. List releases — verify non-empty
         let releases = support::hoppy_live_json(&["script", "release", "list", "--id", &id_str]);
         assert!(releases.success, "release list failed: {}", releases.stderr);
-        let release_items = releases
-            .json
-            .as_ref()
-            .unwrap()
+        let release_items = releases.json.as_ref().unwrap()["Items"]
             .as_array()
-            .expect("release list response should be an array");
+            .expect("release list response should have Items array");
         assert!(
             !release_items.is_empty(),
             "expected at least one release after publish"

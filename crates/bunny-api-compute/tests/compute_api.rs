@@ -175,6 +175,7 @@ async fn update_script_sends_correct_body() {
         .await;
 
     let body = UpdateEdgeScript {
+        id: 1001,
         name: Some("updated-cdn-script".to_owned()),
         script_type: None,
     };
