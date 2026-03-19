@@ -18,7 +18,7 @@ use std::io::{self, BufRead, Write};
 // ---------------------------------------------------------------------------
 
 fn client(debug: bool) -> Result<ComputeClient> {
-    Ok(ComputeClient::new(auth::get_api_key()?).with_debug(debug))
+    auth::compute_client(debug)
 }
 
 // ---------------------------------------------------------------------------
