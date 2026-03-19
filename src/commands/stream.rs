@@ -431,9 +431,7 @@ async fn handle_video(
                 let safe_url = url.split('?').next().unwrap_or(url);
                 eprintln!("Fetch initiated from {safe_url}");
                 eprintln!("The video will appear in the library once processing completes.");
-                eprintln!(
-                    "Check status with: hoppy stream video list --library-id {library_id}"
-                );
+                eprintln!("Check status with: hoppy stream video list --library-id {library_id}");
             } else {
                 bail!(
                     "fetch failed: {}",
@@ -582,9 +580,7 @@ async fn handle_collection(
 
 /// Whether a `PaginatedList` has more pages after the current one.
 fn has_more_items<T>(list: &bunny_api_stream::PaginatedList<T>) -> bool {
-    list.current_page
-        .saturating_mul(list.items_per_page as i64)
-        < list.total_items
+    list.current_page.saturating_mul(list.items_per_page as i64) < list.total_items
 }
 
 fn print_library(lib: &VideoLibrary, format: OutputFormat) {
