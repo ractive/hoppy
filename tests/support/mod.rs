@@ -22,6 +22,7 @@ pub fn hoppy_mock_cmd(api_key: &str, core_url: &str) -> Command {
 }
 
 /// Variant that also sets storage/stream/containers URLs.
+#[allow(dead_code)]
 pub fn hoppy_mock_cmd_full(
     api_key: &str,
     core_url: &str,
@@ -54,7 +55,7 @@ pub fn fixture(relative_path: &str) -> String {
 
 #[cfg(feature = "live-api")]
 pub fn hoppy_live_cmd() -> Command {
-    let mut cmd = Command::cargo_bin("hoppy").expect("binary not found");
+    let cmd = Command::cargo_bin("hoppy").expect("binary not found");
     assert!(
         std::env::var("BUNNY_API_KEY").is_ok(),
         "BUNNY_API_KEY required"
@@ -63,6 +64,7 @@ pub fn hoppy_live_cmd() -> Command {
 }
 
 #[cfg(feature = "live-api")]
+#[allow(dead_code)]
 pub fn unique_name(prefix: &str) -> String {
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -151,11 +153,13 @@ pub fn hoppy_live_json_yes(args: &[&str]) -> LiveResult {
 /// Cleanup stack — collects delete commands and runs them in reverse order.
 /// Uses best-effort: failures are printed but don't propagate.
 #[cfg(feature = "live-api")]
+#[allow(dead_code)]
 pub struct CleanupStack {
     actions: Vec<Vec<String>>,
 }
 
 #[cfg(feature = "live-api")]
+#[allow(dead_code)]
 impl CleanupStack {
     pub fn new() -> Self {
         Self {
@@ -189,6 +193,7 @@ impl CleanupStack {
 /// The closure receives a mutable `CleanupStack` to register teardown actions.
 /// Even if the closure panics, cleanup runs.
 #[cfg(feature = "live-api")]
+#[allow(dead_code)]
 pub fn run_lifecycle<F>(f: F)
 where
     F: FnOnce(&mut CleanupStack) + std::panic::UnwindSafe,
