@@ -200,7 +200,11 @@ async fn build_storage_client(zone_name: &str, region: &str, debug: bool) -> Res
         let api_key = auth::get_api_key().context(
             "BUNNY_STORAGE_KEY is not set and BUNNY_API_KEY is needed to fetch the storage key",
         )?;
-        let core = CoreClient::new(api_key).with_debug(debug);
+        let core = if let Some(url) = auth::get_api_url() {
+            CoreClient::with_base_url(api_key, url).with_debug(debug)
+        } else {
+            CoreClient::new(api_key).with_debug(debug)
+        };
         let result = core
             .list_storage_zones(None, None, Some(zone_name), None)
             .await
@@ -219,5 +223,9 @@ async fn build_storage_client(zone_name: &str, region: &str, debug: bool) -> Res
         zone.password
     };
 
-    Ok(StorageClient::new(region, access_key).with_debug(debug))
+    Ok(if let Some(url) = auth::get_storage_url() {
+        StorageClient::with_base_url(access_key, url).with_debug(debug)
+    } else {
+        StorageClient::new(region, access_key).with_debug(debug)
+    })
 }
