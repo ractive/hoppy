@@ -774,7 +774,7 @@ async fn debug_mode_makes_request() {
         .await;
 
     // With debug enabled the request should still succeed
-    let result = ComputeClient::with_base_url("test-api-key", &server.uri())
+    let result = ComputeClient::with_base_url("test-api-key", server.uri())
         .with_debug(true)
         .list_scripts(None, None, None)
         .await

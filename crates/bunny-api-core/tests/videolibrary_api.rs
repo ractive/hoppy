@@ -283,7 +283,7 @@ async fn debug_mode_logs_to_stderr_video_library() {
         .mount(&server)
         .await;
 
-    let client = CoreClient::with_base_url("test-api-key", &server.uri()).with_debug(true);
+    let client = CoreClient::with_base_url("test-api-key", server.uri()).with_debug(true);
     let lib = client.get_video_library(10001).await.unwrap();
     assert_eq!(lib.id, 10001);
 }

@@ -42,13 +42,13 @@ jobs:
 
       - name: Install cross
         if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install cross@0.2.5 --locked
 
       - name: Build
         run: ${{ matrix.cross && 'cross' || 'cargo' }} build --target ${{ matrix.target }}
 
       - name: Run tests
-        run: ${{ matrix.cross && 'cross' || 'cargo' }} test --target ${{ matrix.target }}
+        run: ${{ matrix.cross && 'cross' || 'cargo' }} test --workspace --target ${{ matrix.target }}
 
       - name: Verify CLI runs
         if: "!matrix.cross"
@@ -62,7 +62,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo clippy --workspace --all-targets -- -D warnings
 
   fmt:
     runs-on: ubuntu-latest
