@@ -1,0 +1,91 @@
+---
+source: tests/cli_storage_zone.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Items": [
+    {
+      "Id": 9001,
+      "UserId": "00000000-0000-0000-0000-000000000001",
+      "Name": "test-storage-zone-1",
+      "DateModified": "2026-03-14T11:15:44",
+      "Deleted": false,
+      "StorageUsed": 5635181,
+      "FilesStored": 46,
+      "Region": "DE",
+      "ReplicationRegions": [],
+      "PullZones": null,
+      "Rewrite404To200": false,
+      "Custom404FilePath": null,
+      "StorageHostname": "storage.bunnycdn.com",
+      "ZoneTier": 0,
+      "ReplicationChangeInProgress": false,
+      "PriceOverride": 0.0,
+      "Discount": 0,
+      "StorageZoneType": 0
+    },
+    {
+      "Id": 9002,
+      "UserId": "00000000-0000-0000-0000-000000000001",
+      "Name": "test-storage-zone-2",
+      "DateModified": "2026-03-15T19:09:04",
+      "Deleted": false,
+      "StorageUsed": 23081196,
+      "FilesStored": 123,
+      "Region": "DE",
+      "ReplicationRegions": [],
+      "PullZones": null,
+      "Rewrite404To200": false,
+      "Custom404FilePath": null,
+      "StorageHostname": "storage.bunnycdn.com",
+      "ZoneTier": 0,
+      "ReplicationChangeInProgress": false,
+      "PriceOverride": 0.0,
+      "Discount": 0,
+      "StorageZoneType": 0
+    },
+    {
+      "Id": 9003,
+      "UserId": "00000000-0000-0000-0000-000000000001",
+      "Name": "test-storage-zone-3",
+      "DateModified": "2026-03-13T16:38:25",
+      "Deleted": false,
+      "StorageUsed": 10329763,
+      "FilesStored": 72,
+      "Region": "DE",
+      "ReplicationRegions": [],
+      "PullZones": null,
+      "Rewrite404To200": false,
+      "Custom404FilePath": "/stova-static/404.html",
+      "StorageHostname": "storage.bunnycdn.com",
+      "ZoneTier": 0,
+      "ReplicationChangeInProgress": false,
+      "PriceOverride": 0.0,
+      "Discount": 0,
+      "StorageZoneType": 0
+    },
+    {
+      "Id": 9004,
+      "UserId": "00000000-0000-0000-0000-000000000001",
+      "Name": "test-storage-zone-4",
+      "DateModified": "2026-03-15T21:10:53",
+      "Deleted": false,
+      "StorageUsed": 28739,
+      "FilesStored": 2,
+      "Region": "DE",
+      "ReplicationRegions": [],
+      "PullZones": null,
+      "Rewrite404To200": false,
+      "Custom404FilePath": null,
+      "StorageHostname": "storage.bunnycdn.com",
+      "ZoneTier": 0,
+      "ReplicationChangeInProgress": false,
+      "PriceOverride": 0.0,
+      "Discount": 0,
+      "StorageZoneType": 0
+    }
+  ],
+  "CurrentPage": 1,
+  "TotalItems": 4,
+  "HasMoreItems": false
+}

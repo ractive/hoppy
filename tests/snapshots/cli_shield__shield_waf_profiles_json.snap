@@ -1,0 +1,22 @@
+---
+source: tests/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "id": 1,
+    "name": "OWASP Core Rule Set",
+    "isPremium": false,
+    "profileCategory": "General",
+    "description": "The OWASP ModSecurity Core Rule Set",
+    "features": "SQL injection, XSS, RFI"
+  },
+  {
+    "id": 2,
+    "name": "Advanced Threat Protection",
+    "isPremium": true,
+    "profileCategory": "Premium",
+    "description": "Enhanced protection against advanced threats",
+    "features": "Bot mitigation, credential stuffing protection"
+  }
+]

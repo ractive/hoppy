@@ -1,0 +1,24 @@
+---
+source: tests/cli_storage_zone.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Id": 9099,
+  "UserId": "00000000-0000-0000-0000-000000000001",
+  "Name": "hoppy-test-zone",
+  "DateModified": "2026-03-18T02:12:58.4797282Z",
+  "Deleted": false,
+  "StorageUsed": 0,
+  "FilesStored": 0,
+  "Region": "DE",
+  "ReplicationRegions": [],
+  "PullZones": null,
+  "Rewrite404To200": false,
+  "Custom404FilePath": null,
+  "StorageHostname": "storage.bunnycdn.com",
+  "ZoneTier": 0,
+  "ReplicationChangeInProgress": false,
+  "PriceOverride": 0.0,
+  "Discount": 0,
+  "StorageZoneType": 0
+}
