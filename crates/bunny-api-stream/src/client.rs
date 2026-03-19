@@ -67,30 +67,37 @@ impl StreamClient {
         if self.debug {
             eprintln!(">> {} {}", request.method(), request.url());
         }
-        let response = self
-            .http
+        self.http
             .execute(request)
             .await
-            .context("HTTP request failed")?;
+            .context("HTTP request failed")
+    }
+
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(
+        &self,
+        resp: reqwest::Response,
+    ) -> Result<(reqwest::StatusCode, bytes::Bytes)> {
+        let status = resp.status();
+        let bytes = resp.bytes().await.context("failed to read response body")?;
         if self.debug {
-            eprintln!("<< {}", response.status());
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
-        Ok(response)
+        Ok((status, bytes))
     }
 
     /// Deserialise a successful JSON response or surface a meaningful error.
-    async fn parse_response<T: serde::de::DeserializeOwned>(resp: reqwest::Response) -> Result<T> {
-        let status = resp.status();
+    async fn parse_response<T: serde::de::DeserializeOwned>(
+        &self,
+        resp: reqwest::Response,
+    ) -> Result<T> {
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() {
-            let body = resp.text().await.context("reading response body")?;
-            serde_json::from_str(&body)
-                .with_context(|| format!("deserialising response (HTTP {status}): {body}"))
+            serde_json::from_slice(&bytes)
+                .with_context(|| format!("deserialising response (HTTP {status})"))
         } else {
-            let body = resp
-                .text()
-                .await
-                .unwrap_or_else(|_| "<unreadable body>".to_string());
-            bail!("HTTP {status}: {body}");
+            bail!("HTTP {status}: {}", String::from_utf8_lossy(&bytes));
         }
     }
 
@@ -128,7 +135,7 @@ impl StreamClient {
             rb = rb.query(&[("orderBy", o)]);
         }
         let resp = self.send(rb).await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Fetch a single video by its GUID.
@@ -136,7 +143,7 @@ impl StreamClient {
         let vid = Self::encode(video_id);
         let url = format!("{}/library/{library_id}/videos/{vid}", self.base_url);
         let resp = self.send(self.auth(self.http.get(&url))).await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Create a new video record (does not upload media — use [`upload_video`] for that).
@@ -147,7 +154,7 @@ impl StreamClient {
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Update metadata on an existing video.
@@ -162,7 +169,7 @@ impl StreamClient {
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Delete a video and all its associated files.
@@ -170,7 +177,7 @@ impl StreamClient {
         let vid = Self::encode(video_id);
         let url = format!("{}/library/{library_id}/videos/{vid}", self.base_url);
         let resp = self.send(self.auth(self.http.delete(&url))).await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Upload the raw binary content for a previously created video.
@@ -197,7 +204,7 @@ impl StreamClient {
                     .body(body),
             )
             .await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Tell bunny.net to pull and ingest a video from a remote URL.
@@ -209,7 +216,7 @@ impl StreamClient {
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     // -----------------------------------------------------------------------
@@ -240,7 +247,7 @@ impl StreamClient {
             rb = rb.query(&[("orderBy", o)]);
         }
         let resp = self.send(rb).await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Fetch a single collection by its GUID.
@@ -248,7 +255,7 @@ impl StreamClient {
         let col = Self::encode(collection_id);
         let url = format!("{}/library/{library_id}/collections/{col}", self.base_url);
         let resp = self.send(self.auth(self.http.get(&url))).await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Create a new collection in a library.
@@ -261,7 +268,7 @@ impl StreamClient {
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Update an existing collection.
@@ -276,7 +283,7 @@ impl StreamClient {
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 
     /// Delete a collection.
@@ -288,7 +295,7 @@ impl StreamClient {
         let col = Self::encode(collection_id);
         let url = format!("{}/library/{library_id}/collections/{col}", self.base_url);
         let resp = self.send(self.auth(self.http.delete(&url))).await?;
-        Self::parse_response(resp).await
+        self.parse_response(resp).await
     }
 }
 

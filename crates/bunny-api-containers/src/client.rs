@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, bail};
-use reqwest::{Client, RequestBuilder, Response};
+use bytes::Bytes;
+use reqwest::{Client, RequestBuilder, Response, StatusCode};
 use std::collections::HashMap;
 
 use crate::types::*;
@@ -58,35 +59,42 @@ impl ContainersClient {
         self.http.execute(req).await.context("request failed")
     }
 
-    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(&self, resp: Response) -> Result<(StatusCode, Bytes)> {
         let status = resp.status();
-        if status.is_success() {
-            return resp
-                .json::<T>()
-                .await
-                .context("failed to decode success response");
+        let bytes = resp.bytes().await.context("failed to read response body")?;
+        if self.debug {
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
-        self.surface_error(resp).await
+        Ok((status, bytes))
+    }
+
+    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+        let (status, bytes) = self.read_body(resp).await?;
+        if status.is_success() {
+            return serde_json::from_slice(&bytes).context("failed to decode success response");
+        }
+        self.surface_error(status, &bytes)
     }
 
     async fn handle_empty_response(&self, resp: Response) -> Result<()> {
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() {
             return Ok(());
         }
-        self.surface_error(resp).await
+        self.surface_error(status, &bytes)
     }
 
-    async fn surface_error<T>(&self, resp: Response) -> Result<T> {
-        let status = resp.status();
-        let body = resp.text().await.unwrap_or_default();
+    fn surface_error<T>(&self, status: StatusCode, bytes: &Bytes) -> Result<T> {
+        let body = String::from_utf8_lossy(bytes);
         // Try ErrorDetails first (more structured), then ProblemDetails.
-        if let Ok(err) = serde_json::from_str::<ErrorDetails>(&body)
+        if let Ok(err) = serde_json::from_slice::<ErrorDetails>(bytes)
             && (err.title.is_some() || err.status.is_some())
         {
             bail!(err);
         }
-        if let Ok(problem) = serde_json::from_str::<ProblemDetails>(&body)
+        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(bytes)
             && (problem.title.is_some() || problem.status.is_some())
         {
             bail!(problem);

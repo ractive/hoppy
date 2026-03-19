@@ -72,18 +72,25 @@ impl ShieldClient {
         self.client.execute(req).await.context("request failed")
     }
 
-    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(&self, resp: Response) -> Result<(StatusCode, bytes::Bytes)> {
         let status = resp.status();
+        let bytes = resp.bytes().await.context("failed to read response body")?;
+        if self.debug {
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+        }
+        Ok((status, bytes))
+    }
+
+    async fn handle_response<T: serde::de::DeserializeOwned>(&self, resp: Response) -> Result<T> {
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() {
-            let body = resp
-                .json::<T>()
-                .await
-                .context("failed to decode success response")?;
-            return Ok(body);
+            return serde_json::from_slice(&bytes).context("failed to decode success response");
         }
 
         // Try to extract RFC 7807 problem details from the error body.
-        if let Ok(problem) = resp.json::<ProblemDetails>().await {
+        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
             bail!(problem);
         }
 
@@ -91,11 +98,11 @@ impl ShieldClient {
     }
 
     async fn handle_empty_response(&self, resp: Response) -> Result<()> {
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() || status == StatusCode::NO_CONTENT {
             return Ok(());
         }
-        if let Ok(problem) = resp.json::<ProblemDetails>().await {
+        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
             bail!(problem);
         }
         bail!("Shield API returned status {status}");

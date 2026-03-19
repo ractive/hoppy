@@ -61,16 +61,27 @@ impl ComputeClient {
         self.http.execute(req).await.context("request failed")
     }
 
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(&self, resp: reqwest::Response) -> Result<(StatusCode, bytes::Bytes)> {
+        let status = resp.status();
+        let bytes = resp.bytes().await.context("failed to read response body")?;
+        if self.debug {
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+        }
+        Ok((status, bytes))
+    }
+
     /// Deserialise a successful JSON body, or surface a structured [`ApiError`] on 4xx.
     async fn json_or_error<T: serde::de::DeserializeOwned>(
         &self,
         resp: reqwest::Response,
     ) -> Result<T> {
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() {
-            Ok(resp.json::<T>().await?)
+            Ok(serde_json::from_slice(&bytes)?)
         } else {
-            let api_err = resp.json::<ApiError>().await.unwrap_or(ApiError {
+            let api_err = serde_json::from_slice::<ApiError>(&bytes).unwrap_or(ApiError {
                 error_key: None,
                 field: None,
                 message: Some(format!("HTTP {status}")),
@@ -81,11 +92,11 @@ impl ComputeClient {
 
     /// Assert a no-body success (2xx) or surface an error.
     async fn expect_no_body(&self, resp: reqwest::Response) -> Result<()> {
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() {
             Ok(())
         } else {
-            let api_err = resp.json::<ApiError>().await.unwrap_or(ApiError {
+            let api_err = serde_json::from_slice::<ApiError>(&bytes).unwrap_or(ApiError {
                 error_key: None,
                 field: None,
                 message: Some(format!("HTTP {status}")),
@@ -347,7 +358,7 @@ impl ComputeClient {
             )
             .await?;
         // 200 = created, 204 = updated (both may carry a body per spec)
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status == StatusCode::NO_CONTENT {
             // Spec says 204 may return a body but in practice it may be empty.
             // Return a minimal placeholder; callers that need the full model
@@ -358,8 +369,15 @@ impl ComputeClient {
                 required: body.required.unwrap_or(false),
                 default_value: body.default_value.clone(),
             })
+        } else if status.is_success() {
+            Ok(serde_json::from_slice(&bytes)?)
         } else {
-            self.json_or_error(resp).await
+            let api_err = serde_json::from_slice::<ApiError>(&bytes).unwrap_or(ApiError {
+                error_key: None,
+                field: None,
+                message: Some(format!("HTTP {status}")),
+            });
+            Err(anyhow!("{api_err}"))
         }
     }
 
@@ -416,15 +434,22 @@ impl ComputeClient {
             )
             .await?;
         // 200 = created (body returned), 204 = updated (no body per spec)
-        let status = resp.status();
+        let (status, bytes) = self.read_body(resp).await?;
         if status == StatusCode::NO_CONTENT {
             Ok(EdgeScriptSecret {
                 id: 0,
                 name: body.name.clone(),
                 last_modified: String::new(),
             })
+        } else if status.is_success() {
+            Ok(serde_json::from_slice(&bytes)?)
         } else {
-            self.json_or_error(resp).await
+            let api_err = serde_json::from_slice::<ApiError>(&bytes).unwrap_or(ApiError {
+                error_key: None,
+                field: None,
+                message: Some(format!("HTTP {status}")),
+            });
+            Err(anyhow!("{api_err}"))
         }
     }
 

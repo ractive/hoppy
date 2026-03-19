@@ -11,38 +11,55 @@ use std::collections::HashMap;
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const FIXTURE_APPS_LIST: &str = include_str!("fixtures/apps_list.json");
-const FIXTURE_APP_GET: &str = include_str!("fixtures/app_get.json");
-const FIXTURE_APP_ADD: &str = include_str!("fixtures/app_add.json");
-const FIXTURE_APP_OVERVIEW: &str = include_str!("fixtures/app_overview.json");
-const FIXTURE_APP_STATISTICS: &str = include_str!("fixtures/app_statistics.json");
-const FIXTURE_AUTOSCALING_GET: &str = include_str!("fixtures/autoscaling_get.json");
-const FIXTURE_REGION_SETTINGS_GET: &str = include_str!("fixtures/region_settings_get.json");
-const FIXTURE_CONTAINER_GET: &str = include_str!("fixtures/container_get.json");
-const FIXTURE_ENDPOINTS_LIST: &str = include_str!("fixtures/endpoints_list.json");
-const FIXTURE_ENDPOINT_ADD: &str = include_str!("fixtures/endpoint_add.json");
-const FIXTURE_VOLUMES_LIST: &str = include_str!("fixtures/volumes_list.json");
-const FIXTURE_VOLUME_UPDATE: &str = include_str!("fixtures/volume_update.json");
-const FIXTURE_VOLUME_DETACH: &str = include_str!("fixtures/volume_detach.json");
-const FIXTURE_VOLUME_DELETE_ALL: &str = include_str!("fixtures/volume_delete_all.json");
-const FIXTURE_VOLUME_DELETE_INSTANCE: &str = include_str!("fixtures/volume_delete_instance.json");
-const FIXTURE_REGISTRIES_LIST: &str = include_str!("fixtures/registries_list.json");
-const FIXTURE_REGISTRY_GET: &str = include_str!("fixtures/registry_get.json");
-const FIXTURE_REGISTRY_ADD: &str = include_str!("fixtures/registry_add.json");
-const FIXTURE_REGISTRY_DELETE: &str = include_str!("fixtures/registry_delete.json");
-const FIXTURE_CONTAINER_IMAGES_LIST: &str = include_str!("fixtures/container_images_list.json");
-const FIXTURE_CONTAINER_IMAGE_TAGS: &str = include_str!("fixtures/container_image_tags.json");
-const FIXTURE_IMAGE_DIGEST: &str = include_str!("fixtures/image_digest.json");
-const FIXTURE_CONFIG_SUGGESTIONS: &str = include_str!("fixtures/config_suggestions.json");
-const FIXTURE_PUBLIC_IMAGES_SEARCH: &str = include_str!("fixtures/public_images_search.json");
-const FIXTURE_REGIONS_LIST: &str = include_str!("fixtures/regions_list.json");
-const FIXTURE_OPTIMAL_REGION: &str = include_str!("fixtures/optimal_region.json");
-const FIXTURE_NODES_LIST: &str = include_str!("fixtures/nodes_list.json");
-const FIXTURE_USER_LIMITS: &str = include_str!("fixtures/user_limits.json");
-const FIXTURE_LOG_FORWARDING_LIST: &str = include_str!("fixtures/log_forwarding_list.json");
-const FIXTURE_LOG_FORWARDING_GET: &str = include_str!("fixtures/log_forwarding_get.json");
-const FIXTURE_ERROR_NOT_FOUND: &str = include_str!("fixtures/error_not_found.json");
-const FIXTURE_ERROR_VALIDATION: &str = include_str!("fixtures/error_validation.json");
+const FIXTURE_APPS_LIST: &str = include_str!("../../../fixtures/containers/apps_list.json");
+const FIXTURE_APP_GET: &str = include_str!("../../../fixtures/containers/app_get.json");
+const FIXTURE_APP_ADD: &str = include_str!("../../../fixtures/containers/app_add.json");
+const FIXTURE_APP_OVERVIEW: &str = include_str!("../../../fixtures/containers/app_overview.json");
+const FIXTURE_APP_STATISTICS: &str =
+    include_str!("../../../fixtures/containers/app_statistics.json");
+const FIXTURE_AUTOSCALING_GET: &str =
+    include_str!("../../../fixtures/containers/autoscaling_get.json");
+const FIXTURE_REGION_SETTINGS_GET: &str =
+    include_str!("../../../fixtures/containers/region_settings_get.json");
+const FIXTURE_CONTAINER_GET: &str = include_str!("../../../fixtures/containers/container_get.json");
+const FIXTURE_ENDPOINTS_LIST: &str =
+    include_str!("../../../fixtures/containers/endpoints_list.json");
+const FIXTURE_ENDPOINT_ADD: &str = include_str!("../../../fixtures/containers/endpoint_add.json");
+const FIXTURE_VOLUMES_LIST: &str = include_str!("../../../fixtures/containers/volumes_list.json");
+const FIXTURE_VOLUME_UPDATE: &str = include_str!("../../../fixtures/containers/volume_update.json");
+const FIXTURE_VOLUME_DETACH: &str = include_str!("../../../fixtures/containers/volume_detach.json");
+const FIXTURE_VOLUME_DELETE_ALL: &str =
+    include_str!("../../../fixtures/containers/volume_delete_all.json");
+const FIXTURE_VOLUME_DELETE_INSTANCE: &str =
+    include_str!("../../../fixtures/containers/volume_delete_instance.json");
+const FIXTURE_REGISTRIES_LIST: &str =
+    include_str!("../../../fixtures/containers/registries_list.json");
+const FIXTURE_REGISTRY_GET: &str = include_str!("../../../fixtures/containers/registry_get.json");
+const FIXTURE_REGISTRY_ADD: &str = include_str!("../../../fixtures/containers/registry_add.json");
+const FIXTURE_REGISTRY_DELETE: &str =
+    include_str!("../../../fixtures/containers/registry_delete.json");
+const FIXTURE_CONTAINER_IMAGES_LIST: &str =
+    include_str!("../../../fixtures/containers/container_images_list.json");
+const FIXTURE_CONTAINER_IMAGE_TAGS: &str =
+    include_str!("../../../fixtures/containers/container_image_tags.json");
+const FIXTURE_IMAGE_DIGEST: &str = include_str!("../../../fixtures/containers/image_digest.json");
+const FIXTURE_CONFIG_SUGGESTIONS: &str =
+    include_str!("../../../fixtures/containers/config_suggestions.json");
+const FIXTURE_PUBLIC_IMAGES_SEARCH: &str =
+    include_str!("../../../fixtures/containers/public_images_search.json");
+const FIXTURE_REGIONS_LIST: &str = include_str!("../../../fixtures/containers/regions_list.json");
+const FIXTURE_OPTIMAL_REGION: &str =
+    include_str!("../../../fixtures/containers/optimal_region.json");
+const FIXTURE_NODES_LIST: &str = include_str!("../../../fixtures/containers/nodes_list.json");
+const FIXTURE_USER_LIMITS: &str = include_str!("../../../fixtures/containers/user_limits.json");
+const FIXTURE_LOG_FORWARDING_LIST: &str =
+    include_str!("../../../fixtures/containers/log_forwarding_list.json");
+const FIXTURE_LOG_FORWARDING_GET: &str =
+    include_str!("../../../fixtures/containers/log_forwarding_get.json");
+const FIXTURE_ERROR_NOT_FOUND: &str =
+    include_str!("../../../fixtures/containers/error_not_found.json");
+const FIXTURE_ERROR_VALIDATION: &str =
+    include_str!("../../../fixtures/containers/error_validation.json");
 
 fn test_client(uri: &str) -> ContainersClient {
     ContainersClient::with_base_url("test-api-key", uri)

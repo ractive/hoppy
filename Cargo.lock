@@ -106,6 +106,7 @@ name = "bunny-api-compute"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "reqwest",
  "serde",
  "serde_json",
@@ -119,6 +120,7 @@ name = "bunny-api-containers"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "reqwest",
  "serde",
  "serde_json",
@@ -131,6 +133,7 @@ name = "bunny-api-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "reqwest",
  "serde",
  "serde_json",
@@ -144,6 +147,7 @@ name = "bunny-api-shield"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "reqwest",
  "serde",
  "serde_json",
@@ -171,6 +175,7 @@ name = "bunny-api-stream"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "reqwest",
  "serde",
  "serde_json",

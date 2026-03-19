@@ -88,15 +88,13 @@ impl StorageClient {
         let url = self.listing_url(storage_zone_name, path);
         let rb = self.http.get(&url).header("AccessKey", &self.access_key);
         let response = self.send(rb).await?;
+        let (status, bytes) = self.read_body(response).await?;
 
-        if !response.status().is_success() {
-            return Err(self.extract_error(response).await);
+        if !status.is_success() {
+            return Err(self.extract_error(status, &bytes));
         }
 
-        response
-            .json::<Vec<StorageObject>>()
-            .await
-            .context("deserializing list response")
+        serde_json::from_slice(&bytes).context("deserializing list response")
     }
 
     /// Downloads a single file and returns its raw bytes.
@@ -109,12 +107,13 @@ impl StorageClient {
         let url = self.file_url(storage_zone_name, path, file_name);
         let rb = self.http.get(&url).header("AccessKey", &self.access_key);
         let response = self.send(rb).await?;
+        let (status, bytes) = self.read_body(response).await?;
 
-        if !response.status().is_success() {
-            return Err(self.extract_error(response).await);
+        if !status.is_success() {
+            return Err(self.extract_error(status, &bytes));
         }
 
-        response.bytes().await.context("reading response body")
+        Ok(bytes)
     }
 
     /// Uploads a file to the given path.
@@ -145,9 +144,10 @@ impl StorageClient {
         }
 
         let response = self.send(rb).await?;
+        let (status, bytes) = self.read_body(response).await?;
 
-        if !response.status().is_success() {
-            return Err(self.extract_error(response).await);
+        if !status.is_success() {
+            return Err(self.extract_error(status, &bytes));
         }
 
         Ok(())
@@ -163,9 +163,10 @@ impl StorageClient {
         let url = self.file_url(storage_zone_name, path, file_name);
         let rb = self.http.delete(&url).header("AccessKey", &self.access_key);
         let response = self.send(rb).await?;
+        let (status, bytes) = self.read_body(response).await?;
 
-        if !response.status().is_success() {
-            return Err(self.extract_error(response).await);
+        if !status.is_success() {
+            return Err(self.extract_error(status, &bytes));
         }
 
         Ok(())
@@ -205,24 +206,32 @@ impl StorageClient {
         if self.debug {
             eprintln!(">> {} {}", request.method(), request.url());
         }
-        let response = self
-            .http
+        self.http
             .execute(request)
             .await
-            .context("HTTP request failed")?;
+            .context("HTTP request failed")
+    }
+
+    /// Read the response body, logging status and body when debug is enabled.
+    async fn read_body(&self, response: reqwest::Response) -> Result<(reqwest::StatusCode, Bytes)> {
+        let status = response.status();
+        let bytes = response
+            .bytes()
+            .await
+            .context("failed to read response body")?;
         if self.debug {
-            eprintln!("<< {}", response.status());
+            eprintln!("<< {status}");
+            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
         }
-        Ok(response)
+        Ok((status, bytes))
     }
 
     // --- Error extraction ---
 
     /// Attempts to parse a [`StorageError`] from the response body; falls back
     /// to a generic HTTP status error if the body is not valid JSON.
-    async fn extract_error(&self, response: reqwest::Response) -> anyhow::Error {
-        let status = response.status();
-        match response.json::<StorageError>().await {
+    fn extract_error(&self, status: reqwest::StatusCode, bytes: &Bytes) -> anyhow::Error {
+        match serde_json::from_slice::<StorageError>(bytes) {
             Ok(api_err) => anyhow!(
                 "Storage API error {}: {}",
                 api_err.http_code,
