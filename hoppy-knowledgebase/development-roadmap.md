@@ -16,6 +16,7 @@ status: active
 - **Start narrow, widen later**: Get one service working well before adding more
 - **Foundation first**: Invest early in the scaffolding (CLI framework, output formatting, auth, error handling) so adding services later is mechanical
 - **Test with real API calls**: Each iteration should be testable against the live bunny.net API
+- **Adding a feature**: Follow the [[adding-a-feature]] checklist
 
 ## Git Branching Strategy
 
@@ -437,7 +438,7 @@ This replaces the "fixture recording" feature from the original plan — the sna
 
 ```
 testbooks/
-  helpers.ts               # shared: hoppy() runner, cleanup registration
+  helpers.ts               # shared: hoppy() runner, cleanup, fixture capture
   pull-zone.test.ts        # pull zone lifecycle
   storage-zone.test.ts     # storage zone + file operations
   dns-zone.test.ts         # DNS zone + record lifecycle
@@ -448,6 +449,13 @@ testbooks/
     pull-zone.test.ts.snap
     dns-zone.test.ts.snap
     ...
+fixtures/                  # shared API response fixtures (Rust wiremock + Bun capture)
+  core/                    # pull zones, storage zones, DNS, video libraries, billing
+  storage/                 # file operations
+  stream/                  # videos, collections
+  shield/                  # WAF, rate limiting, access lists
+  compute/                 # edge scripts, variables, secrets
+  containers/              # Magic Containers
 ```
 
 ### Test Helper (`testbooks/helpers.ts`)
@@ -461,6 +469,18 @@ Provides:
 
 Invokes the pre-built `target/debug/hoppy` binary directly (not `cargo run`) for fast execution.
 Override with `HOPPY_BIN` env var to point at a different binary.
+
+#### Fixture capture mode
+
+Set `CAPTURE_FIXTURES=1` to automatically capture raw API responses during Bun E2E test runs:
+
+```bash
+cd testbooks && CAPTURE_FIXTURES=1 bun test
+```
+
+This passes `--debug` to every hoppy invocation, parses `<<< {body}` lines from stderr, maps the request URL to a fixture filename, and writes pretty-printed JSON to `fixtures/<service>/`. Captured fixtures are immediately usable by Rust wiremock tests.
+
+See [[adding-a-feature]] for the full workflow.
 
 ### Test Book Structure
 

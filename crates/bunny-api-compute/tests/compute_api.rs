@@ -6,21 +6,25 @@ use bunny_api_compute::{
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const FIXTURE_SCRIPTS_LIST: &str = include_str!("fixtures/scripts_list.json");
-const FIXTURE_SCRIPT_GET: &str = include_str!("fixtures/script_get.json");
-const FIXTURE_SCRIPT_CREATE: &str = include_str!("fixtures/script_create.json");
-const FIXTURE_SCRIPT_UPDATE: &str = include_str!("fixtures/script_update.json");
-const FIXTURE_SCRIPT_CODE_GET: &str = include_str!("fixtures/script_code_get.json");
-const FIXTURE_RELEASES_LIST: &str = include_str!("fixtures/releases_list.json");
-const FIXTURE_RELEASE_ACTIVE: &str = include_str!("fixtures/release_active.json");
-const FIXTURE_VARIABLE_ADD: &str = include_str!("fixtures/variable_add.json");
-const FIXTURE_VARIABLE_GET: &str = include_str!("fixtures/variable_get.json");
-const FIXTURE_VARIABLE_UPDATE: &str = include_str!("fixtures/variable_update.json");
-const FIXTURE_SECRETS_LIST: &str = include_str!("fixtures/secrets_list.json");
-const FIXTURE_SECRET_ADD: &str = include_str!("fixtures/secret_add.json");
-const FIXTURE_STATISTICS: &str = include_str!("fixtures/statistics.json");
-const FIXTURE_ERROR_UNAUTHORIZED: &str = include_str!("fixtures/error_unauthorized.json");
-const FIXTURE_ERROR_NOT_FOUND: &str = include_str!("fixtures/error_not_found.json");
+const FIXTURE_SCRIPTS_LIST: &str = include_str!("../../../fixtures/compute/scripts_list.json");
+const FIXTURE_SCRIPT_GET: &str = include_str!("../../../fixtures/compute/script_get.json");
+const FIXTURE_SCRIPT_CREATE: &str = include_str!("../../../fixtures/compute/script_create.json");
+const FIXTURE_SCRIPT_UPDATE: &str = include_str!("../../../fixtures/compute/script_update.json");
+const FIXTURE_SCRIPT_CODE_GET: &str =
+    include_str!("../../../fixtures/compute/script_code_get.json");
+const FIXTURE_RELEASES_LIST: &str = include_str!("../../../fixtures/compute/releases_list.json");
+const FIXTURE_RELEASE_ACTIVE: &str = include_str!("../../../fixtures/compute/release_active.json");
+const FIXTURE_VARIABLE_ADD: &str = include_str!("../../../fixtures/compute/variable_add.json");
+const FIXTURE_VARIABLE_GET: &str = include_str!("../../../fixtures/compute/variable_get.json");
+const FIXTURE_VARIABLE_UPDATE: &str =
+    include_str!("../../../fixtures/compute/variable_update.json");
+const FIXTURE_SECRETS_LIST: &str = include_str!("../../../fixtures/compute/secrets_list.json");
+const FIXTURE_SECRET_ADD: &str = include_str!("../../../fixtures/compute/secret_add.json");
+const FIXTURE_STATISTICS: &str = include_str!("../../../fixtures/compute/statistics.json");
+const FIXTURE_ERROR_UNAUTHORIZED: &str =
+    include_str!("../../../fixtures/compute/error_unauthorized.json");
+const FIXTURE_ERROR_NOT_FOUND: &str =
+    include_str!("../../../fixtures/compute/error_not_found.json");
 
 fn test_client(uri: &str) -> ComputeClient {
     ComputeClient::with_base_url("test-api-key", uri)

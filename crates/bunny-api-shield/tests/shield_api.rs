@@ -9,22 +9,32 @@ use bunny_api_shield::types::{
 use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-const FIXTURE_SHIELD_ZONE_GET: &str = include_str!("fixtures/shield_zone_get.json");
-const FIXTURE_SHIELD_ZONES_LIST: &str = include_str!("fixtures/shield_zones_list.json");
-const FIXTURE_WAF_RULES_LIST: &str = include_str!("fixtures/waf_rules_list.json");
-const FIXTURE_WAF_RULE_GET: &str = include_str!("fixtures/waf_rule_get.json");
-const FIXTURE_WAF_RULE_CREATE: &str = include_str!("fixtures/waf_rule_create.json");
-const FIXTURE_RATE_LIMIT_RULES_LIST: &str = include_str!("fixtures/rate_limit_rules_list.json");
-const FIXTURE_RATE_LIMIT_RULE_GET: &str = include_str!("fixtures/rate_limit_rule_get.json");
-const FIXTURE_RATE_LIMIT_RULE_CREATE: &str = include_str!("fixtures/rate_limit_rule_create.json");
-const FIXTURE_ACCESS_LISTS_GET: &str = include_str!("fixtures/access_lists_get.json");
-const FIXTURE_ACCESS_LIST_GET: &str = include_str!("fixtures/access_list_get.json");
-const FIXTURE_ACCESS_LIST_CREATE: &str = include_str!("fixtures/access_list_create.json");
-const FIXTURE_BOT_DETECTION_GET: &str = include_str!("fixtures/bot_detection_get.json");
-const FIXTURE_BOT_DETECTION_UPDATE: &str = include_str!("fixtures/bot_detection_update.json");
-const FIXTURE_WAF_PROFILES_LIST: &str = include_str!("fixtures/waf_profiles_list.json");
-const FIXTURE_ERROR_UNAUTHORIZED: &str = include_str!("fixtures/error_unauthorized.json");
-const FIXTURE_ERROR_NOT_FOUND: &str = include_str!("fixtures/error_not_found.json");
+const FIXTURE_SHIELD_ZONE_GET: &str = include_str!("../../../fixtures/shield/shield_zone_get.json");
+const FIXTURE_SHIELD_ZONES_LIST: &str =
+    include_str!("../../../fixtures/shield/shield_zones_list.json");
+const FIXTURE_WAF_RULES_LIST: &str = include_str!("../../../fixtures/shield/waf_rules_list.json");
+const FIXTURE_WAF_RULE_GET: &str = include_str!("../../../fixtures/shield/waf_rule_get.json");
+const FIXTURE_WAF_RULE_CREATE: &str = include_str!("../../../fixtures/shield/waf_rule_create.json");
+const FIXTURE_RATE_LIMIT_RULES_LIST: &str =
+    include_str!("../../../fixtures/shield/rate_limit_rules_list.json");
+const FIXTURE_RATE_LIMIT_RULE_GET: &str =
+    include_str!("../../../fixtures/shield/rate_limit_rule_get.json");
+const FIXTURE_RATE_LIMIT_RULE_CREATE: &str =
+    include_str!("../../../fixtures/shield/rate_limit_rule_create.json");
+const FIXTURE_ACCESS_LISTS_GET: &str =
+    include_str!("../../../fixtures/shield/access_lists_get.json");
+const FIXTURE_ACCESS_LIST_GET: &str = include_str!("../../../fixtures/shield/access_list_get.json");
+const FIXTURE_ACCESS_LIST_CREATE: &str =
+    include_str!("../../../fixtures/shield/access_list_create.json");
+const FIXTURE_BOT_DETECTION_GET: &str =
+    include_str!("../../../fixtures/shield/bot_detection_get.json");
+const FIXTURE_BOT_DETECTION_UPDATE: &str =
+    include_str!("../../../fixtures/shield/bot_detection_update.json");
+const FIXTURE_WAF_PROFILES_LIST: &str =
+    include_str!("../../../fixtures/shield/waf_profiles_list.json");
+const FIXTURE_ERROR_UNAUTHORIZED: &str =
+    include_str!("../../../fixtures/shield/error_unauthorized.json");
+const FIXTURE_ERROR_NOT_FOUND: &str = include_str!("../../../fixtures/shield/error_not_found.json");
 
 fn test_client(uri: &str) -> ShieldClient {
     ShieldClient::with_base_url("test-api-key", uri)
