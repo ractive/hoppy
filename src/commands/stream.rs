@@ -427,7 +427,9 @@ async fn handle_video(
             }
             let status = stream.fetch_video(*library_id, &body).await?;
             if status.success {
-                eprintln!("Fetch initiated from {url}");
+                // Redact query string from URL to avoid leaking signed tokens or credentials.
+                let safe_url = url.split('?').next().unwrap_or(url);
+                eprintln!("Fetch initiated from {safe_url}");
                 eprintln!("The video will appear in the library once processing completes.");
                 eprintln!(
                     "Check status with: hoppy stream video list --library-id {library_id}"
