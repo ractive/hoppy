@@ -5,10 +5,13 @@ use predicates::prelude::*;
 use wiremock::matchers::{body_partial_json, header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
-const FIXTURE_LIST: &str = include_str!("../crates/bunny-api-core/tests/fixtures/dnszone_list_paginated.json");
+const FIXTURE_LIST: &str =
+    include_str!("../crates/bunny-api-core/tests/fixtures/dnszone_list_paginated.json");
 const FIXTURE_GET: &str = include_str!("../crates/bunny-api-core/tests/fixtures/dnszone_get.json");
-const FIXTURE_CREATE: &str = include_str!("../crates/bunny-api-core/tests/fixtures/dnszone_create.json");
-const FIXTURE_RECORD_ADD: &str = include_str!("../crates/bunny-api-core/tests/fixtures/dnsrecord_add.json");
+const FIXTURE_CREATE: &str =
+    include_str!("../crates/bunny-api-core/tests/fixtures/dnszone_create.json");
+const FIXTURE_RECORD_ADD: &str =
+    include_str!("../crates/bunny-api-core/tests/fixtures/dnsrecord_add.json");
 
 // ---------------------------------------------------------------------------
 // DNS Zone — List
