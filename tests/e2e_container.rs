@@ -2,7 +2,7 @@ mod e2e_support;
 
 use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{body_partial_json, header, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
 const FIXTURE_APPS_LIST: &str = include_str!("fixtures/containers/apps_list.json");
@@ -137,7 +137,8 @@ async fn container_app_get_not_found() {
     cmd::hoppy(&mock)
         .args(["container", "app", "get", "--id", "does-not-exist"])
         .assert()
-        .failure();
+        .failure()
+        .stderr(predicate::str::contains("Error:"));
 }
 
 // ---------------------------------------------------------------------------
@@ -152,6 +153,10 @@ async fn container_app_create() {
     Mock::given(method("POST"))
         .and(path("/apps"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_partial_json(serde_json::json!({
+            "name": "my-app",
+            "runtimeType": "shared"
+        })))
         .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_APP_ADD, "application/json"))
         .expect(1)
         .mount(&mock)

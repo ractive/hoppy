@@ -2,7 +2,7 @@ mod e2e_support;
 
 use e2e_support::{cmd, server, skip_in_live_mode};
 use predicates::prelude::*;
-use wiremock::matchers::{header, method, path, query_param};
+use wiremock::matchers::{body_partial_json, header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
 const FIXTURE_LIST: &str = include_str!("fixtures/core/storagezone_list_paginated.json");
@@ -136,6 +136,10 @@ async fn storage_zone_create() {
     Mock::given(method("POST"))
         .and(path("/storagezone"))
         .and(header("AccessKey", "test-api-key"))
+        .and(body_partial_json(serde_json::json!({
+            "Name": "hoppy-test-zone",
+            "Region": "DE"
+        })))
         .respond_with(ResponseTemplate::new(201).set_body_raw(FIXTURE_CREATE, "application/json"))
         .expect(1)
         .mount(&mock)
@@ -202,5 +206,6 @@ async fn storage_zone_get_not_found() {
     cmd::hoppy(&mock)
         .args(["storage-zone", "get", "--id", "99999"])
         .assert()
-        .failure();
+        .failure()
+        .stderr(predicate::str::contains("Error:"));
 }

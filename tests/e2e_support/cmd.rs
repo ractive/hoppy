@@ -10,8 +10,9 @@ pub fn is_live_mode() -> bool {
 /// mock server, or pass through real env vars when `HOPPY_E2E_LIVE=1`.
 pub fn hoppy(mock: &MockServer) -> Command {
     let mut cmd = Command::cargo_bin("hoppy").expect("hoppy binary not found");
+    cmd.timeout(std::time::Duration::from_secs(10));
 
-    if std::env::var("HOPPY_E2E_LIVE").as_deref() == Ok("1") {
+    if is_live_mode() {
         // Live mode — use real credentials from the environment.
         // Don't override any URL env vars.
     } else {
