@@ -233,3 +233,8 @@ The [CLI Guidelines](https://clig.dev/) is a comprehensive, community-maintained
 - [Azure CLI Output Formats](https://learn.microsoft.com/en-us/cli/azure/format-output-azure-cli)
 - [Command Line Interface Guidelines](https://clig.dev/)
 - [Make Your CLI a Joy to Use](https://www.caduh.com/blog/make-your-cli-a-joy-to-use)
+
+## Related
+- [[research/rust-cli-best-practices]] — Rust-specific CLI best practices
+- [[Seed]] — project brief with CLI design goals
+- [[decision-log]] — CLI-related decisions

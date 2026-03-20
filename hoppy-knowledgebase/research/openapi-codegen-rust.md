@@ -140,3 +140,8 @@ cargo progenitor \
 - [Progenitor Docs](https://docs.rs/progenitor)
 - [OpenAPI Generator - Rust](https://openapi-generator.tech/docs/generators/rust/)
 - [OpenAPI Generator GitHub](https://github.com/OpenAPITools/openapi-generator)
+
+## Related
+- [[research/hand-written-experiment-results]] — results of hand-written approach
+- [[decision-log]] — decision to use hand-written clients
+- [[Seed]] — original project brief mentioning codegen

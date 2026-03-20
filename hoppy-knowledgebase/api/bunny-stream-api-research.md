@@ -834,3 +834,8 @@ Internally:
 1. POST to create video with title → get GUID
 2. PUT binary to upload file to that GUID
 3. Optionally poll status until `Finished` (or print GUID and let user check)
+
+## Related
+- [[api/bunny-api-overview]] — overview of all bunny.net APIs
+- [[api/bunny-api-quirks]] — Stream-specific quirks
+- [[api/bunny-api-client-patterns]] — client implementation patterns

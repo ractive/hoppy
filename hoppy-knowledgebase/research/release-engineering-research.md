@@ -389,3 +389,8 @@ If the API crates aren't meant for public consumption, you can:
 - [sharkdp's release checklist](https://dev.to/sharkdp/my-release-checklist-for-rust-programs-1m33)
 - [Orhun's automated Rust releases](https://blog.orhun.dev/automated-rust-releases/)
 - [Crate release checklist gist](https://gist.github.com/BartMassey/a8bf0d5fee366f55b6ed90c3c55ef20d)
+
+## Related
+- [[release/release-setup-checklist]] — one-time setup steps derived from this research
+- [[development-roadmap]] — iteration 8 (release workflow)
+- [[decision-log]] — release & packaging decisions

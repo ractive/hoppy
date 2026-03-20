@@ -129,3 +129,10 @@ hoppy stats get --pull-zone-id=123 --date-from=... --date-to=...
 - LLM-friendly docs: https://docs.bunny.net/llms.txt
 - API reference: https://docs.bunny.net/api-reference
 - OpenAPI specs: https://docs.bunny.net/openapi.md
+
+## Related
+- [[Seed]] — project brief
+- [[api/bunny-api-quirks]] — API quirks discovered during implementation
+- [[api/bunny-api-client-patterns]] — implementation patterns
+- [[api/bunny-stream-api-research]] — detailed Stream API research
+- [[api/magic-containers/magic-containers-applications-api]] — Magic Containers API
