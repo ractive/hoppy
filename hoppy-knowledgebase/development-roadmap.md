@@ -100,17 +100,37 @@ cargo test --features live-api --no-run
 
 - [ ] winget: Submit manifest to `microsoft/winget-pkgs` after first release
 - [ ] Containers live E2E tests — deferred (cost/complexity)
-- [ ] Shield metrics: detailed, rate-limits, waf-rule, bot-detection endpoints — deferred from iter 12
 
 ---
 
-## Possible Future Iterations
+## Planned Iterations (API Coverage)
+
+| Iter | Branch | Summary | New API Methods | Complexity |
+|------|--------|---------|----------------|------------|
+| [[iterations/iteration-13-statistics\|13]] | `iter-13/statistics` | Statistics & analytics across all services (shield detailed metrics, storage/DNS/pull zone/stream stats) | 11 | Medium |
+| [[iterations/iteration-14-edge-rules\|14]] | `iter-14/edge-rules` | Pull zone edge rules — custom request/response handling at CDN edge (add/update/delete/enable rules with triggers and actions) | 3 | Medium |
+| [[iterations/iteration-15-pullzone-access-control\|15]] | `iter-15/pullzone-access-control` | Pull zone referrer allow/block lists and IP blocking (6 endpoints, 8 CLI commands) | 6 | Small |
+| [[iterations/iteration-16-stream-video-processing\|16]] | `iter-16/stream-video-processing` | Stream video processing — transcription, heatmaps, re-encoding, thumbnails, resolution management, storage size | 10 | Medium |
+| [[iterations/iteration-17-dns-security\|17]] | `iter-17/dns-security` | DNS security — DNSSEC management, wildcard certificate issuance, DNS record scanning | 5 | Medium |
+| [[iterations/iteration-18-shield-advanced\|18]] | `iter-18/shield-advanced` | Shield advanced — API Guardian, upload scanning, event logs, WAF triggered rule review | 16 | Medium-Large |
+
+**Total across iters 13–18:** ~51 new API methods, ~47 new CLI commands
+
+### Excluded from planned iterations
+
+- **Security credential rotation** (resetSecurityKey, resetPassword, resetApiKey) — too destructive for CLI automation
+- **Billing summary/PDF downloads** — low CLI value, better in dashboard
+- **Video library watermark/referrer management** — niche, can add later
+- **Account management** (close account, audit logs) — dangerous/niche
+- **OEmbed** — embed HTML generation, not a CLI operation
+
+---
+
+## Possible Future Iterations (Non-API-Coverage)
 
 - **Config file support** — `~/.config/hoppy/config.toml` for defaults (API key, default format, etc.)
 - **`--dry-run` for mutating operations** — show what would happen without executing
 - **`--wait` for async operations** — poll until operation completes
-- **DNS import/export** — BIND zone file import/export (API partially supports it)
-- **Statistics/analytics commands** — `hoppy stats` for traffic, bandwidth, cache hit rates
 - **Billing commands** — `hoppy billing summary`, invoices
 - **Optimizer commands** — image transformation presets
 - **AI image generation** — `hoppy ai generate --prompt "..."`
@@ -139,6 +159,13 @@ cargo test --features live-api --no-run
 | 9 — Gap Analysis | Wire missing CLI commands from audit | Small |
 | 10 — E2E Test Harness | Mock-based CLI tests with wiremock | Medium |
 | 11 — Lifecycle Tests | Live API lifecycle tests with snapshots | Medium |
+| 12 — API Coverage Gaps | URL purge, hostnames/SSL, DNS export/import, captions, shield metrics | Medium |
+| 13 — Statistics | Stats/analytics across all services | Medium |
+| 14 — Edge Rules | Pull zone edge rules (triggers + actions) | Medium |
+| 15 — Access Control | Pull zone referrer/IP blocking | Small |
+| 16 — Video Processing | Stream transcription, heatmaps, re-encoding, thumbnails | Medium |
+| 17 — DNS Security | DNSSEC, certificates, record scanning | Medium |
+| 18 — Shield Advanced | API Guardian, upload scanning, event logs, WAF review | Medium-Large |
 
 ## Related
 - [[Seed]] — original project brief
