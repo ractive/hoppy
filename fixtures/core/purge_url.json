@@ -1,0 +1,4 @@
+{
+  "Status": 204,
+  "Description": "The purge request was successfully processed. The actual API returns 200 with empty body for URL purge."
+}

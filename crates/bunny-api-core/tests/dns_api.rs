@@ -12,6 +12,8 @@ const FIXTURE_CREATE: &str = include_str!("../../../fixtures/core/dnszone_create
 const FIXTURE_RECORD_ADD: &str = include_str!("../../../fixtures/core/dnsrecord_add.json");
 const FIXTURE_NOT_FOUND: &str = include_str!("../../../fixtures/core/error_not_found_dnszone.json");
 const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
+const FIXTURE_EXPORT: &str = include_str!("../../../fixtures/core/dnszone_export.txt");
+const FIXTURE_IMPORT: &str = include_str!("../../../fixtures/core/dnszone_import.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -429,6 +431,77 @@ async fn invalid_api_key_returns_unauthorized_for_dns() {
         .expect("should be an ApiError");
     assert_eq!(api_err.status_code, 401);
     assert!(api_err.message.contains("Authorization has been denied"));
+}
+
+// ---------------------------------------------------------------------------
+// DNS Zone export/import tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn export_dns_zone_returns_zone_file_text() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_EXPORT, "text/plain"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let content = test_client(&server.uri())
+        .export_dns_zone(50001)
+        .await
+        .unwrap();
+
+    assert!(content.contains("example.com"));
+    assert!(content.contains("$ORIGIN"));
+}
+
+#[tokio::test]
+async fn import_dns_zone_returns_result_counts() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/import"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_IMPORT, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .import_dns_zone(50001, FIXTURE_EXPORT)
+        .await
+        .unwrap();
+
+    assert_eq!(result.records_successful, 5);
+    assert_eq!(result.records_failed, 0);
+    assert_eq!(result.records_skipped, 2);
+}
+
+#[tokio::test]
+async fn export_dns_zone_not_found_returns_error() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dnszone/99999/export"))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_raw(FIXTURE_NOT_FOUND, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .export_dns_zone(99999)
+        .await
+        .unwrap_err();
+
+    let api_err = err
+        .downcast_ref::<ApiError>()
+        .expect("should be an ApiError");
+    assert_eq!(api_err.status_code, 404);
 }
 
 // ---------------------------------------------------------------------------

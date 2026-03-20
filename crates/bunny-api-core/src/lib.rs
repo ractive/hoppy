@@ -32,7 +32,7 @@ pub mod types;
 pub use client::CoreClient;
 pub use types::{
     AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone, CreateStorageZone,
-    CreateVideoLibrary, DnsRecord, DnsRecordType, DnsZone, HostnameInfo, OriginType, PaginatedList,
-    PullZone, PullZoneType, PurgeCache, StorageZone, UpdateDnsRecord, UpdateDnsZone,
-    UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
+    CreateVideoLibrary, DnsImportResult, DnsRecord, DnsRecordType, DnsZone, HostnameInfo,
+    OriginType, PaginatedList, PullZone, PullZoneType, PurgeCache, StorageZone, UpdateDnsRecord,
+    UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
 };

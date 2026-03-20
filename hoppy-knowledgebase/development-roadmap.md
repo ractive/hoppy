@@ -34,23 +34,24 @@ status: active
 
 | Iter | Branch | Summary |
 |------|--------|---------|
-| 0 | `iter-0/skeleton` | Project skeleton: clap CLI, output formatting, auth, error handling, CI |
-| 0.5 | `iter-0.5/codegen-experiment` | Evaluated Progenitor codegen → abandoned in favor of hand-written clients |
-| 1 | `iter-1/pull-zones` | Full Pull Zone CRUD — first vertical slice proving the stack |
-| 2 | `iter-2/storage` | Storage Zones + file operations (upload/download/ls/rm), per-zone auth |
-| 3 | `iter-3/dns` | DNS zones + records (all record types), 15 wiremock tests |
-| 4 | `iter-4/stream` | Stream libraries + videos + collections, Stream API key resolution |
-| 5 | `iter-5/shield` | Shield zones, WAF, rate limiting, access lists, bot detection, 27 wiremock tests |
-| 6 | `iter-6/scripting-containers` | Edge scripting (scripts, variables, secrets, releases) + Magic Containers (47 endpoints, 57 wiremock tests) |
-| 7 | `iter-7/cleanup` | Auth check, FromStr impls, progress bars, WAF profiles, deferred items |
-| 8 | `iter-8/release` | Release workflow (6 targets), Homebrew, deb/rpm, man pages, shell completions, README |
-| 9 | `iter-9/gap-analysis` | Wired missing CLI commands (stream video update/fetch, collections, script rotate-key), query param redaction |
-| 10 | `iter-10/e2e-test-harness` | 103 mock-based CLI E2E tests with assert_cmd + wiremock. **Superseded by iter 11.** |
-| 11 | `iter-11/e2e-lifecycle-testbooks` | Replaced iter 10 harness with wiremock + insta snapshot tests and `--features live-api` lifecycle tests |
+| [[iterations/iteration-0-skeleton\|0]] | `iter-0/skeleton` | Project skeleton: clap CLI, output formatting, auth, error handling, CI |
+| [[iterations/iteration-0.5-codegen-experiment\|0.5]] | `iter-0.5/codegen-experiment` | Evaluated Progenitor codegen → abandoned in favor of hand-written clients |
+| [[iterations/iteration-1-pull-zones\|1]] | `iter-1/pull-zones` | Full Pull Zone CRUD — first vertical slice proving the stack |
+| [[iterations/iteration-2-storage\|2]] | `iter-2/storage` | Storage Zones + file operations (upload/download/ls/rm), per-zone auth |
+| [[iterations/iteration-3-dns\|3]] | `iter-3/dns` | DNS zones + records (all record types), 15 wiremock tests |
+| [[iterations/iteration-4-stream\|4]] | `iter-4/stream` | Stream libraries + videos + collections, Stream API key resolution |
+| [[iterations/iteration-5-shield\|5]] | `iter-5/shield` | Shield zones, WAF, rate limiting, access lists, bot detection, 27 wiremock tests |
+| [[iterations/iteration-6-scripting-containers\|6]] | `iter-6/scripting-containers` | Edge scripting (scripts, variables, secrets, releases) + Magic Containers (47 endpoints, 57 wiremock tests) |
+| [[iterations/iteration-7-cleanup\|7]] | `iter-7/cleanup` | Auth check, FromStr impls, progress bars, WAF profiles, deferred items |
+| [[iterations/iteration-8-release\|8]] | `iter-8/release` | Release workflow (6 targets), Homebrew, deb/rpm, man pages, shell completions, README |
+| [[iterations/iteration-9-gap-analysis\|9]] | `iter-9/gap-analysis` | Wired missing CLI commands (stream video update/fetch, collections, script rotate-key), query param redaction |
+| [[iterations/iteration-10-e2e-test-harness\|10]] | `iter-10/e2e-test-harness` | 103 mock-based CLI E2E tests with assert_cmd + wiremock. **Superseded by iter 11.** |
+| [[iterations/iteration-11-e2e-lifecycle\|11]] | `iter-11/e2e-lifecycle-testbooks` | Replaced iter 10 harness with wiremock + insta snapshot tests and `--features live-api` lifecycle tests |
+| [[iterations/iteration-12-api-coverage\|12]] | `iter-12/api-coverage-gaps` | URL purge, pull zone hostnames/SSL, DNS export/import, stream captions, shield metrics (16 new API methods, 16 new CLI commands) |
 
 ---
 
-## Current State (post iter 11)
+## Current State (post iter 12)
 
 ### Test Architecture
 
@@ -98,20 +99,48 @@ cargo test --features live-api --no-run
 ## Not Yet Done
 
 - [ ] winget: Submit manifest to `microsoft/winget-pkgs` after first release
-- [ ] DNS import/export — deferred (API partially supports it)
 - [ ] Containers live E2E tests — deferred (cost/complexity)
 
 ---
 
 ## Possible Future Iterations
 
-- **Config file support** — `~/.config/hoppy/config.toml` for defaults
-- **`--dry-run` for mutating operations**
-- **`--wait` for async operations** — poll until complete
-- **DNS import/export** — BIND zone file import/export
-- **Statistics/analytics commands**
-- **Billing commands**
+- **Config file support** — `~/.config/hoppy/config.toml` for defaults (API key, default format, etc.)
+- **`--dry-run` for mutating operations** — show what would happen without executing
+- **`--wait` for async operations** — poll until operation completes
+- **DNS import/export** — BIND zone file import/export (API partially supports it)
+- **Statistics/analytics commands** — `hoppy stats` for traffic, bandwidth, cache hit rates
+- **Billing commands** — `hoppy billing summary`, invoices
+- **Optimizer commands** — image transformation presets
+- **AI image generation** — `hoppy ai generate --prompt "..."`
+- **Database commands** — `hoppy db query --sql "SELECT ..."`
 - **Bulk operations** — pipe JSON in, batch create/update/delete
 - **Profile support** — multiple named API key profiles
 - **Auto-update** — self-update mechanism
-- **MCP server mode** — run as a Model Context Protocol server
+- **MCP server mode** — run as a Model Context Protocol server for direct LLM integration
+
+---
+
+## Iteration Sizing Estimate
+
+| Iteration | Scope | Complexity |
+|-----------|-------|------------|
+| 0 — Skeleton | CLI framework, output, auth, CI | Small |
+| 0.5 — Codegen Experiment | Test Progenitor on all specs | Small |
+| 1 — Pull Zones | First full service, HTTP client | Medium |
+| 2 — Storage | Second API, file I/O, progress bars | Medium |
+| 3 — DNS | Straightforward CRUD + records | Small-Medium |
+| 4 — Stream | Third API, video upload | Medium |
+| 5 — Shield | Security features | Small-Medium |
+| 6 — Scripting + Containers | Two services, API client + CLI for both | Medium-Large |
+| 7 — Code Cleanup | Tech debt, small features, deferred items | Small |
+| 8 — Release Readiness | CI/CD, packaging, docs, Homebrew | Medium |
+| 9 — Gap Analysis | Wire missing CLI commands from audit | Small |
+| 10 — E2E Test Harness | Mock-based CLI tests with wiremock | Medium |
+| 11 — Lifecycle Tests | Live API lifecycle tests with snapshots | Medium |
+
+## Related
+- [[Seed]] — original project brief
+- [[testing/test-plan-v0.1.0]] — comprehensive pre-release test plan
+- [[iterations/iteration-1-code-review]] — code review from iter 1
+- [[release/release-setup-checklist]] — release setup steps

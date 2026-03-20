@@ -96,6 +96,13 @@ pub enum Commands {
         action: AuthAction,
     },
 
+    /// Purge a URL from CDN cache
+    Purge {
+        /// The URL to purge
+        #[arg(long)]
+        url: String,
+    },
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
@@ -175,6 +182,65 @@ pub enum PullZoneAction {
         /// Limit purge to a specific cache tag
         #[arg(long)]
         cache_tag: Option<String>,
+    },
+    /// Manage pull zone hostnames and SSL
+    Hostname {
+        #[command(subcommand)]
+        action: PullZoneHostnameAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PullZoneHostnameAction {
+    /// Add a custom hostname
+    Add {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        hostname: String,
+    },
+    /// Remove a custom hostname
+    Remove {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        hostname: String,
+    },
+    /// Load a free Let's Encrypt SSL certificate
+    LoadFreeCert {
+        /// The hostname to issue the certificate for
+        #[arg(long)]
+        hostname: String,
+    },
+    /// Set Force SSL on a hostname
+    ForceSsl {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        hostname: String,
+        /// Enable or disable Force SSL
+        #[arg(long, action = clap::ArgAction::Set)]
+        enabled: bool,
+    },
+    /// Add a custom SSL certificate (certificate and key must be Base64-encoded PEM)
+    AddCert {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        hostname: String,
+        /// Base64-encoded PEM certificate
+        #[arg(long)]
+        certificate: String,
+        /// Base64-encoded PEM private key
+        #[arg(long)]
+        key: String,
+    },
+    /// Remove the SSL certificate from a hostname
+    RemoveCert {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        hostname: String,
     },
 }
 
@@ -358,6 +424,19 @@ pub enum DnsZoneAction {
     Delete {
         #[arg(long)]
         id: i64,
+    },
+    /// Export DNS zone as a BIND zone file
+    Export {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Import DNS records from a BIND zone file
+    Import {
+        #[arg(long)]
+        id: i64,
+        /// Path to zone file (reads from stdin if omitted)
+        #[arg(long)]
+        file: Option<String>,
     },
 }
 
@@ -579,6 +658,38 @@ pub enum StreamVideoAction {
         #[arg(long)]
         video_id: String,
     },
+    /// Manage video captions
+    Caption {
+        #[command(subcommand)]
+        action: StreamCaptionAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum StreamCaptionAction {
+    /// Add a caption track to a video
+    Add {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        /// BCP 47 language code (e.g. en, de, fr)
+        #[arg(long)]
+        srclang: String,
+        /// Path to SRT subtitle file
+        #[arg(long)]
+        file: String,
+    },
+    /// Delete a caption track from a video
+    Delete {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        /// BCP 47 language code
+        #[arg(long)]
+        srclang: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -661,6 +772,20 @@ pub enum ShieldAction {
     BotDetection {
         #[command(subcommand)]
         action: ShieldBotDetectionAction,
+    },
+    /// View Shield Zone metrics
+    Metrics {
+        #[command(subcommand)]
+        action: ShieldMetricsAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldMetricsAction {
+    /// Get metrics overview for a Shield Zone
+    Overview {
+        #[arg(long)]
+        shield_zone_id: i64,
     },
 }
 

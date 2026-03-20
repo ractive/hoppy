@@ -1,11 +1,13 @@
 use bunny_api_core::{ApiError, CoreClient};
-use wiremock::matchers::{header, method, path, query_param};
+use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const FIXTURE_LIST_PAGINATED: &str =
     include_str!("../../../fixtures/core/pullzone_list_paginated.json");
 const FIXTURE_GET: &str = include_str!("../../../fixtures/core/pullzone_get.json");
 const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
+const FIXTURE_NOT_FOUND: &str =
+    include_str!("../../../fixtures/core/error_not_found_storagezone.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -106,4 +108,174 @@ async fn invalid_api_key_returns_api_error() {
         .expect("should be an ApiError");
     assert_eq!(api_err.status_code, 401);
     assert!(api_err.message.contains("Authorization has been denied"));
+}
+
+// ---------------------------------------------------------------------------
+// URL purge tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn purge_url_sends_url_as_query_param() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/purge"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("url", "https://cdn.example.com/style.css"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .purge_url("https://cdn.example.com/style.css")
+        .await
+        .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// Pull Zone hostname & SSL tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn add_hostname_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addHostname"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_hostname(1001, "cdn.example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn remove_hostname_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/pullzone/1001/removeHostname"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .remove_hostname(1001, "cdn.example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn load_free_certificate_sends_hostname_as_query_param() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/loadFreeCertificate"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("hostname", "cdn.example.com"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .load_free_certificate("cdn.example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn set_force_ssl_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/setForceSSL"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com", "ForceSSL": true }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .set_force_ssl(1001, "cdn.example.com", true)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn add_certificate_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addCertificate"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Hostname": "cdn.example.com",
+            "Certificate": "base64cert",
+            "CertificateKey": "base64key"
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_certificate(1001, "cdn.example.com", "base64cert", "base64key")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn remove_certificate_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/pullzone/1001/removeCertificate"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .remove_certificate(1001, "cdn.example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn add_hostname_not_found_returns_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/99999/addHostname"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_raw(FIXTURE_NOT_FOUND, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .add_hostname(99999, "cdn.example.com")
+        .await
+        .unwrap_err();
+
+    let api_err = err
+        .downcast_ref::<ApiError>()
+        .expect("should be an ApiError");
+    assert_eq!(api_err.status_code, 404);
 }
