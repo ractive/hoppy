@@ -1004,6 +1004,123 @@ pub struct WafProfileMinimal {
     pub features: Option<String>,
 }
 
+// ---------------------------------------------------------------------------
+// Metrics types
+// ---------------------------------------------------------------------------
+
+/// Overview metrics for a Shield Zone.
+/// Returned by `GET /shield/metrics/overview/{shieldZoneId}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldMetricsResponse {
+    pub data: Option<ShieldMetricsData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldMetricsData {
+    pub overview: Option<ShieldOverviewSummary>,
+    pub waf: Option<ShieldWafSummary>,
+    #[serde(rename = "dDoS")]
+    pub ddos: Option<ShieldDdosSummary>,
+    pub ratelimit: Option<ShieldRatelimitSummary>,
+    pub bot_detection: Option<ShieldBotDetectionSummary>,
+    pub access_list: Option<ShieldAccessListSummary>,
+    pub upload_scanning: Option<ShieldUploadScanningSummary>,
+    #[serde(default)]
+    pub total_clean_requests_limit: Option<i64>,
+    #[serde(default)]
+    pub total_billable_requests: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldOverviewSummary {
+    #[serde(default)]
+    pub d_do_s_mitigated: i64,
+    #[serde(default)]
+    pub waf_triggered_rules: i64,
+    #[serde(default)]
+    pub ratelimit_breaches: i64,
+    #[serde(default)]
+    pub bot_detection_challenged: i64,
+    #[serde(default)]
+    pub access_list_actions: i64,
+    #[serde(default)]
+    pub upload_scanning_blocks: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldWafSummary {
+    #[serde(default)]
+    pub total_triggered_rules: i64,
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldDdosSummary {
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub verified_requests: i64,
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldRatelimitSummary {
+    #[serde(default)]
+    pub total_breaches: i64,
+    #[serde(default)]
+    pub logged_breaches: i64,
+    #[serde(default)]
+    pub challenged_breaches: i64,
+    #[serde(default)]
+    pub blocked_breaches: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldBotDetectionSummary {
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldAccessListSummary {
+    #[serde(default)]
+    pub total_actions: i64,
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldUploadScanningSummary {
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub files_scanned: i64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,7 +1,8 @@
 use crate::auth;
-use crate::cli::{OutputFormat, PullZoneAction};
+use crate::cli::{OutputFormat, PullZoneAction, PullZoneHostnameAction};
 use crate::output::{self, PaginatedListJson};
 use anyhow::Result;
+use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreatePullZone, PullZone, PurgeCache, UpdatePullZone};
 use std::io::{self, BufRead, Write};
 
@@ -196,8 +197,53 @@ pub async fn handle(
             client.purge_pull_zone_cache(*id, &body).await?;
             eprintln!("Purged cache for pull zone {id}");
         }
+        PullZoneAction::Hostname { action } => {
+            handle_hostname(&client, action).await?;
+        }
     }
 
+    Ok(())
+}
+
+async fn handle_hostname(client: &CoreClient, action: &PullZoneHostnameAction) -> Result<()> {
+    match action {
+        PullZoneHostnameAction::Add { id, hostname } => {
+            client.add_hostname(*id, hostname).await?;
+            eprintln!("Added hostname {hostname} to pull zone {id}");
+        }
+        PullZoneHostnameAction::Remove { id, hostname } => {
+            client.remove_hostname(*id, hostname).await?;
+            eprintln!("Removed hostname {hostname} from pull zone {id}");
+        }
+        PullZoneHostnameAction::LoadFreeCert { hostname } => {
+            client.load_free_certificate(hostname).await?;
+            eprintln!("Loaded free certificate for {hostname}");
+        }
+        PullZoneHostnameAction::ForceSsl {
+            id,
+            hostname,
+            enabled,
+        } => {
+            client.set_force_ssl(*id, hostname, *enabled).await?;
+            let status = if *enabled { "enabled" } else { "disabled" };
+            eprintln!("Force SSL {status} for {hostname} on pull zone {id}");
+        }
+        PullZoneHostnameAction::AddCert {
+            id,
+            hostname,
+            certificate,
+            key,
+        } => {
+            client
+                .add_certificate(*id, hostname, certificate, key)
+                .await?;
+            eprintln!("Added certificate for {hostname} on pull zone {id}");
+        }
+        PullZoneHostnameAction::RemoveCert { id, hostname } => {
+            client.remove_certificate(*id, hostname).await?;
+            eprintln!("Removed certificate for {hostname} on pull zone {id}");
+        }
+    }
     Ok(())
 }
 

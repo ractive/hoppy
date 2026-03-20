@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::cli::{
     OutputFormat, ShieldAccessListAction, ShieldAction, ShieldBotDetectionAction,
-    ShieldRateLimitAction, ShieldWafAction, ShieldZoneAction,
+    ShieldMetricsAction, ShieldRateLimitAction, ShieldWafAction, ShieldZoneAction,
 };
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Result, bail};
@@ -300,6 +300,7 @@ pub async fn handle(
         ShieldAction::BotDetection { action } => {
             handle_bot_detection(action, format, debug, record).await
         }
+        ShieldAction::Metrics { action } => handle_metrics(action, format, debug, record).await,
     }
 }
 
@@ -911,6 +912,73 @@ async fn handle_bot_detection(
                 output::print_single(&row, format);
             } else {
                 eprintln!("Updated bot detection for Shield Zone {shield_zone_id}");
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Metrics handler
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct MetricsRow {
+    #[tabled(rename = "Category")]
+    category: String,
+    #[tabled(rename = "Count")]
+    count: i64,
+}
+
+async fn handle_metrics(
+    action: &ShieldMetricsAction,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let client = auth::shield_client(debug, record)?;
+    match action {
+        ShieldMetricsAction::Overview { shield_zone_id } => {
+            let metrics = client.get_metrics_overview(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&metrics).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else if let Some(data) = &metrics.data {
+                if let Some(overview) = &data.overview {
+                    let rows = vec![
+                        MetricsRow {
+                            category: "DDoS Mitigated".to_string(),
+                            count: overview.d_do_s_mitigated,
+                        },
+                        MetricsRow {
+                            category: "WAF Triggered".to_string(),
+                            count: overview.waf_triggered_rules,
+                        },
+                        MetricsRow {
+                            category: "Rate Limit Breaches".to_string(),
+                            count: overview.ratelimit_breaches,
+                        },
+                        MetricsRow {
+                            category: "Bot Detection Challenged".to_string(),
+                            count: overview.bot_detection_challenged,
+                        },
+                        MetricsRow {
+                            category: "Access List Actions".to_string(),
+                            count: overview.access_list_actions,
+                        },
+                        MetricsRow {
+                            category: "Upload Scanning Blocks".to_string(),
+                            count: overview.upload_scanning_blocks,
+                        },
+                    ];
+                    output::print_data(&rows, format);
+                }
+                if let Some(billable) = data.total_billable_requests {
+                    eprintln!("Total billable requests: {billable}");
+                }
+            } else {
+                eprintln!("No metrics data available.");
             }
         }
     }

@@ -1,0 +1,9 @@
+---
+source: tests/cli_stream.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Success": true,
+  "Message": "OK",
+  "StatusCode": 200
+}

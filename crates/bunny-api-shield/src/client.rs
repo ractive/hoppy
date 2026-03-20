@@ -11,7 +11,7 @@ use crate::types::{
     CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest, CustomAccessList,
     CustomAccessListResponse, CustomWafRule, GetCustomWafRulesResponse, GetRateLimitRulesResponse,
     GetShieldZoneResponse, GetShieldZonesResponse, ProblemDetails, RateLimitRule,
-    ShieldZoneResponse, UpdateAccessListConfiguration, UpdateBotDetection,
+    ShieldMetricsResponse, ShieldZoneResponse, UpdateAccessListConfiguration, UpdateBotDetection,
     UpdateBotDetectionResponse, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
     UpdateShieldZoneRequest, WafProfileMinimal,
 };
@@ -598,6 +598,25 @@ impl ShieldClient {
     // -----------------------------------------------------------------------
     // WAF Profiles
     // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // Metrics endpoints
+    // -----------------------------------------------------------------------
+
+    /// Get a metrics overview for a Shield Zone.
+    ///
+    /// `GET /shield/metrics/overview/{shieldZoneId}`
+    pub async fn get_metrics_overview(&self, shield_zone_id: i64) -> Result<ShieldMetricsResponse> {
+        let resp = self
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/metrics/overview/{shield_zone_id}"))),
+                ),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
 
     /// List available WAF profiles.
     ///

@@ -603,6 +603,15 @@ pub struct DnsZone {
     pub dns_sec_enabled: bool,
 }
 
+/// Result of importing DNS records into a zone.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsImportResult {
+    pub records_successful: i64,
+    pub records_failed: i64,
+    pub records_skipped: i64,
+}
+
 /// Request body for `POST /dnszone` — create a new DNS zone.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "PascalCase")]

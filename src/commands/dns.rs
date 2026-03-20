@@ -1,12 +1,12 @@
 use crate::auth;
 use crate::cli::{DnsAction, DnsRecordAction, DnsZoneAction, OutputFormat};
 use crate::output::{self, PaginatedListJson};
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{
     AddDnsRecord, CreateDnsZone, DnsRecord, DnsRecordType, DnsZone, UpdateDnsRecord, UpdateDnsZone,
 };
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, Read, Write};
 
 // ---------------------------------------------------------------------------
 // Display structs — DNS Zones
@@ -239,6 +239,32 @@ async fn handle_zone(
             }
             client.delete_dns_zone(*id).await?;
             eprintln!("Deleted DNS zone {id}");
+        }
+        DnsZoneAction::Export { id } => {
+            let content = client.export_dns_zone(*id).await?;
+            print!("{content}");
+        }
+        DnsZoneAction::Import { id, file } => {
+            let zone_data = match file {
+                Some(path) => std::fs::read_to_string(path)
+                    .with_context(|| format!("failed to read zone file: {path}"))?,
+                None => {
+                    let mut buf = String::new();
+                    io::stdin().lock().read_to_string(&mut buf)?;
+                    buf
+                }
+            };
+            let result = client.import_dns_zone(*id, &zone_data).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                eprintln!(
+                    "Import complete: {} successful, {} failed, {} skipped",
+                    result.records_successful, result.records_failed, result.records_skipped
+                );
+            }
         }
     }
     Ok(())
