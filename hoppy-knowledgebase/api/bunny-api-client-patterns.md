@@ -395,3 +395,10 @@ Integration tests against the live API will come in iteration 1. For now, all te
 - **No retry logic** — keep the client simple. Retry/backoff can be added as middleware later if needed.
 - **No rate limiting** — same as retry.
 - **Don't model every field** — only include fields the CLI will actually use or display. More can be added incrementally. This keeps the types manageable and avoids over-engineering.
+
+## Related
+- [[api/bunny-api-quirks]] — quirks these patterns address
+- [[api/bunny-api-overview]] — API overview
+- [[iterations/iteration-1-code-review]] — code review that refined these patterns
+- [[decision-log]] — architectural decisions
+- [[adding-a-feature]] — feature checklist using these patterns

@@ -236,3 +236,7 @@ tabled = "0.17"
 - [Cross-Platform Rust CI/CD Pipeline](https://ahmedjama.com/blog/2025/12/cross-platform-rust-pipeline-github-actions/)
 - [actions-rust-cross](https://github.com/houseabsolute/actions-rust-cross)
 - [upload-rust-binary-action](https://github.com/taiki-e/upload-rust-binary-action)
+
+## Related
+- [[research/cli-design-patterns]] — CLI patterns from cloud CLIs
+- [[Seed]] — project brief
