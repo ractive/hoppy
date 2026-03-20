@@ -260,7 +260,7 @@ async fn handle_zone(
             let result = client.import_dns_zone(*id, &zone_data).await?;
             if let OutputFormat::Json = format {
                 let json =
-                    serde_json::to_string_pretty(&result).expect("failed to serialize to JSON");
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
                 eprintln!(
