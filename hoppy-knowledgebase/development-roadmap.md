@@ -47,7 +47,7 @@ status: active
 | [[iterations/iteration-9-gap-analysis\|9]] | `iter-9/gap-analysis` | Wired missing CLI commands (stream video update/fetch, collections, script rotate-key), query param redaction |
 | [[iterations/iteration-10-e2e-test-harness\|10]] | `iter-10/e2e-test-harness` | 103 mock-based CLI E2E tests with assert_cmd + wiremock. **Superseded by iter 11.** |
 | [[iterations/iteration-11-e2e-lifecycle\|11]] | `iter-11/e2e-lifecycle-testbooks` | Replaced iter 10 harness with wiremock + insta snapshot tests and `--features live-api` lifecycle tests |
-| [[iterations/iteration-12-api-coverage\|12]] | `iter-12/api-coverage-gaps` | URL purge, pull zone hostnames/SSL, DNS export/import, stream captions, shield metrics (16 new API methods, 16 new CLI commands) |
+| [[iterations/iteration-12-api-coverage\|12]] | `iter-12/api-coverage-gaps` | URL purge, pull zone hostnames/SSL, DNS export/import, stream captions, shield metrics overview (12 new API methods, 10 new CLI commands) |
 
 ---
 
@@ -100,6 +100,7 @@ cargo test --features live-api --no-run
 
 - [ ] winget: Submit manifest to `microsoft/winget-pkgs` after first release
 - [ ] Containers live E2E tests — deferred (cost/complexity)
+- [ ] Shield metrics: detailed, rate-limits, waf-rule, bot-detection endpoints — deferred from iter 12
 
 ---
 

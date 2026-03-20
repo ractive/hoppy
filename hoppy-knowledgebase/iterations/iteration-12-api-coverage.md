@@ -25,68 +25,68 @@ Five topic areas, ordered by user impact:
 
 Single most common CDN operation missing. Currently we only support zone-level purge.
 
-- [x]API client: `POST /purge` with URL parameter
-- [x]CLI: `hoppy purge <url>` — purge a single URL from CDN cache
-- [x]Wiremock + snapshot test
-- [x]Live E2E test (purge a URL on an existing pull zone)
+- [x] API client: `POST /purge` with URL parameter
+- [x] CLI: `hoppy purge <url>` — purge a single URL from CDN cache
+- [x] Wiremock + snapshot test
+- [x] Live E2E test (purge a URL on an existing pull zone)
 
 ### 2. Pull Zone Hostname & SSL Management
 
 Core CDN setup — adding custom domains and enabling SSL is the first thing after creating a pull zone.
 
-- [x]API client: `POST /pullzone/{id}/addHostname`
-- [x]API client: `DELETE /pullzone/{id}/removeHostname`
-- [x]API client: `GET /pullzone/loadFreeCertificate` (query param: hostname)
-- [x]API client: `POST /pullzone/{id}/addCertificate`
-- [x]API client: `DELETE /pullzone/{id}/removeCertificate`
-- [x]API client: `POST /pullzone/{id}/setForceSSL`
-- [x]CLI: `hoppy pull-zone hostname add <id> <hostname>`
-- [x]CLI: `hoppy pull-zone hostname remove <id> <hostname>`
-- [x]CLI: `hoppy pull-zone hostname load-free-cert <hostname>`
-- [x]CLI: `hoppy pull-zone hostname add-cert <id> --certificate <file> --key <file>`
-- [x]CLI: `hoppy pull-zone hostname remove-cert <id> <hostname>`
-- [x]CLI: `hoppy pull-zone hostname force-ssl <id> <hostname> <on|off>`
-- [x]Wiremock + snapshot tests for each subcommand
-- [x]Live E2E test: add hostname → load free cert → force SSL → remove hostname
+- [x] API client: `POST /pullzone/{id}/addHostname`
+- [x] API client: `DELETE /pullzone/{id}/removeHostname`
+- [x] API client: `GET /pullzone/loadFreeCertificate` (query param: hostname)
+- [x] API client: `POST /pullzone/{id}/addCertificate`
+- [x] API client: `DELETE /pullzone/{id}/removeCertificate`
+- [x] API client: `POST /pullzone/{id}/setForceSSL`
+- [x] CLI: `hoppy pull-zone hostname add <id> <hostname>`
+- [x] CLI: `hoppy pull-zone hostname remove <id> <hostname>`
+- [x] CLI: `hoppy pull-zone hostname load-free-cert <hostname>`
+- [x] CLI: `hoppy pull-zone hostname add-cert <id> --certificate <file> --key <file>`
+- [x] CLI: `hoppy pull-zone hostname remove-cert <id> <hostname>`
+- [x] CLI: `hoppy pull-zone hostname force-ssl <id> <hostname> <on|off>`
+- [x] Wiremock + snapshot tests for each subcommand
+- [x] Live E2E test: add hostname → load free cert → force SSL → remove hostname
 
 ### 3. DNS Export & Import
 
 Essential for migration workflows and backup/restore.
 
-- [x]API client: `GET /dnszone/{id}/export`
-- [x]API client: `POST /dnszone/{zoneId}/import` (multipart form body)
-- [x]CLI: `hoppy dns zone export <id>` — prints BIND zone file to stdout
-- [x]CLI: `hoppy dns zone import <id> <file>` — imports records from file (or stdin)
-- [x]Wiremock + snapshot tests
-- [x]Live E2E test: create zone → add records → export → verify format
+- [x] API client: `GET /dnszone/{id}/export`
+- [x] API client: `POST /dnszone/{zoneId}/import` (multipart form body)
+- [x] CLI: `hoppy dns zone export <id>` — prints BIND zone file to stdout
+- [x] CLI: `hoppy dns zone import <id> <file>` — imports records from file (or stdin)
+- [x] Wiremock + snapshot tests
+- [x] Live E2E test: create zone → add records → export → verify format
 
 ### 4. Stream Video Captions
 
 Key for accessibility and SEO — captions are a common video workflow.
 
-- [x]API client: `POST /library/{libId}/videos/{videoId}/captions/{srclang}` (add caption)
-- [x]API client: `DELETE /library/{libId}/videos/{videoId}/captions/{srclang}` (delete caption)
-- [x]CLI: `hoppy stream video caption add <library-id> <video-id> <srclang> --file <srt-file>`
-- [x]CLI: `hoppy stream video caption delete <library-id> <video-id> <srclang>`
-- [x]Wiremock + snapshot tests
-- [x]Live E2E test: upload video → add caption → delete caption → delete video
+- [x] API client: `POST /library/{libId}/videos/{videoId}/captions/{srclang}` (add caption)
+- [x] API client: `DELETE /library/{libId}/videos/{videoId}/captions/{srclang}` (delete caption)
+- [x] CLI: `hoppy stream video caption add <library-id> <video-id> <srclang> --file <srt-file>`
+- [x] CLI: `hoppy stream video caption delete <library-id> <video-id> <srclang>`
+- [x] Wiremock + snapshot tests
+- [x] Live E2E test: upload video → add caption → delete caption → delete video
 
 ### 5. Shield Metrics
 
 Observability for security features — without metrics the shield commands are fire-and-forget.
 
-- [x]API client: `GET /shield/metrics/overview/{shieldZoneId}`
-- [ ]API client: `GET /shield/metrics/overview/{shieldZoneId}/detailed` — deferred
-- [ ]API client: `GET /shield/metrics/rate-limits/{shieldZoneId}` — deferred
-- [ ]API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}` — deferred
-- [ ]API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection` — deferred
-- [x]CLI: `hoppy shield metrics overview <shield-zone-id>` — overview table
-- [ ]CLI: `hoppy shield metrics <shield-zone-id> --detailed` — deferred
-- [ ]CLI: `hoppy shield metrics rate-limits <shield-zone-id>` — deferred
-- [ ]CLI: `hoppy shield metrics waf-rule <shield-zone-id> <rule-id>` — deferred
-- [ ]CLI: `hoppy shield metrics bot-detection <shield-zone-id>` — deferred
-- [x]Wiremock + snapshot tests (overview only)
-- [ ]Live E2E test: create PZ → create SZ → fetch metrics → cleanup — deferred
+- [x] API client: `GET /shield/metrics/overview/{shieldZoneId}`
+- [ ] API client: `GET /shield/metrics/overview/{shieldZoneId}/detailed` — deferred
+- [ ] API client: `GET /shield/metrics/rate-limits/{shieldZoneId}` — deferred
+- [ ] API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}` — deferred
+- [ ] API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection` — deferred
+- [x] CLI: `hoppy shield metrics overview <shield-zone-id>` — overview table
+- [ ] CLI: `hoppy shield metrics <shield-zone-id> --detailed` — deferred
+- [ ] CLI: `hoppy shield metrics rate-limits <shield-zone-id>` — deferred
+- [ ] CLI: `hoppy shield metrics waf-rule <shield-zone-id> <rule-id>` — deferred
+- [ ] CLI: `hoppy shield metrics bot-detection <shield-zone-id>` — deferred
+- [x] Wiremock + snapshot tests (overview only)
+- [ ] Live E2E test: create PZ → create SZ → fetch metrics → cleanup — deferred
 
 ---
 
@@ -116,8 +116,8 @@ Follow [[adding-a-feature]] checklist for each topic:
 | Pull Zone Hostnames | 6 | 6 | Medium |
 | DNS Export/Import | 2 | 2 | Medium |
 | Stream Captions | 2 | 2 | Small |
-| Shield Metrics | 5 | 5 | Medium |
-| **Total** | **16** | **16** | **Medium-Large** |
+| Shield Metrics | 1 (4 deferred) | 1 (4 deferred) | Small (was Medium) |
+| **Total** | **12** | **10** | **Medium** |
 
 If the iteration is too large, topics 4 and 5 (captions + metrics) can be deferred to iter 13.
 
