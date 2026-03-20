@@ -519,7 +519,7 @@ async fn handle_caption(
                 .await?;
             if let OutputFormat::Json = format {
                 let json =
-                    serde_json::to_string_pretty(&result).expect("failed to serialize to JSON");
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
                 eprintln!("Added {srclang} captions to video {video_id}");

@@ -4,7 +4,7 @@ use crate::cli::{
     ShieldMetricsAction, ShieldRateLimitAction, ShieldWafAction, ShieldZoneAction,
 };
 use crate::output::{self, PaginatedListJson};
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use bunny_api_shield::types::{
     AccessListAction, AccessListDetails, AccessListType, BotDetectionConfigurationState,
     BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
@@ -941,8 +941,8 @@ async fn handle_metrics(
         ShieldMetricsAction::Overview { shield_zone_id } => {
             let metrics = client.get_metrics_overview(*shield_zone_id).await?;
             if let OutputFormat::Json = format {
-                let json =
-                    serde_json::to_string_pretty(&metrics).expect("failed to serialize to JSON");
+                let json = serde_json::to_string_pretty(&metrics)
+                    .context("failed to serialize to JSON")?;
                 println!("{json}");
             } else if let Some(data) = &metrics.data {
                 if let Some(overview) = &data.overview {
