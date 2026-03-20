@@ -3,6 +3,115 @@ mod support;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+// ---------------------------------------------------------------------------
+// DNS export/import E2E tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn dns_zone_export_prints_zone_file() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("core/dnszone_export.txt"), "text/plain"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "export", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("$ORIGIN"));
+    assert!(stdout.contains("example.com"));
+}
+
+#[tokio::test]
+async fn dns_zone_import_from_file_table_output() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/import"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_import.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Write a temp zone file
+    let zone_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(
+        zone_file.path(),
+        support::fixture("core/dnszone_export.txt"),
+    )
+    .unwrap();
+
+    let mut cmd = support::hoppy_mock_cmd("test-api-key", &server.uri());
+    cmd.args([
+        "dns",
+        "zone",
+        "import",
+        "--id",
+        "50001",
+        "--file",
+        zone_file.path().to_str().unwrap(),
+    ]);
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Import complete"));
+    assert!(stderr.contains("5 successful"));
+}
+
+#[tokio::test]
+async fn dns_zone_import_from_file_json_output() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/import"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_import.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone_file = tempfile::NamedTempFile::new().unwrap();
+    std::fs::write(
+        zone_file.path(),
+        support::fixture("core/dnszone_export.txt"),
+    )
+    .unwrap();
+
+    let mut cmd = support::hoppy_mock_cmd("test-api-key", &server.uri());
+    cmd.args([
+        "--format",
+        "json",
+        "dns",
+        "zone",
+        "import",
+        "--id",
+        "50001",
+        "--file",
+        zone_file.path().to_str().unwrap(),
+    ]);
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("valid json");
+    assert_eq!(json["RecordsSuccessful"], 5);
+    assert_eq!(json["RecordsFailed"], 0);
+}
+
 #[tokio::test]
 async fn dns_zone_list_json() {
     let server = MockServer::start().await;

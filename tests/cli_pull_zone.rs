@@ -1,6 +1,6 @@
 mod support;
 
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
@@ -259,6 +259,170 @@ async fn pull_zone_update_not_found() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("not_found") || stderr.contains("not found") || stderr.contains("404"));
+}
+
+// ---------------------------------------------------------------------------
+// URL purge E2E test
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn purge_url_sends_correct_request() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/purge"))
+        .and(header("AccessKey", "test-key"))
+        .and(query_param("url", "https://cdn.example.com/index.html"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args(["purge", "--url", "https://cdn.example.com/index.html"]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Purged"));
+}
+
+// ---------------------------------------------------------------------------
+// Pull Zone hostname & SSL E2E tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn pull_zone_hostname_add() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addHostname"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "add",
+        "--id",
+        "1001",
+        "--hostname",
+        "cdn.example.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Added hostname"));
+}
+
+#[tokio::test]
+async fn pull_zone_hostname_remove() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/pullzone/1001/removeHostname"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "remove",
+        "--id",
+        "1001",
+        "--hostname",
+        "cdn.example.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Removed hostname"));
+}
+
+#[tokio::test]
+async fn pull_zone_hostname_load_free_cert() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/loadFreeCertificate"))
+        .and(header("AccessKey", "test-key"))
+        .and(query_param("hostname", "cdn.example.com"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "load-free-cert",
+        "--hostname",
+        "cdn.example.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Loaded free certificate"));
+}
+
+#[tokio::test]
+async fn pull_zone_hostname_force_ssl() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/setForceSSL"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com", "ForceSSL": true }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "force-ssl",
+        "--id",
+        "1001",
+        "--hostname",
+        "cdn.example.com",
+        "--enabled=true",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Force SSL enabled"));
+}
+
+#[tokio::test]
+async fn pull_zone_hostname_remove_cert() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/pullzone/1001/removeCertificate"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "remove-cert",
+        "--id",
+        "1001",
+        "--hostname",
+        "cdn.example.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Removed certificate"));
 }
 
 #[cfg(feature = "live-api")]

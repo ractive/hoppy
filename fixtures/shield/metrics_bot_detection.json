@@ -1,0 +1,28 @@
+{
+  "data": {
+    "overviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "loggedRequests": 10,
+        "challengedRequests": 15
+      },
+      "2026-03-02T00:00:00Z": {
+        "loggedRequests": 8,
+        "challengedRequests": 22
+      },
+      "2026-03-03T00:00:00Z": {
+        "loggedRequests": 12,
+        "challengedRequests": 19
+      },
+      "2026-03-04T00:00:00Z": {
+        "loggedRequests": 9,
+        "challengedRequests": 17
+      },
+      "2026-03-05T00:00:00Z": {
+        "loggedRequests": 11,
+        "challengedRequests": 21
+      }
+    },
+    "totalLoggedRequests": 234,
+    "totalChallengedRequests": 456
+  }
+}

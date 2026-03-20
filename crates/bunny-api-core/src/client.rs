@@ -11,9 +11,9 @@ use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::{
     AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone, CreateStorageZone,
-    CreateVideoLibrary, DnsRecord, DnsZone, PaginatedList, PullZone, PurgeCache, StorageZone,
-    UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary,
-    VideoLibrary,
+    CreateVideoLibrary, DnsImportResult, DnsRecord, DnsZone, PaginatedList, PullZone, PurgeCache,
+    StorageZone, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone,
+    UpdateVideoLibrary, VideoLibrary,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -165,6 +165,92 @@ impl CoreClient {
         self.handle_empty_response(response).await
     }
 
+    /// Purge a single URL from the CDN cache.
+    ///
+    /// This is a global purge — it does not target a specific Pull Zone.
+    pub async fn purge_url(&self, url: &str) -> Result<()> {
+        let endpoint = format!("{}/purge", self.base_url);
+        let rb = self.auth(self.http.post(&endpoint)).query(&[("url", url)]);
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Pull Zone hostname & SSL endpoints
+    // -----------------------------------------------------------------------
+
+    /// Add a custom hostname to a Pull Zone.
+    pub async fn add_hostname(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/addHostname", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Remove a custom hostname from a Pull Zone.
+    pub async fn remove_hostname(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/removeHostname", self.base_url);
+        let rb = self.auth(self.http.delete(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Load a free Let's Encrypt certificate for a hostname.
+    pub async fn load_free_certificate(&self, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/loadFreeCertificate", self.base_url);
+        let rb = self
+            .auth(self.http.get(&url))
+            .query(&[("hostname", hostname)]);
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Set Force SSL on a hostname.
+    pub async fn set_force_ssl(&self, id: i64, hostname: &str, force_ssl: bool) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/setForceSSL", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname,
+            "ForceSSL": force_ssl
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Add a custom SSL certificate to a Pull Zone hostname.
+    ///
+    /// Both `certificate` and `private_key` must be Base64-encoded PEM strings
+    /// as required by the bunny.net API.
+    pub async fn add_certificate(
+        &self,
+        id: i64,
+        hostname: &str,
+        certificate: &str,
+        private_key: &str,
+    ) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/addCertificate", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname,
+            "Certificate": certificate,
+            "CertificateKey": private_key
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Remove the SSL certificate from a Pull Zone hostname.
+    pub async fn remove_certificate(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/removeCertificate", self.base_url);
+        let rb = self.auth(self.http.delete(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
     // -----------------------------------------------------------------------
     // Storage Zone endpoints
     // -----------------------------------------------------------------------
@@ -286,6 +372,45 @@ impl CoreClient {
         let rb = self.auth(self.http.delete(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
+    }
+
+    /// Export a DNS zone as a BIND zone file (plain text).
+    pub async fn export_dns_zone(&self, id: i64) -> Result<String> {
+        let url = format!("{}/dnszone/{id}/export", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        let (status, bytes) = self.read_body(response).await?;
+        if status.is_success() {
+            return Ok(String::from_utf8_lossy(&bytes).into_owned());
+        }
+        Err(self.extract_api_error(status, &bytes))
+    }
+
+    /// Import DNS records from a BIND zone file.
+    ///
+    /// `zone_file` is the raw BIND zone file content (plain text). The bunny.net
+    /// API accepts the file as multipart/form-data; we send it as the `file` part.
+    pub async fn import_dns_zone(&self, id: i64, zone_file: &str) -> Result<DnsImportResult> {
+        use reqwest::header::CONTENT_TYPE;
+        let url = format!("{}/dnszone/{id}/import", self.base_url);
+        // Build a minimal multipart body manually: bunny.net expects a field named "file".
+        let boundary = format!(
+            "HoppyBoundary{:016x}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
+        let body = format!(
+            "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"zone.txt\"\r\nContent-Type: text/plain\r\n\r\n{zone_file}\r\n--{boundary}--\r\n"
+        );
+        let content_type = format!("multipart/form-data; boundary={boundary}");
+        let rb = self
+            .auth(self.http.post(&url))
+            .header(CONTENT_TYPE, content_type)
+            .body(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
     }
 
     // -----------------------------------------------------------------------

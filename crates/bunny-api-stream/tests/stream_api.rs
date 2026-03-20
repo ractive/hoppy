@@ -16,6 +16,9 @@ const FIXTURE_COLLECTION_GET: &str = include_str!("../../../fixtures/stream/coll
 const FIXTURE_COLLECTION_CREATE: &str =
     include_str!("../../../fixtures/stream/collection_create.json");
 const FIXTURE_NOT_FOUND: &str = include_str!("../../../fixtures/stream/error_not_found_video.json");
+const FIXTURE_CAPTION_ADD: &str = include_str!("../../../fixtures/stream/video_caption_add.json");
+const FIXTURE_CAPTION_DELETE: &str =
+    include_str!("../../../fixtures/stream/video_caption_delete.json");
 
 fn test_client(uri: &str) -> StreamClient {
     StreamClient::new("stream-test-key").with_base_url(uri)
@@ -544,4 +547,53 @@ async fn delete_collection_success() {
         .unwrap();
 
     assert!(status.success);
+}
+
+// ---------------------------------------------------------------------------
+// Captions
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn add_caption_sends_correct_request() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/library/1001/videos/abc-123/captions/en"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_CAPTION_ADD, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .add_caption(
+            1001,
+            "abc-123",
+            "en",
+            "1\n00:00:00,000 --> 00:00:05,000\nHello",
+        )
+        .await
+        .unwrap();
+    assert!(result.success);
+}
+
+#[tokio::test]
+async fn delete_caption_sends_correct_request() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/library/1001/videos/abc-123/captions/en"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_CAPTION_DELETE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .delete_caption(1001, "abc-123", "en")
+        .await
+        .unwrap();
+    assert!(result.success);
 }

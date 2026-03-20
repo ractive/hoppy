@@ -85,3 +85,8 @@ For a CLI tool where we control which endpoints to expose, the hand-written appr
 The only scenario where codegen wins is if we needed full coverage of all endpoints immediately — but the iterative roadmap means we add APIs one at a time.
 
 **Recommendation: Use hand-written clients.** Start with Core Platform Pull Zones (already done), expand incrementally per iteration. Use the OpenAPI specs as reference documentation, not as codegen input.
+
+## Related
+- [[research/openapi-codegen-rust]] — codegen evaluation that preceded this experiment
+- [[decision-log]] — decision to use hand-written clients
+- [[api/bunny-api-client-patterns]] — patterns that emerged from hand-written approach

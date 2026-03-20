@@ -1,0 +1,56 @@
+{
+  "data": [
+    {
+      "ratelimitId": 8001,
+      "overview": {
+        "totalBreaches": 15,
+        "loggedBreaches": 5,
+        "challengedBreaches": 3,
+        "blockedBreaches": 7
+      },
+      "ratelimitOverviewPastTwentyEightDays": {
+        "2026-03-01T00:00:00Z": {
+          "totalBreaches": 1,
+          "loggedBreaches": 0,
+          "challengedBreaches": 0,
+          "blockedBreaches": 1
+        },
+        "2026-03-02T00:00:00Z": {
+          "totalBreaches": 2,
+          "loggedBreaches": 1,
+          "challengedBreaches": 0,
+          "blockedBreaches": 1
+        },
+        "2026-03-03T00:00:00Z": {
+          "totalBreaches": 0,
+          "loggedBreaches": 0,
+          "challengedBreaches": 0,
+          "blockedBreaches": 0
+        }
+      }
+    },
+    {
+      "ratelimitId": 8002,
+      "overview": {
+        "totalBreaches": 8,
+        "loggedBreaches": 3,
+        "challengedBreaches": 2,
+        "blockedBreaches": 3
+      },
+      "ratelimitOverviewPastTwentyEightDays": {
+        "2026-03-01T00:00:00Z": {
+          "totalBreaches": 1,
+          "loggedBreaches": 1,
+          "challengedBreaches": 0,
+          "blockedBreaches": 0
+        },
+        "2026-03-02T00:00:00Z": {
+          "totalBreaches": 1,
+          "loggedBreaches": 0,
+          "challengedBreaches": 1,
+          "blockedBreaches": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "data": {
+    "waf": {
+      "metrics": {
+        "2026-03-01T00:00:00Z": {
+          "blockedRequests": 18,
+          "loggedRequests": 9,
+          "challengedRequests": 2
+        },
+        "2026-03-02T00:00:00Z": {
+          "blockedRequests": 22,
+          "loggedRequests": 11,
+          "challengedRequests": 1
+        },
+        "2026-03-03T00:00:00Z": {
+          "blockedRequests": 14,
+          "loggedRequests": 8,
+          "challengedRequests": 2
+        }
+      },
+      "totals": {
+        "blockedRequests": 54,
+        "loggedRequests": 28,
+        "challengedRequests": 5
+      }
+    },
+    "ddos": {
+      "metrics": {
+        "2026-03-01T00:00:00Z": {
+          "blockedRequests": 30,
+          "verifiedRequests": 55,
+          "challengedRequests": 15
+        },
+        "2026-03-02T00:00:00Z": {
+          "blockedRequests": 35,
+          "verifiedRequests": 60,
+          "challengedRequests": 18
+        },
+        "2026-03-03T00:00:00Z": {
+          "blockedRequests": 30,
+          "verifiedRequests": 55,
+          "challengedRequests": 14
+        }
+      },
+      "totals": {
+        "blockedRequests": 95,
+        "verifiedRequests": 170,
+        "challengedRequests": 47
+      }
+    },
+    "rateLimit": {
+      "metrics": {
+        "2026-03-01T00:00:00Z": {
+          "totalBreaches": 8,
+          "blockedBreaches": 4,
+          "loggedBreaches": 3,
+          "challengedBreaches": 1
+        },
+        "2026-03-02T00:00:00Z": {
+          "totalBreaches": 10,
+          "blockedBreaches": 4,
+          "loggedBreaches": 3,
+          "challengedBreaches": 3
+        },
+        "2026-03-03T00:00:00Z": {
+          "totalBreaches": 5,
+          "blockedBreaches": 2,
+          "loggedBreaches": 2,
+          "challengedBreaches": 1
+        }
+      },
+      "totals": {
+        "totalBreaches": 23,
+        "blockedBreaches": 10,
+        "loggedBreaches": 8,
+        "challengedBreaches": 5
+      }
+    },
+    "accessLists": {
+      "metrics": {
+        "2026-03-01T00:00:00Z": {
+          "blockedRequests": 3,
+          "loggedRequests": 1,
+          "challengedRequests": 0
+        },
+        "2026-03-02T00:00:00Z": {
+          "blockedRequests": 4,
+          "loggedRequests": 1,
+          "challengedRequests": 1
+        }
+      },
+      "totals": {
+        "blockedRequests": 9,
+        "loggedRequests": 2,
+        "challengedRequests": 1
+      }
+    },
+    "botDetection": {
+      "metrics": {
+        "2026-03-01T00:00:00Z": {
+          "loggedRequests": 78,
+          "challengedRequests": 152
+        },
+        "2026-03-02T00:00:00Z": {
+          "loggedRequests": 82,
+          "challengedRequests": 160
+        },
+        "2026-03-03T00:00:00Z": {
+          "loggedRequests": 74,
+          "challengedRequests": 144
+        }
+      },
+      "totals": {
+        "loggedRequests": 234,
+        "challengedRequests": 456
+      }
+    },
+    "uploadScanning": {
+      "metrics": {
+        "2026-03-01T00:00:00Z": {
+          "loggedRequests": 2,
+          "blockedRequests": 1,
+          "filesScanned": 50
+        },
+        "2026-03-02T00:00:00Z": {
+          "loggedRequests": 2,
+          "blockedRequests": 1,
+          "filesScanned": 55
+        },
+        "2026-03-03T00:00:00Z": {
+          "loggedRequests": 1,
+          "blockedRequests": 1,
+          "filesScanned": 45
+        }
+      },
+      "totals": {
+        "loggedRequests": 5,
+        "blockedRequests": 3,
+        "filesScanned": 150
+      }
+    },
+    "totalCleanRequestsLimit": 1000000,
+    "totalBillableRequestsThisMonth": 245678,
+    "resolution": 3
+  }
+}

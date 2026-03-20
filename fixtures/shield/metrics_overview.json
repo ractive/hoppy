@@ -1,0 +1,126 @@
+{
+  "data": {
+    "overview": {
+      "dDoSMitigated": 142,
+      "wafTriggeredRules": 87,
+      "ratelimitBreaches": 23,
+      "botDetectionChallenged": 456,
+      "accessListActions": 12,
+      "uploadScanningBlocks": 3
+    },
+    "waf": {
+      "totalTriggeredRules": 87,
+      "blockedRequests": 54,
+      "loggedRequests": 28,
+      "challengedRequests": 5
+    },
+    "overviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "dDoSMitigated": 5,
+        "wafTriggeredRules": 3,
+        "ratelimitBreaches": 1,
+        "botDetectionChallenged": 15,
+        "accessListActions": 0,
+        "uploadScanningBlocks": 0
+      },
+      "2026-03-02T00:00:00Z": {
+        "dDoSMitigated": 8,
+        "wafTriggeredRules": 4,
+        "ratelimitBreaches": 0,
+        "botDetectionChallenged": 22,
+        "accessListActions": 1,
+        "uploadScanningBlocks": 0
+      },
+      "2026-03-03T00:00:00Z": {
+        "dDoSMitigated": 3,
+        "wafTriggeredRules": 2,
+        "ratelimitBreaches": 2,
+        "botDetectionChallenged": 18,
+        "accessListActions": 0,
+        "uploadScanningBlocks": 1
+      }
+    },
+    "dDoS": {
+      "loggedRequests": 312,
+      "verifiedRequests": 170,
+      "blockedRequests": 95,
+      "challengedRequests": 47
+    },
+    "dDoSOverviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "loggedRequests": 12,
+        "verifiedRequests": 8,
+        "blockedRequests": 3,
+        "challengedRequests": 1
+      },
+      "2026-03-02T00:00:00Z": {
+        "loggedRequests": 15,
+        "verifiedRequests": 9,
+        "blockedRequests": 5,
+        "challengedRequests": 1
+      }
+    },
+    "ratelimit": {
+      "totalBreaches": 23,
+      "loggedBreaches": 8,
+      "challengedBreaches": 5,
+      "blockedBreaches": 10
+    },
+    "ratelimitOverviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "totalBreaches": 1,
+        "loggedBreaches": 0,
+        "challengedBreaches": 0,
+        "blockedBreaches": 1
+      },
+      "2026-03-02T00:00:00Z": {
+        "totalBreaches": 2,
+        "loggedBreaches": 1,
+        "challengedBreaches": 1,
+        "blockedBreaches": 0
+      }
+    },
+    "botDetection": {
+      "loggedRequests": 234,
+      "challengedRequests": 456
+    },
+    "botDetectionOverviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "loggedRequests": 10,
+        "challengedRequests": 15
+      },
+      "2026-03-02T00:00:00Z": {
+        "loggedRequests": 8,
+        "challengedRequests": 22
+      }
+    },
+    "accessList": {
+      "totalActions": 12,
+      "blockedRequests": 9,
+      "loggedRequests": 2,
+      "challengedRequests": 1
+    },
+    "accessListOverviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "totalActions": 1,
+        "blockedRequests": 1,
+        "loggedRequests": 0,
+        "challengedRequests": 0
+      }
+    },
+    "uploadScanning": {
+      "loggedRequests": 5,
+      "blockedRequests": 3,
+      "filesScanned": 150
+    },
+    "uploadScanningOverviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "loggedRequests": 1,
+        "blockedRequests": 1,
+        "filesScanned": 8
+      }
+    },
+    "totalCleanRequestsLimit": 1000000,
+    "totalBillableRequests": 245678
+  }
+}

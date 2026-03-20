@@ -1152,3 +1152,69 @@ fn live_shield_lifecycle() {
         // 25. Cleanup runs via CleanupStack: pull-zone delete removes the Shield zone too
     });
 }
+
+// ---------------------------------------------------------------------------
+// Shield Metrics tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn shield_metrics_overview_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overview/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_overview.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "overview",
+            "--shield-zone-id",
+            "55001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn shield_metrics_overview_table() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overview/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_overview.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "shield",
+            "metrics",
+            "overview",
+            "--shield-zone-id",
+            "55001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}

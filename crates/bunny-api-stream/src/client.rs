@@ -325,6 +325,51 @@ impl StreamClient {
         let resp = self.send(self.auth(self.http.delete(&url))).await?;
         self.parse_response(resp).await
     }
+
+    // -----------------------------------------------------------------------
+    // Caption methods
+    // -----------------------------------------------------------------------
+
+    /// Add a caption track to a video.
+    ///
+    /// `srclang` is the BCP 47 language code (e.g. "en", "de", "fr").
+    /// `captions_file` is the SRT subtitle content.
+    pub async fn add_caption(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        srclang: &str,
+        captions_file: &str,
+    ) -> Result<StatusMessage> {
+        let vid = Self::encode(video_id);
+        let lang = Self::encode(srclang);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/captions/{lang}",
+            self.base_url
+        );
+        let rb = self
+            .auth(self.http.post(&url))
+            .json(&serde_json::json!({ "CaptionsFile": captions_file }));
+        let resp = self.send(rb).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Delete a caption track from a video.
+    pub async fn delete_caption(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        srclang: &str,
+    ) -> Result<StatusMessage> {
+        let vid = Self::encode(video_id);
+        let lang = Self::encode(srclang);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/captions/{lang}",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.delete(&url))).await?;
+        self.parse_response(resp).await
+    }
 }
 
 // ---------------------------------------------------------------------------

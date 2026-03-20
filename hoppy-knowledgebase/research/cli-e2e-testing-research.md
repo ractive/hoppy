@@ -511,3 +511,8 @@ httpmock = "0.8"
 - [rexpect](https://github.com/rust-cli/rexpect)
 - [Click Testing Docs](https://click.palletsprojects.com/en/stable/testing/)
 - [Python CLI Testing (Real Python)](https://realpython.com/python-cli-testing/)
+
+## Related
+- [[iterations/e2e-test-harness-plan]] — plan derived from this research
+- [[iterations/rust-e2e-rewrite-plan]] — rewrite plan
+- [[testing/test-plan-v0.1.0]] — test plan

@@ -56,3 +56,55 @@ Significant architectural and design decisions made during development. API-spec
 | Shell completions: stdout-only | Industry standard (starship, rustup, gh). Package managers handle installation |
 | cross-rs for Linux aarch64 only | Native runners for everything else. cross-rs more reliable than cargo-zigbuild |
 | Windows aarch64 included | Builds natively on `windows-latest` runner — zero extra effort |
+
+## API-Specific Decisions
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-03-18 | Storage zone list API rejects Accept header | bunny.net returns 401 if `Accept: application/json` header is sent on `/storagezone` — removed Accept header |
+| 2026-03-18 | DNS record creation uses PUT | bunny.net uses `PUT /dnszone/{zoneId}/records` for creation, not POST — unusual but documented in OpenAPI spec |
+| 2026-03-18 | DNS records embedded in zone response | No separate list-records endpoint — `GET /dnszone/{id}` returns the zone with all records in a `Records` array |
+| 2026-03-18 | Stream API PascalCase despite OpenAPI spec claiming camelCase | Live API returns PascalCase fields. OpenAPI spec is misleading. Using `#[serde(rename_all = "PascalCase")]` |
+| 2026-03-18 | Stream API pagination has `ItemsPerPage` not `HasMoreItems` | CLI computes `has_more_items` from `current_page * items_per_page < total_items` |
+| 2026-03-18 | Shield API uses camelCase unlike Core API's PascalCase | All Shield types use `#[serde(rename_all = "camelCase")]` |
+| 2026-03-18 | DDoS has no dedicated CRUD — configured via Shield Zone update | DDoS sensitivity, execution mode, challenge window are fields on the Shield Zone, not separate resources |
+| 2026-03-18 | Shield block-vpn/tor/datacentre are read-only on API | Appear in response but cannot be set via update endpoint. CLI does not expose as update flags |
+| 2026-03-18 | Shield enum values passed as integers on CLI | Matches API's integer enum representation. `serde_json::from_value` converts to typed enums |
+| 2026-03-18 | `Deploy` renamed to `Publish` for edge scripts | API endpoint is `POST /compute/script/{id}/publish`, not "deploy" — CLI matches the API |
+| 2026-03-18 | Compute API uses PascalCase like Core API | Confirmed via OpenAPI spec and fixture recording |
+| 2026-03-18 | Compute API `Items` can be null in paginated responses | Custom `deserialize_null_as_empty_vec` handles `"Items": null` instead of `[]` |
+
+## Chronological Log
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-03-17 | Codegen experiment before committing to approach | All 5 specs are OAS 3.0.x — codegen viable, experiment validates |
+| 2026-03-17 | All specs get same codegen treatment | Consistency over convenience |
+| 2026-03-17 | Pull Zones as first service | Most common bunny.net use case (CDN), exercises the core API |
+| 2026-03-17 | No `--api-key` flag | clig.dev: don't pass secrets via flags (visible in ps/history) |
+| 2026-03-17 | Table output as default for TTY | Follows az/gcloud/clig.dev pattern |
+| 2026-03-17 | Branch per iteration | Keeps main stable |
+| 2026-03-18 | Hand-written API clients confirmed | Progenitor abandoned in iter 0.5 — hand-written proved cleaner for PascalCase API |
+| 2026-03-18 | Sensitive fields excluded from JSON output | `#[serde(skip_serializing)]` on `zone_security_key`, `api_key`, `deployment_key` |
+| 2026-03-18 | Mock tests deferred until real API fixtures available | Synthetic mocks test assumptions, not reality |
+| 2026-03-18 | wiremock for integration tests | Real API responses as sanitized JSON fixtures |
+| 2026-03-18 | Always send pagination params on list endpoints | API returns bare array without params, paginated envelope with them |
+| 2026-03-18 | Storage auth: env var → Core API fallback | `BUNNY_STORAGE_KEY` first; if absent, fetch zone and use `Password` field |
+| 2026-03-18 | Streaming upload deferred | `tokio::fs::read` simpler and sufficient until progress bar work in iter 7 |
+| 2026-03-18 | PaginatedList/ApiError kept separate per crate | Independent workspace members, shared extraction would add coupling without benefit |
+| 2026-03-18 | Stream auth mirrors Storage pattern | `BUNNY_STREAM_KEY` first; if absent, fetch library and use `ApiKey` field |
+| 2026-03-18 | DNS import/export deferred | Import endpoint lacks documentation detail |
+| 2026-03-18 | Magic Containers hand-written from docs | No OpenAPI spec available. 47 endpoints, camelCase serde, cursor-based pagination |
+| 2026-03-18 | Homebrew tap: `ractive/homebrew-hoppy` | Single-formula tap keeps things isolated |
+| 2026-03-18 | winget manifest submitted after first release | winget-pkgs requires review process |
+| 2026-03-18 | `cargo install --git` instead of crates.io | Publishing all 7 crates in order too much for initial release |
+| 2026-03-18 | Shell completions: stdout-only | Industry standard. Package managers handle installation |
+| 2026-03-18 | Windows aarch64 included | Builds natively on `windows-latest` — zero extra effort |
+| 2026-03-18 | cross-rs for Linux aarch64 only | More reliable than cargo-zigbuild |
+| 2026-03-19 | Feature flag for live tests | `cargo test --features live-api`, not env var detection |
+| 2026-03-19 | `run_lifecycle()` with `CleanupStack` | Panic-safe cleanup via `catch_unwind`, delete commands in reverse order |
+
+## Related
+- [[development-roadmap]] — iteration history
+- [[api/bunny-api-client-patterns]] — established API client patterns
+- [[iterations/iteration-1-code-review]] — code review that drove several decisions

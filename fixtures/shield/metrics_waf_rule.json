@@ -1,0 +1,28 @@
+{
+  "data": {
+    "totalTriggers": 87,
+    "blockedRequests": 54,
+    "loggedRequests": 28,
+    "challengedRequests": 5,
+    "overviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "totalTriggers": 3,
+        "blockedRequests": 2,
+        "loggedRequests": 1,
+        "challengedRequests": 0
+      },
+      "2026-03-02T00:00:00Z": {
+        "totalTriggers": 4,
+        "blockedRequests": 2,
+        "loggedRequests": 1,
+        "challengedRequests": 1
+      },
+      "2026-03-03T00:00:00Z": {
+        "totalTriggers": 2,
+        "blockedRequests": 1,
+        "loggedRequests": 1,
+        "challengedRequests": 0
+      }
+    }
+  }
+}

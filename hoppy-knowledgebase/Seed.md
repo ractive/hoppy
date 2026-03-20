@@ -1,3 +1,13 @@
+---
+title: "Project Seed — Hoppy CLI for bunny.net"
+type: seed
+date: 2026-03-15
+tags:
+  - project-brief
+  - requirements
+status: completed
+---
+
 # Intro
 
 Let's write a CLI tool for bunny.net. It should be optimized for the usage by AI tools, but also be usable for humans.
@@ -57,3 +67,10 @@ Keep all the documentation in the folder ./hoppy-knowledgebase. Record the findi
 # Let's start
 
 Do the research I mentioned and put your findings in the ./hoppy-knowledgebase.
+
+## Related
+- [[development-roadmap]] — how the project evolved from this seed
+- [[decision-log]] — architectural decisions made along the way
+- [[research/cli-design-patterns]] — CLI design research mentioned in this brief
+- [[research/openapi-codegen-rust]] — codegen research mentioned in this brief
+- [[api/bunny-api-overview]] — API documentation for bunny.net services
