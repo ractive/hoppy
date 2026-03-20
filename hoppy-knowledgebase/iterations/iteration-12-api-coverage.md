@@ -76,17 +76,17 @@ Key for accessibility and SEO — captions are a common video workflow.
 Observability for security features — without metrics the shield commands are fire-and-forget.
 
 - [x]API client: `GET /shield/metrics/overview/{shieldZoneId}`
-- [x]API client: `GET /shield/metrics/overview/{shieldZoneId}/detailed`
-- [x]API client: `GET /shield/metrics/rate-limits/{shieldZoneId}`
-- [x]API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}`
-- [x]API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection`
-- [x]CLI: `hoppy shield metrics <shield-zone-id>` — overview table
-- [x]CLI: `hoppy shield metrics <shield-zone-id> --detailed` — full breakdown
-- [x]CLI: `hoppy shield metrics rate-limits <shield-zone-id>`
-- [x]CLI: `hoppy shield metrics waf-rule <shield-zone-id> <rule-id>`
-- [x]CLI: `hoppy shield metrics bot-detection <shield-zone-id>`
-- [x]Wiremock + snapshot tests
-- [x]Live E2E test: create PZ → create SZ → fetch metrics → cleanup
+- [ ]API client: `GET /shield/metrics/overview/{shieldZoneId}/detailed` — deferred
+- [ ]API client: `GET /shield/metrics/rate-limits/{shieldZoneId}` — deferred
+- [ ]API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}` — deferred
+- [ ]API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection` — deferred
+- [x]CLI: `hoppy shield metrics overview <shield-zone-id>` — overview table
+- [ ]CLI: `hoppy shield metrics <shield-zone-id> --detailed` — deferred
+- [ ]CLI: `hoppy shield metrics rate-limits <shield-zone-id>` — deferred
+- [ ]CLI: `hoppy shield metrics waf-rule <shield-zone-id> <rule-id>` — deferred
+- [ ]CLI: `hoppy shield metrics bot-detection <shield-zone-id>` — deferred
+- [x]Wiremock + snapshot tests (overview only)
+- [ ]Live E2E test: create PZ → create SZ → fetch metrics → cleanup — deferred
 
 ---
 

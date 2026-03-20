@@ -397,9 +397,9 @@ async fn stream_video_caption_add_json() {
         .mount(&server)
         .await;
 
-    // Write a temporary SRT file to the system temp directory
-    let srt_path = std::env::temp_dir().join("hoppy_test_captions.srt");
-    std::fs::write(&srt_path, "1\n00:00:00,000 --> 00:00:05,000\nHello\n").unwrap();
+    // Write a temporary SRT file using tempfile to avoid cross-test interference
+    let mut srt_file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut srt_file, b"1\n00:00:00,000 --> 00:00:05,000\nHello\n").unwrap();
 
     let output = support::hoppy_mock_cmd_full(
         "test-api-key",
@@ -422,7 +422,7 @@ async fn stream_video_caption_add_json() {
         "--srclang",
         "en",
         "--file",
-        srt_path.to_str().unwrap(),
+        srt_file.path().to_str().unwrap(),
     ])
     .output()
     .unwrap();

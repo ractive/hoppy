@@ -250,7 +250,10 @@ async fn handle_zone(
                     .with_context(|| format!("failed to read zone file: {path}"))?,
                 None => {
                     let mut buf = String::new();
-                    io::stdin().lock().read_to_string(&mut buf)?;
+                    io::stdin()
+                        .lock()
+                        .read_to_string(&mut buf)
+                        .context("failed to read zone file from stdin")?;
                     buf
                 }
             };

@@ -270,8 +270,10 @@ async fn purge_url_sends_correct_request() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/purge"))
+        .and(header("AccessKey", "test-key"))
         .and(query_param("url", "https://cdn.example.com/index.html"))
         .respond_with(ResponseTemplate::new(204))
+        .expect(1)
         .mount(&server)
         .await;
 

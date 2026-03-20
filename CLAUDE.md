@@ -1,7 +1,7 @@
 # Documentation
 Keep all the documentation in the folder ./hoppy-knowledgebase as *.md markdown files with frontmatter in yaml format with properties of type text, numbers, checkboxes, dates, dates and times, or lists.
 
-Use is as your second brain and document there:
+Use it as your second brain and document there:
 - outcome of online researches
 - design decisions
 - iteration planning with one file per iteration and a markdown task lists for steps, tasks, ACs

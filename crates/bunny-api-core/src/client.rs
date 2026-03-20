@@ -394,7 +394,13 @@ impl CoreClient {
         use reqwest::header::CONTENT_TYPE;
         let url = format!("{}/dnszone/{id}/import", self.base_url);
         // Build a minimal multipart body manually: bunny.net expects a field named "file".
-        let boundary = "HoppyBoundary";
+        let boundary = format!(
+            "HoppyBoundary{:016x}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
         let body = format!(
             "--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"zone.txt\"\r\nContent-Type: text/plain\r\n\r\n{zone_file}\r\n--{boundary}--\r\n"
         );
