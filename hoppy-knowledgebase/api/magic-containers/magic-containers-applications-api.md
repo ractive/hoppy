@@ -837,3 +837,13 @@ All fields nullable.
 | Field | Type   |
 |-------|--------|
 | id    | string |
+
+## Related
+- [[api/bunny-api-overview]] — overview of all bunny.net APIs
+- [[api/magic-containers/magic-containers-api-endpoints]] — endpoint management
+- [[api/magic-containers/magic-containers-api-autoscaling-regions]] — autoscaling & regions
+- [[api/magic-containers/magic-containers-api-volumes]] — volume management
+- [[api/magic-containers/magic-containers-api-log-forwarding]] — log forwarding
+- [[api/magic-containers/magic-containers-api-misc]] — limits, nodes, regions, pods
+- [[api/magic-containers/templates-registries/containers-api]] — container templates
+- [[api/magic-containers/templates-registries/container-registries-api]] — registries

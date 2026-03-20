@@ -98,3 +98,9 @@ hoppy --record=fixtures/ --format json pull-zone list
 ```
 
 Recorded files use the naming pattern `{METHOD}_{sanitized_path}.json` and are immediately usable by Rust wiremock tests.
+
+## Related
+- [[api/bunny-api-client-patterns]] — API client implementation patterns
+- [[api/bunny-api-quirks]] — API quirks to watch for
+- [[testing/test-plan-v0.1.0]] — overall test plan
+- [[development-roadmap]] — project roadmap

@@ -579,3 +579,6 @@ When reviewing code targeting edition 2024, additionally verify:
 - [Idiomatic Rust](https://github.com/mre/idiomatic-rust)
 - [Rust Perf Pitfalls](https://llogiq.github.io/2017/06/01/perf-pitfalls.html)
 - [Heap Allocations - Rust Performance Book](https://nnethercote.github.io/perf-book/heap-allocations.html)
+
+## Related
+- [[iterations/iteration-1-code-review]] — actual code review using these guidelines

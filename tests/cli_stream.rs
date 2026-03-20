@@ -380,6 +380,99 @@ async fn stream_collection_delete() {
 }
 
 // ---------------------------------------------------------------------------
+// Caption tests (stream API)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn stream_video_caption_add_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/library/10001/videos/vid-guid-0001/captions/en"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_caption_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Write a temporary SRT file using tempfile to avoid cross-test interference
+    let mut srt_file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut srt_file, b"1\n00:00:00,000 --> 00:00:05,000\nHello\n").unwrap();
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "caption",
+        "add",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "vid-guid-0001",
+        "--srclang",
+        "en",
+        "--file",
+        srt_file.path().to_str().unwrap(),
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_caption_delete() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/library/10001/videos/vid-guid-0001/captions/en"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_caption_delete.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "caption",
+        "delete",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "vid-guid-0001",
+        "--srclang",
+        "en",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+}
+
+// ---------------------------------------------------------------------------
 // Live API lifecycle tests
 // ---------------------------------------------------------------------------
 

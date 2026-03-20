@@ -1,6 +1,7 @@
 use crate::auth;
 use crate::cli::{
-    OutputFormat, StreamAction, StreamCollectionAction, StreamLibraryAction, StreamVideoAction,
+    OutputFormat, StreamAction, StreamCaptionAction, StreamCollectionAction, StreamLibraryAction,
+    StreamVideoAction,
 };
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
@@ -489,6 +490,51 @@ async fn handle_video(
             let stream = resolve_stream_client(*library_id, debug, record).await?;
             stream.delete_video(*library_id, video_id).await?;
             eprintln!("Deleted video {video_id} from library {library_id}");
+        }
+        StreamVideoAction::Caption { action } => {
+            handle_caption(action, format, debug, record).await?;
+        }
+    }
+    Ok(())
+}
+
+async fn handle_caption(
+    action: &StreamCaptionAction,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    match action {
+        StreamCaptionAction::Add {
+            library_id,
+            video_id,
+            srclang,
+            file,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let content = std::fs::read_to_string(file)
+                .with_context(|| format!("failed to read caption file: {file}"))?;
+            let result = stream
+                .add_caption(*library_id, video_id, srclang, &content)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                eprintln!("Added {srclang} captions to video {video_id}");
+            }
+        }
+        StreamCaptionAction::Delete {
+            library_id,
+            video_id,
+            srclang,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            stream
+                .delete_caption(*library_id, video_id, srclang)
+                .await?;
+            eprintln!("Deleted {srclang} captions from video {video_id}");
         }
     }
     Ok(())

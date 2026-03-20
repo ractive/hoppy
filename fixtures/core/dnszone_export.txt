@@ -1,0 +1,26 @@
+; Zone file for example.com
+; Exported from bunny.net DNS
+$ORIGIN example.com.
+$TTL 300
+
+@       IN      SOA     kiki.bunny.net. admin.example.com. (
+                        2024011501      ; Serial
+                        3600            ; Refresh
+                        900             ; Retry
+                        1209600         ; Expire
+                        300             ; Minimum TTL
+                        )
+
+; NS Records
+@       IN      NS      kiki.bunny.net.
+@       IN      NS      coco.bunny.net.
+
+; A Records
+@       300     IN      A       93.184.216.34
+www     3600    IN      CNAME   example.com.
+
+; MX Records
+@       3600    IN      MX      10 mail.example.com.
+
+; TXT Records
+@       3600    IN      TXT     "v=spf1 include:_spf.example.com ~all"

@@ -1,4 +1,5 @@
 use bunny_api_shield::ShieldClient;
+use bunny_api_shield::types::ShieldMetricsResponse;
 use bunny_api_shield::types::{
     AccessListType, CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule,
     RateLimitCounterKey, RateLimitRuleConfiguration, UpdateAccessListConfiguration,
@@ -35,6 +36,8 @@ const FIXTURE_WAF_PROFILES_LIST: &str =
 const FIXTURE_ERROR_UNAUTHORIZED: &str =
     include_str!("../../../fixtures/shield/error_unauthorized.json");
 const FIXTURE_ERROR_NOT_FOUND: &str = include_str!("../../../fixtures/shield/error_not_found.json");
+const FIXTURE_METRICS_OVERVIEW: &str =
+    include_str!("../../../fixtures/shield/metrics_overview.json");
 
 fn test_client(uri: &str) -> ShieldClient {
     ShieldClient::with_base_url("test-api-key", uri)
@@ -799,4 +802,36 @@ async fn debug_client_works_without_error() {
         .unwrap();
 
     assert!(!result.data.unwrap().is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// Metrics
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn get_metrics_overview_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overview/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_METRICS_OVERVIEW, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result: ShieldMetricsResponse = test_client(&server.uri())
+        .get_metrics_overview(55001)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    let overview = data.overview.unwrap();
+    assert_eq!(overview.d_do_s_mitigated, 142);
+    assert_eq!(overview.waf_triggered_rules, 87);
+    assert_eq!(overview.ratelimit_breaches, 23);
+    assert_eq!(overview.bot_detection_challenged, 456);
+    assert_eq!(data.total_billable_requests, Some(245678));
 }

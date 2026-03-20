@@ -630,3 +630,10 @@ All should use wiremock to mock HTTP responses.
 | **Total** | | **~356 new tests** |
 | Existing | API client wiremock | 193 tests |
 | **Grand Total** | | **~549 tests** |
+
+## Related
+- [[development-roadmap]] — roadmap and current test architecture
+- [[adding-a-feature]] — feature checklist including test steps
+- [[iterations/rust-e2e-rewrite-plan]] — E2E test architecture plan
+- [[testing/test-environment-needed]] — test environment requirements
+- [[testing/e2e-test-report]] — latest test results

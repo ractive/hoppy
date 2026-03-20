@@ -129,3 +129,8 @@ Re-uploading to an existing video ID returns 400. Must delete and recreate.
 **Affected endpoint:** `POST /videolibrary/{id}`
 
 Same as all other bunny.net update endpoints — uses POST, not PATCH.
+
+## Related
+- [[api/bunny-api-client-patterns]] — how patterns handle these quirks
+- [[api/bunny-api-overview]] — API overview
+- [[decision-log]] — decisions influenced by these quirks

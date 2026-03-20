@@ -43,6 +43,7 @@ async fn main() {
         Commands::Container { action } => {
             commands::container::handle(action, cli.format, cli.debug, cli.yes, record).await
         }
+        Commands::Purge { url } => commands::purge::handle(url, cli.debug, record).await,
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();
             generate(*shell, &mut cmd, "hoppy", &mut std::io::stdout());
