@@ -5,6 +5,8 @@ pub mod pull_zone;
 pub mod purge;
 pub mod script;
 pub mod shield;
+pub mod statistics;
 pub mod storage;
 pub mod storage_zone;
 pub mod stream;
+pub mod video_library;

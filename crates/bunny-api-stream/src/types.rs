@@ -327,3 +327,19 @@ impl FetchVideo {
         self
     }
 }
+
+// ---------------------------------------------------------------------------
+// Statistics types
+// ---------------------------------------------------------------------------
+
+/// Video library statistics returned by `GET /library/{libraryId}/statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoStatistics {
+    pub views_chart: Option<HashMap<String, i64>>,
+    pub watch_time_chart: Option<HashMap<String, i64>>,
+    pub country_view_counts: Option<HashMap<String, i64>>,
+    pub country_watch_time: Option<HashMap<String, i64>>,
+    #[serde(default)]
+    pub engagement_score: i64,
+}

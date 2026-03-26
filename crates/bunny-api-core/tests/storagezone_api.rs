@@ -9,6 +9,7 @@ const FIXTURE_CREATE: &str = include_str!("../../../fixtures/core/storagezone_cr
 const FIXTURE_NOT_FOUND: &str =
     include_str!("../../../fixtures/core/error_not_found_storagezone.json");
 const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
+const FIXTURE_STATISTICS: &str = include_str!("../../../fixtures/core/storagezone_statistics.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -250,4 +251,29 @@ async fn update_storage_zone_sends_correct_body() {
         .update_storage_zone(9001, &body)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn get_storage_zone_statistics_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/storagezone/42/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_STATISTICS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let stats = test_client(&server.uri())
+        .get_storage_zone_statistics(42, None, None)
+        .await
+        .unwrap();
+
+    assert!(stats.storage_used_chart.is_some());
+    assert_eq!(stats.storage_used_chart.unwrap().len(), 3);
+    assert!(stats.file_count_chart.is_some());
+    assert_eq!(stats.file_count_chart.unwrap().len(), 3);
 }
