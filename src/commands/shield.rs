@@ -1077,7 +1077,9 @@ async fn handle_metrics(
                 println!("{json}");
             } else if let Some(data) = &metrics.data {
                 for entry in data {
-                    let id = entry.ratelimit_id.unwrap_or(0);
+                    let label = entry
+                        .ratelimit_id
+                        .map_or_else(|| "unknown".to_string(), |id| id.to_string());
                     if let Some(overview) = &entry.overview {
                         let rows = vec![
                             MetricsRow {
@@ -1097,7 +1099,7 @@ async fn handle_metrics(
                                 count: overview.challenged_breaches,
                             },
                         ];
-                        eprintln!("Rate limit rule {id}:");
+                        eprintln!("Rate limit rule {label}:");
                         output::print_data(&rows, format);
                     }
                 }

@@ -214,7 +214,7 @@ pub async fn handle(
                 if let Some(chart) = &stats.storage_used_chart
                     && let Some(latest) = chart.values().max()
                 {
-                    eprintln!("  Latest storage used: {latest} bytes");
+                    eprintln!("  Peak storage used: {latest} bytes");
                 }
                 if let Some(chart) = &stats.file_count_chart
                     && let Some(latest) = chart.values().max()
