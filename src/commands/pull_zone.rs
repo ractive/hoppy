@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::cli::{OutputFormat, PullZoneAction, PullZoneHostnameAction};
 use crate::output::{self, PaginatedListJson};
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{CreatePullZone, PullZone, PurgeCache, UpdatePullZone};
 use std::io::{self, BufRead, Write};
@@ -199,6 +199,103 @@ pub async fn handle(
         }
         PullZoneAction::Hostname { action } => {
             handle_hostname(&client, action).await?;
+        }
+        PullZoneAction::Statistics {
+            id,
+            r#type,
+            date_from,
+            date_to,
+            hourly,
+        } => {
+            let df = date_from.as_deref();
+            let dt = date_to.as_deref();
+            match r#type.as_str() {
+                "optimizer" => {
+                    let stats = client
+                        .get_pull_zone_optimizer_statistics(*id, df, dt, *hourly)
+                        .await?;
+                    if let OutputFormat::Json = format {
+                        let json = serde_json::to_string_pretty(&stats)
+                            .context("failed to serialize to JSON")?;
+                        println!("{json}");
+                    } else {
+                        #[derive(serde::Serialize, tabled::Tabled)]
+                        struct Row {
+                            #[tabled(rename = "Metric")]
+                            metric: String,
+                            #[tabled(rename = "Value")]
+                            value: String,
+                        }
+                        let rows = vec![
+                            Row {
+                                metric: "Total Requests Optimized".to_string(),
+                                value: format!("{:.0}", stats.total_requests_optimized),
+                            },
+                            Row {
+                                metric: "Total Traffic Saved".to_string(),
+                                value: format!("{:.0}", stats.total_traffic_saved),
+                            },
+                            Row {
+                                metric: "Avg Processing Time".to_string(),
+                                value: format!("{:.2} ms", stats.average_processing_time),
+                            },
+                            Row {
+                                metric: "Avg Compression Ratio".to_string(),
+                                value: format!("{:.2}%", stats.average_compression_ratio),
+                            },
+                        ];
+                        output::print_data(&rows, format);
+                    }
+                }
+                "origin-shield" => {
+                    let stats = client
+                        .get_pull_zone_origin_shield_statistics(*id, df, dt, *hourly)
+                        .await?;
+                    if let OutputFormat::Json = format {
+                        let json = serde_json::to_string_pretty(&stats)
+                            .context("failed to serialize to JSON")?;
+                        println!("{json}");
+                    } else {
+                        eprintln!(
+                            "Origin shield queue statistics for pull zone {id} (use --format json for chart data)"
+                        );
+                    }
+                }
+                "safehop" => {
+                    let stats = client
+                        .get_pull_zone_safehop_statistics(*id, df, dt, *hourly)
+                        .await?;
+                    if let OutputFormat::Json = format {
+                        let json = serde_json::to_string_pretty(&stats)
+                            .context("failed to serialize to JSON")?;
+                        println!("{json}");
+                    } else {
+                        #[derive(serde::Serialize, tabled::Tabled)]
+                        struct Row {
+                            #[tabled(rename = "Metric")]
+                            metric: String,
+                            #[tabled(rename = "Value")]
+                            value: String,
+                        }
+                        let rows = vec![
+                            Row {
+                                metric: "Total Requests Retried".to_string(),
+                                value: format!("{:.0}", stats.total_requests_retried),
+                            },
+                            Row {
+                                metric: "Total Requests Saved".to_string(),
+                                value: format!("{:.0}", stats.total_requests_saved),
+                            },
+                        ];
+                        output::print_data(&rows, format);
+                    }
+                }
+                other => {
+                    bail!(
+                        "unknown statistics type '{other}', expected: optimizer, origin-shield, safehop"
+                    );
+                }
+            }
         }
     }
 

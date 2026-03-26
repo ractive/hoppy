@@ -43,6 +43,26 @@ async fn main() {
         Commands::Container { action } => {
             commands::container::handle(action, cli.format, cli.debug, cli.yes, record).await
         }
+        Commands::Statistics {
+            date_from,
+            date_to,
+            pull_zone,
+            hourly,
+        } => {
+            commands::statistics::handle(
+                cli.format,
+                cli.debug,
+                record,
+                date_from.as_deref(),
+                date_to.as_deref(),
+                *pull_zone,
+                *hourly,
+            )
+            .await
+        }
+        Commands::VideoLibrary { action } => {
+            commands::video_library::handle(action, cli.format, cli.debug, record).await
+        }
         Commands::Purge { url } => commands::purge::handle(url, cli.debug, record).await,
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();

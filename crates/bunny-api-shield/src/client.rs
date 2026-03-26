@@ -11,9 +11,12 @@ use crate::types::{
     CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest, CustomAccessList,
     CustomAccessListResponse, CustomWafRule, GetCustomWafRulesResponse, GetRateLimitRulesResponse,
     GetShieldZoneResponse, GetShieldZonesResponse, ProblemDetails, RateLimitRule,
-    ShieldMetricsResponse, ShieldZoneResponse, UpdateAccessListConfiguration, UpdateBotDetection,
-    UpdateBotDetectionResponse, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
-    UpdateShieldZoneRequest, WafProfileMinimal,
+    ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse, ShieldMetricsResponse,
+    ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
+    ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse, ShieldZoneResponse,
+    UpdateAccessListConfiguration, UpdateBotDetection, UpdateBotDetectionResponse,
+    UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule, UpdateShieldZoneRequest,
+    WafProfileMinimal,
 };
 
 const BASE_URL: &str = "https://api.bunny.net";
@@ -614,6 +617,100 @@ impl ShieldClient {
                         .get(self.url(&format!("/shield/metrics/overview/{shield_zone_id}"))),
                 ),
             )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get detailed metrics for a Shield Zone.
+    ///
+    /// `GET /shield/metrics/overview/{shieldZoneId}/detailed`
+    pub async fn get_metrics_detailed(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<ShieldDetailedMetricsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/metrics/overview/{shield_zone_id}/detailed"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get rate limit metrics for all rules in a Shield Zone.
+    ///
+    /// `GET /shield/metrics/rate-limits/{shieldZoneId}`
+    pub async fn get_metrics_rate_limits(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<ShieldRateLimitsMetricsResponse> {
+        let resp = self
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/metrics/rate-limits/{shield_zone_id}"))),
+                ),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get rate limit metrics for a single rule.
+    ///
+    /// `GET /shield/metrics/rate-limit/{id}`
+    pub async fn get_metrics_rate_limit(&self, id: i64) -> Result<ShieldRateLimitMetricsResponse> {
+        let resp = self
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/metrics/rate-limit/{id}"))),
+                ),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get metrics for a single WAF rule in a Shield Zone.
+    ///
+    /// `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}`
+    pub async fn get_metrics_waf_rule(
+        &self,
+        shield_zone_id: i64,
+        rule_id: i64,
+    ) -> Result<ShieldWafRuleMetricsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/metrics/shield-zone/{shield_zone_id}/waf-rule/{rule_id}"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get bot detection metrics for a Shield Zone.
+    ///
+    /// `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection`
+    pub async fn get_metrics_bot_detection(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<ShieldBotDetectionMetricsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/metrics/shield-zone/{shield_zone_id}/bot-detection"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get upload scanning metrics for a Shield Zone.
+    ///
+    /// `GET /shield/metrics/shield-zone/{shieldZoneId}/upload-scanning`
+    pub async fn get_metrics_upload_scanning(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<ShieldUploadScanningMetricsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/metrics/shield-zone/{shield_zone_id}/upload-scanning"
+            )))))
             .await?;
         self.handle_response(resp).await
     }

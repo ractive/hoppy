@@ -451,7 +451,11 @@ fn live_dns_zone_lifecycle() {
             "expected LoggingEnabled to be true after update"
         );
 
-        // 6. Delete is handled by cleanup stack
+        // 6. Get statistics
+        let stats = support::hoppy_live_json(&["dns", "zone", "statistics", "--id", &zone_id_str]);
+        assert!(stats.success, "zone statistics failed: {}", stats.stderr);
+
+        // 7. Delete is handled by cleanup stack
     });
 }
 
@@ -647,4 +651,36 @@ async fn dns_record_add_mx_with_priority() {
 
     assert!(output.status.success());
     insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn dns_zone_statistics_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "zone",
+            "statistics",
+            "--id",
+            "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert!(json["TotalQueriesServed"].is_number());
 }

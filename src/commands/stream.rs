@@ -266,6 +266,42 @@ async fn handle_library(
             core.delete_video_library(*id).await?;
             eprintln!("Deleted video library {id}");
         }
+        StreamLibraryAction::Statistics {
+            library_id,
+            date_from,
+            date_to,
+            hourly,
+            video_guid,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stats = stream
+                .get_library_statistics(
+                    *library_id,
+                    date_from.as_deref(),
+                    date_to.as_deref(),
+                    *hourly,
+                    video_guid.as_deref(),
+                )
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&stats).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct Row {
+                    #[tabled(rename = "Metric")]
+                    metric: String,
+                    #[tabled(rename = "Value")]
+                    value: String,
+                }
+                let rows = vec![Row {
+                    metric: "Engagement Score".to_string(),
+                    value: stats.engagement_score.to_string(),
+                }];
+                output::print_data(&rows, format);
+            }
+        }
     }
     Ok(())
 }

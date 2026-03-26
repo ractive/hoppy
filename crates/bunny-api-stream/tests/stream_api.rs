@@ -19,6 +19,8 @@ const FIXTURE_NOT_FOUND: &str = include_str!("../../../fixtures/stream/error_not
 const FIXTURE_CAPTION_ADD: &str = include_str!("../../../fixtures/stream/video_caption_add.json");
 const FIXTURE_CAPTION_DELETE: &str =
     include_str!("../../../fixtures/stream/video_caption_delete.json");
+const FIXTURE_LIBRARY_STATS: &str =
+    include_str!("../../../fixtures/stream/library_statistics.json");
 
 fn test_client(uri: &str) -> StreamClient {
     StreamClient::new("stream-test-key").with_base_url(uri)
@@ -596,4 +598,30 @@ async fn delete_caption_sends_correct_request() {
         .await
         .unwrap();
     assert!(result.success);
+}
+
+#[tokio::test]
+async fn get_library_statistics_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/library/12345/statistics"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_LIBRARY_STATS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let stats = test_client(&server.uri())
+        .get_library_statistics(12345, None, None, false, None)
+        .await
+        .unwrap();
+
+    assert_eq!(stats.engagement_score, 72);
+    assert!(stats.views_chart.is_some());
+    assert_eq!(stats.views_chart.unwrap().len(), 3);
+    assert!(stats.country_view_counts.is_some());
+    assert_eq!(stats.country_view_counts.unwrap().len(), 4);
 }

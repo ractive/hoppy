@@ -1149,7 +1149,77 @@ fn live_shield_lifecycle() {
             bd_update.stderr
         );
 
-        // 25. Cleanup runs via CleanupStack: pull-zone delete removes the Shield zone too
+        // 25. Metrics overview (already existed)
+        let m_overview = support::hoppy_live_json(&[
+            "shield",
+            "metrics",
+            "overview",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            m_overview.success,
+            "shield metrics overview failed — stderr: {}",
+            m_overview.stderr
+        );
+
+        // 26. Metrics detailed
+        let m_detailed = support::hoppy_live_json(&[
+            "shield",
+            "metrics",
+            "detailed",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            m_detailed.success,
+            "shield metrics detailed failed — stderr: {}",
+            m_detailed.stderr
+        );
+
+        // 27. Metrics rate-limits (zone-level)
+        let m_ratelimits = support::hoppy_live_json(&[
+            "shield",
+            "metrics",
+            "rate-limits",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            m_ratelimits.success,
+            "shield metrics rate-limits failed — stderr: {}",
+            m_ratelimits.stderr
+        );
+
+        // 28. Metrics bot-detection
+        let m_bot = support::hoppy_live_json(&[
+            "shield",
+            "metrics",
+            "bot-detection",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            m_bot.success,
+            "shield metrics bot-detection failed — stderr: {}",
+            m_bot.stderr
+        );
+
+        // 29. Metrics upload-scanning
+        let m_upload = support::hoppy_live_json(&[
+            "shield",
+            "metrics",
+            "upload-scanning",
+            "--shield-zone-id",
+            &sz_id_str,
+        ]);
+        assert!(
+            m_upload.success,
+            "shield metrics upload-scanning failed — stderr: {}",
+            m_upload.stderr
+        );
+
+        // 30. Cleanup runs via CleanupStack: pull-zone delete removes the Shield zone too
     });
 }
 
@@ -1217,4 +1287,192 @@ async fn shield_metrics_overview_table() {
 
     assert!(output.status.success());
     insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn shield_metrics_detailed_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overview/55001/detailed"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_overview_detailed.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "detailed",
+            "--shield-zone-id",
+            "55001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn shield_metrics_rate_limits_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/rate-limits/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_rate_limits.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "rate-limits",
+            "--shield-zone-id",
+            "55001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn shield_metrics_rate_limit_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/rate-limit/8001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_rate_limit.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "rate-limit",
+            "--id",
+            "8001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn shield_metrics_waf_rule_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/55001/waf-rule/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_waf_rule.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "waf-rule",
+            "--shield-zone-id",
+            "55001",
+            "--rule-id",
+            "9001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn shield_metrics_bot_detection_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/55001/bot-detection"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_bot_detection.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "bot-detection",
+            "--shield-zone-id",
+            "55001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn shield_metrics_upload_scanning_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/55001/upload-scanning"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_upload_scanning.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "upload-scanning",
+            "--shield-zone-id",
+            "55001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
 }

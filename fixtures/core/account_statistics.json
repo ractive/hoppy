@@ -1,0 +1,33 @@
+{
+  "TotalBandwidthUsed": 5368709120,
+  "TotalOriginTraffic": 1073741824,
+  "AverageOriginResponseTime": 245,
+  "TotalRequestsServed": 150000,
+  "CacheHitRate": 0.87,
+  "BandwidthUsedChart": {
+    "2026-03-01T00:00:00Z": 1789903360,
+    "2026-03-02T00:00:00Z": 1789903360,
+    "2026-03-03T00:00:00Z": 1788902400
+  },
+  "RequestsServedChart": {
+    "2026-03-01T00:00:00Z": 50000,
+    "2026-03-02T00:00:00Z": 50000,
+    "2026-03-03T00:00:00Z": 50000
+  },
+  "CacheHitRateChart": {
+    "2026-03-01T00:00:00Z": 0.85,
+    "2026-03-02T00:00:00Z": 0.88,
+    "2026-03-03T00:00:00Z": 0.88
+  },
+  "Error3xxChart": null,
+  "Error4xxChart": null,
+  "Error5xxChart": null,
+  "OriginResponseTimeChart": null,
+  "BandwidthCachedChart": null,
+  "PullRequestsPulledChart": null,
+  "OriginShieldBandwidthUsedChart": null,
+  "OriginShieldInternalBandwidthUsedChart": null,
+  "OriginTrafficChart": null,
+  "UserBalanceHistoryChart": null,
+  "GeoTrafficDistribution": null
+}
