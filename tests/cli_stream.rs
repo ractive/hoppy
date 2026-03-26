@@ -472,6 +472,43 @@ async fn stream_video_caption_delete() {
     assert!(output.status.success());
 }
 
+#[tokio::test]
+async fn stream_library_statistics_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/library/12345/statistics"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/library_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "library",
+        "statistics",
+        "--library-id",
+        "12345",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
 // ---------------------------------------------------------------------------
 // Live API lifecycle tests
 // ---------------------------------------------------------------------------
@@ -536,7 +573,38 @@ fn live_stream_library_lifecycle() {
             "Name was not updated"
         );
 
-        // 6. Cleanup runs via CleanupStack on exit (delete with --yes)
+        // 6. Stream library statistics
+        let lib_stats =
+            support::hoppy_live_json(&["stream", "library", "statistics", "--library-id", &id_str]);
+        assert!(
+            lib_stats.success,
+            "stream library statistics failed — stderr: {}",
+            lib_stats.stderr
+        );
+
+        // 7. Video library DRM statistics (via core API)
+        let drm_stats =
+            support::hoppy_live_json(&["video-library", "drm-statistics", "--id", &id_str]);
+        assert!(
+            drm_stats.success,
+            "video library DRM statistics failed — stderr: {}",
+            drm_stats.stderr
+        );
+
+        // 8. Video library transcribing statistics (via core API)
+        let tx_stats = support::hoppy_live_json(&[
+            "video-library",
+            "transcribing-statistics",
+            "--id",
+            &id_str,
+        ]);
+        assert!(
+            tx_stats.success,
+            "video library transcribing statistics failed — stderr: {}",
+            tx_stats.stderr
+        );
+
+        // 9. Cleanup runs via CleanupStack on exit (delete with --yes)
     });
 }
 

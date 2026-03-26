@@ -10,10 +10,12 @@ use reqwest::{
 use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::{
-    AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone, CreateStorageZone,
-    CreateVideoLibrary, DnsImportResult, DnsRecord, DnsZone, PaginatedList, PullZone, PurgeCache,
-    StorageZone, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone,
-    UpdateVideoLibrary, VideoLibrary,
+    AccountStatistics, AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone,
+    CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord, DnsZone, DnsZoneStatistics,
+    OptimizerStatistics, OriginShieldQueueStatistics, PaginatedList, PullZone, PurgeCache,
+    SafeHopStatistics, StorageZone, StorageZoneStatistics, UpdateDnsRecord, UpdateDnsZone,
+    UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
+    VideoLibraryTranscribingStatistics,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -522,6 +524,193 @@ impl CoreClient {
     pub async fn get_billing(&self) -> Result<BillingDetails> {
         let url = format!("{}/billing", self.base_url);
         let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Statistics endpoints
+    // -----------------------------------------------------------------------
+
+    /// Fetch account-level statistics.
+    pub async fn get_statistics(
+        &self,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+        pull_zone: Option<i64>,
+        hourly: bool,
+    ) -> Result<AccountStatistics> {
+        let url = format!("{}/statistics", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        if let Some(v) = pull_zone {
+            rb = rb.query(&[("pullZone", v.to_string())]);
+        }
+        if hourly {
+            rb = rb.query(&[("hourly", "true")]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch statistics for a Storage Zone.
+    pub async fn get_storage_zone_statistics(
+        &self,
+        id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+    ) -> Result<StorageZoneStatistics> {
+        let url = format!("{}/storagezone/{id}/statistics", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch statistics for a DNS Zone.
+    pub async fn get_dns_zone_statistics(
+        &self,
+        id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+    ) -> Result<DnsZoneStatistics> {
+        let url = format!("{}/dnszone/{id}/statistics", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch optimizer statistics for a Pull Zone.
+    pub async fn get_pull_zone_optimizer_statistics(
+        &self,
+        pull_zone_id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+        hourly: bool,
+    ) -> Result<OptimizerStatistics> {
+        let url = format!(
+            "{}/pullzone/{pull_zone_id}/optimizer/statistics",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        if hourly {
+            rb = rb.query(&[("hourly", "true")]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch origin shield queue statistics for a Pull Zone.
+    pub async fn get_pull_zone_origin_shield_statistics(
+        &self,
+        pull_zone_id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+        hourly: bool,
+    ) -> Result<OriginShieldQueueStatistics> {
+        let url = format!(
+            "{}/pullzone/{pull_zone_id}/originshield/queuestatistics",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        if hourly {
+            rb = rb.query(&[("hourly", "true")]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch SafeHop statistics for a Pull Zone.
+    pub async fn get_pull_zone_safehop_statistics(
+        &self,
+        pull_zone_id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+        hourly: bool,
+    ) -> Result<SafeHopStatistics> {
+        let url = format!(
+            "{}/pullzone/{pull_zone_id}/safehop/statistics",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        if hourly {
+            rb = rb.query(&[("hourly", "true")]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch DRM statistics for a Video Library.
+    pub async fn get_video_library_drm_statistics(
+        &self,
+        id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+    ) -> Result<VideoLibraryDrmStatistics> {
+        let url = format!("{}/videolibrary/{id}/drm/statistics", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch transcribing statistics for a Video Library.
+    pub async fn get_video_library_transcribing_statistics(
+        &self,
+        id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+    ) -> Result<VideoLibraryTranscribingStatistics> {
+        let url = format!(
+            "{}/videolibrary/{id}/transcribing/statistics",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
         let response = self.send(rb).await?;
         self.handle_response(response).await
     }

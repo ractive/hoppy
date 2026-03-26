@@ -25,5 +25,5 @@ pub mod types;
 pub use client::StreamClient;
 pub use types::{
     Caption, Collection, CreateCollection, CreateVideo, FetchVideo, PaginatedList, StatusMessage,
-    UpdateCollection, UpdateVideo, Video, VideoStatus,
+    UpdateCollection, UpdateVideo, Video, VideoStatistics, VideoStatus,
 };

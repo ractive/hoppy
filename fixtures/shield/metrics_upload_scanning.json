@@ -1,0 +1,24 @@
+{
+  "data": {
+    "overviewPastTwentyEightDays": {
+      "2026-03-01T00:00:00Z": {
+        "loggedRequests": 2,
+        "blockedRequests": 1,
+        "filesScanned": 50
+      },
+      "2026-03-02T00:00:00Z": {
+        "loggedRequests": 3,
+        "blockedRequests": 2,
+        "filesScanned": 60
+      },
+      "2026-03-03T00:00:00Z": {
+        "loggedRequests": 1,
+        "blockedRequests": 0,
+        "filesScanned": 45
+      }
+    },
+    "totalLoggedRequests": 6,
+    "totalBlockedRequests": 3,
+    "totalFilesScanned": 155
+  }
+}

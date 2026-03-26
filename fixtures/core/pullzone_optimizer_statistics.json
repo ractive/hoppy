@@ -1,0 +1,14 @@
+{
+  "TotalRequestsOptimized": 45000.0,
+  "TotalTrafficSaved": 2147483648.0,
+  "AverageProcessingTime": 12.5,
+  "AverageCompressionRatio": 68.3,
+  "RequestsOptimizedChart": {
+    "2026-03-01T00:00:00Z": 15000,
+    "2026-03-02T00:00:00Z": 15000,
+    "2026-03-03T00:00:00Z": 15000
+  },
+  "AverageCompressionChart": null,
+  "TrafficSavedChart": null,
+  "AverageProcessingTimeChart": null
+}

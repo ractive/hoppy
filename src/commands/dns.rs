@@ -269,6 +269,33 @@ async fn handle_zone(
                 );
             }
         }
+        DnsZoneAction::Statistics {
+            id,
+            date_from,
+            date_to,
+        } => {
+            let stats = client
+                .get_dns_zone_statistics(*id, date_from.as_deref(), date_to.as_deref())
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&stats).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct Row {
+                    #[tabled(rename = "Metric")]
+                    metric: String,
+                    #[tabled(rename = "Value")]
+                    value: String,
+                }
+                let rows = vec![Row {
+                    metric: "Total Queries Served".to_string(),
+                    value: stats.total_queries_served.to_string(),
+                }];
+                output::print_data(&rows, format);
+            }
+        }
     }
     Ok(())
 }

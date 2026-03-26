@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -1004,4 +1006,122 @@ impl UpdateDnsRecord {
         self.comment = Some(comment.into());
         self
     }
+}
+
+// ---------------------------------------------------------------------------
+// Statistics types
+// ---------------------------------------------------------------------------
+
+/// Account-level statistics returned by `GET /statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AccountStatistics {
+    #[serde(default)]
+    pub total_bandwidth_used: i64,
+    #[serde(default)]
+    pub total_origin_traffic: i64,
+    #[serde(default)]
+    pub average_origin_response_time: i64,
+    #[serde(default)]
+    pub total_requests_served: i64,
+    #[serde(default)]
+    pub cache_hit_rate: f64,
+    pub origin_response_time_chart: Option<HashMap<String, i64>>,
+    pub bandwidth_used_chart: Option<HashMap<String, i64>>,
+    pub bandwidth_cached_chart: Option<HashMap<String, i64>>,
+    pub cache_hit_rate_chart: Option<HashMap<String, f64>>,
+    pub requests_served_chart: Option<HashMap<String, i64>>,
+    pub pull_requests_pulled_chart: Option<HashMap<String, i64>>,
+    pub origin_shield_bandwidth_used_chart: Option<HashMap<String, i64>>,
+    pub origin_shield_internal_bandwidth_used_chart: Option<HashMap<String, i64>>,
+    pub origin_traffic_chart: Option<HashMap<String, i64>>,
+    pub user_balance_history_chart: Option<HashMap<String, f64>>,
+    pub geo_traffic_distribution: Option<HashMap<String, i64>>,
+    #[serde(rename = "Error3xxChart")]
+    pub error3xx_chart: Option<HashMap<String, i64>>,
+    #[serde(rename = "Error4xxChart")]
+    pub error4xx_chart: Option<HashMap<String, i64>>,
+    #[serde(rename = "Error5xxChart")]
+    pub error5xx_chart: Option<HashMap<String, i64>>,
+}
+
+/// Storage Zone statistics returned by `GET /storagezone/{id}/statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct StorageZoneStatistics {
+    pub storage_used_chart: Option<HashMap<String, i64>>,
+    pub file_count_chart: Option<HashMap<String, i64>>,
+}
+
+/// DNS Zone statistics returned by `GET /dnszone/{id}/statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsZoneStatistics {
+    #[serde(default)]
+    pub total_queries_served: i64,
+    pub queries_served_chart: Option<HashMap<String, i64>>,
+    pub normal_queries_served_chart: Option<HashMap<String, i64>>,
+    pub smart_queries_served_chart: Option<HashMap<String, i64>>,
+    pub queries_by_type_chart: Option<HashMap<String, i64>>,
+}
+
+/// Pull Zone optimizer statistics returned by
+/// `GET /pullzone/{pullZoneId}/optimizer/statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct OptimizerStatistics {
+    #[serde(default)]
+    pub total_requests_optimized: f64,
+    #[serde(default)]
+    pub total_traffic_saved: f64,
+    #[serde(default)]
+    pub average_processing_time: f64,
+    #[serde(default)]
+    pub average_compression_ratio: f64,
+    pub requests_optimized_chart: Option<HashMap<String, i64>>,
+    pub average_compression_chart: Option<HashMap<String, f64>>,
+    pub traffic_saved_chart: Option<HashMap<String, i64>>,
+    pub average_processing_time_chart: Option<HashMap<String, f64>>,
+}
+
+/// Origin shield queue statistics returned by
+/// `GET /pullzone/{pullZoneId}/originshield/queuestatistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct OriginShieldQueueStatistics {
+    pub concurrent_requests_chart: Option<HashMap<String, i64>>,
+    pub queued_requests_chart: Option<HashMap<String, i64>>,
+}
+
+/// SafeHop statistics returned by
+/// `GET /pullzone/{pullZoneId}/safehop/statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SafeHopStatistics {
+    #[serde(default)]
+    pub total_requests_retried: f64,
+    #[serde(default)]
+    pub total_requests_saved: f64,
+    pub requests_retried_chart: Option<HashMap<String, i64>>,
+    pub requests_saved_chart: Option<HashMap<String, i64>>,
+}
+
+/// Video Library DRM statistics returned by
+/// `GET /videolibrary/{id}/drm/statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct VideoLibraryDrmStatistics {
+    #[serde(default)]
+    pub total_licenses_issued: i64,
+    pub licenses_issued_chart: Option<HashMap<String, i64>>,
+}
+
+/// Video Library transcribing statistics returned by
+/// `GET /videolibrary/{id}/transcribing/statistics`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct VideoLibraryTranscribingStatistics {
+    #[serde(default)]
+    pub total_transcription_seconds: i64,
+    pub transcription_seconds_chart: Option<HashMap<String, i64>>,
 }

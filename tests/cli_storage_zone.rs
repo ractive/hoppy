@@ -207,6 +207,37 @@ async fn storage_zone_get_not_found() {
     assert!(!output.status.success());
 }
 
+#[tokio::test]
+async fn storage_zone_statistics_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/42/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "storage-zone",
+            "statistics",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert!(json["StorageUsedChart"].is_object());
+}
+
 #[cfg(feature = "live-api")]
 #[test]
 fn live_storage_zone_lifecycle() {
@@ -264,6 +295,10 @@ fn live_storage_zone_lifecycle() {
             .unwrap_or(false);
         assert!(rewrite, "Rewrite404To200 should be true after update");
 
-        // 6. Delete is handled by cleanup
+        // 6. Get statistics
+        let stats = support::hoppy_live_json(&["storage-zone", "statistics", "--id", &id_str]);
+        assert!(stats.success, "statistics failed: {}", stats.stderr);
+
+        // 7. Delete is handled by cleanup
     });
 }

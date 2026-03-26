@@ -1,11 +1,15 @@
 use bunny_api_shield::ShieldClient;
-use bunny_api_shield::types::ShieldMetricsResponse;
 use bunny_api_shield::types::{
     AccessListType, CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule,
     RateLimitCounterKey, RateLimitRuleConfiguration, UpdateAccessListConfiguration,
     UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
     UpdateShieldZoneRequest, WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType,
     WafRuleSeverityType,
+};
+use bunny_api_shield::types::{
+    ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse, ShieldMetricsResponse,
+    ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
+    ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse,
 };
 use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -38,6 +42,18 @@ const FIXTURE_ERROR_UNAUTHORIZED: &str =
 const FIXTURE_ERROR_NOT_FOUND: &str = include_str!("../../../fixtures/shield/error_not_found.json");
 const FIXTURE_METRICS_OVERVIEW: &str =
     include_str!("../../../fixtures/shield/metrics_overview.json");
+const FIXTURE_METRICS_OVERVIEW_DETAILED: &str =
+    include_str!("../../../fixtures/shield/metrics_overview_detailed.json");
+const FIXTURE_METRICS_RATE_LIMITS: &str =
+    include_str!("../../../fixtures/shield/metrics_rate_limits.json");
+const FIXTURE_METRICS_RATE_LIMIT: &str =
+    include_str!("../../../fixtures/shield/metrics_rate_limit.json");
+const FIXTURE_METRICS_WAF_RULE: &str =
+    include_str!("../../../fixtures/shield/metrics_waf_rule.json");
+const FIXTURE_METRICS_BOT_DETECTION: &str =
+    include_str!("../../../fixtures/shield/metrics_bot_detection.json");
+const FIXTURE_METRICS_UPLOAD_SCANNING: &str =
+    include_str!("../../../fixtures/shield/metrics_upload_scanning.json");
 
 fn test_client(uri: &str) -> ShieldClient {
     ShieldClient::with_base_url("test-api-key", uri)
@@ -834,4 +850,179 @@ async fn get_metrics_overview_returns_data() {
     assert_eq!(overview.ratelimit_breaches, 23);
     assert_eq!(overview.bot_detection_challenged, 456);
     assert_eq!(data.total_billable_requests, Some(245678));
+}
+
+#[tokio::test]
+async fn get_metrics_detailed_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overview/55001/detailed"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_METRICS_OVERVIEW_DETAILED, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result: ShieldDetailedMetricsResponse = test_client(&server.uri())
+        .get_metrics_detailed(55001)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    let waf = data.waf.unwrap();
+    let totals = waf.totals.unwrap();
+    assert_eq!(totals.blocked_requests, 54);
+    assert_eq!(totals.logged_requests, 28);
+    assert_eq!(totals.challenged_requests, 5);
+
+    let ddos = data.ddos.unwrap();
+    let ddos_totals = ddos.totals.unwrap();
+    assert_eq!(ddos_totals.blocked_requests, 95);
+    assert_eq!(ddos_totals.verified_requests, 170);
+
+    let rl = data.rate_limit.unwrap();
+    let rl_totals = rl.totals.unwrap();
+    assert_eq!(rl_totals.total_breaches, 23);
+
+    assert_eq!(data.total_billable_requests_this_month, Some(245678));
+    assert_eq!(data.resolution, Some(3));
+}
+
+#[tokio::test]
+async fn get_metrics_rate_limits_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/rate-limits/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_METRICS_RATE_LIMITS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result: ShieldRateLimitsMetricsResponse = test_client(&server.uri())
+        .get_metrics_rate_limits(55001)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.len(), 2);
+    assert_eq!(data[0].ratelimit_id, Some(8001));
+    let overview = data[0].overview.as_ref().unwrap();
+    assert_eq!(overview.total_breaches, 15);
+    assert_eq!(overview.blocked_breaches, 7);
+}
+
+#[tokio::test]
+async fn get_metrics_rate_limit_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/rate-limit/8001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_METRICS_RATE_LIMIT, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result: ShieldRateLimitMetricsResponse = test_client(&server.uri())
+        .get_metrics_rate_limit(8001)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.ratelimit_id, Some(8001));
+    let overview = data.overview.unwrap();
+    assert_eq!(overview.total_breaches, 15);
+    assert_eq!(overview.blocked_breaches, 7);
+}
+
+#[tokio::test]
+async fn get_metrics_waf_rule_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/55001/waf-rule/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_METRICS_WAF_RULE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result: ShieldWafRuleMetricsResponse = test_client(&server.uri())
+        .get_metrics_waf_rule(55001, 9001)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.total_triggers, 87);
+    assert_eq!(data.blocked_requests, 54);
+    assert_eq!(data.logged_requests, 28);
+    assert_eq!(data.challenged_requests, 5);
+}
+
+#[tokio::test]
+async fn get_metrics_bot_detection_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/55001/bot-detection"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_METRICS_BOT_DETECTION, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result: ShieldBotDetectionMetricsResponse = test_client(&server.uri())
+        .get_metrics_bot_detection(55001)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.total_logged_requests, 234);
+    assert_eq!(data.total_challenged_requests, 456);
+    let history = data.overview_past_twenty_eight_days.unwrap();
+    assert_eq!(history.len(), 5);
+}
+
+#[tokio::test]
+async fn get_metrics_upload_scanning_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/55001/upload-scanning"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_METRICS_UPLOAD_SCANNING, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result: ShieldUploadScanningMetricsResponse = test_client(&server.uri())
+        .get_metrics_upload_scanning(55001)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.total_logged_requests, 6);
+    assert_eq!(data.total_blocked_requests, 3);
+    assert_eq!(data.total_files_scanned, 155);
+    let history = data.overview_past_twenty_eight_days.unwrap();
+    assert_eq!(history.len(), 3);
 }

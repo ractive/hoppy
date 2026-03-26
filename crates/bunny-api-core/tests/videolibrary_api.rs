@@ -10,6 +10,10 @@ const FIXTURE_CREATE: &str = include_str!("../../../fixtures/core/videolibrary_c
 const FIXTURE_NOT_FOUND: &str =
     include_str!("../../../fixtures/core/error_not_found_videolibrary.json");
 const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
+const FIXTURE_DRM_STATS: &str =
+    include_str!("../../../fixtures/core/videolibrary_drm_statistics.json");
+const FIXTURE_TRANSCRIBING_STATS: &str =
+    include_str!("../../../fixtures/core/videolibrary_transcribing_statistics.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -322,4 +326,48 @@ async fn video_library_api_key_not_serialized() {
         json.get("ReadOnlyApiKey").is_none(),
         "ReadOnlyApiKey must not be serialized"
     );
+}
+
+#[tokio::test]
+async fn get_video_library_drm_statistics_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/42/drm/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_DRM_STATS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let stats = test_client(&server.uri())
+        .get_video_library_drm_statistics(42, None, None)
+        .await
+        .unwrap();
+
+    assert_eq!(stats.total_licenses_issued, 9500);
+}
+
+#[tokio::test]
+async fn get_video_library_transcribing_statistics_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/42/transcribing/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_TRANSCRIBING_STATS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let stats = test_client(&server.uri())
+        .get_video_library_transcribing_statistics(42, None, None)
+        .await
+        .unwrap();
+
+    assert_eq!(stats.total_transcription_seconds, 86400);
 }

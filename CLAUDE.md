@@ -1,16 +1,40 @@
 # Documentation
-Keep all the documentation in the folder ./hoppy-knowledgebase as *.md markdown files with frontmatter in yaml format with properties of type text, numbers, checkboxes, dates, dates and times, or lists.
 
-Use it as your second brain and document there:
-- outcome of online researches
-- design decisions
-- iteration planning with one file per iteration and a markdown task lists for steps, tasks, ACs
+Keep all documentation in `./hoppy-knowledgebase/` as `*.md` markdown files with YAML frontmatter (text, numbers, checkboxes, dates, lists). Use it as your second brain:
+- Research outcomes → `research/`
+- Design decisions → `decision-log.md`
+- Iteration plans → `iterations/iteration-NN-slug.md` (one file per iteration, markdown task lists for steps/tasks/ACs)
 
-Organize content in suitable subfolders. Create markdown links to other related files.
-Keep it compatible with obsidian.
+Organize in subfolders. Use `[[wikilinks]]` for cross-references. Keep Obsidian-compatible.
+
+**Iteration file rules:**
+- Always name `iteration-NN-slug.md` — no standalone plan files
+- Frontmatter must include: `title`, `type: iteration`, `date`, `tags`, `status`, `branch`
+- Status lifecycle: `planned` → `in-progress` → `completed` → `superseded`
+- Add tasks as markdown checkboxes `[] Task 1`
+- Mark tasks as completed only after verifying that they were done
 
 # Rust
-Use the rust-analyzer-lsp plugin with its rust language server for code intelligence and analysis like:
-"analyze this Rust code", "find all references to this function", "go to the definition of this struct", or "check for clippy warnings in my project".
 
-clippy (with -D warnings) and fmt must have run successfully before commiting or creating a PR.
+## Language Server
+Use the rust-analyzer LSP plugin for code intelligence: analyzing code, finding references, go-to-definition, checking clippy warnings.
+
+## Code Quality Gates
+Before committing or creating a PR, run **in this order** and fix all issues:
+1. `cargo fmt`
+2. `cargo clippy --workspace --all-targets -- -D warnings`
+3. `cargo test --workspace`
+
+Never skip a step. Never commit code that fails any of these.
+
+## Code Patterns
+- No `.unwrap()` / `.expect()` outside of tests — use `anyhow::Context` with `?`
+- No `clone()` unless the borrow checker demands it — try references first
+- No unnecessary `pub` on struct fields
+- All code stays in Rust — no polyglot tooling (no Bun, Node, Python scripts)
+- New crates go in `crates/` with naming convention `bunny-api-<domain>`
+
+## PR Discipline
+- One iteration = one branch = one PR
+- Branch naming: `iter-N/short-description`
+- Self-review the diff before requesting review — catch fmt, clippy, dead code yourself

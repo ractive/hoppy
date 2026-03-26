@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::cli::{OutputFormat, StorageZoneAction};
 use crate::output::{self, PaginatedListJson};
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use bunny_api_core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
 use std::io::{self, BufRead, Write};
 
@@ -196,6 +196,32 @@ pub async fn handle(
             }
             client.delete_storage_zone(*id).await?;
             eprintln!("Deleted storage zone {id}");
+        }
+        StorageZoneAction::Statistics {
+            id,
+            date_from,
+            date_to,
+        } => {
+            let stats = client
+                .get_storage_zone_statistics(*id, date_from.as_deref(), date_to.as_deref())
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&stats).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                eprintln!("Storage zone {id} statistics (use --format json for chart data)");
+                if let Some(chart) = &stats.storage_used_chart
+                    && let Some(latest) = chart.values().max()
+                {
+                    eprintln!("  Latest storage used: {latest} bytes");
+                }
+                if let Some(chart) = &stats.file_count_chart
+                    && let Some(latest) = chart.values().max()
+                {
+                    eprintln!("  Peak file count: {latest}");
+                }
+            }
         }
     }
 

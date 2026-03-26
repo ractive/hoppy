@@ -981,6 +981,245 @@ async fn handle_metrics(
                 eprintln!("No metrics data available.");
             }
         }
+        ShieldMetricsAction::Detailed { shield_zone_id } => {
+            let metrics = client.get_metrics_detailed(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&metrics)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(data) = &metrics.data {
+                let mut rows = Vec::new();
+                if let Some(waf) = &data.waf
+                    && let Some(totals) = &waf.totals
+                {
+                    rows.push(MetricsRow {
+                        category: "WAF Blocked".to_string(),
+                        count: totals.blocked_requests,
+                    });
+                    rows.push(MetricsRow {
+                        category: "WAF Logged".to_string(),
+                        count: totals.logged_requests,
+                    });
+                    rows.push(MetricsRow {
+                        category: "WAF Challenged".to_string(),
+                        count: totals.challenged_requests,
+                    });
+                }
+                if let Some(ddos) = &data.ddos
+                    && let Some(totals) = &ddos.totals
+                {
+                    rows.push(MetricsRow {
+                        category: "DDoS Blocked".to_string(),
+                        count: totals.blocked_requests,
+                    });
+                    rows.push(MetricsRow {
+                        category: "DDoS Verified".to_string(),
+                        count: totals.verified_requests,
+                    });
+                    rows.push(MetricsRow {
+                        category: "DDoS Challenged".to_string(),
+                        count: totals.challenged_requests,
+                    });
+                }
+                if let Some(rl) = &data.rate_limit
+                    && let Some(totals) = &rl.totals
+                {
+                    rows.push(MetricsRow {
+                        category: "Rate Limit Breaches".to_string(),
+                        count: totals.total_breaches,
+                    });
+                    rows.push(MetricsRow {
+                        category: "Rate Limit Blocked".to_string(),
+                        count: totals.blocked_breaches,
+                    });
+                }
+                if let Some(al) = &data.access_lists
+                    && let Some(totals) = &al.totals
+                {
+                    rows.push(MetricsRow {
+                        category: "Access List Blocked".to_string(),
+                        count: totals.blocked_requests,
+                    });
+                }
+                if let Some(bd) = &data.bot_detection
+                    && let Some(totals) = &bd.totals
+                {
+                    rows.push(MetricsRow {
+                        category: "Bot Detection Challenged".to_string(),
+                        count: totals.challenged_requests,
+                    });
+                }
+                if let Some(us) = &data.upload_scanning
+                    && let Some(totals) = &us.totals
+                {
+                    rows.push(MetricsRow {
+                        category: "Upload Scanning Blocked".to_string(),
+                        count: totals.blocked_requests,
+                    });
+                    rows.push(MetricsRow {
+                        category: "Files Scanned".to_string(),
+                        count: totals.files_scanned,
+                    });
+                }
+                output::print_data(&rows, format);
+                if let Some(billable) = data.total_billable_requests_this_month {
+                    eprintln!("Total billable requests this month: {billable}");
+                }
+            } else {
+                eprintln!("No detailed metrics data available.");
+            }
+        }
+        ShieldMetricsAction::RateLimits { shield_zone_id } => {
+            let metrics = client.get_metrics_rate_limits(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&metrics)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(data) = &metrics.data {
+                for entry in data {
+                    let id = entry.ratelimit_id.unwrap_or(0);
+                    if let Some(overview) = &entry.overview {
+                        let rows = vec![
+                            MetricsRow {
+                                category: "Total Breaches".to_string(),
+                                count: overview.total_breaches,
+                            },
+                            MetricsRow {
+                                category: "Blocked".to_string(),
+                                count: overview.blocked_breaches,
+                            },
+                            MetricsRow {
+                                category: "Logged".to_string(),
+                                count: overview.logged_breaches,
+                            },
+                            MetricsRow {
+                                category: "Challenged".to_string(),
+                                count: overview.challenged_breaches,
+                            },
+                        ];
+                        eprintln!("Rate limit rule {id}:");
+                        output::print_data(&rows, format);
+                    }
+                }
+            } else {
+                eprintln!("No rate limit metrics data available.");
+            }
+        }
+        ShieldMetricsAction::RateLimit { id } => {
+            let metrics = client.get_metrics_rate_limit(*id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&metrics)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(data) = &metrics.data {
+                if let Some(overview) = &data.overview {
+                    let rows = vec![
+                        MetricsRow {
+                            category: "Total Breaches".to_string(),
+                            count: overview.total_breaches,
+                        },
+                        MetricsRow {
+                            category: "Blocked".to_string(),
+                            count: overview.blocked_breaches,
+                        },
+                        MetricsRow {
+                            category: "Logged".to_string(),
+                            count: overview.logged_breaches,
+                        },
+                        MetricsRow {
+                            category: "Challenged".to_string(),
+                            count: overview.challenged_breaches,
+                        },
+                    ];
+                    output::print_data(&rows, format);
+                }
+            } else {
+                eprintln!("No rate limit metrics data available.");
+            }
+        }
+        ShieldMetricsAction::WafRule {
+            shield_zone_id,
+            rule_id,
+        } => {
+            let metrics = client
+                .get_metrics_waf_rule(*shield_zone_id, *rule_id)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&metrics)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(data) = &metrics.data {
+                let rows = vec![
+                    MetricsRow {
+                        category: "Total Triggers".to_string(),
+                        count: data.total_triggers,
+                    },
+                    MetricsRow {
+                        category: "Blocked".to_string(),
+                        count: data.blocked_requests,
+                    },
+                    MetricsRow {
+                        category: "Logged".to_string(),
+                        count: data.logged_requests,
+                    },
+                    MetricsRow {
+                        category: "Challenged".to_string(),
+                        count: data.challenged_requests,
+                    },
+                ];
+                output::print_data(&rows, format);
+            } else {
+                eprintln!("No WAF rule metrics data available.");
+            }
+        }
+        ShieldMetricsAction::BotDetection { shield_zone_id } => {
+            let metrics = client.get_metrics_bot_detection(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&metrics)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(data) = &metrics.data {
+                let rows = vec![
+                    MetricsRow {
+                        category: "Total Logged".to_string(),
+                        count: data.total_logged_requests,
+                    },
+                    MetricsRow {
+                        category: "Total Challenged".to_string(),
+                        count: data.total_challenged_requests,
+                    },
+                ];
+                output::print_data(&rows, format);
+            } else {
+                eprintln!("No bot detection metrics data available.");
+            }
+        }
+        ShieldMetricsAction::UploadScanning { shield_zone_id } => {
+            let metrics = client.get_metrics_upload_scanning(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&metrics)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(data) = &metrics.data {
+                let rows = vec![
+                    MetricsRow {
+                        category: "Total Logged".to_string(),
+                        count: data.total_logged_requests,
+                    },
+                    MetricsRow {
+                        category: "Total Blocked".to_string(),
+                        count: data.total_blocked_requests,
+                    },
+                    MetricsRow {
+                        category: "Files Scanned".to_string(),
+                        count: data.total_files_scanned,
+                    },
+                ];
+                output::print_data(&rows, format);
+            } else {
+                eprintln!("No upload scanning metrics data available.");
+            }
+        }
     }
     Ok(())
 }
