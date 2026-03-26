@@ -8,7 +8,7 @@ use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::{
     Collection, CreateCollection, CreateVideo, FetchVideo, PaginatedList, StatusMessage,
-    UpdateCollection, UpdateVideo, Video,
+    UpdateCollection, UpdateVideo, Video, VideoStatistics,
 };
 
 const BASE_URL: &str = "https://video.bunnycdn.com";
@@ -368,6 +368,37 @@ impl StreamClient {
             self.base_url
         );
         let resp = self.send(self.auth(self.http.delete(&url))).await?;
+        self.parse_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Statistics methods
+    // -----------------------------------------------------------------------
+
+    /// Fetch statistics for a video library.
+    pub async fn get_library_statistics(
+        &self,
+        library_id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+        hourly: bool,
+        video_guid: Option<&str>,
+    ) -> Result<VideoStatistics> {
+        let url = format!("{}/library/{library_id}/statistics", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        if hourly {
+            rb = rb.query(&[("hourly", "true")]);
+        }
+        if let Some(v) = video_guid {
+            rb = rb.query(&[("videoGuid", v)]);
+        }
+        let resp = self.send(rb).await?;
         self.parse_response(resp).await
     }
 }

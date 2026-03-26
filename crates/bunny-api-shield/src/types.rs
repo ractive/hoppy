@@ -1121,6 +1121,247 @@ pub struct ShieldUploadScanningSummary {
     pub files_scanned: i64,
 }
 
+// ---------------------------------------------------------------------------
+// Detailed metrics types
+// ---------------------------------------------------------------------------
+
+/// Detailed overview metrics for a Shield Zone.
+/// Returned by `GET /shield/metrics/overview/{shieldZoneId}/detailed`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldDetailedMetricsResponse {
+    pub data: Option<ShieldDetailedMetricsData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldDetailedMetricsData {
+    pub waf: Option<WafDetailCategory>,
+    #[serde(rename = "ddos")]
+    pub ddos: Option<DdosDetailCategory>,
+    pub rate_limit: Option<RateLimitDetailCategory>,
+    pub access_lists: Option<AccessListDetailCategory>,
+    pub bot_detection: Option<BotDetectionDetailCategory>,
+    pub upload_scanning: Option<UploadScanningDetailCategory>,
+    #[serde(default)]
+    pub total_clean_requests_limit: Option<i64>,
+    #[serde(default)]
+    pub total_billable_requests_this_month: Option<i64>,
+    #[serde(default)]
+    pub resolution: Option<i32>,
+}
+
+/// Per-timestamp metrics for WAF and access lists (blocked/logged/challenged requests).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlockedLoggedChallengedMetrics {
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafDetailCategory {
+    pub metrics: HashMap<String, BlockedLoggedChallengedMetrics>,
+    pub totals: Option<BlockedLoggedChallengedMetrics>,
+}
+
+/// Per-timestamp metrics for DDoS (blocked/verified/challenged requests).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DdosDetailMetrics {
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub verified_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DdosDetailCategory {
+    pub metrics: HashMap<String, DdosDetailMetrics>,
+    pub totals: Option<DdosDetailMetrics>,
+}
+
+/// Per-timestamp metrics for rate limits (total/blocked/logged/challenged breaches).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateLimitDetailMetrics {
+    #[serde(default)]
+    pub total_breaches: i64,
+    #[serde(default)]
+    pub blocked_breaches: i64,
+    #[serde(default)]
+    pub logged_breaches: i64,
+    #[serde(default)]
+    pub challenged_breaches: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateLimitDetailCategory {
+    pub metrics: HashMap<String, RateLimitDetailMetrics>,
+    pub totals: Option<RateLimitDetailMetrics>,
+}
+
+/// Access list category reuses `BlockedLoggedChallengedMetrics` (same shape as WAF).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccessListDetailCategory {
+    pub metrics: HashMap<String, BlockedLoggedChallengedMetrics>,
+    pub totals: Option<BlockedLoggedChallengedMetrics>,
+}
+
+/// Per-timestamp metrics for bot detection (logged/challenged requests).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BotDetectionDetailMetrics {
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BotDetectionDetailCategory {
+    pub metrics: HashMap<String, BotDetectionDetailMetrics>,
+    pub totals: Option<BotDetectionDetailMetrics>,
+}
+
+/// Per-timestamp metrics for upload scanning (logged/blocked requests + files scanned).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadScanningDetailMetrics {
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub files_scanned: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadScanningDetailCategory {
+    pub metrics: HashMap<String, UploadScanningDetailMetrics>,
+    pub totals: Option<UploadScanningDetailMetrics>,
+}
+
+// ---------------------------------------------------------------------------
+// Rate limit metrics types
+// ---------------------------------------------------------------------------
+
+/// Rate limits metrics for all rules in a Shield Zone.
+/// Returned by `GET /shield/metrics/rate-limits/{shieldZoneId}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldRateLimitsMetricsResponse {
+    pub data: Option<Vec<RateLimitMetricsEntry>>,
+}
+
+/// Rate limit metrics for a single rule.
+/// Returned by `GET /shield/metrics/rate-limit/{id}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldRateLimitMetricsResponse {
+    pub data: Option<RateLimitMetricsEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateLimitMetricsEntry {
+    #[serde(default)]
+    pub ratelimit_id: Option<i64>,
+    pub overview: Option<RateLimitDetailMetrics>,
+    pub ratelimit_overview_past_twenty_eight_days: Option<HashMap<String, RateLimitDetailMetrics>>,
+}
+
+// ---------------------------------------------------------------------------
+// WAF rule metrics types
+// ---------------------------------------------------------------------------
+
+/// WAF rule metrics for a single rule in a Shield Zone.
+/// Returned by `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldWafRuleMetricsResponse {
+    pub data: Option<WafRuleMetricsData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafRuleMetricsData {
+    #[serde(default)]
+    pub total_triggers: i64,
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+    pub overview_past_twenty_eight_days: Option<HashMap<String, WafRuleDetailMetrics>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafRuleDetailMetrics {
+    #[serde(default)]
+    pub total_triggers: i64,
+    #[serde(default)]
+    pub blocked_requests: i64,
+    #[serde(default)]
+    pub logged_requests: i64,
+    #[serde(default)]
+    pub challenged_requests: i64,
+}
+
+// ---------------------------------------------------------------------------
+// Bot detection metrics types
+// ---------------------------------------------------------------------------
+
+/// Bot detection metrics for a Shield Zone.
+/// Returned by `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldBotDetectionMetricsResponse {
+    pub data: Option<BotDetectionMetricsData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BotDetectionMetricsData {
+    pub overview_past_twenty_eight_days: Option<HashMap<String, BotDetectionDetailMetrics>>,
+    #[serde(default)]
+    pub total_logged_requests: i64,
+    #[serde(default)]
+    pub total_challenged_requests: i64,
+}
+
+// ---------------------------------------------------------------------------
+// Upload scanning metrics types
+// ---------------------------------------------------------------------------
+
+/// Upload scanning metrics for a Shield Zone.
+/// Returned by `GET /shield/metrics/shield-zone/{shieldZoneId}/upload-scanning`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldUploadScanningMetricsResponse {
+    pub data: Option<UploadScanningMetricsData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadScanningMetricsData {
+    pub overview_past_twenty_eight_days: Option<HashMap<String, UploadScanningDetailMetrics>>,
+    #[serde(default)]
+    pub total_logged_requests: i64,
+    #[serde(default)]
+    pub total_blocked_requests: i64,
+    #[serde(default)]
+    pub total_files_scanned: i64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

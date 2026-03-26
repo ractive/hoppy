@@ -484,8 +484,149 @@ fn live_pull_zone_lifecycle() {
         let purge = support::hoppy_live_json(&["pull-zone", "purge", "--id", &id_str]);
         assert!(purge.success, "purge failed — stderr: {}", purge.stderr);
 
-        // 7. Cleanup runs via CleanupStack on exit
+        // 7. Optimizer statistics
+        let opt_stats = support::hoppy_live_json(&[
+            "pull-zone",
+            "statistics",
+            "--id",
+            &id_str,
+            "--type",
+            "optimizer",
+        ]);
+        assert!(
+            opt_stats.success,
+            "optimizer statistics failed — stderr: {}",
+            opt_stats.stderr
+        );
+
+        // 8. Origin shield statistics
+        let os_stats = support::hoppy_live_json(&[
+            "pull-zone",
+            "statistics",
+            "--id",
+            &id_str,
+            "--type",
+            "origin-shield",
+        ]);
+        assert!(
+            os_stats.success,
+            "origin-shield statistics failed — stderr: {}",
+            os_stats.stderr
+        );
+
+        // 9. SafeHop statistics
+        let sh_stats = support::hoppy_live_json(&[
+            "pull-zone",
+            "statistics",
+            "--id",
+            &id_str,
+            "--type",
+            "safehop",
+        ]);
+        assert!(
+            sh_stats.success,
+            "safehop statistics failed — stderr: {}",
+            sh_stats.stderr
+        );
+
+        // 10. Cleanup runs via CleanupStack on exit
     });
+}
+
+#[tokio::test]
+async fn pull_zone_statistics_optimizer_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001/optimizer/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_optimizer_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "statistics",
+            "--id",
+            "1001",
+            "--type",
+            "optimizer",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn pull_zone_statistics_origin_shield_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001/originshield/queuestatistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_originshield_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "statistics",
+            "--id",
+            "1001",
+            "--type",
+            "origin-shield",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn pull_zone_statistics_safehop_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001/safehop/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_safehop_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "statistics",
+            "--id",
+            "1001",
+            "--type",
+            "safehop",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
 }
 
 #[cfg(feature = "live-api")]

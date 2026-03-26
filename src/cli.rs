@@ -96,6 +96,26 @@ pub enum Commands {
         action: AuthAction,
     },
 
+    /// View account-level CDN statistics
+    Statistics {
+        #[arg(long)]
+        date_from: Option<String>,
+        #[arg(long)]
+        date_to: Option<String>,
+        /// Filter by pull zone ID
+        #[arg(long)]
+        pull_zone: Option<i64>,
+        /// Show hourly granularity
+        #[arg(long)]
+        hourly: bool,
+    },
+
+    /// Manage video libraries (core API — DRM and transcription stats)
+    VideoLibrary {
+        #[command(subcommand)]
+        action: VideoLibraryAction,
+    },
+
     /// Purge a URL from CDN cache
     Purge {
         /// The URL to purge
@@ -117,6 +137,30 @@ pub enum Commands {
 pub enum AuthAction {
     /// Validate the API key and display account billing info
     Check,
+}
+
+// -- Video Library (core API — DRM and transcription stats) --
+
+#[derive(Subcommand)]
+pub enum VideoLibraryAction {
+    /// Get DRM statistics for a video library
+    DrmStatistics {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        date_from: Option<String>,
+        #[arg(long)]
+        date_to: Option<String>,
+    },
+    /// Get transcribing statistics for a video library
+    TranscribingStatistics {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        date_from: Option<String>,
+        #[arg(long)]
+        date_to: Option<String>,
+    },
 }
 
 // -- Pull Zone --
@@ -182,6 +226,21 @@ pub enum PullZoneAction {
         /// Limit purge to a specific cache tag
         #[arg(long)]
         cache_tag: Option<String>,
+    },
+    /// Get pull zone statistics
+    Statistics {
+        #[arg(long)]
+        id: i64,
+        /// Statistics type: optimizer, origin-shield, safehop
+        #[arg(long, value_name = "TYPE")]
+        r#type: String,
+        #[arg(long)]
+        date_from: Option<String>,
+        #[arg(long)]
+        date_to: Option<String>,
+        /// Show hourly granularity
+        #[arg(long)]
+        hourly: bool,
     },
     /// Manage pull zone hostnames and SSL
     Hostname {
@@ -294,6 +353,15 @@ pub enum StorageZoneAction {
     Delete {
         #[arg(long)]
         id: i64,
+    },
+    /// Get statistics for a storage zone
+    Statistics {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        date_from: Option<String>,
+        #[arg(long)]
+        date_to: Option<String>,
     },
 }
 
@@ -424,6 +492,15 @@ pub enum DnsZoneAction {
     Delete {
         #[arg(long)]
         id: i64,
+    },
+    /// Get statistics for a DNS zone
+    Statistics {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        date_from: Option<String>,
+        #[arg(long)]
+        date_to: Option<String>,
     },
     /// Export DNS zone as a BIND zone file
     Export {
@@ -581,6 +658,21 @@ pub enum StreamLibraryAction {
     Delete {
         #[arg(long)]
         id: i64,
+    },
+    /// Get statistics for a video library
+    Statistics {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        date_from: Option<String>,
+        #[arg(long)]
+        date_to: Option<String>,
+        /// Show hourly granularity
+        #[arg(long)]
+        hourly: bool,
+        /// Filter by video GUID
+        #[arg(long)]
+        video_guid: Option<String>,
     },
 }
 
@@ -784,6 +876,38 @@ pub enum ShieldAction {
 pub enum ShieldMetricsAction {
     /// Get metrics overview for a Shield Zone
     Overview {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get detailed metrics for a Shield Zone (time-series breakdown)
+    Detailed {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get rate limit metrics for all rules in a Shield Zone
+    RateLimits {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get rate limit metrics for a single rule
+    RateLimit {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Get WAF rule metrics for a specific rule in a Shield Zone
+    WafRule {
+        #[arg(long)]
+        shield_zone_id: i64,
+        #[arg(long)]
+        rule_id: i64,
+    },
+    /// Get bot detection metrics for a Shield Zone
+    BotDetection {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Get upload scanning metrics for a Shield Zone
+    UploadScanning {
         #[arg(long)]
         shield_zone_id: i64,
     },

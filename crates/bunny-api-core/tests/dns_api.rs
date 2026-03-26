@@ -14,6 +14,7 @@ const FIXTURE_NOT_FOUND: &str = include_str!("../../../fixtures/core/error_not_f
 const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
 const FIXTURE_EXPORT: &str = include_str!("../../../fixtures/core/dnszone_export.txt");
 const FIXTURE_IMPORT: &str = include_str!("../../../fixtures/core/dnszone_import.json");
+const FIXTURE_STATISTICS: &str = include_str!("../../../fixtures/core/dnszone_statistics.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -526,4 +527,28 @@ async fn debug_mode_logs_to_stderr() {
     let zone = client.get_dns_zone(50001).await.unwrap();
     assert_eq!(zone.id, 50001);
     assert_eq!(zone.domain, "example.com");
+}
+
+#[tokio::test]
+async fn get_dns_zone_statistics_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dnszone/42/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_STATISTICS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let stats = test_client(&server.uri())
+        .get_dns_zone_statistics(42, None, None)
+        .await
+        .unwrap();
+
+    assert_eq!(stats.total_queries_served, 85000);
+    assert!(stats.queries_served_chart.is_some());
+    assert_eq!(stats.queries_served_chart.unwrap().len(), 3);
 }
