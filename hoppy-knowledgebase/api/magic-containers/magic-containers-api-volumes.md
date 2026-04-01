@@ -6,6 +6,7 @@ subcategory: volumes
 base_url: https://api.bunny.net/mc
 auth_header: AccessKey
 date: 2026-03-18
+status: active
 ---
 
 # Magic Containers API - Volumes

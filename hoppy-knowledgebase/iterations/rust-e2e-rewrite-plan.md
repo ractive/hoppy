@@ -1,11 +1,12 @@
 ---
-title: "Plan: Rewrite Bun E2E Tests as Rust Tests"
 date: 2026-03-19
+status: completed
 tags:
-  - testing
-  - plan
-  - e2e
-status: complete
+- testing
+- e2e
+- planning
+title: "Plan: Rewrite Bun E2E Tests as Rust Tests"
+type: plan
 ---
 
 # Plan: Rewrite Bun E2E Tests as Rust Tests

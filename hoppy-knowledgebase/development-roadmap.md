@@ -1,11 +1,12 @@
 ---
-title: "Hoppy Development Roadmap"
 date: 2026-03-20
-tags:
-  - roadmap
-  - planning
-  - iterations
 status: active
+tags:
+- roadmap
+- planning
+- iteration
+title: Hoppy Development Roadmap
+type: roadmap
 ---
 
 # Hoppy Development Roadmap

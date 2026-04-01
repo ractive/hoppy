@@ -9,6 +9,8 @@ tags:
   - bunny-api
 base_url: https://api.bunny.net/mc
 authentication: AccessKey header (API key)
+type: reference
+status: active
 ---
 
 # Magic Containers Applications API Reference

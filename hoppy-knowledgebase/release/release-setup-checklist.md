@@ -1,11 +1,12 @@
 ---
-title: "Release Setup Checklist"
+title: Release Setup Checklist
 date: 2026-03-18
 tags:
   - release
   - setup
   - one-time
-status: active
+status: completed
+type: checklist
 ---
 
 # Release Setup Checklist

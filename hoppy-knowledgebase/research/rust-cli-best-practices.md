@@ -1,5 +1,5 @@
 ---
-title: "Modern Rust CLI Best Practices with Clap"
+title: Modern Rust CLI Best Practices with Clap
 date: 2026-03-17
 tags:
   - rust
@@ -8,6 +8,7 @@ tags:
   - clap_complete
   - best-practices
 status: research-complete
+type: research
 ---
 
 # Modern Rust CLI Best Practices with Clap

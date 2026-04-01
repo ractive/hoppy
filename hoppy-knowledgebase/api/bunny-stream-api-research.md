@@ -1,5 +1,5 @@
 ---
-title: "Bunny.net Stream (Video) API Research"
+title: Bunny.net Stream (Video) API Research
 date: 2026-03-18
 tags:
   - bunny-net
@@ -7,6 +7,7 @@ tags:
   - stream
   - video
 status: research-complete
+type: reference
 ---
 
 # Bunny.net Stream (Video) API Research

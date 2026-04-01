@@ -1,12 +1,13 @@
 ---
-title: "E2E Test Harness Plan"
+title: E2E Test Harness Plan
 date: 2026-03-19
 tags:
   - testing
   - e2e
   - cli
   - planning
-status: approved
+status: completed
+type: plan
 ---
 
 # E2E Test Harness for Hoppy CLI

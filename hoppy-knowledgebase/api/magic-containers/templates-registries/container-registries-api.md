@@ -5,6 +5,7 @@ source: https://docs.bunny.net/api-reference/magic-containers/containerregistrie
 base_url: https://api.bunny.net/mc
 auth_header: AccessKey
 fetched: 2026-03-18
+status: active
 ---
 
 # Container Registries API

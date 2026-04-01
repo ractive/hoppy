@@ -1,11 +1,12 @@
 ---
-title: "Adding a New Feature"
+title: Adding a New Feature
 date: 2026-03-19
 tags:
   - development
   - checklist
   - testing
 status: active
+type: guide
 ---
 
 # Adding a New Feature

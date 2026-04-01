@@ -1,14 +1,15 @@
 ---
-title: "Iteration 0.5 — Hand-Written Experiment Results"
 date: 2026-03-18
+status: completed
 tags:
-  - codegen
-  - hand-written
-  - serde
-  - api-client
-  - experiment
-  - decision
-status: complete
+- codegen
+- hand-written
+- serde
+- api-client
+- experiment
+- decision
+title: Iteration 0.5 — Hand-Written Experiment Results
+type: research
 ---
 
 # Hand-Written Experiment Results

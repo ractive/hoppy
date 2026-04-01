@@ -1,5 +1,5 @@
 ---
-title: "CLI Design Patterns from Cloud CLIs (az, gcloud, aws)"
+title: CLI Design Patterns from Cloud CLIs (az, gcloud, aws)
 date: 2026-03-17
 tags:
   - cli
@@ -9,6 +9,7 @@ tags:
   - aws
   - ux
 status: research-complete
+type: research
 ---
 
 # CLI Design Patterns from Cloud CLIs
