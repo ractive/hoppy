@@ -1,5 +1,5 @@
 ---
-title: "Bunny.net API Overview"
+title: Bunny.net API Overview
 date: 2026-03-17
 tags:
   - bunny-net
@@ -7,6 +7,7 @@ tags:
   - cdn
   - cloud
 status: research-complete
+type: reference
 ---
 
 # Bunny.net API Overview

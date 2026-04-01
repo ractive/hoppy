@@ -6,6 +6,7 @@ Keep all documentation in `./hoppy-knowledgebase/` as `*.md` markdown files with
 - Iteration plans → `iterations/iteration-NN-slug.md` (one file per iteration, markdown task lists for steps/tasks/ACs)
 
 Organize in subfolders. Use `[[wikilinks]]` for cross-references. Keep Obsidian-compatible.
+Always prefer using hyalo to work with the knowledebase instead of normal file tools!
 
 **Iteration file rules:**
 - Always name `iteration-NN-slug.md` — no standalone plan files

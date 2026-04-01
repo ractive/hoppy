@@ -1,5 +1,5 @@
 ---
-title: "Iteration 1 Code Review — Findings & Action Items"
+title: Iteration 1 Code Review — Findings & Action Items
 date: 2026-03-18
 tags:
   - code-review
@@ -8,6 +8,7 @@ tags:
   - rust
   - action-items
 status: completed
+type: review
 ---
 
 # Iteration 1 Code Review

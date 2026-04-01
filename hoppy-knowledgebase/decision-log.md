@@ -1,10 +1,11 @@
 ---
-title: "Decision Log"
 date: 2026-03-20
-tags:
-  - decisions
-  - architecture
 status: active
+tags:
+- architecture
+- decision
+title: Decision Log
+type: log
 ---
 
 # Decision Log

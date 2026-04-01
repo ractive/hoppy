@@ -1,15 +1,15 @@
 ---
+date: 2026-03-19
+status: completed
+tags:
+- testing
+- e2e
+- cli
+- rust
+- mock-server
+- record-replay
 title: CLI End-to-End Testing Research
 type: research
-date: 2026-03-19
-status: complete
-tags:
-  - testing
-  - e2e
-  - cli
-  - rust
-  - mock-server
-  - record-replay
 ---
 
 # CLI End-to-End Testing: Comprehensive Research

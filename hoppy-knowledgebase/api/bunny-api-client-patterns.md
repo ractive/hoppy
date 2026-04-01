@@ -1,5 +1,5 @@
 ---
-title: "Bunny.net API Client Patterns — Learnings from Iteration 0.5"
+title: Bunny.net API Client Patterns — Learnings from Iteration 0.5
 date: 2026-03-18
 tags:
   - patterns
@@ -9,6 +9,7 @@ tags:
   - rust
   - reference
 status: active
+type: reference
 ---
 
 # Bunny.net API Client Patterns

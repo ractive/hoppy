@@ -1,14 +1,14 @@
 ---
+date: 2026-03-18
+status: completed
+tags:
+- rust
+- code-review
+- best-practices
+- edition-2024
+- skill-building
 title: Rust Code Review Skill Research
 type: research
-date: 2026-03-18
-tags:
-  - rust
-  - code-review
-  - best-practices
-  - edition-2024
-  - skill-building
-status: complete
 ---
 
 # Rust Code Review Skill Research

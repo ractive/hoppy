@@ -1,5 +1,5 @@
 ---
-title: "OpenAPI Code Generation for Rust - Evaluation"
+title: OpenAPI Code Generation for Rust - Evaluation
 date: 2026-03-17
 tags:
   - rust
@@ -9,6 +9,7 @@ tags:
   - api-client
 status: research-complete
 recommendation: codegen-with-progenitor
+type: research
 ---
 
 # OpenAPI Code Generation for Rust
