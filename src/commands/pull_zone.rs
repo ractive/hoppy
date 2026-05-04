@@ -1,9 +1,12 @@
 use crate::auth;
-use crate::cli::{OutputFormat, PullZoneAction, PullZoneHostnameAction};
+use crate::cli::{EdgeRuleAction, OutputFormat, PullZoneAction, PullZoneHostnameAction};
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
-use bunny_api_core::types::{CreatePullZone, PullZone, PurgeCache, UpdatePullZone};
+use bunny_api_core::types::{
+    AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
+    MatchingType, PullZone, PurgeCache, TriggerType, UpdatePullZone,
+};
 use std::io::{self, BufRead, Write};
 
 // ---------------------------------------------------------------------------
@@ -200,6 +203,9 @@ pub async fn handle(
         PullZoneAction::Hostname { action } => {
             handle_hostname(&client, action).await?;
         }
+        PullZoneAction::EdgeRule { action } => {
+            handle_edge_rule(&client, action, format, yes).await?;
+        }
         PullZoneAction::Statistics {
             id,
             r#type,
@@ -353,4 +359,188 @@ fn print_pull_zone(pz: &PullZone, format: OutputFormat) {
         let detail = PullZoneDetail::from(pz);
         output::print_single(&detail, format);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Edge rule helpers
+// ---------------------------------------------------------------------------
+
+/// Compact table row for edge rule list output.
+#[derive(serde::Serialize, tabled::Tabled)]
+struct EdgeRuleRow {
+    #[tabled(rename = "GUID")]
+    guid: String,
+    #[tabled(rename = "Description")]
+    description: String,
+    #[tabled(rename = "Action")]
+    action: String,
+    #[tabled(rename = "Triggers")]
+    triggers: String,
+    #[tabled(rename = "Enabled")]
+    enabled: bool,
+}
+
+impl From<&EdgeRule> for EdgeRuleRow {
+    fn from(r: &EdgeRule) -> Self {
+        let action = r.action_type.map(|a| a.to_string()).unwrap_or_default();
+        let trigger_summary = if r.triggers.is_empty() {
+            "none".to_string()
+        } else {
+            format!("{} trigger(s)", r.triggers.len())
+        };
+        Self {
+            guid: r.guid.clone().unwrap_or_default(),
+            description: r.description.clone().unwrap_or_default(),
+            action,
+            triggers: trigger_summary,
+            enabled: r.enabled,
+        }
+    }
+}
+
+/// Parse a `--trigger` flag value like `url:*.jpg,*.png` into an `EdgeRuleTrigger`.
+fn parse_trigger(raw: &str) -> Result<EdgeRuleTrigger> {
+    let (type_str, patterns_str) = raw
+        .split_once(':')
+        .context("trigger must be in type:pattern1,pattern2 format")?;
+    let trigger_type: TriggerType = type_str
+        .parse()
+        .map_err(|e: String| anyhow::anyhow!("{e}"))?;
+    let patterns: Vec<String> = patterns_str
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    Ok(EdgeRuleTrigger {
+        trigger_type: Some(trigger_type),
+        pattern_matches: patterns,
+        pattern_matching_type: Some(MatchingType::MatchAny),
+        parameter1: None,
+    })
+}
+
+/// Build an `AddOrUpdateEdgeRule` from CLI flags.
+fn build_edge_rule_body(
+    guid: Option<&str>,
+    action_type: &str,
+    action_param1: Option<&str>,
+    action_param2: Option<&str>,
+    trigger_matching_type: &str,
+    triggers: &[String],
+    description: Option<&str>,
+) -> Result<AddOrUpdateEdgeRule> {
+    let action: EdgeRuleActionType = action_type
+        .parse()
+        .map_err(|e: String| anyhow::anyhow!("{e}"))?;
+    let matching: MatchingType = trigger_matching_type
+        .parse()
+        .map_err(|e: String| anyhow::anyhow!("{e}"))?;
+
+    let mut body = AddOrUpdateEdgeRule::new(action).trigger_matching_type(matching);
+
+    if let Some(g) = guid {
+        body = body.guid(g);
+    }
+    if let Some(p1) = action_param1 {
+        body = body.action_parameter1(p1);
+    }
+    if let Some(p2) = action_param2 {
+        body = body.action_parameter2(p2);
+    }
+    if let Some(desc) = description {
+        body = body.description(desc);
+    }
+    for raw in triggers {
+        body = body.trigger(parse_trigger(raw)?);
+    }
+    Ok(body)
+}
+
+async fn handle_edge_rule(
+    client: &CoreClient,
+    action: &EdgeRuleAction,
+    format: OutputFormat,
+    yes: bool,
+) -> Result<()> {
+    match action {
+        EdgeRuleAction::List { id } => {
+            let pz = client.get_pull_zone(*id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&pz.edge_rules)
+                    .expect("failed to serialize to JSON");
+                println!("{json}");
+            } else {
+                let rows: Vec<EdgeRuleRow> = pz.edge_rules.iter().map(EdgeRuleRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        EdgeRuleAction::Add {
+            id,
+            description,
+            action_type,
+            action_param1,
+            action_param2,
+            trigger_matching_type,
+            triggers,
+        } => {
+            let body = build_edge_rule_body(
+                None,
+                action_type,
+                action_param1.as_deref(),
+                action_param2.as_deref(),
+                trigger_matching_type,
+                triggers,
+                description.as_deref(),
+            )?;
+            client.add_or_update_edge_rule(*id, &body).await?;
+            eprintln!("Added edge rule to pull zone {id}");
+        }
+        EdgeRuleAction::Update {
+            id,
+            rule_id,
+            description,
+            action_type,
+            action_param1,
+            action_param2,
+            trigger_matching_type,
+            triggers,
+        } => {
+            let body = build_edge_rule_body(
+                Some(rule_id),
+                action_type,
+                action_param1.as_deref(),
+                action_param2.as_deref(),
+                trigger_matching_type,
+                triggers,
+                description.as_deref(),
+            )?;
+            client.add_or_update_edge_rule(*id, &body).await?;
+            eprintln!("Updated edge rule {rule_id} on pull zone {id}");
+        }
+        EdgeRuleAction::Delete { id, rule_id } => {
+            if !yes {
+                eprint!("Delete edge rule {rule_id} from pull zone {id}? [y/N] ");
+                io::stderr().flush()?;
+                let mut line = String::new();
+                io::stdin().lock().read_line(&mut line)?;
+                let answer = line.trim().to_lowercase();
+                if answer != "y" && answer != "yes" {
+                    eprintln!("Aborted.");
+                    return Ok(());
+                }
+            }
+            client.delete_edge_rule(*id, rule_id).await?;
+            eprintln!("Deleted edge rule {rule_id} from pull zone {id}");
+        }
+        EdgeRuleAction::Enable {
+            id,
+            rule_id,
+            enabled,
+        } => {
+            client.set_edge_rule_enabled(*id, rule_id, *enabled).await?;
+            let status = if *enabled { "Enabled" } else { "Disabled" };
+            eprintln!("{status} edge rule {rule_id} on pull zone {id}");
+        }
+    }
+    Ok(())
 }
