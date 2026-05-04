@@ -39,7 +39,8 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "EnableGeoZoneEu": false,
       "EnableGeoZoneAsia": false,
       "EnableGeoZoneSa": false,
-      "EnableGeoZoneAf": false
+      "EnableGeoZoneAf": false,
+      "EdgeRules": []
     },
     {
       "Id": 1001,
@@ -69,7 +70,8 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "EnableGeoZoneEu": false,
       "EnableGeoZoneAsia": false,
       "EnableGeoZoneSa": false,
-      "EnableGeoZoneAf": false
+      "EnableGeoZoneAf": false,
+      "EdgeRules": []
     }
   ],
   "CurrentPage": 1,
