@@ -915,6 +915,7 @@ async fn pull_zone_edge_rule_enable() {
         "--rule-id",
         "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "--enabled",
+        "true",
     ]);
     cmd.assert().success().stderr(predicates::str::contains(
         "Enabled edge rule a1b2c3d4-e5f6-7890-abcd-ef1234567890 on pull zone 1001",
