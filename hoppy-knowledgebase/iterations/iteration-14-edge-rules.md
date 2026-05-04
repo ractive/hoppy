@@ -1,5 +1,5 @@
 ---
-title: "Iteration 14 — Pull Zone Edge Rules"
+title: Iteration 14 — Pull Zone Edge Rules
 type: iteration
 date: 2026-03-20
 tags:
@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - cdn
   - edge-rules
-status: planned
+status: completed
 branch: iter-14/edge-rules
 ---
 
@@ -53,27 +53,27 @@ ActionType (enum):
   SetNetworkRateLimit, SetConnectionLimit, SetRequestsPerSecondLimit
 ```
 
-- [ ] Add `EdgeRule`, `EdgeRuleTrigger`, `TriggerMatchingType`, `ActionType`, `TriggerType` types to `bunny-api-core/src/types.rs`
-- [ ] API client: `POST /pullzone/{pullZoneId}/edgerules/addOrUpdate` — creates new or updates existing rule (upsert by Guid)
-- [ ] API client: `DELETE /pullzone/{pullZoneId}/edgerules/{edgeRuleId}` — delete a rule
-- [ ] API client: `POST /pullzone/{pullZoneId}/edgerules/{edgeRuleId}/setEdgeRuleEnabled` — enable/disable
+- [x] Add `EdgeRule`, `EdgeRuleTrigger`, `TriggerMatchingType`, `ActionType`, `TriggerType` types to `bunny-api-core/src/types.rs`
+- [x] API client: `POST /pullzone/{pullZoneId}/edgerules/addOrUpdate` — creates new or updates existing rule (upsert by Guid)
+- [x] API client: `DELETE /pullzone/{pullZoneId}/edgerules/{edgeRuleId}` — delete a rule
+- [x] API client: `POST /pullzone/{pullZoneId}/edgerules/{edgeRuleId}/setEdgeRuleEnabled` — enable/disable
 
 ### CLI Commands
 
 Edge rules are complex objects. The CLI should support:
 
-- [ ] `hoppy pull-zone edge-rule list --id <pull-zone-id>` — list rules (from PullZone.EdgeRules, no separate list endpoint)
-- [ ] `hoppy pull-zone edge-rule add --id <pull-zone-id> --description <text> --action-type <type> --action-param1 <val> --action-param2 <val> --trigger-matching-type <type> --trigger <type>:<pattern>[,<pattern>...]` (repeatable `--trigger` flag)
-- [ ] `hoppy pull-zone edge-rule update --id <pull-zone-id> --rule-id <guid> [same flags as add]` — updates via same upsert endpoint
-- [ ] `hoppy pull-zone edge-rule delete --id <pull-zone-id> --rule-id <guid>` — with confirmation
-- [ ] `hoppy pull-zone edge-rule enable --id <pull-zone-id> --rule-id <guid> --enabled <true|false>`
+- [x] `hoppy pull-zone edge-rule list --id <pull-zone-id>` — list rules (from PullZone.EdgeRules, no separate list endpoint)
+- [x] `hoppy pull-zone edge-rule add --id <pull-zone-id> --description <text> --action-type <type> --action-param1 <val> --action-param2 <val> --trigger-matching-type <type> --trigger <type>:<pattern>[,<pattern>...]` (repeatable `--trigger` flag)
+- [x] `hoppy pull-zone edge-rule update --id <pull-zone-id> --rule-id <guid> [same flags as add]` — updates via same upsert endpoint
+- [x] `hoppy pull-zone edge-rule delete --id <pull-zone-id> --rule-id <guid>` — with confirmation
+- [x] `hoppy pull-zone edge-rule enable --id <pull-zone-id> --rule-id <guid> --enabled <true|false>`
 
 ### Testing
 
-- [ ] Capture fixture: `pullzone_get.json` already contains `EdgeRules` array — verify it has data or capture a new one with rules
-- [ ] Capture fixture: `pullzone_edgerule_add.json` via `--record`
-- [ ] Wiremock + insta snapshot tests for add, delete, enable/disable
-- [ ] Live E2E test: create PZ → add redirect rule → list (via get PZ) → verify rule → enable/disable → delete rule → delete PZ
+- [x] Capture fixture: `pullzone_get.json` already contains `EdgeRules` array — verify it has data or capture a new one with rules
+- [x] Capture fixture: `pullzone_edgerule_add.json` via `--record`
+- [x] Wiremock + insta snapshot tests for add, delete, enable/disable
+- [x] Live E2E test: create PZ → add redirect rule → list (via get PZ) → verify rule → enable/disable → delete rule → delete PZ
 
 ---
 

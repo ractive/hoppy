@@ -1,0 +1,53 @@
+---
+source: tests/cli_pull_zone.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "Guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "ActionType": 1,
+    "ActionParameter1": "https://example.com/new-path",
+    "ActionParameter2": "301",
+    "ActionParameter3": null,
+    "Triggers": [
+      {
+        "Type": 0,
+        "PatternMatches": [
+          "*/old-path*"
+        ],
+        "PatternMatchingType": 0,
+        "Parameter1": ""
+      }
+    ],
+    "ExtraActions": [],
+    "TriggerMatchingType": 0,
+    "Description": "Redirect old paths",
+    "Enabled": true,
+    "OrderIndex": 0,
+    "ReadOnly": false
+  },
+  {
+    "Guid": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "ActionType": 4,
+    "ActionParameter1": "",
+    "ActionParameter2": "",
+    "ActionParameter3": null,
+    "Triggers": [
+      {
+        "Type": 4,
+        "PatternMatches": [
+          "CN",
+          "RU"
+        ],
+        "PatternMatchingType": 0,
+        "Parameter1": ""
+      }
+    ],
+    "ExtraActions": [],
+    "TriggerMatchingType": 0,
+    "Description": "Block countries",
+    "Enabled": true,
+    "OrderIndex": 1,
+    "ReadOnly": false
+  }
+]

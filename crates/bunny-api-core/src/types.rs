@@ -45,9 +45,296 @@ impl std::fmt::Display for OriginType {
     }
 }
 
+/// The action to perform when an edge rule's triggers match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum EdgeRuleActionType {
+    ForceSSL = 0,
+    Redirect = 1,
+    OriginUrl = 2,
+    OverrideCacheTime = 3,
+    BlockRequest = 4,
+    SetResponseHeader = 5,
+    SetRequestHeader = 6,
+    ForceDownload = 7,
+    DisableTokenAuthentication = 8,
+    EnableTokenAuthentication = 9,
+    OverrideCacheTimePublic = 10,
+    IgnoreQueryString = 11,
+    DisableOptimizer = 12,
+    ForceCompression = 13,
+    SetStatusCode = 14,
+    BypassPermaCache = 15,
+    OverrideBrowserCacheTime = 16,
+    OriginStorage = 17,
+    SetNetworkRateLimit = 18,
+    SetConnectionLimit = 19,
+    SetRequestsPerSecondLimit = 20,
+    RunEdgeScript = 21,
+    OriginMagicContainers = 22,
+    DisableWAF = 23,
+    RetryOrigin = 24,
+    OverrideBrowserCacheResponseHeader = 25,
+    RemoveBrowserCacheResponseHeader = 26,
+    DisableShieldChallenge = 27,
+    DisableShield = 28,
+    DisableShieldBotDetection = 29,
+    BypassAwsS3Authentication = 30,
+    DisableShieldAccessLists = 31,
+    DisableShieldRateLimiting = 32,
+    EnableRequestCoalescing = 33,
+    DisableRequestCoalescing = 34,
+}
+
+impl std::fmt::Display for EdgeRuleActionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::ForceSSL => "force-ssl",
+            Self::Redirect => "redirect",
+            Self::OriginUrl => "origin-url",
+            Self::OverrideCacheTime => "override-cache-time",
+            Self::BlockRequest => "block-request",
+            Self::SetResponseHeader => "set-response-header",
+            Self::SetRequestHeader => "set-request-header",
+            Self::ForceDownload => "force-download",
+            Self::DisableTokenAuthentication => "disable-token-auth",
+            Self::EnableTokenAuthentication => "enable-token-auth",
+            Self::OverrideCacheTimePublic => "override-cache-time-public",
+            Self::IgnoreQueryString => "ignore-query-string",
+            Self::DisableOptimizer => "disable-optimizer",
+            Self::ForceCompression => "force-compression",
+            Self::SetStatusCode => "set-status-code",
+            Self::BypassPermaCache => "bypass-perma-cache",
+            Self::OverrideBrowserCacheTime => "override-browser-cache-time",
+            Self::OriginStorage => "origin-storage",
+            Self::SetNetworkRateLimit => "set-network-rate-limit",
+            Self::SetConnectionLimit => "set-connection-limit",
+            Self::SetRequestsPerSecondLimit => "set-requests-per-second-limit",
+            Self::RunEdgeScript => "run-edge-script",
+            Self::OriginMagicContainers => "origin-magic-containers",
+            Self::DisableWAF => "disable-waf",
+            Self::RetryOrigin => "retry-origin",
+            Self::OverrideBrowserCacheResponseHeader => "override-browser-cache-response-header",
+            Self::RemoveBrowserCacheResponseHeader => "remove-browser-cache-response-header",
+            Self::DisableShieldChallenge => "disable-shield-challenge",
+            Self::DisableShield => "disable-shield",
+            Self::DisableShieldBotDetection => "disable-shield-bot-detection",
+            Self::BypassAwsS3Authentication => "bypass-aws-s3-auth",
+            Self::DisableShieldAccessLists => "disable-shield-access-lists",
+            Self::DisableShieldRateLimiting => "disable-shield-rate-limiting",
+            Self::EnableRequestCoalescing => "enable-request-coalescing",
+            Self::DisableRequestCoalescing => "disable-request-coalescing",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for EdgeRuleActionType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "force-ssl" => Ok(Self::ForceSSL),
+            "redirect" => Ok(Self::Redirect),
+            "origin-url" => Ok(Self::OriginUrl),
+            "override-cache-time" => Ok(Self::OverrideCacheTime),
+            "block-request" => Ok(Self::BlockRequest),
+            "set-response-header" => Ok(Self::SetResponseHeader),
+            "set-request-header" => Ok(Self::SetRequestHeader),
+            "force-download" => Ok(Self::ForceDownload),
+            "disable-token-auth" => Ok(Self::DisableTokenAuthentication),
+            "enable-token-auth" => Ok(Self::EnableTokenAuthentication),
+            "override-cache-time-public" => Ok(Self::OverrideCacheTimePublic),
+            "ignore-query-string" => Ok(Self::IgnoreQueryString),
+            "disable-optimizer" => Ok(Self::DisableOptimizer),
+            "force-compression" => Ok(Self::ForceCompression),
+            "set-status-code" => Ok(Self::SetStatusCode),
+            "bypass-perma-cache" => Ok(Self::BypassPermaCache),
+            "override-browser-cache-time" => Ok(Self::OverrideBrowserCacheTime),
+            "origin-storage" => Ok(Self::OriginStorage),
+            "set-network-rate-limit" => Ok(Self::SetNetworkRateLimit),
+            "set-connection-limit" => Ok(Self::SetConnectionLimit),
+            "set-requests-per-second-limit" => Ok(Self::SetRequestsPerSecondLimit),
+            "run-edge-script" => Ok(Self::RunEdgeScript),
+            "origin-magic-containers" => Ok(Self::OriginMagicContainers),
+            "disable-waf" => Ok(Self::DisableWAF),
+            "retry-origin" => Ok(Self::RetryOrigin),
+            "override-browser-cache-response-header" => {
+                Ok(Self::OverrideBrowserCacheResponseHeader)
+            }
+            "remove-browser-cache-response-header" => Ok(Self::RemoveBrowserCacheResponseHeader),
+            "disable-shield-challenge" => Ok(Self::DisableShieldChallenge),
+            "disable-shield" => Ok(Self::DisableShield),
+            "disable-shield-bot-detection" => Ok(Self::DisableShieldBotDetection),
+            "bypass-aws-s3-auth" => Ok(Self::BypassAwsS3Authentication),
+            "disable-shield-access-lists" => Ok(Self::DisableShieldAccessLists),
+            "disable-shield-rate-limiting" => Ok(Self::DisableShieldRateLimiting),
+            "enable-request-coalescing" => Ok(Self::EnableRequestCoalescing),
+            "disable-request-coalescing" => Ok(Self::DisableRequestCoalescing),
+            _ => Err(format!("unknown edge rule action type: {s}")),
+        }
+    }
+}
+
+/// The type of condition that triggers an edge rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum TriggerType {
+    Url = 0,
+    RequestHeader = 1,
+    ResponseHeader = 2,
+    UrlExtension = 3,
+    CountryCode = 4,
+    RemoteIP = 5,
+    UrlQueryString = 6,
+    RandomChance = 7,
+    StatusCode = 8,
+    RequestMethod = 9,
+    CookieValue = 10,
+    CountryStateCode = 11,
+    OriginRetryAttemptCount = 12,
+    OriginConnectionError = 13,
+}
+
+impl std::fmt::Display for TriggerType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Url => "url",
+            Self::RequestHeader => "request-header",
+            Self::ResponseHeader => "response-header",
+            Self::UrlExtension => "url-extension",
+            Self::CountryCode => "country-code",
+            Self::RemoteIP => "remote-ip",
+            Self::UrlQueryString => "url-query-string",
+            Self::RandomChance => "random-chance",
+            Self::StatusCode => "status-code",
+            Self::RequestMethod => "request-method",
+            Self::CookieValue => "cookie-value",
+            Self::CountryStateCode => "country-state-code",
+            Self::OriginRetryAttemptCount => "origin-retry-attempt-count",
+            Self::OriginConnectionError => "origin-connection-error",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for TriggerType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "url" => Ok(Self::Url),
+            "request-header" => Ok(Self::RequestHeader),
+            "response-header" => Ok(Self::ResponseHeader),
+            "url-extension" => Ok(Self::UrlExtension),
+            "country-code" => Ok(Self::CountryCode),
+            "remote-ip" => Ok(Self::RemoteIP),
+            "url-query-string" => Ok(Self::UrlQueryString),
+            "random-chance" => Ok(Self::RandomChance),
+            "status-code" => Ok(Self::StatusCode),
+            "request-method" => Ok(Self::RequestMethod),
+            "cookie-value" => Ok(Self::CookieValue),
+            "country-state-code" => Ok(Self::CountryStateCode),
+            "origin-retry-attempt-count" => Ok(Self::OriginRetryAttemptCount),
+            "origin-connection-error" => Ok(Self::OriginConnectionError),
+            _ => Err(format!("unknown trigger type: {s}")),
+        }
+    }
+}
+
+/// How multiple triggers or patterns are combined (AND / OR / NOT).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum MatchingType {
+    MatchAny = 0,
+    MatchAll = 1,
+    MatchNone = 2,
+}
+
+impl std::fmt::Display for MatchingType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MatchAny => write!(f, "match-any"),
+            Self::MatchAll => write!(f, "match-all"),
+            Self::MatchNone => write!(f, "match-none"),
+        }
+    }
+}
+
+impl std::str::FromStr for MatchingType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "match-any" => Ok(Self::MatchAny),
+            "match-all" => Ok(Self::MatchAll),
+            "match-none" => Ok(Self::MatchNone),
+            _ => Err(format!("unknown matching type: {s}")),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Response models
 // ---------------------------------------------------------------------------
+
+/// A single trigger condition within an edge rule.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EdgeRuleTrigger {
+    #[serde(rename = "Type", default)]
+    pub trigger_type: Option<TriggerType>,
+    #[serde(default)]
+    pub pattern_matches: Vec<String>,
+    #[serde(default)]
+    pub pattern_matching_type: Option<MatchingType>,
+    #[serde(default)]
+    pub parameter1: Option<String>,
+}
+
+/// An additional action on an edge rule (beyond the primary action).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EdgeRuleExtraAction {
+    #[serde(default)]
+    pub action_type: Option<EdgeRuleActionType>,
+    #[serde(default)]
+    pub action_parameter1: Option<String>,
+    #[serde(default)]
+    pub action_parameter2: Option<String>,
+    #[serde(default)]
+    pub action_parameter3: Option<String>,
+}
+
+/// An edge rule attached to a pull zone.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EdgeRule {
+    #[serde(default)]
+    pub guid: Option<String>,
+    #[serde(default)]
+    pub action_type: Option<EdgeRuleActionType>,
+    #[serde(default)]
+    pub action_parameter1: Option<String>,
+    #[serde(default)]
+    pub action_parameter2: Option<String>,
+    #[serde(default)]
+    pub action_parameter3: Option<String>,
+    #[serde(default)]
+    pub triggers: Vec<EdgeRuleTrigger>,
+    #[serde(default)]
+    pub extra_actions: Vec<EdgeRuleExtraAction>,
+    #[serde(default)]
+    pub trigger_matching_type: Option<MatchingType>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub order_index: i32,
+    #[serde(default)]
+    pub read_only: bool,
+}
 
 /// A hostname attached to a Pull Zone.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,6 +412,10 @@ pub struct PullZone {
     pub enable_geo_zone_sa: bool,
     #[serde(default)]
     pub enable_geo_zone_af: bool,
+
+    // Edge rules
+    #[serde(default)]
+    pub edge_rules: Vec<EdgeRule>,
 }
 
 /// Generic paginated list response returned by the bunny.net API.
@@ -301,6 +592,86 @@ impl UpdatePullZone {
     #[must_use]
     pub fn zone_security_enabled(mut self, enabled: bool) -> Self {
         self.zone_security_enabled = Some(enabled);
+        self
+    }
+}
+
+/// Request body for `POST /pullzone/{id}/edgerules/addOrUpdate`.
+///
+/// When `guid` is `None`, a new edge rule is created. When set to an existing
+/// GUID, the rule is updated (upsert semantics).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AddOrUpdateEdgeRule {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub guid: Option<String>,
+    pub action_type: EdgeRuleActionType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action_parameter1: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action_parameter2: Option<String>,
+    pub triggers: Vec<EdgeRuleTrigger>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trigger_matching_type: Option<MatchingType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+}
+
+impl AddOrUpdateEdgeRule {
+    pub fn new(action_type: EdgeRuleActionType) -> Self {
+        Self {
+            guid: None,
+            action_type,
+            action_parameter1: None,
+            action_parameter2: None,
+            triggers: Vec::new(),
+            trigger_matching_type: None,
+            description: None,
+            enabled: None,
+        }
+    }
+
+    #[must_use]
+    pub fn guid(mut self, guid: impl Into<String>) -> Self {
+        self.guid = Some(guid.into());
+        self
+    }
+
+    #[must_use]
+    pub fn action_parameter1(mut self, val: impl Into<String>) -> Self {
+        self.action_parameter1 = Some(val.into());
+        self
+    }
+
+    #[must_use]
+    pub fn action_parameter2(mut self, val: impl Into<String>) -> Self {
+        self.action_parameter2 = Some(val.into());
+        self
+    }
+
+    #[must_use]
+    pub fn trigger(mut self, trigger: EdgeRuleTrigger) -> Self {
+        self.triggers.push(trigger);
+        self
+    }
+
+    #[must_use]
+    pub fn trigger_matching_type(mut self, t: MatchingType) -> Self {
+        self.trigger_matching_type = Some(t);
+        self
+    }
+
+    #[must_use]
+    pub fn description(mut self, desc: impl Into<String>) -> Self {
+        self.description = Some(desc.into());
+        self
+    }
+
+    #[must_use]
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = Some(enabled);
         self
     }
 }

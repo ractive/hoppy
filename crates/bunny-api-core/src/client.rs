@@ -254,6 +254,55 @@ impl CoreClient {
     }
 
     // -----------------------------------------------------------------------
+    // Pull Zone edge rule endpoints
+    // -----------------------------------------------------------------------
+
+    /// Create or update an edge rule on a Pull Zone (upsert by Guid).
+    pub async fn add_or_update_edge_rule(
+        &self,
+        pull_zone_id: i64,
+        body: &crate::types::AddOrUpdateEdgeRule,
+    ) -> Result<()> {
+        let url = format!(
+            "{}/pullzone/{pull_zone_id}/edgerules/addOrUpdate",
+            self.base_url
+        );
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Delete an edge rule from a Pull Zone.
+    pub async fn delete_edge_rule(&self, pull_zone_id: i64, edge_rule_id: &str) -> Result<()> {
+        let url = format!(
+            "{}/pullzone/{pull_zone_id}/edgerules/{edge_rule_id}",
+            self.base_url
+        );
+        let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Enable or disable an edge rule on a Pull Zone.
+    pub async fn set_edge_rule_enabled(
+        &self,
+        pull_zone_id: i64,
+        edge_rule_id: &str,
+        enabled: bool,
+    ) -> Result<()> {
+        let url = format!(
+            "{}/pullzone/{pull_zone_id}/edgerules/{edge_rule_id}/setEdgeRuleEnabled",
+            self.base_url
+        );
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Id": pull_zone_id,
+            "Value": enabled
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
     // Storage Zone endpoints
     // -----------------------------------------------------------------------
 
