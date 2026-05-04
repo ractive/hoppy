@@ -326,7 +326,7 @@ pub enum EdgeRuleAction {
         #[arg(long)]
         rule_id: String,
         /// Whether to enable (true) or disable (false) the rule
-        #[arg(long)]
+        #[arg(long, action = clap::ArgAction::Set)]
         enabled: bool,
     },
 }

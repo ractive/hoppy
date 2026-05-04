@@ -467,7 +467,7 @@ async fn handle_edge_rule(
             let pz = client.get_pull_zone(*id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&pz.edge_rules)
-                    .expect("failed to serialize to JSON");
+                    .context("failed to serialize edge rules to JSON")?;
                 println!("{json}");
             } else {
                 let rows: Vec<EdgeRuleRow> = pz.edge_rules.iter().map(EdgeRuleRow::from).collect();
