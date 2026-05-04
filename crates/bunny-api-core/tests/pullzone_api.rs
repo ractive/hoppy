@@ -1,3 +1,6 @@
+use bunny_api_core::types::{
+    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, MatchingType, TriggerType,
+};
 use bunny_api_core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -5,6 +8,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 const FIXTURE_LIST_PAGINATED: &str =
     include_str!("../../../fixtures/core/pullzone_list_paginated.json");
 const FIXTURE_GET: &str = include_str!("../../../fixtures/core/pullzone_get.json");
+const FIXTURE_GET_WITH_EDGERULES: &str =
+    include_str!("../../../fixtures/core/pullzone_get_with_edgerules.json");
 const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
 const FIXTURE_NOT_FOUND: &str =
     include_str!("../../../fixtures/core/error_not_found_storagezone.json");
@@ -353,4 +358,164 @@ async fn get_pull_zone_safehop_statistics_returns_data() {
 
     assert!((stats.total_requests_retried - 320.0).abs() < 0.001);
     assert!((stats.total_requests_saved - 12800.0).abs() < 0.001);
+}
+
+// ---------------------------------------------------------------------------
+// Edge rule tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn add_or_update_edge_rule_sends_correct_request() {
+    let server = MockServer::start().await;
+
+    let trigger = EdgeRuleTrigger {
+        trigger_type: Some(TriggerType::Url),
+        pattern_matches: vec!["*/old-path*".to_string()],
+        pattern_matching_type: Some(MatchingType::MatchAny),
+        parameter1: None,
+    };
+    let body = AddOrUpdateEdgeRule::new(EdgeRuleActionType::Redirect)
+        .action_parameter1("https://example.com/new-path")
+        .action_parameter2("301")
+        .trigger(trigger)
+        .description("Redirect old paths");
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/edgerules/addOrUpdate"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "ActionType": 1,
+            "ActionParameter1": "https://example.com/new-path",
+            "ActionParameter2": "301",
+            "Triggers": [
+                {
+                    "Type": 0,
+                    "PatternMatches": ["*/old-path*"],
+                    "PatternMatchingType": 0,
+                    "Parameter1": null
+                }
+            ],
+            "Description": "Redirect old paths"
+        })))
+        .respond_with(ResponseTemplate::new(201))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_or_update_edge_rule(1001, &body)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn delete_edge_rule_sends_correct_request() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path(
+            "/pullzone/1001/edgerules/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        ))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .delete_edge_rule(1001, "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn set_edge_rule_enabled_sends_correct_request() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/pullzone/1001/edgerules/a1b2c3d4-e5f6-7890-abcd-ef1234567890/setEdgeRuleEnabled",
+        ))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Id": 1001,
+            "Value": false
+        })))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .set_edge_rule_enabled(1001, "a1b2c3d4-e5f6-7890-abcd-ef1234567890", false)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn get_pull_zone_deserializes_edge_rules() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_GET_WITH_EDGERULES, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(1001)
+        .await
+        .unwrap();
+
+    assert_eq!(zone.edge_rules.len(), 2);
+
+    let redirect_rule = &zone.edge_rules[0];
+    assert_eq!(
+        redirect_rule.guid.as_deref(),
+        Some("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+    );
+    assert_eq!(
+        redirect_rule.action_type,
+        Some(EdgeRuleActionType::Redirect)
+    );
+    assert_eq!(
+        redirect_rule.action_parameter1.as_deref(),
+        Some("https://example.com/new-path")
+    );
+    assert_eq!(
+        redirect_rule.description.as_deref(),
+        Some("Redirect old paths")
+    );
+    assert!(redirect_rule.enabled);
+    assert_eq!(redirect_rule.triggers.len(), 1);
+    assert_eq!(
+        redirect_rule.triggers[0].trigger_type,
+        Some(TriggerType::Url)
+    );
+    assert_eq!(
+        redirect_rule.triggers[0].pattern_matches,
+        vec!["*/old-path*"]
+    );
+
+    let block_rule = &zone.edge_rules[1];
+    assert_eq!(
+        block_rule.guid.as_deref(),
+        Some("b2c3d4e5-f6a7-8901-bcde-f12345678901")
+    );
+    assert_eq!(
+        block_rule.action_type,
+        Some(EdgeRuleActionType::BlockRequest)
+    );
+    assert_eq!(block_rule.description.as_deref(), Some("Block countries"));
+    assert!(block_rule.enabled);
+    assert_eq!(block_rule.triggers.len(), 1);
+    assert_eq!(
+        block_rule.triggers[0].trigger_type,
+        Some(TriggerType::CountryCode)
+    );
+    assert_eq!(block_rule.triggers[0].pattern_matches, vec!["CN", "RU"]);
 }

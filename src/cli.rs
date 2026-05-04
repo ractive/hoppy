@@ -247,6 +247,88 @@ pub enum PullZoneAction {
         #[command(subcommand)]
         action: PullZoneHostnameAction,
     },
+    /// Manage pull zone edge rules
+    EdgeRule {
+        #[command(subcommand)]
+        action: EdgeRuleAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum EdgeRuleAction {
+    /// List edge rules on a pull zone
+    List {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Add an edge rule to a pull zone
+    Add {
+        #[arg(long)]
+        id: i64,
+        /// Rule description
+        #[arg(long)]
+        description: Option<String>,
+        /// Action type (e.g. redirect, block-request, set-response-header)
+        #[arg(long)]
+        action_type: String,
+        /// First action parameter (meaning depends on action type)
+        #[arg(long)]
+        action_param1: Option<String>,
+        /// Second action parameter (meaning depends on action type)
+        #[arg(long)]
+        action_param2: Option<String>,
+        /// How triggers are combined: match-any (default), match-all, match-none
+        #[arg(long, default_value = "match-any")]
+        trigger_matching_type: String,
+        /// Trigger in type:pattern1,pattern2 format (repeatable)
+        #[arg(long = "trigger")]
+        triggers: Vec<String>,
+    },
+    /// Update an existing edge rule
+    Update {
+        #[arg(long)]
+        id: i64,
+        /// GUID of the edge rule to update
+        #[arg(long)]
+        rule_id: String,
+        /// Rule description
+        #[arg(long)]
+        description: Option<String>,
+        /// Action type (e.g. redirect, block-request, set-response-header)
+        #[arg(long)]
+        action_type: String,
+        /// First action parameter (meaning depends on action type)
+        #[arg(long)]
+        action_param1: Option<String>,
+        /// Second action parameter (meaning depends on action type)
+        #[arg(long)]
+        action_param2: Option<String>,
+        /// How triggers are combined: match-any (default), match-all, match-none
+        #[arg(long, default_value = "match-any")]
+        trigger_matching_type: String,
+        /// Trigger in type:pattern1,pattern2 format (repeatable)
+        #[arg(long = "trigger")]
+        triggers: Vec<String>,
+    },
+    /// Delete an edge rule from a pull zone
+    Delete {
+        #[arg(long)]
+        id: i64,
+        /// GUID of the edge rule to delete
+        #[arg(long)]
+        rule_id: String,
+    },
+    /// Enable or disable an edge rule
+    Enable {
+        #[arg(long)]
+        id: i64,
+        /// GUID of the edge rule
+        #[arg(long)]
+        rule_id: String,
+        /// Whether to enable (true) or disable (false) the rule
+        #[arg(long)]
+        enabled: bool,
+    },
 }
 
 #[derive(Subcommand)]

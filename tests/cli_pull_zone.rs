@@ -631,6 +631,117 @@ async fn pull_zone_statistics_safehop_json() {
 
 #[cfg(feature = "live-api")]
 #[test]
+fn live_pull_zone_edge_rule_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let name = support::unique_name("hoppy-edge-rule");
+
+        // 1. Create pull zone
+        let create = support::hoppy_live_json(&[
+            "pull-zone",
+            "create",
+            "--name",
+            &name,
+            "--origin-url",
+            "https://example.com",
+        ]);
+        assert!(create.success, "create failed — stderr: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"].as_i64().unwrap();
+        let id_str = id.to_string();
+        cleanup.push(&["pull-zone", "delete", "--id", &id_str]);
+
+        // 2. Add a redirect edge rule
+        let add = support::hoppy_live_raw(&[
+            "pull-zone",
+            "edge-rule",
+            "add",
+            "--id",
+            &id_str,
+            "--description",
+            "E2E redirect rule",
+            "--action-type",
+            "redirect",
+            "--action-param1",
+            "https://example.com/new-path",
+            "--action-param2",
+            "301",
+            "--trigger",
+            "url:*/old-path*",
+        ]);
+        assert!(add.success, "add failed — stderr: {}", add.stderr);
+
+        // 3. List edge rules and find the newly added rule's Guid
+        let list = support::hoppy_live_json(&["pull-zone", "edge-rule", "list", "--id", &id_str]);
+        assert!(list.success, "list failed — stderr: {}", list.stderr);
+        let rules = list.json.as_ref().unwrap().as_array().unwrap();
+        let rule = rules
+            .iter()
+            .find(|r| r["Description"].as_str() == Some("E2E redirect rule"))
+            .expect("added edge rule not found in list");
+        let guid = rule["Guid"].as_str().unwrap().to_string();
+
+        // 4. Disable the rule
+        let disable = support::hoppy_live_raw(&[
+            "pull-zone",
+            "edge-rule",
+            "enable",
+            "--id",
+            &id_str,
+            "--rule-id",
+            &guid,
+            "--enabled",
+            "false",
+        ]);
+        assert!(
+            disable.success,
+            "disable failed — stderr: {}",
+            disable.stderr
+        );
+
+        // 5. Re-enable the rule
+        let enable = support::hoppy_live_raw(&[
+            "pull-zone",
+            "edge-rule",
+            "enable",
+            "--id",
+            &id_str,
+            "--rule-id",
+            &guid,
+            "--enabled",
+            "true",
+        ]);
+        assert!(enable.success, "enable failed — stderr: {}", enable.stderr);
+
+        // 6. Delete the rule
+        let delete = support::hoppy_live_json_yes(&[
+            "pull-zone",
+            "edge-rule",
+            "delete",
+            "--id",
+            &id_str,
+            "--rule-id",
+            &guid,
+        ]);
+        assert!(delete.success, "delete failed — stderr: {}", delete.stderr);
+
+        // 7. Verify the rule is gone
+        let after = support::hoppy_live_json(&["pull-zone", "edge-rule", "list", "--id", &id_str]);
+        assert!(
+            after.success,
+            "post-delete list failed — stderr: {}",
+            after.stderr
+        );
+        let remaining = after.json.as_ref().unwrap().as_array().unwrap();
+        assert!(
+            !remaining.iter().any(|r| r["Guid"].as_str() == Some(&guid)),
+            "edge rule {guid} still present after delete"
+        );
+
+        // 8. Cleanup runs via CleanupStack
+    });
+}
+
+#[cfg(feature = "live-api")]
+#[test]
 fn live_pull_zone_get_nonexistent() {
     let result = support::hoppy_live_json(&["pull-zone", "get", "--id", "999999999"]);
     assert!(
@@ -654,4 +765,158 @@ fn live_pull_zone_update_nonexistent() {
         !result.success,
         "expected failure for nonexistent pull zone update"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Edge rule E2E tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn pull_zone_edge_rule_list_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get_with_edgerules.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "edge-rule",
+            "list",
+            "--id",
+            "1001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn pull_zone_edge_rule_list_table() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get_with_edgerules.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "pull-zone",
+            "edge-rule",
+            "list",
+            "--id",
+            "1001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn pull_zone_edge_rule_add() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/edgerules/addOrUpdate"))
+        .and(header("AccessKey", "test-key"))
+        .respond_with(ResponseTemplate::new(201))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "edge-rule",
+        "add",
+        "--id",
+        "1001",
+        "--action-type",
+        "block-request",
+        "--description",
+        "Block bad actors",
+        "--trigger",
+        "url:*/bad-path*",
+    ]);
+    cmd.assert().success().stderr(predicates::str::contains(
+        "Added edge rule to pull zone 1001",
+    ));
+}
+
+#[tokio::test]
+async fn pull_zone_edge_rule_delete() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path(
+            "/pullzone/1001/edgerules/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        ))
+        .and(header("AccessKey", "test-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "--yes",
+        "pull-zone",
+        "edge-rule",
+        "delete",
+        "--id",
+        "1001",
+        "--rule-id",
+        "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    ]);
+    cmd.assert().success().stderr(predicates::str::contains(
+        "Deleted edge rule a1b2c3d4-e5f6-7890-abcd-ef1234567890 from pull zone 1001",
+    ));
+}
+
+#[tokio::test]
+async fn pull_zone_edge_rule_enable() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/pullzone/1001/edgerules/a1b2c3d4-e5f6-7890-abcd-ef1234567890/setEdgeRuleEnabled",
+        ))
+        .and(header("AccessKey", "test-key"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "edge-rule",
+        "enable",
+        "--id",
+        "1001",
+        "--rule-id",
+        "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "--enabled",
+    ]);
+    cmd.assert().success().stderr(predicates::str::contains(
+        "Enabled edge rule a1b2c3d4-e5f6-7890-abcd-ef1234567890 on pull zone 1001",
+    ));
 }
