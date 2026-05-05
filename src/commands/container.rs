@@ -1168,7 +1168,6 @@ async fn handle_template(
                 *clear,
                 *list,
                 env,
-                yes,
                 format,
                 redact,
             )
@@ -1200,7 +1199,6 @@ async fn handle_template_env(
     clear: bool,
     list: bool,
     env: &[String],
-    yes: bool,
     format: OutputFormat,
     redact: &RedactConfig,
 ) -> Result<()> {
@@ -1272,15 +1270,18 @@ async fn handle_template_env(
     if clear {
         let current = c.get_container(app_id, container_id).await?;
         let n = current.environment_variables.len();
-        if !yes {
-            let prompt = format!(
-                "Clear ALL {n} environment variable(s) on container {container_id}? \
-                 Type \"wipe\" to confirm:"
-            );
-            if !confirm_phrase(prompt, "wipe").await? {
-                eprintln!("Aborted.");
-                return Ok(());
-            }
+        // Decision-log (iter-21): typed phrase is required for `--clear`
+        // regardless of `--yes`. `--yes` alone is too easy to fat-finger
+        // after a successful prior invocation, so it does not bypass this
+        // gate. Automation that needs to wipe non-interactively can pipe
+        // the phrase via stdin: `echo wipe | hoppy ... --clear`.
+        let prompt = format!(
+            "Clear ALL {n} environment variable(s) on container {container_id}? \
+             Type \"wipe\" to confirm:"
+        );
+        if !confirm_phrase(prompt, "wipe").await? {
+            eprintln!("Aborted.");
+            return Ok(());
         }
         let empty: HashMap<String, String> = HashMap::new();
         let tmpl = c.set_container_env(app_id, container_id, &empty).await?;
@@ -1293,7 +1294,12 @@ async fn handle_template_env(
         let current = c.get_container(app_id, container_id).await?;
         let cur_n = current.environment_variables.len();
         let new_n = map.len();
-        if !yes && cur_n > 0 && cur_n > new_n {
+        // Decision-log (iter-21): a shrinking `--replace-all` (which drops
+        // existing vars) requires the typed phrase regardless of `--yes`.
+        // Pure additive replacements (cur_n <= new_n) skip the phrase since
+        // nothing is lost; they still went through the explicit `--replace-all`
+        // mode selection.
+        if cur_n > 0 && cur_n > new_n {
             let prompt = format!(
                 "Replace {cur_n} environment variable(s) with {new_n}? \
                  Type \"replace\" to confirm:"
@@ -1309,7 +1315,10 @@ async fn handle_template_env(
     }
 
     if granular {
-        // Read current set, apply add/update/remove in order, write back.
+        // Read current set, apply all `--add`/`--update` inserts, then all
+        // `--remove` drops. Removal always wins over insertion of the same
+        // key in a single invocation — clap groups flag values by name, so
+        // we cannot recover the exact CLI argv order without a custom parser.
         let current = c.get_container(app_id, container_id).await?;
         let mut map: HashMap<String, String> = current
             .environment_variables
@@ -1342,8 +1351,8 @@ async fn handle_template_env(
          --remove KEY\n  \
          hoppy container template env --app-id {app_id} --container-id {container_id} \
          --list\n  \
-         hoppy --yes container template env --app-id {app_id} --container-id {container_id} \
-         --clear   # wipe all"
+         hoppy container template env --app-id {app_id} --container-id {container_id} \
+         --clear   # wipe all (must type \"wipe\" to confirm)"
     );
 }
 
