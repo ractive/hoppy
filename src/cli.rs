@@ -25,6 +25,16 @@ pub struct Cli {
     #[arg(long, short = 'y', global = true)]
     pub yes: bool,
 
+    /// Reveal redacted secrets in output (env values, passwords, tokens).
+    /// Off by default for safety; opt in explicitly.
+    #[arg(long, global = true)]
+    pub reveal: bool,
+
+    /// Reveal a specific env-var by name (case-insensitive). Repeatable.
+    /// Useful when you want one variable but not all secrets.
+    #[arg(long = "reveal-env", value_name = "KEY", global = true)]
+    pub reveal_env: Vec<String>,
+
     /// Record API responses to files in the given directory
     #[arg(long, value_name = "DIR", global = true)]
     pub record: Option<String>,
@@ -1596,6 +1606,15 @@ pub enum ContainerAppAction {
         /// Container image registry ID (e.g. "1155" for DockerHub)
         #[arg(long)]
         registry_id: Option<String>,
+        /// Initial environment variable for the embedded container template
+        /// (KEY=VALUE). Repeatable. Requires the image flags above; applied
+        /// via a follow-up `template env --replace-all` after creation.
+        #[arg(long = "env")]
+        env: Vec<String>,
+        /// Return only `{"id": "..."}` (legacy behaviour). By default the
+        /// full application document is returned for `--format json`.
+        #[arg(long)]
+        minimal: bool,
     },
     /// Update an application
     Update {
@@ -1629,10 +1648,21 @@ pub enum ContainerAppAction {
         #[arg(long)]
         id: String,
     },
-    /// Delete an application
+    /// Delete an application.
+    ///
+    /// Refuses by default if the app has auto-managed Pull Zones (created
+    /// for CDN endpoints) — pass `--cascade` to also delete them, or
+    /// `--no-cascade` to delete only the app and print the orphan IDs.
     Delete {
         #[arg(long)]
         id: String,
+        /// Also delete every auto-managed Pull Zone owned by this app.
+        #[arg(long, conflicts_with = "no_cascade")]
+        cascade: bool,
+        /// Delete only the app; print the orphan Pull Zone IDs for manual
+        /// cleanup. Mutually exclusive with `--cascade`.
+        #[arg(long)]
+        no_cascade: bool,
     },
     /// Show live overview for an application
     Overview {
@@ -1748,13 +1778,56 @@ pub enum ContainerTemplateAction {
         #[arg(long)]
         container_id: String,
     },
-    /// Set environment variables for a container template (replaces all)
+    /// Manage environment variables for a container template.
+    ///
+    /// By default this command edits the env-var set granularly via
+    /// `--add` / `--remove` / `--update`. To replace the whole set, pass
+    /// `--replace-all` with one or more `--env KEY=VAL`. To wipe every
+    /// var, pass `--clear`. A bare invocation with no flags is rejected
+    /// to prevent accidental wipes.
+    #[command(long_about = "\
+Manage environment variables for a container template.
+
+Granular operations (default — preserve existing vars):
+  hoppy container template env --app-id <a> --container-id <c> --add KEY=VAL
+  hoppy container template env --app-id <a> --container-id <c> --remove KEY
+  hoppy container template env --app-id <a> --container-id <c> --update KEY=VAL
+
+Show current values (redacted by default — use --reveal to see them):
+  hoppy container template env --app-id <a> --container-id <c> --list
+
+Destructive operations (require explicit intent):
+  --replace-all  with one or more --env KEY=VAL  → replace the whole set
+  --clear                                        → wipe every var
+")]
     Env {
         #[arg(long)]
         app_id: String,
         #[arg(long)]
         container_id: String,
-        /// KEY=VALUE pairs (may be repeated)
+        /// Add or update an env var (KEY=VALUE). Repeatable. Idempotent —
+        /// existing vars not named here are preserved.
+        #[arg(long = "add")]
+        add: Vec<String>,
+        /// Alias of --add (KEY=VALUE). Repeatable.
+        #[arg(long = "update")]
+        update: Vec<String>,
+        /// Remove an env var by name. Repeatable. Missing names are ignored.
+        #[arg(long = "remove")]
+        remove: Vec<String>,
+        /// Replace the entire env-var set. Combine with one or more `--env
+        /// KEY=VALUE`. Destructive — drops any var not named here.
+        #[arg(long)]
+        replace_all: bool,
+        /// Wipe every env var. Cannot be combined with --add / --remove /
+        /// --update / --replace-all / --env / --list.
+        #[arg(long)]
+        clear: bool,
+        /// List the current env vars (names only by default; values follow
+        /// the redaction layer). Cannot be combined with mutating flags.
+        #[arg(long)]
+        list: bool,
+        /// KEY=VALUE pairs (only used with --replace-all).
         #[arg(long = "env")]
         env: Vec<String>,
     },
