@@ -9,7 +9,7 @@ tags:
   - safety
   - dx
   - security
-status: in-progress
+status: completed
 branch: iter-21/magic-containers-ux
 ---
 
