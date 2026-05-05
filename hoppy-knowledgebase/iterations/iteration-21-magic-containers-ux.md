@@ -51,7 +51,7 @@ This block is the **foundation** referenced by:
 
 - [ ] **Refuse zero-`--env` calls by default.** Error: `at least one --env required, or use --clear to wipe explicitly.`
 - [ ] Add `--replace-all` flag (combine with `--env K=V ...`): the destructive "set the whole array" behaviour, named explicitly. Without `--replace-all`, granular flags (MC.5 below) are the default.
-- [ ] Add `--clear` flag (standalone): wipe all env vars with explicit consent. Mutually exclusive with `--add` / `--remove` / `--env`. Equivalent to `--replace-all` with zero `--env`, but a separate flag because "wipe everything" is an intent worth naming.
+- [ ] Add `--clear` flag (standalone): wipe all env vars with explicit consent. Mutually exclusive with `--add` / `--remove` / `--update` / `--env` **and** `--replace-all` (it is the named wipe; combining the two is meaningless). Equivalent to `--replace-all` with zero `--env`, but a separate flag because "wipe everything" is an intent worth naming.
 - [ ] `--yes` alone is **not** sufficient to authorize either `--clear` or a destructive `--replace-all` that drops to zero. Interactive confirmation calls out the count: `Replace 9 environment variables with 0? Type "wipe" to confirm.`
 - [ ] Help text loudly calls out the destructive default with a recipe block: `# Add a single var without losing the rest:\nhoppy container template env --add KEY=VAL ...`
 - [ ] Mock test asserts the zero-`--env` flow fails with the friendly error and never sends a request to the API
@@ -67,7 +67,7 @@ This block is the **foundation** referenced by:
 - [ ] `hoppy container template env --replace-all --env K=V [...]` — explicit set-the-whole-array
 - [ ] `hoppy container template env --clear` — explicit wipe (see MC.1 above)
 - [ ] `hoppy container template env --list` (or `--show`) — print env names only by default; redaction layer governs values
-- [ ] Combinations of `--add` / `--remove` are processed in order, both flags repeatable. `--replace-all`, `--clear`, and `--list` are each mutually exclusive with all of `--add` / `--remove`.
+- [ ] `--add` / `--update` / `--remove` are repeatable; in a single invocation **all `--add`/`--update` inserts run before all `--remove` drops** (clap groups values by flag name, so we cannot recover argv ordering). Document this precedence in `--help` so a user passing both `--add KEY=v` and `--remove KEY` knows the remove wins. `--replace-all`, `--clear`, and `--list` are each mutually exclusive with all of `--add` / `--update` / `--remove`.
 - [ ] Mock tests for each flag mode + a combined add-and-remove case; snapshot the final PATCH body
 
 ### Issue MC.3 — `container app delete` orphans the auto-managed Pull Zone
@@ -104,7 +104,7 @@ This block is the **foundation** referenced by:
 
 - [ ] Apply the cross-cutting `Redacted<String>` to env-var values across all container-template responses
 - [ ] Snapshot tests in `tests/cli_container.rs` confirming default-redacted output and `--reveal` raw output
-- [ ] `--reveal-env <KEY>` (per-key opt-in) for the cases where users only want one var; default is still redact-all
+- [ ] `--reveal-env <KEY>` (per-key opt-in) for the cases where users only want one var; default is still redact-all. `--reveal-env` is repeatable. Precedence: `--reveal` (global) takes precedence — when present, every secret is revealed and `--reveal-env` entries become a no-op. Without either flag, redaction is on for every secret-bearing field.
 
 ### Container app create env-vars on create (from usage report #7)
 

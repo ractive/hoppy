@@ -180,8 +180,8 @@ terminal scrollback) by default.
 **hoppy mitigation:** the cross-cutting redaction layer rewrites every
 `environmentVariables[*].value` to `<set, length=N>` (or `<unset>` for empty
 values) in JSON, table, and text output. Opt in with `--reveal` (all) or
-`--reveal-env KEY` (a single var). The flag must be passed explicitly each
-invocation — no env var unlocks it.
+`--reveal-env KEY` (a single var). The flag must be passed explicitly on each
+invocation; it cannot be enabled via an environment variable.
 
 ## Related
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks
