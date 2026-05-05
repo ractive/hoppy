@@ -5,15 +5,17 @@ use crate::cli::{
     ContainerTemplateAction, ContainerVolumeAction, OutputFormat,
 };
 use crate::output;
+use crate::redact::{self, RedactConfig};
 use anyhow::{Context, Result, bail};
 use bunny_api_containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
     AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions, ContainerImage,
     ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest, ContainersClient,
-    EndpointRequest, GetContainerConfigSuggestionsRequest, GetContainerImageDigestRequest,
-    Granularity, ImageTagInfo, ListContainerImageTagsRequest, LogForwardingRequest,
-    PatchApplicationRequest, PatchContainerRequest, PatchVolumeRequest, RegionSettings,
-    RegistryCredentials, SearchPublicContainerImagesRequest, UpdateRegionSettingsRequest,
+    EndpointListItem, EndpointRequest, GetContainerConfigSuggestionsRequest,
+    GetContainerImageDigestRequest, Granularity, ImageTagInfo, ListContainerImageTagsRequest,
+    LogForwardingRequest, PatchApplicationRequest, PatchContainerRequest, PatchVolumeRequest,
+    RegionSettings, RegistryCredentials, SearchPublicContainerImagesRequest,
+    UpdateRegionSettingsRequest,
 };
 use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
@@ -80,6 +82,48 @@ impl From<&bunny_api_containers::Application> for AppDetail {
             runtime_type: format!("{:?}", a.runtime_type),
             min,
             max,
+        }
+    }
+}
+
+/// Wider table row used after `app create` so operators (and LLMs) can chain
+/// the template id and display-endpoint id without a follow-up `app get`.
+#[derive(serde::Serialize, tabled::Tabled)]
+struct AppDetailWithIds {
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Status")]
+    status: String,
+    #[tabled(rename = "Template IDs")]
+    template_ids: String,
+    #[tabled(rename = "Endpoint ID")]
+    endpoint_id: String,
+}
+
+impl From<&bunny_api_containers::Application> for AppDetailWithIds {
+    fn from(a: &bunny_api_containers::Application) -> Self {
+        let template_ids = if a.container_templates.is_empty() {
+            "-".to_owned()
+        } else {
+            a.container_templates
+                .iter()
+                .map(|t| t.id.clone())
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        let endpoint_id = a
+            .display_endpoint
+            .as_ref()
+            .map(|e| e.id.clone())
+            .unwrap_or_else(|| "-".to_owned());
+        Self {
+            id: a.id.clone(),
+            name: a.name.clone(),
+            status: format!("{:?}", a.status),
+            template_ids,
+            endpoint_id,
         }
     }
 }
@@ -478,6 +522,31 @@ async fn confirm(prompt: String) -> Result<bool> {
     .context("confirm task panicked")?
 }
 
+/// Require an exact phrase typed at the prompt. Used for destructive actions
+/// where a `[y/N]` accept is too easy to fat-finger.
+async fn confirm_phrase(prompt: String, phrase: &'static str) -> Result<bool> {
+    tokio::task::spawn_blocking(move || {
+        eprint!("{prompt} ");
+        io::stderr().flush()?;
+        let mut line = String::new();
+        io::stdin().lock().read_line(&mut line)?;
+        Ok(line.trim() == phrase)
+    })
+    .await
+    .context("confirm task panicked")?
+}
+
+/// Print a value as JSON, applying env-var redaction first.
+fn print_json_with_redaction<T: serde::Serialize>(value: &T, redact: &RedactConfig) -> Result<()> {
+    let mut json = serde_json::to_value(value).context("failed to serialize to JSON")?;
+    redact::redact_env_in_json(&mut json, redact);
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&json).context("failed to serialize to JSON")?
+    );
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Top-level handler
 // ---------------------------------------------------------------------------
@@ -488,11 +557,14 @@ pub async fn handle(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    redact: &RedactConfig,
 ) -> Result<()> {
     match action {
-        ContainerAction::App { action } => handle_app(action, format, debug, yes, record).await,
+        ContainerAction::App { action } => {
+            handle_app(action, format, debug, yes, record, redact).await
+        }
         ContainerAction::Template { action } => {
-            handle_template(action, format, debug, yes, record).await
+            handle_template(action, format, debug, yes, record, redact).await
         }
         ContainerAction::Endpoint { action } => {
             handle_endpoint(action, format, debug, yes, record).await
@@ -523,6 +595,7 @@ async fn handle_app(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    redact: &RedactConfig,
 ) -> Result<()> {
     let c = client(debug, record)?;
     match action {
@@ -531,10 +604,7 @@ async fn handle_app(
                 .list_applications(cursor.as_deref(), limit.as_ref().copied())
                 .await?;
             if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
-                );
+                print_json_with_redaction(&result, redact)?;
             } else {
                 let rows: Vec<AppRow> = result.items.iter().map(AppRow::from).collect();
                 output::print_data(&rows, format);
@@ -543,10 +613,7 @@ async fn handle_app(
         ContainerAppAction::Get { id } => {
             let app = c.get_application(id).await?;
             if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&app).context("failed to serialize to JSON")?
-                );
+                print_json_with_redaction(&app, redact)?;
             } else {
                 let row = AppDetail::from(&app);
                 output::print_single(&row, format);
@@ -562,7 +629,19 @@ async fn handle_app(
             image_namespace,
             image_tag,
             registry_id,
+            env,
+            minimal,
         } => {
+            let has_image = image_name.is_some()
+                || image_namespace.is_some()
+                || image_tag.is_some()
+                || registry_id.is_some();
+            if !env.is_empty() && !has_image {
+                bail!(
+                    "--env requires --image-name / --image-namespace / --image-tag / \
+                     --registry-id (env vars belong to a container template)"
+                );
+            }
             let container_templates = match (image_name, image_namespace, image_tag, registry_id) {
                 (Some(img), Some(ns), Some(tag), Some(reg)) => {
                     use bunny_api_containers::{ContainerRequest, ImagePullPolicy};
@@ -606,13 +685,45 @@ async fn handle_app(
                 volumes: None,
             };
             let resp = c.add_application(&body).await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
-                );
+
+            // Best-effort: apply --env via a follow-up template env --replace-all
+            // call so env vars survive the next pod start. Failures here are
+            // surfaced — the app exists but env did not land.
+            if !env.is_empty() {
+                let env_map = parse_env_pairs(env)?;
+                let app_full = c.get_application(&resp.id).await?;
+                let template_id = app_full
+                    .container_templates
+                    .first()
+                    .map(|t| t.id.clone())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "app created but has no container templates; cannot apply --env"
+                        )
+                    })?;
+                c.set_container_env(&resp.id, &template_id, &env_map)
+                    .await
+                    .context("created app but failed to apply --env")?;
+            }
+
+            if *minimal {
+                if let OutputFormat::Json = format {
+                    print_json_with_redaction(&resp, redact)?;
+                } else {
+                    eprintln!("Created application: {}", resp.id);
+                }
             } else {
-                eprintln!("Created application: {}", resp.id);
+                // Default: return the full document so downstream tooling
+                // doesn't need a follow-up `app get` to chain template /
+                // endpoint ids.
+                let app = c.get_application(&resp.id).await?;
+                if let OutputFormat::Json = format {
+                    print_json_with_redaction(&app, redact)?;
+                } else {
+                    eprintln!("Created application: {}", resp.id);
+                    let row = AppDetailWithIds::from(&app);
+                    output::print_single(&row, format);
+                }
             }
         }
         ContainerAppAction::Update {
@@ -683,13 +794,12 @@ async fn handle_app(
             c.restart_application(id).await?;
             eprintln!("Restarted application {id}");
         }
-        ContainerAppAction::Delete { id } => {
-            if !yes && !confirm(format!("Delete application {id}?")).await? {
-                eprintln!("Aborted.");
-                return Ok(());
-            }
-            c.delete_application(id).await?;
-            eprintln!("Deleted application {id}");
+        ContainerAppAction::Delete {
+            id,
+            cascade,
+            no_cascade,
+        } => {
+            handle_app_delete(&c, id, *cascade, *no_cascade, yes, debug, record).await?;
         }
         ContainerAppAction::Overview { id } => {
             let overview = c.get_application_overview(id).await?;
@@ -813,6 +923,123 @@ async fn handle_app(
     Ok(())
 }
 
+/// Discover auto-managed Pull Zone IDs owned by a Magic Containers app.
+///
+/// Bunny creates a Pull Zone for every CDN endpoint and tracks its id in
+/// `endpoint.pull_zone_id`; deleting the app does NOT cascade to those zones,
+/// leaving them live and billable. We collect them up front so the operator
+/// can see what will be orphaned before confirming.
+async fn discover_auto_pull_zones(
+    c: &ContainersClient,
+    app_id: &str,
+) -> Result<Vec<(String, i64)>> {
+    let endpoints = c.list_endpoints(app_id).await?;
+    let mut out: Vec<(String, i64)> = Vec::new();
+    for ep in &endpoints.items {
+        if let Some(pz_id) = parse_pull_zone_id(ep) {
+            out.push((ep.id.clone(), pz_id));
+        }
+    }
+    Ok(out)
+}
+
+/// Bunny stores `pullZoneId` as a string on the endpoint. Treat "0" / empty as
+/// "no auto-PZ" (Anycast / public-IP endpoints don't have one).
+fn parse_pull_zone_id(ep: &EndpointListItem) -> Option<i64> {
+    let raw = ep.pull_zone_id.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let parsed: i64 = raw.parse().ok()?;
+    if parsed == 0 { None } else { Some(parsed) }
+}
+
+async fn handle_app_delete(
+    c: &ContainersClient,
+    id: &str,
+    cascade: bool,
+    no_cascade: bool,
+    yes: bool,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let auto_pzs = match discover_auto_pull_zones(c, id).await {
+        Ok(v) => v,
+        Err(e) => {
+            // Endpoint discovery is best-effort — if it fails, fall back to
+            // the legacy single-step delete and warn the operator.
+            eprintln!(
+                "warning: failed to enumerate endpoints for app {id} ({e:#}); \
+                 cannot detect orphan pull zones"
+            );
+            Vec::new()
+        }
+    };
+
+    let has_auto_pzs = !auto_pzs.is_empty();
+    if has_auto_pzs && !cascade && !no_cascade {
+        eprintln!(
+            "App {id} owns {n} auto-managed Pull Zone(s) that won't be deleted automatically:",
+            n = auto_pzs.len()
+        );
+        for (ep, pz) in &auto_pzs {
+            eprintln!("  - pull-zone {pz} (endpoint {ep})");
+        }
+        bail!(
+            "refusing to delete: pass --cascade to also delete the Pull Zones, \
+             or --no-cascade to delete only the app and leave them as orphans"
+        );
+    }
+
+    if !yes {
+        let prompt = if cascade && has_auto_pzs {
+            format!(
+                "Delete application {id} AND {n} auto-managed Pull Zone(s)?",
+                n = auto_pzs.len()
+            )
+        } else {
+            format!("Delete application {id}?")
+        };
+        if !confirm(prompt).await? {
+            eprintln!("Aborted.");
+            return Ok(());
+        }
+    }
+
+    c.delete_application(id).await?;
+    eprintln!("Deleted application {id}");
+
+    if has_auto_pzs && cascade {
+        let core = auth::core_client(debug, record)?;
+        let mut failures: Vec<(i64, String)> = Vec::new();
+        for (_ep, pz) in &auto_pzs {
+            match core.delete_pull_zone(*pz).await {
+                Ok(()) => eprintln!("Deleted auto-managed pull zone {pz}"),
+                Err(e) => {
+                    eprintln!("warning: failed to delete pull zone {pz}: {e:#}");
+                    failures.push((*pz, format!("{e:#}")));
+                }
+            }
+        }
+        if !failures.is_empty() {
+            bail!(
+                "deleted app {id} but {n} pull-zone cleanup(s) failed; \
+                 retry with: hoppy pull-zone delete --id <id> --yes",
+                n = failures.len()
+            );
+        }
+    } else if has_auto_pzs && no_cascade {
+        eprintln!(
+            "Note: {n} auto-managed Pull Zone(s) were NOT deleted. Remove with:",
+            n = auto_pzs.len()
+        );
+        for (_ep, pz) in &auto_pzs {
+            eprintln!("  hoppy pull-zone delete --id {pz} --yes");
+        }
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Template sub-handlers
 // ---------------------------------------------------------------------------
@@ -823,6 +1050,7 @@ async fn handle_template(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    redact: &RedactConfig,
 ) -> Result<()> {
     let c = client(debug, record)?;
     match action {
@@ -832,10 +1060,7 @@ async fn handle_template(
         } => {
             let tmpl = c.get_container(app_id, container_id).await?;
             if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
-                );
+                print_json_with_redaction(&tmpl, redact)?;
             } else {
                 let row = ContainerTemplateRow::from(&tmpl);
                 output::print_single(&row, format);
@@ -866,10 +1091,7 @@ async fn handle_template(
             };
             let tmpl = c.add_container(app_id, &body).await?;
             if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
-                );
+                print_json_with_redaction(&tmpl, redact)?;
             } else {
                 let row = ContainerTemplateRow::from(&tmpl);
                 output::print_single(&row, format);
@@ -902,10 +1124,7 @@ async fn handle_template(
             };
             let tmpl = c.patch_container(app_id, container_id, &body).await?;
             if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
-                );
+                print_json_with_redaction(&tmpl, redact)?;
             } else {
                 let row = ContainerTemplateRow::from(&tmpl);
                 output::print_single(&row, format);
@@ -930,20 +1149,214 @@ async fn handle_template(
         ContainerTemplateAction::Env {
             app_id,
             container_id,
+            add,
+            update,
+            remove,
+            replace_all,
+            clear,
+            list,
             env,
         } => {
-            let map = parse_env_pairs(env)?;
-            let tmpl = c.set_container_env(app_id, container_id, &map).await?;
-            if let OutputFormat::Json = format {
+            handle_template_env(
+                &c,
+                app_id,
+                container_id,
+                add,
+                update,
+                remove,
+                *replace_all,
+                *clear,
+                *list,
+                env,
+                yes,
+                format,
+                redact,
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}
+
+/// Implements MC.1 + MC.5: granular env operations on a container template.
+///
+/// Behaviour matrix (mutually exclusive groups marked):
+/// - `--list`                    → print current env (redacted unless --reveal)
+/// - `--clear`                   → wipe to empty (require typed confirmation)
+/// - `--replace-all` + `--env …` → replace whole set
+/// - `--add` / `--update` / `--remove` → granular merge (default)
+///
+/// A bare invocation (no flags) is rejected — historically this was a silent
+/// "wipe everything" footgun; now it errors out with a recipe.
+#[allow(clippy::too_many_arguments)]
+async fn handle_template_env(
+    c: &ContainersClient,
+    app_id: &str,
+    container_id: &str,
+    add: &[String],
+    update: &[String],
+    remove: &[String],
+    replace_all: bool,
+    clear: bool,
+    list: bool,
+    env: &[String],
+    yes: bool,
+    format: OutputFormat,
+    redact: &RedactConfig,
+) -> Result<()> {
+    let granular = !add.is_empty() || !update.is_empty() || !remove.is_empty();
+
+    // Mutual-exclusion checks. clap's `conflicts_with` would handle this but
+    // we have several groups, so we enforce by hand for clearer errors.
+    let mode_count = [list, clear, replace_all, granular]
+        .iter()
+        .filter(|x| **x)
+        .count();
+    if mode_count > 1 {
+        bail!(
+            "--list, --clear, --replace-all, and --add/--remove/--update are \
+             mutually exclusive — pick one mode per invocation"
+        );
+    }
+    if !replace_all && !env.is_empty() {
+        bail!("--env is only valid with --replace-all (use --add KEY=VAL otherwise)");
+    }
+    if replace_all && env.is_empty() {
+        bail!("--replace-all requires one or more --env KEY=VAL");
+    }
+
+    if list {
+        let tmpl = c.get_container(app_id, container_id).await?;
+        let mut json = serde_json::to_value(&tmpl).context("failed to serialize to JSON")?;
+        redact::redact_env_in_json(&mut json, redact);
+        match format {
+            OutputFormat::Json => {
+                let env_arr = json
+                    .get("environmentVariables")
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::Value::Array(Vec::new()));
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&tmpl).context("failed to serialize to JSON")?
+                    serde_json::to_string_pretty(&env_arr)
+                        .context("failed to serialize to JSON")?
                 );
-            } else {
-                let row = ContainerTemplateRow::from(&tmpl);
-                output::print_single(&row, format);
+            }
+            _ => {
+                let arr = json
+                    .get("environmentVariables")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                if arr.is_empty() {
+                    eprintln!("No environment variables set.");
+                } else {
+                    for item in arr {
+                        let name = item
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_owned();
+                        let value = item
+                            .get("value")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_owned();
+                        println!("{name}\t{value}");
+                    }
+                }
             }
         }
+        return Ok(());
+    }
+
+    if clear {
+        let current = c.get_container(app_id, container_id).await?;
+        let n = current.environment_variables.len();
+        if !yes {
+            let prompt = format!(
+                "Clear ALL {n} environment variable(s) on container {container_id}? \
+                 Type \"wipe\" to confirm:"
+            );
+            if !confirm_phrase(prompt, "wipe").await? {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
+        }
+        let empty: HashMap<String, String> = HashMap::new();
+        let tmpl = c.set_container_env(app_id, container_id, &empty).await?;
+        report_env_result(&tmpl, format, redact)?;
+        return Ok(());
+    }
+
+    if replace_all {
+        let map = parse_env_pairs(env)?;
+        let current = c.get_container(app_id, container_id).await?;
+        let cur_n = current.environment_variables.len();
+        let new_n = map.len();
+        if !yes && cur_n > 0 && cur_n > new_n {
+            let prompt = format!(
+                "Replace {cur_n} environment variable(s) with {new_n}? \
+                 Type \"replace\" to confirm:"
+            );
+            if !confirm_phrase(prompt, "replace").await? {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
+        }
+        let tmpl = c.set_container_env(app_id, container_id, &map).await?;
+        report_env_result(&tmpl, format, redact)?;
+        return Ok(());
+    }
+
+    if granular {
+        // Read current set, apply add/update/remove in order, write back.
+        let current = c.get_container(app_id, container_id).await?;
+        let mut map: HashMap<String, String> = current
+            .environment_variables
+            .iter()
+            .map(|e| (e.name.clone(), e.value.clone().unwrap_or_default()))
+            .collect();
+        for pair in add.iter().chain(update.iter()) {
+            let (k, v) = pair
+                .split_once('=')
+                .ok_or_else(|| anyhow::anyhow!("env '{pair}' is not in KEY=VALUE format"))?;
+            map.insert(k.to_owned(), v.to_owned());
+        }
+        for key in remove {
+            map.remove(key);
+        }
+        let tmpl = c.set_container_env(app_id, container_id, &map).await?;
+        report_env_result(&tmpl, format, redact)?;
+        return Ok(());
+    }
+
+    // No flags at all — the historical zero-arg wipe. Refuse loudly with a
+    // recipe so operators know how to do what they actually meant.
+    bail!(
+        "no operation specified — at least one of --add / --remove / --update / \
+         --replace-all / --clear / --list is required.\n\n\
+         Examples:\n  \
+         hoppy container template env --app-id {app_id} --container-id {container_id} \
+         --add KEY=VAL\n  \
+         hoppy container template env --app-id {app_id} --container-id {container_id} \
+         --remove KEY\n  \
+         hoppy container template env --app-id {app_id} --container-id {container_id} \
+         --list\n  \
+         hoppy --yes container template env --app-id {app_id} --container-id {container_id} \
+         --clear   # wipe all"
+    );
+}
+
+fn report_env_result(
+    tmpl: &bunny_api_containers::ContainerTemplate,
+    format: OutputFormat,
+    redact: &RedactConfig,
+) -> Result<()> {
+    if let OutputFormat::Json = format {
+        print_json_with_redaction(tmpl, redact)?;
+    } else {
+        let row = ContainerTemplateRow::from(tmpl);
+        output::print_single(&row, format);
     }
     Ok(())
 }

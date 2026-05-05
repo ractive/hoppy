@@ -3,15 +3,18 @@ mod cli;
 mod commands;
 mod output;
 mod progress;
+mod redact;
 
 use clap::Parser;
 use clap_complete::generate;
 use cli::{Cli, Commands};
+use redact::RedactConfig;
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
     let record = cli.record.as_deref();
+    let redact_cfg = RedactConfig::new(cli.reveal, cli.reveal_env.clone());
 
     let result = match &cli.command {
         Commands::Auth { action } => {
@@ -41,7 +44,8 @@ async fn main() {
             commands::script::handle(action, cli.format, cli.debug, cli.yes, record).await
         }
         Commands::Container { action } => {
-            commands::container::handle(action, cli.format, cli.debug, cli.yes, record).await
+            commands::container::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
+                .await
         }
         Commands::Statistics {
             date_from,

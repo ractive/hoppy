@@ -131,6 +131,58 @@ Re-uploading to an existing video ID returns 400. Must delete and recreate.
 
 Same as all other bunny.net update endpoints — uses POST, not PATCH.
 
+## Magic Containers: `app delete` does not cascade to auto-managed Pull Zones
+
+**Affected endpoint:** `DELETE /apps/{appId}` (Magic Containers API)
+
+When a Magic Container app has a CDN endpoint, the bunny.net Magic Containers
+service automatically provisions a Pull Zone in the Core API and stores its
+id on the endpoint as `endpoint.pullZoneId`. Deleting the app does **not**
+cascade to those auto-managed Pull Zones — they remain live and billable.
+
+**hoppy mitigation:** `hoppy container app delete` enumerates endpoints and
+refuses by default if any auto-managed PZ is detected. Operators choose:
+- `--cascade` — delete the app, then DELETE each `pullZoneId` via the Core API.
+- `--no-cascade` — delete the app and print the orphan IDs with a manual
+  cleanup recipe (`hoppy pull-zone delete --id <id> --yes`).
+
+**Discovery:** `endpoint.pullZoneId` is a stringified integer; "0" or empty
+means "no auto-PZ" (Anycast / public-IP endpoints). Hoppy treats both as no
+auto-PZ and skips them.
+
+## Magic Containers: `template env` PUT replaces the whole array
+
+**Affected endpoint:** `PUT /apps/{appId}/containers/{containerId}/env`
+
+The endpoint accepts a flat `{key: value}` JSON body and **replaces** the
+entire env-var set. There is no incremental endpoint. A bare PUT with `{}`
+silently wipes all env vars and returns 200.
+
+**hoppy mitigation:** `hoppy container template env` rejects bare invocations
+and exposes:
+- `--add KEY=VAL` / `--remove KEY` / `--update KEY=VAL` — read-modify-write
+  granular merges (default mode).
+- `--replace-all --env K=V …` — explicit destructive replace; if the new set
+  shrinks the existing one, requires the operator to type "replace".
+- `--clear` — explicit wipe; requires the operator to type "wipe".
+- `--list` — names + redacted values; opt in with `--reveal` to see raws.
+
+## Magic Containers: env-var values are returned in plaintext
+
+**Affected endpoints:** `GET /apps/{appId}` (`containerTemplates[*].environmentVariables`),
+`GET /apps/{appId}/containers/{containerId}`, and the `PUT .../env` response.
+
+The API returns every env-var value verbatim, including secrets like
+`BETTER_AUTH_SECRET`, `DATABASE_AUTH_TOKEN`, `RESEND_API_KEY`. This is
+unavoidable on the wire but ends up in `hoppy` output (and the operator's
+terminal scrollback) by default.
+
+**hoppy mitigation:** the cross-cutting redaction layer rewrites every
+`environmentVariables[*].value` to `<set, length=N>` (or `<unset>` for empty
+values) in JSON, table, and text output. Opt in with `--reveal` (all) or
+`--reveal-env KEY` (a single var). The flag must be passed explicitly each
+invocation — no env var unlocks it.
+
 ## Related
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks
 - [[api/bunny-api-overview]] — API overview

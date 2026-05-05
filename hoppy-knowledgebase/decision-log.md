@@ -30,6 +30,11 @@ Significant architectural and design decisions made during development. API-spec
 | `zone_security_key` excluded from JSON output | `#[serde(skip_serializing)]` prevents leaking security keys in CLI output |
 | `VideoLibrary.ApiKey` excluded from JSON output | Same pattern — `api_key` and `read_only_api_key` skipped |
 | `deployment_key` excluded from JSON output | Same pattern for EdgeScript credentials |
+| Cross-cutting `--reveal` redaction layer (iter-21) | Magic-Container env values, storage-zone passwords, DB tokens are masked by default in JSON, table, and text output. Operators opt in with `--reveal` (all secrets) or `--reveal-env KEY` (one env var). Replaces ad-hoc per-field skipping for fields that operators legitimately need to read |
+| Redaction defaults to ON even with `--format json` (iter-21) | A `--format json \| jq` pipeline must not silently leak a secret into a logfile. No env var auto-opts-out — only the explicit `--reveal` flag does |
+| Destructive `template env` requires typed phrase (iter-21) | `--clear` and a shrinking `--replace-all` need the operator to type "wipe" / "replace". `--yes` alone is not sufficient — too easy to fat-finger after a successful prior `--yes` invocation |
+| `app delete` refuses by default if auto-PZs exist (iter-21) | Magic-Container CDN endpoints create auto-managed Pull Zones that the app DELETE doesn't cascade to. Operators must explicitly choose `--cascade` (delete both) or `--no-cascade` (delete app, print orphan IDs). No silent billable orphan |
+| `app create` returns full document by default (iter-21) | Provisioning a working stack used to take 3+ `app get` round-trips to chain template / endpoint ids. Default now returns the full app; `--minimal` opts back into the legacy `{"id": "..."}` shape |
 
 ## Auth Resolution
 
