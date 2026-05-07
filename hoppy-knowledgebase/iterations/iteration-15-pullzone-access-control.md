@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - cdn
   - security
-status: in-progress
+status: completed
 branch: iter-15/pullzone-access-control
 ---
 
