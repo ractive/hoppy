@@ -464,6 +464,65 @@ impl From<&ShieldZonePullZoneMapping> for PullzoneMappingRow {
 }
 
 // ---------------------------------------------------------------------------
+// Display rows — WAF plan segmentation & engine config
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct WafPlanSegmentationRow {
+    #[tabled(rename = "Plan")]
+    plan_name: String,
+    #[tabled(rename = "Plan Value")]
+    plan_value: String,
+    #[tabled(rename = "Main Groups")]
+    main_groups: String,
+    #[tabled(rename = "Rules")]
+    rule_count: String,
+}
+
+impl From<&bunny_api_shield::types::WafRulesByPlanModel> for WafPlanSegmentationRow {
+    fn from(p: &bunny_api_shield::types::WafRulesByPlanModel) -> Self {
+        let main_groups = p.rules.as_ref().map(|r| r.len()).unwrap_or(0);
+        let rule_count: usize = p
+            .rules
+            .as_ref()
+            .map(|groups| {
+                groups
+                    .iter()
+                    .flat_map(|g| g.rule_groups.iter().flatten())
+                    .map(|rg| rg.rules.as_ref().map(|r| r.len()).unwrap_or(0))
+                    .sum()
+            })
+            .unwrap_or(0);
+        Self {
+            plan_name: p.plan_name.as_deref().unwrap_or("-").to_owned(),
+            plan_value: p
+                .plan_value
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            main_groups: main_groups.to_string(),
+            rule_count: rule_count.to_string(),
+        }
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct WafEngineConfigRow {
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Value")]
+    value_encoded: String,
+}
+
+impl From<&bunny_api_shield::types::ConfigVariableValueMinimal> for WafEngineConfigRow {
+    fn from(c: &bunny_api_shield::types::ConfigVariableValueMinimal) -> Self {
+        Self {
+            name: c.name.as_deref().unwrap_or("-").to_owned(),
+            value_encoded: c.value_encoded.as_deref().unwrap_or("-").to_owned(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Enum conversion helpers (integer -> serde_repr enum via serde_json)
 // ---------------------------------------------------------------------------
 
@@ -831,15 +890,29 @@ async fn handle_waf(
         }
         ShieldWafAction::PlanSegmentation => {
             let result = client.get_waf_plan_segmentation().await?;
-            let json =
-                serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
-            println!("{json}");
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let plans = result.data.unwrap_or_default();
+                let rows: Vec<WafPlanSegmentationRow> =
+                    plans.iter().map(WafPlanSegmentationRow::from).collect();
+                output::print_data(&rows, format);
+            }
         }
         ShieldWafAction::EngineConfig => {
             let result = client.get_waf_engine_config().await?;
-            let json =
-                serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
-            println!("{json}");
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let vars = result.data.unwrap_or_default();
+                let rows: Vec<WafEngineConfigRow> =
+                    vars.iter().map(WafEngineConfigRow::from).collect();
+                output::print_data(&rows, format);
+            }
         }
     }
     Ok(())
@@ -1547,7 +1620,8 @@ async fn handle_api_guardian(
             spec_file,
             enforce_authorization,
         } => {
-            let contents = std::fs::read_to_string(spec_file)
+            let contents = tokio::fs::read_to_string(spec_file)
+                .await
                 .with_context(|| format!("failed to read spec file {}", spec_file.display()))?;
             let body = UploadOpenApiSpecificationRequest {
                 content: Some(contents),
@@ -1572,7 +1646,8 @@ async fn handle_api_guardian(
             spec_file,
             enforce_authorization,
         } => {
-            let contents = std::fs::read_to_string(spec_file)
+            let contents = tokio::fs::read_to_string(spec_file)
+                .await
                 .with_context(|| format!("failed to read spec file {}", spec_file.display()))?;
             let body = UpdateApiGuardianRequest {
                 content: contents,
@@ -1710,14 +1785,28 @@ async fn handle_event_logs(
 ) -> Result<()> {
     let client = auth::shield_client(debug, record)?;
     let mut token = continuation_token.unwrap_or("").to_owned();
+    let json_output = matches!(format, OutputFormat::Json);
+    let mut accumulated_logs: Vec<EventLog> = Vec::new();
+    let mut last_continuation_token: Option<String> = None;
+    let mut last_has_more: bool = false;
 
     loop {
         let result = client.get_event_logs(shield_zone_id, date, &token).await?;
+        let has_more = result.has_more_data.unwrap_or(false);
+        let next_token = result.continuation_token.clone();
 
-        if let OutputFormat::Json = format {
-            let json =
-                serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
-            println!("{json}");
+        if json_output {
+            if all {
+                if let Some(logs) = result.logs {
+                    accumulated_logs.extend(logs);
+                }
+                last_has_more = has_more;
+                last_continuation_token = next_token.clone();
+            } else {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            }
         } else {
             let logs = result.logs.as_deref().unwrap_or(&[]);
             if logs.is_empty() {
@@ -1728,11 +1817,11 @@ async fn handle_event_logs(
             }
         }
 
-        let has_more = result.has_more_data.unwrap_or(false);
-        let next_token = result.continuation_token;
-
         if !all || !has_more {
-            if has_more && let Some(ref t) = next_token {
+            if !json_output
+                && has_more
+                && let Some(ref t) = next_token
+            {
                 eprintln!(
                     "More data available. Use --continuation-token {t} to get the next page."
                 );
@@ -1744,6 +1833,17 @@ async fn handle_event_logs(
             Some(t) if !t.is_empty() => token = t,
             _ => break,
         }
+    }
+
+    if json_output && all {
+        let combined = serde_json::json!({
+            "logs": accumulated_logs,
+            "hasMoreData": last_has_more,
+            "continuationToken": last_continuation_token,
+        });
+        let json =
+            serde_json::to_string_pretty(&combined).context("failed to serialize to JSON")?;
+        println!("{json}");
     }
 
     Ok(())
