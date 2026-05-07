@@ -1,0 +1,7 @@
+{
+  "generations": [
+    {"created_at": "2026-05-01T00:00:00Z", "generation": "11111111-2222-3333-4444-555555555555"},
+    {"created_at": "2026-05-02T00:00:00Z", "generation": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}
+  ],
+  "count": 2
+}

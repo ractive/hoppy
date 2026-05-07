@@ -2,6 +2,7 @@ use anyhow::{Result, bail};
 use bunny_api_compute::ComputeClient;
 use bunny_api_containers::ContainersClient;
 use bunny_api_core::CoreClient;
+use bunny_api_database::DatabaseClient;
 use bunny_api_shield::ShieldClient;
 use std::env;
 
@@ -41,6 +42,26 @@ pub fn get_stream_url() -> Option<String> {
 /// Read a custom base URL for the bunny.net Storage API.
 pub fn get_storage_url() -> Option<String> {
     get_env_url("BUNNY_STORAGE_URL")
+}
+
+/// Read a custom base URL for the bunny.net Database API.
+pub fn get_database_url() -> Option<String> {
+    get_env_url("BUNNY_DATABASE_URL")
+}
+
+/// Build a `DatabaseClient` with optional base URL override.
+pub fn database_client(debug: bool, record: Option<&str>) -> Result<DatabaseClient> {
+    let api_key = get_api_key()?;
+    let mut client = if let Some(url) = get_database_url() {
+        DatabaseClient::new(api_key).with_base_url(url)
+    } else {
+        DatabaseClient::new(api_key)
+    }
+    .with_debug(debug);
+    if let Some(dir) = record {
+        client = client.with_record(dir);
+    }
+    Ok(client)
 }
 
 /// Read the bunny.net Storage Zone access key from the BUNNY_STORAGE_KEY

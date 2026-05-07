@@ -1,0 +1,13 @@
+{
+  "storage_region_available": [
+    {"id": "eu-west-1", "name": "Europe West", "group": "EU"},
+    {"id": "us-east-1", "name": "US East", "group": "NA"}
+  ],
+  "primary_regions": [
+    {"id": "DE", "name": "Frankfurt", "latitude": 50.1, "longitude": 8.7, "group": "EU", "country": {"alpha2": "DE"}},
+    {"id": "FR", "name": "Paris", "latitude": 48.8, "longitude": 2.3, "group": "EU", "country": {"alpha2": "FR"}}
+  ],
+  "replica_regions": [
+    {"id": "UK", "name": "London", "latitude": 51.5, "longitude": -0.1, "group": "EU", "country": {"alpha2": "GB"}}
+  ]
+}
