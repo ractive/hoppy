@@ -119,7 +119,7 @@ iter-20 merged before iter-22, so the database crate gets the same treatment as 
 
 ### Measurement
 
-- [x] Before the refactor: capture `cargo clean && time cargo test --workspace --quiet` on a warm dependency cache (release mode of dependencies, debug build of crate-under-test — Cargo's default test profile)
+- [ ] Before the refactor: capture `cargo clean && time cargo test --workspace --quiet` on a warm dependency cache (release mode of dependencies, debug build of crate-under-test — Cargo's default test profile) — *skipped, see Notes*
 - [x] After the refactor: same measurement
 - [x] Record both numbers (and the machine spec) in this iteration's "Notes" section. Hyalo's experience suggests >2× speedup for workspaces with many small test files; the actual win depends on how dominant linking is locally.
 - [x] If the speedup is less than ~1.5× the refactor still passes — consistency and incremental-rebuild benefits stand on their own — but the number is worth recording.
