@@ -8,7 +8,7 @@ tags:
   - ci
   - tests
   - build-time
-status: in-progress
+status: completed
 branch: iter-22/test-binary-consolidation
 ---
 
