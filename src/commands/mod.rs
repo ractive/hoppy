@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod container;
+pub mod database;
 pub mod dns;
 pub mod pull_zone;
 pub mod purge;

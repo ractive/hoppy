@@ -1,5 +1,5 @@
 ---
-title: "Iteration 20 — Bunny Database (libSQL) support"
+title: Iteration 20 — Bunny Database (libSQL) support
 type: iteration
 date: 2026-05-05
 tags:
@@ -8,7 +8,7 @@ tags:
   - database
   - libsql
   - new-domain
-status: planned
+status: in-progress
 branch: iter-20/database
 ---
 
