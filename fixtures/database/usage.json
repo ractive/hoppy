@@ -1,0 +1,5 @@
+{
+  "rows_read": 12345,
+  "rows_written": 678,
+  "avg_latency_ms": 4.2
+}

@@ -1,0 +1,14 @@
+{
+  "live_metrics": {
+    "db_01HX0000000000000000000001": {
+      "state": "Live",
+      "metadata": {
+        "main": "DE",
+        "replicas": ["FR"]
+      }
+    },
+    "db_01HX0000000000000000000002": {
+      "state": "Offline"
+    }
+  }
+}

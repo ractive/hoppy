@@ -1,0 +1,17 @@
+{
+  "database": {
+    "name": "my-app",
+    "id": "db_01HX0000000000000000000001",
+    "url": "libsql://group_01-my-app.lite.bunnydb.net/",
+    "block_reads": false,
+    "block_writes": false,
+    "allow_attach": false,
+    "group_id": "group_01HX0000000000000000000001",
+    "group_name": "EU",
+    "is_schema": false,
+    "schema": null,
+    "version": "0.24.30",
+    "size_max": "10737418240",
+    "current_size": "0"
+  }
+}

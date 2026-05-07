@@ -38,7 +38,12 @@ Execute JavaScript/TypeScript at network edges. APIs, middleware, CDN extensions
 Security stack: WAF, DDoS mitigation, rate limiting, bot detection, upload scanning, ACLs.
 
 ### Bunny Database
-Globally distributed SQLite-compatible database with replication. SQL API access.
+Globally distributed libSQL/SQLite database with replication. Two HTTP
+surfaces: the REST control plane at `https://api.bunny.net/database`
+(database/group lifecycle, auth-token minting, config, statistics) and
+the per-database libSQL HTTP data plane at
+`libsql://<group_id>-<slug>.lite.bunnydb.net/v2/pipeline`. See
+[[bunny-database-research]] for the full type and endpoint inventory.
 
 ### Bunny Optimizer
 Automatic image compression, dynamic image transformation (resize, crop, color), HTML prerender, watermarking.
@@ -68,6 +73,8 @@ Note: Some services (Storage, Stream) have their own separate API keys in additi
 | Storage | `https://{region}.storage.bunnycdn.com` | File operations (upload, download, delete, list) |
 | Stream | `https://video.bunnycdn.com` | Video management, collections, encoding |
 | Shield | `https://api.bunny.net/shield` | WAF, DDoS, rate limiting, bot detection |
+| Database | `https://api.bunny.net/database` | libSQL database/group control plane |
+| libSQL data plane | `https://<group>-<slug>.lite.bunnydb.net` | Per-DB SQL execution (`/v2/pipeline`) |
 | Edge Scripting | Part of core API | Script management and deployment |
 
 ### OpenAPI Spec Locations
