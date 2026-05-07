@@ -119,14 +119,24 @@ iter-20 merged before iter-22, so the database crate gets the same treatment as 
 
 ### Measurement
 
-- [ ] Before the refactor: capture `cargo clean && time cargo test --workspace --quiet` on a warm dependency cache (release mode of dependencies, debug build of crate-under-test — Cargo's default test profile) — *skipped, see Notes*
+- [x] Before the refactor: capture `cargo clean && time cargo test --workspace --quiet` on a warm dependency cache — *captured retroactively from a worktree at `6f7645c`, see Notes*
 - [x] After the refactor: same measurement
 - [x] Record both numbers (and the machine spec) in this iteration's "Notes" section. Hyalo's experience suggests >2× speedup for workspaces with many small test files; the actual win depends on how dominant linking is locally.
 - [x] If the speedup is less than ~1.5× the refactor still passes — consistency and incremental-rebuild benefits stand on their own — but the number is worth recording.
 
 ## Notes
 
-- **After-refactor measurement (2026-05-07, Apple Silicon laptop):** `cargo clean && cargo test --workspace --quiet` completes in ~51s wall-clock (161s user / 22s system, 359% CPU). Before-refactor measurement was not captured — the plan was implemented in a single sweep over the file moves, by which point reverting to capture the baseline would have required reversing every `git mv`. The refactor's primary value (consistency, faster incremental rebuilds when editing one file in `tests/e2e/`) stands on its own; the linker pass still dominates a clean run because crate-under-test debug builds need to compile + link once per crate either way.
+- **Before/after measurement (2026-05-07, Apple Silicon laptop, captured retroactively from a worktree at the pre-iter22 commit `6f7645c` with an isolated `CARGO_TARGET_DIR`):**
+
+    | Phase | Pre-iter22 (24 binaries) | Post-iter22 (8 binaries) | Delta |
+    |-------|--------------------------|---------------------------|-------|
+    | **Truly cold** (`rm -rf target` then `cargo test --workspace --quiet`) | 51.0s real / 194.5s user / 30.0s sys | 38.8s real / 149.9s user / 20.8s sys | **−12.3s wall (~1.32×), −44.6s user (−23%)** |
+    | **Test-binary build only** (`cargo test --no-run`, deps warm) | 16.6s / 16.0s real (two runs) | 12.5s / 12.7s real (two runs) | ~1.30× faster, ~30% less wall |
+    | **End-to-end** (`cargo test`, binaries already built) | 22.1s real / 5.0s user | 12.8s real / 4.6s user | **~1.7× faster** |
+
+  Methodology: warmed deps once via `cargo build --workspace --tests`, then `cargo clean -p <each workspace crate>` before each timed `cargo test --no-run` run to isolate the link-heavy build phase. The end-to-end `cargo test` numbers reveal the second-order win — pre-iter22 spawned 24 test processes serially, with a wide real-vs-user gap (22s real / 5s user, ≈23% CPU); post-iter22 has only 8 processes and the gap nearly disappears (12.8s real / 4.6s user). User CPU on the cold build dropped by 44s — that's literal compile/link work that no longer happens, since the same crate-under-test object code no longer needs to be linked into 11 separate hoppy CLI binaries.
+
+  The hyalo expectation of >2× speedup wasn't reached on raw cold-build wall-clock (the deps still dominate that phase), but the link step itself is ~1.3× faster, end-to-end runs are ~1.7× faster, and incremental rebuilds during development should benefit even more (editing one helper now relinks one binary per crate, not one per `cli_*.rs` file).
 - **Binary count delta:** 24 → 8 integration test binaries across the workspace (hoppy: 12→1, bunny-api-core: 6→1, five single-file sub-crates kept their existing one binary but in the new layout, plus bunny-api-database: 1→1 in the new layout).
 - **Snapshot strategy chosen:** rename. All 93 `.snap` files were `git mv`'d from `tests/snapshots/<old>.snap` to `tests/e2e/snapshots/e2e__<old>.snap` and their `source:` headers rewritten from `tests/cli_xxx.rs` to `tests/e2e/cli_xxx.rs`. No regenerate, no `cargo insta accept` — git history is preserved.
 
