@@ -1,9 +1,10 @@
 //! Types for the bunny.net Database control-plane API.
 //!
 //! Captured from `specs/database.json` (API spec version 0.0.130, 2026-05-05).
-//! v1 and v2 are kept as parallel modules — the spec exposes parallel schemas
-//! (`Database` vs `Database2`, etc.) and unifying them would silently lose
-//! fields one side or the other doesn't model.
+//! v1 and v2 are exposed as parallel types (`Database` vs `Database2`,
+//! `CreateDatabasePayload` vs `CreateDatabaseV2Payload`, etc.) within this
+//! single module — unifying them would silently lose fields one side or the
+//! other doesn't model.
 //!
 //! Region taxonomy:
 //! - `storage_region` — flat storage region (e.g. `eu-west-1`). Modelled as
@@ -243,7 +244,7 @@ pub struct RestoreDatabaseResponse {
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
-pub struct ListVersionsDatabaseGroupPayload {
+pub struct ListVersionsDatabasePayload {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]

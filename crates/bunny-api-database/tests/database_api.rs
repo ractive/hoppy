@@ -132,7 +132,7 @@ async fn list_versions_posts_filters() {
         .expect(1)
         .mount(&server)
         .await;
-    let body = bunny_api_database::types::ListVersionsDatabaseGroupPayload {
+    let body = bunny_api_database::types::ListVersionsDatabasePayload {
         limit: Some(10),
         older_than: None,
         newer_than: None,
