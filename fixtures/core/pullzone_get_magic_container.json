@@ -1,0 +1,43 @@
+{
+  "Id": 5719318,
+  "Name": "magic-container-auto-pz",
+  "OriginUrl": "",
+  "Enabled": true,
+  "Suspended": false,
+  "Hostnames": [
+    {
+      "Id": 9001,
+      "Value": "magic-container-auto-pz.b-cdn.net",
+      "ForceSSL": true,
+      "IsSystemHostname": true,
+      "IsManagedHostname": true,
+      "HasCertificate": true,
+      "Certificate": null,
+      "CertificateKey": null,
+      "CertificateKeyType": 0,
+      "CertificateProvisionType": 0
+    }
+  ],
+  "StorageZoneId": null,
+  "EdgeScriptId": -1,
+  "EdgeScriptExecutionPhase": 0,
+  "MiddlewareScriptId": null,
+  "MagicContainersAppId": "abc123",
+  "MagicContainersEndpointId": "ep-xyz",
+  "AllowedReferrers": [],
+  "BlockedReferrers": [],
+  "BlockedIps": [],
+  "EnableGeoZoneUS": true,
+  "EnableGeoZoneEU": true,
+  "EnableGeoZoneASIA": true,
+  "EnableGeoZoneSA": true,
+  "EnableGeoZoneAF": true,
+  "ZoneSecurityEnabled": false,
+  "ZoneSecurityKey": "redacted-security-key",
+  "MonthlyBandwidthLimit": 0,
+  "MonthlyBandwidthUsed": 0,
+  "Type": 0,
+  "OriginType": 5,
+  "CnameDomain": "magic-container-auto-pz.b-cdn.net",
+  "EdgeRules": []
+}

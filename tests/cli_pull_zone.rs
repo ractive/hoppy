@@ -128,6 +128,171 @@ async fn pull_zone_create_json() {
 }
 
 #[tokio::test]
+async fn pull_zone_create_with_storage_zone_id() {
+    let server = MockServer::start().await;
+    let expected_body = serde_json::json!({
+        "Name": "static-files-pz",
+        "StorageZoneId": 1234,
+        "Type": 0,
+    });
+    Mock::given(method("POST"))
+        .and(path("/pullzone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(201).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "create",
+            "--name",
+            "static-files-pz",
+            "--storage-zone-id",
+            "1234",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn pull_zone_create_with_volume_tier() {
+    let server = MockServer::start().await;
+    let expected_body = serde_json::json!({
+        "Name": "high-traffic",
+        "OriginUrl": "https://example.com",
+        "Type": 1,
+    });
+    Mock::given(method("POST"))
+        .and(path("/pullzone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(201).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "create",
+            "--name",
+            "high-traffic",
+            "--origin-url",
+            "https://example.com",
+            "--zone-tier",
+            "volume",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn pull_zone_create_requires_origin_or_storage_zone() {
+    // No mock — clap should reject before any HTTP call.
+    let output = support::hoppy_mock_cmd("test-api-key", "http://127.0.0.1:1")
+        .args(["pull-zone", "create", "--name", "missing-origin"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("required")
+            && stderr.contains("origin-url")
+            && stderr.contains("storage-zone-id"),
+        "expected clap to demand --origin-url or --storage-zone-id, got: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn pull_zone_create_rejects_both_origin_and_storage_zone() {
+    let output = support::hoppy_mock_cmd("test-api-key", "http://127.0.0.1:1")
+        .args([
+            "pull-zone",
+            "create",
+            "--name",
+            "ambiguous",
+            "--origin-url",
+            "https://example.com",
+            "--storage-zone-id",
+            "1234",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("cannot be used with") || stderr.contains("conflicts with"),
+        "expected clap mutual-exclusion error, got: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn pull_zone_update_storage_zone_id() {
+    let server = MockServer::start().await;
+    let expected_body = serde_json::json!({
+        "StorageZoneId": 9876,
+    });
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "update",
+            "--id",
+            "1001",
+            "--storage-zone-id",
+            "9876",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
 async fn pull_zone_update() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))

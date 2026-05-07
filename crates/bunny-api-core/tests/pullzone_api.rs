@@ -1,5 +1,5 @@
 use bunny_api_core::types::{
-    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, MatchingType, TriggerType,
+    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, MatchingType, OriginType, TriggerType,
 };
 use bunny_api_core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
@@ -10,6 +10,8 @@ const FIXTURE_LIST_PAGINATED: &str =
 const FIXTURE_GET: &str = include_str!("../../../fixtures/core/pullzone_get.json");
 const FIXTURE_GET_WITH_EDGERULES: &str =
     include_str!("../../../fixtures/core/pullzone_get_with_edgerules.json");
+const FIXTURE_GET_MAGIC_CONTAINER: &str =
+    include_str!("../../../fixtures/core/pullzone_get_magic_container.json");
 const FIXTURE_UNAUTHORIZED: &str = include_str!("../../../fixtures/core/error_unauthorized.json");
 const FIXTURE_NOT_FOUND: &str =
     include_str!("../../../fixtures/core/error_not_found_storagezone.json");
@@ -94,6 +96,66 @@ async fn get_pull_zone_returns_single_zone() {
     assert_eq!(zone.id, 1001);
     assert_eq!(zone.name, "test-zone-19");
     assert!(zone.enabled);
+}
+
+#[tokio::test]
+async fn get_pull_zone_with_magic_container_origin_does_not_panic() {
+    // Regression: bunny.net returns OriginType=5 for Magic-Container-backed
+    // Pull Zones; before iter-19 this panicked at deserialize time. The value
+    // is now recognised as `OriginType::MagicContainerEndpoint`. The
+    // fallback-to-None behaviour for *unknown* repr integers is exercised by
+    // `get_pull_zone_with_unknown_origin_type_falls_back_to_none`.
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone/5719318"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_GET_MAGIC_CONTAINER, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(5719318)
+        .await
+        .unwrap();
+
+    assert_eq!(zone.id, 5719318);
+    // OriginType: 5 is recognised as MagicContainerEndpoint.
+    assert_eq!(zone.origin_type, Some(OriginType::MagicContainerEndpoint));
+    assert_eq!(zone.origin_url, "");
+}
+
+#[tokio::test]
+async fn get_pull_zone_with_unknown_origin_type_falls_back_to_none() {
+    // Future-proofing: an unrecognised OriginType integer must not panic.
+    let server = MockServer::start().await;
+
+    let payload = serde_json::json!({
+        "Id": 9999,
+        "Name": "future-zone",
+        "OriginType": 99,
+        "Type": 0
+    });
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone/9999"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(payload.to_string(), "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(9999)
+        .await
+        .unwrap();
+
+    assert_eq!(zone.id, 9999);
+    assert_eq!(zone.origin_type, None);
 }
 
 #[tokio::test]
