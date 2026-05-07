@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
-    MatchingType, PullZone, PurgeCache, TriggerType, UpdatePullZone,
+    MatchingType, PullZone, PullZoneType, PurgeCache, TriggerType, UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
 
@@ -139,14 +139,26 @@ pub async fn handle(
             let pz = client.get_pull_zone(*id).await?;
             print_pull_zone(&pz, format);
         }
-        PullZoneAction::Create { name, origin_url } => {
-            let body = CreatePullZone::new(name, origin_url);
+        PullZoneAction::Create {
+            name,
+            origin_url,
+            storage_zone_id,
+            zone_tier,
+        } => {
+            // Clap's ArgGroup guarantees exactly one of these is Some.
+            let mut body = match (origin_url, storage_zone_id) {
+                (Some(url), None) => CreatePullZone::new(name, url),
+                (None, Some(id)) => CreatePullZone::for_storage_zone(name, *id),
+                _ => unreachable!("clap ArgGroup enforces exactly one"),
+            };
+            body = body.zone_type(PullZoneType::from(*zone_tier));
             let pz = client.create_pull_zone(&body).await?;
             print_pull_zone(&pz, format);
         }
         PullZoneAction::Update {
             id,
             origin_url,
+            storage_zone_id,
             monthly_bandwidth_limit,
             cache_expiration_time,
             zone_security_enabled,
@@ -159,6 +171,9 @@ pub async fn handle(
             let mut body = UpdatePullZone::new();
             if let Some(url) = origin_url {
                 body = body.origin_url(url);
+            }
+            if let Some(sz_id) = storage_zone_id {
+                body = body.storage_zone_id(*sz_id);
             }
             if let Some(limit) = monthly_bandwidth_limit {
                 body = body.monthly_bandwidth_limit(*limit);

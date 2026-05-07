@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::serde_helpers::deserialize_repr_option;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -25,6 +26,11 @@ impl std::fmt::Display for PullZoneType {
 }
 
 /// Where the Pull Zone fetches its origin content from.
+///
+/// Note: bunny.net adds new origin types over time (e.g. `MagicContainerEndpoint = 5`
+/// for auto-managed Pull Zones backing Magic Container CDN endpoints). The CLI
+/// uses [`crate::serde_helpers::deserialize_repr_option`] to map any unrecognised
+/// future value to `None` instead of panicking — see `decision-log.md`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
 pub enum OriginType {
@@ -32,6 +38,7 @@ pub enum OriginType {
     StorageZone = 2,
     LoadBalancer = 3,
     Script = 4,
+    MagicContainerEndpoint = 5,
 }
 
 impl std::fmt::Display for OriginType {
@@ -41,6 +48,7 @@ impl std::fmt::Display for OriginType {
             OriginType::StorageZone => write!(f, "StorageZone"),
             OriginType::LoadBalancer => write!(f, "LoadBalancer"),
             OriginType::Script => write!(f, "Script"),
+            OriginType::MagicContainerEndpoint => write!(f, "MagicContainerEndpoint"),
         }
     }
 }
@@ -282,11 +290,11 @@ impl std::str::FromStr for MatchingType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EdgeRuleTrigger {
-    #[serde(rename = "Type", default)]
+    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
     pub trigger_type: Option<TriggerType>,
     #[serde(default)]
     pub pattern_matches: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub pattern_matching_type: Option<MatchingType>,
     #[serde(default)]
     pub parameter1: Option<String>,
@@ -296,7 +304,7 @@ pub struct EdgeRuleTrigger {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EdgeRuleExtraAction {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub action_type: Option<EdgeRuleActionType>,
     #[serde(default)]
     pub action_parameter1: Option<String>,
@@ -312,7 +320,7 @@ pub struct EdgeRuleExtraAction {
 pub struct EdgeRule {
     #[serde(default)]
     pub guid: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub action_type: Option<EdgeRuleActionType>,
     #[serde(default)]
     pub action_parameter1: Option<String>,
@@ -324,7 +332,7 @@ pub struct EdgeRule {
     pub triggers: Vec<EdgeRuleTrigger>,
     #[serde(default)]
     pub extra_actions: Vec<EdgeRuleExtraAction>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub trigger_matching_type: Option<MatchingType>,
     #[serde(default)]
     pub description: Option<String>,
@@ -364,7 +372,7 @@ pub struct PullZone {
     // Origin
     #[serde(default)]
     pub origin_url: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub origin_type: Option<OriginType>,
     #[serde(default)]
     pub storage_zone_id: Option<i64>,
@@ -374,7 +382,7 @@ pub struct PullZone {
     pub cname_domain: String,
     #[serde(default)]
     pub hostnames: Vec<HostnameInfo>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub zone_type: Option<PullZoneType>,
 
     // Status
@@ -458,13 +466,19 @@ impl std::error::Error for ApiError {}
 
 /// Request body for `POST /pullzone` — create a new Pull Zone.
 ///
-/// Only `name` and `origin_url` are required by the API; all other fields
-/// are optional and default to the API's own defaults when absent.
+/// Only `name` is structurally required by this type; the bunny API requires
+/// either an `origin_url` or a `storage_zone_id` (CLI enforces "exactly one"
+/// at parse time via clap `ArgGroup`). All other fields default to the API's
+/// own defaults when absent.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CreatePullZone {
     pub name: String,
-    pub origin_url: String,
+
+    /// Origin URL for HTTP/HTTPS-backed Pull Zones. Omit when `storage_zone_id`
+    /// is set — bunny then uses the Storage Zone as the origin.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_url: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub origin_type: Option<OriginType>,
@@ -479,13 +493,26 @@ pub struct CreatePullZone {
 }
 
 impl CreatePullZone {
-    /// Create the minimum-viable request: a name and an origin URL.
+    /// Create a Pull Zone backed by an HTTP/HTTPS origin URL.
     pub fn new(name: impl Into<String>, origin_url: impl Into<String>) -> Self {
         Self {
             name: name.into(),
-            origin_url: origin_url.into(),
+            origin_url: Some(origin_url.into()),
             origin_type: None,
             storage_zone_id: None,
+            zone_type: None,
+            monthly_bandwidth_limit: None,
+            zone_security_enabled: None,
+        }
+    }
+
+    /// Create a Pull Zone backed by an existing Storage Zone (no origin URL).
+    pub fn for_storage_zone(name: impl Into<String>, storage_zone_id: i64) -> Self {
+        Self {
+            name: name.into(),
+            origin_url: None,
+            origin_type: None,
+            storage_zone_id: Some(storage_zone_id),
             zone_type: None,
             monthly_bandwidth_limit: None,
             zone_security_enabled: None,
@@ -682,15 +709,16 @@ impl AddOrUpdateEdgeRule {
 
 /// A bunny.net Storage Zone.
 ///
-/// `Password` and `ReadOnlyPassword` are deserialized but never serialized
-/// to prevent accidental exposure in JSON output.
+/// `Password` and `ReadOnlyPassword` are returned by the API and are required
+/// for authenticating against the storage endpoint. They are *serialised* but
+/// the CLI redacts them by default — opt in with `--reveal` to see raw values.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct StorageZone {
     pub id: i64,
     pub user_id: String,
     pub name: String,
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub password: String,
     #[serde(default)]
     pub date_modified: String,
@@ -707,7 +735,7 @@ pub struct StorageZone {
     /// Complex nested object — passed through as raw JSON.
     #[serde(default)]
     pub pull_zones: Option<serde_json::Value>,
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub read_only_password: String,
     #[serde(default)]
     pub rewrite_404_to_200: bool,
@@ -909,12 +937,16 @@ impl std::str::FromStr for DnsRecordType {
 }
 
 /// A DNS record within a zone.
+///
+/// `record_type` is an `Option` because bunny.net may return new record-type
+/// integers that pre-date this client's enum — in that case the field
+/// deserialises to `None` rather than panicking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DnsRecord {
     pub id: i64,
-    #[serde(rename = "Type")]
-    pub record_type: DnsRecordType,
+    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
+    pub record_type: Option<DnsRecordType>,
     #[serde(default)]
     pub ttl: i32,
     #[serde(default)]

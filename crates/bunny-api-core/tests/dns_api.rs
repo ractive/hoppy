@@ -144,15 +144,15 @@ async fn get_dns_zone_includes_records() {
     assert_eq!(zone.records.len(), 3);
 
     // Verify record types deserialized correctly
-    assert_eq!(zone.records[0].record_type, DnsRecordType::A);
+    assert_eq!(zone.records[0].record_type, Some(DnsRecordType::A));
     assert_eq!(zone.records[0].value, "93.184.216.34");
     assert_eq!(zone.records[0].ttl, 300);
 
-    assert_eq!(zone.records[1].record_type, DnsRecordType::CNAME);
+    assert_eq!(zone.records[1].record_type, Some(DnsRecordType::CNAME));
     assert_eq!(zone.records[1].name, "www");
     assert_eq!(zone.records[1].comment, Some("WWW redirect".to_owned()));
 
-    assert_eq!(zone.records[2].record_type, DnsRecordType::MX);
+    assert_eq!(zone.records[2].record_type, Some(DnsRecordType::MX));
     assert_eq!(zone.records[2].priority, 10);
 }
 
@@ -269,7 +269,7 @@ async fn add_dns_record_sends_correct_body() {
         .unwrap();
 
     assert_eq!(record.id, 100099);
-    assert_eq!(record.record_type, DnsRecordType::A);
+    assert_eq!(record.record_type, Some(DnsRecordType::A));
     assert_eq!(record.value, "192.0.2.1");
     assert_eq!(record.name, "test");
     assert_eq!(record.ttl, 300);
@@ -323,7 +323,7 @@ async fn add_dns_record_with_mx_priority() {
         .await
         .unwrap();
 
-    assert_eq!(record.record_type, DnsRecordType::MX);
+    assert_eq!(record.record_type, Some(DnsRecordType::MX));
     assert_eq!(record.priority, 10);
     assert_eq!(record.value, "mail.example.com");
 }

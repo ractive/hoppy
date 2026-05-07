@@ -183,6 +183,55 @@ values) in JSON, table, and text output. Opt in with `--reveal` (all) or
 `--reveal-env KEY` (a single var). The flag must be passed explicitly on each
 invocation; it cannot be enabled via an environment variable.
 
+## Repr-based enums grow new variants without API versioning
+
+**Affected enums:** `OriginType`, `PullZoneType`, `EdgeRuleActionType`,
+`TriggerType`, `MatchingType`, `DnsRecordType` and the entire shield/stream/
+compute repr-enum surface.
+
+bunny adds new integer values (e.g. `OriginType: 5 = MagicContainerEndpoint`,
+which appears on every Magic-Container-backed Pull Zone) without bumping a
+spec version. The naive `Deserialize_repr` impl fails with
+`invalid value: 5, expected one of: 0, 2, 3, 4` and the whole response is
+unusable.
+
+**hoppy mitigation (iter-19):** every `Option<EnumType>` field on a response
+struct uses [`bunny_api_core::serde_helpers::deserialize_repr_option`], which
+deserialises unrecognised integers to `None` instead of erroring. Round-trips
+lose the original integer (the field re-serialises as absent) — documented
+trade-off, since the alternative is the entire response failing. `DnsRecord.record_type`
+was changed from `DnsRecordType` to `Option<DnsRecordType>` for the same reason.
+
+## Pull Zone origin: Storage-Zone-backed zones omit OriginUrl
+
+`POST /pullzone` accepts either:
+- `OriginUrl` (HTTP/HTTPS origin), or
+- `StorageZoneId` (Storage-Zone-backed Pull Zone) — `OriginUrl` is omitted
+  or sent as the empty string.
+
+The OpenAPI spec marks `OriginUrl` as required, but bunny accepts the body
+without it when `StorageZoneId` is set. `hoppy` enforces "exactly one" at the
+CLI layer via a clap `ArgGroup` on `pull-zone create`.
+
+## Storage Zone passwords are returned verbatim
+
+`GET /storagezone/{id}` returns `Password` and `ReadOnlyPassword` in plaintext
+— required for authenticating against the storage endpoint. Earlier iterations
+hid them via `skip_serializing` in the type, but operators bootstrapping
+storage credentials had to fall back to raw `curl`. `hoppy` (iter-19) now
+serialises them and the CLI redacts them by default (`<set, length=N>`); pass
+`--reveal` to surface raw values.
+
+## DNS record types: Flatten / PullZone caveats
+
+`dns record add --type Flatten` is accepted by clap but the API may reject it
+with "Unknown record type" depending on the zone configuration —
+`Flatten` is a smart-routing-only feature that requires DNS-routing-capable
+zones. `--type PullZone` only accepts standard, non-managed Pull Zone IDs;
+auto-managed Pull Zones backing Magic Containers fail with "pull zone ID is
+not valid". For Magic-Container-backed CDN endpoints, use a `CNAME` to the
+`b-cdn.net` hostname instead.
+
 ## Related
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks
 - [[api/bunny-api-overview]] — API overview

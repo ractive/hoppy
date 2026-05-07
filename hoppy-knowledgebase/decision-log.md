@@ -109,6 +109,10 @@ Significant architectural and design decisions made during development. API-spec
 | 2026-03-18 | cross-rs for Linux aarch64 only | More reliable than cargo-zigbuild |
 | 2026-03-19 | Feature flag for live tests | `cargo test --features live-api`, not env var detection |
 | 2026-03-19 | `run_lifecycle()` with `CleanupStack` | Panic-safe cleanup via `catch_unwind`, delete commands in reverse order |
+| 2026-05-07 | Forward-compat repr-enum deserialisation | Lossy `deserialize_repr_option` over an `Unknown(i32)` variant — keeps the change surface small (one helper per `Option<EnumType>`); round-trip drops unknown values, acceptable tradeoff vs full-response deserialisation failure (iter-19) |
+| 2026-05-07 | Storage Zone passwords surfaced through redaction layer | `Password`/`ReadOnlyPassword` are no longer `skip_serializing`; CLI redacts via `redact_secrets_in_json` with `--reveal` opt-in. Operators were forced to `curl` for credentials without this (iter-19) |
+| 2026-05-07 | `pull-zone create` ArgGroup for origin | Exactly-one-of `--origin-url` / `--storage-zone-id` enforced at clap parse time, no runtime API 400 (iter-19) |
+| 2026-05-07 | Build provenance in `--version` | `build.rs` embeds short git SHA + bunny-spec mtime; long-version output for bug reports (iter-19) |
 
 ## Related
 - [[development-roadmap]] — iteration history

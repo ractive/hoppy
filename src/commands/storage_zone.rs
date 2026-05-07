@@ -1,6 +1,7 @@
 use crate::auth;
 use crate::cli::{OutputFormat, StorageZoneAction};
 use crate::output::{self, PaginatedListJson};
+use crate::redact::{RedactConfig, redact_secrets_in_json};
 use anyhow::{Context, Result, bail};
 use bunny_api_core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
 use std::io::{self, BufRead, Write};
@@ -107,6 +108,7 @@ pub async fn handle(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    redact_cfg: &RedactConfig,
 ) -> Result<()> {
     let client = auth::core_client(debug, record)?;
 
@@ -126,8 +128,11 @@ pub async fn handle(
                     total_items: result.total_items,
                     has_more_items: result.has_more_items,
                 };
+                let mut value = serde_json::to_value(&envelope)
+                    .context("failed to serialize storage zone list to JSON")?;
+                redact_secrets_in_json(&mut value, redact_cfg);
                 let json =
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
+                    serde_json::to_string_pretty(&value).context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
                 let rows: Vec<StorageZoneRow> =
@@ -137,7 +142,7 @@ pub async fn handle(
         }
         StorageZoneAction::Get { id } => {
             let sz = client.get_storage_zone(*id).await?;
-            print_storage_zone(&sz, format);
+            print_storage_zone(&sz, format, redact_cfg);
         }
         StorageZoneAction::Create {
             name,
@@ -153,7 +158,7 @@ pub async fn handle(
                 body = body.zone_tier(*tier);
             }
             let sz = client.create_storage_zone(&body).await?;
-            print_storage_zone(&sz, format);
+            print_storage_zone(&sz, format, redact_cfg);
         }
         StorageZoneAction::Update {
             id,
@@ -229,9 +234,14 @@ pub async fn handle(
 }
 
 /// Output a single StorageZone: full JSON for JSON format, detail struct otherwise.
-fn print_storage_zone(sz: &StorageZone, format: OutputFormat) {
+///
+/// Password / ReadOnlyPassword fields are redacted by default; the caller
+/// passes `--reveal` to bypass.
+fn print_storage_zone(sz: &StorageZone, format: OutputFormat, redact_cfg: &RedactConfig) {
     if let OutputFormat::Json = format {
-        let json = serde_json::to_string_pretty(sz).expect("failed to serialize to JSON");
+        let mut value = serde_json::to_value(sz).expect("failed to serialize StorageZone to JSON");
+        redact_secrets_in_json(&mut value, redact_cfg);
+        let json = serde_json::to_string_pretty(&value).expect("failed to serialize to JSON");
         println!("{json}");
     } else {
         let detail = StorageZoneDetail::from(sz);
