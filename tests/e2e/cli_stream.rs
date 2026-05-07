@@ -510,6 +510,434 @@ async fn stream_library_statistics_json() {
 }
 
 // ---------------------------------------------------------------------------
+// Video processing tests (stream API)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn stream_video_transcribe_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/transcribe",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_transcribe_status.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "transcribe",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_heatmap_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/heatmap",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_heatmap.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "heatmap",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert_eq!(json["heatmap"]["0"], 80);
+    assert_eq!(json["heatmap"]["1"], 100);
+    assert_eq!(json["heatmap"]["4"], 20);
+}
+
+#[tokio::test]
+async fn stream_video_reencode_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/reencode",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_reencode.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "reencode",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_reencode_codec_json() {
+    let server = MockServer::start().await;
+    // hevc = codec id 2
+    Mock::given(method("PUT"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/outputs/2",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_reencode.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "reencode",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+        "--codec",
+        "hevc",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_repackage_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/repackage",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_repackage.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "repackage",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_smart_generate_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/smart",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_smart_status.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "smart-generate",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+        "--generate-title",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_set_thumbnail_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/thumbnail",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_thumbnail_status.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "set-thumbnail",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+        "--thumbnail-url",
+        "https://example.com/thumb.jpg",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_resolutions_list_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/resolutions",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_resolutions.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "resolutions",
+        "list",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_resolutions_cleanup_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/resolutions/cleanup",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_resolutions_cleanup_status.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--yes",
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "resolutions",
+        "cleanup",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+        "--dry-run",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn stream_video_storage_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/storage",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_storage.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "storage",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+// ---------------------------------------------------------------------------
 // Live API lifecycle tests
 // ---------------------------------------------------------------------------
 
@@ -742,5 +1170,149 @@ fn live_stream_collection_lifecycle() {
 
         // 7 & 8. Cleanup runs via CleanupStack on exit
         //        (collection delete first, then library delete)
+    });
+}
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_stream_video_processing_lifecycle() {
+    // Requires: BUNNY_API_KEY env var and a pre-existing small video file.
+    // If TEST_VIDEO_PATH is not set, we skip gracefully.
+    let video_path = match std::env::var("TEST_VIDEO_PATH") {
+        Ok(p) => p,
+        Err(_) => {
+            eprintln!("Skipping live_stream_video_processing_lifecycle: TEST_VIDEO_PATH not set");
+            return;
+        }
+    };
+
+    support::run_lifecycle(|cleanup| {
+        let lib_name = support::unique_name("hoppy-test-proc");
+
+        // 1. Create library
+        let create =
+            support::hoppy_live_json(&["stream", "library", "create", "--name", &lib_name]);
+        assert!(create.success, "create failed: {}", create.stderr);
+        let lib_id = create.json.as_ref().unwrap()["Id"].as_i64().unwrap();
+        let lib_id_str = lib_id.to_string();
+        cleanup.push(&["stream", "library", "delete", "--id", &lib_id_str]);
+
+        // 2. Upload video
+        let upload = support::hoppy_live_json(&[
+            "stream",
+            "video",
+            "upload",
+            "--library-id",
+            &lib_id_str,
+            "--file",
+            &video_path,
+            "--title",
+            "processing-test",
+        ]);
+        assert!(upload.success, "upload failed: {}", upload.stderr);
+        let video_id = upload.json.as_ref().unwrap()["Guid"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        cleanup.push(&[
+            "stream",
+            "video",
+            "delete",
+            "--library-id",
+            &lib_id_str,
+            "--video-id",
+            &video_id,
+        ]);
+
+        // 3. Poll until Finished (status=4) — give up after ~3 minutes
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(180);
+        loop {
+            let get = support::hoppy_live_json(&[
+                "stream",
+                "video",
+                "get",
+                "--library-id",
+                &lib_id_str,
+                "--video-id",
+                &video_id,
+            ]);
+            assert!(get.success, "get failed: {}", get.stderr);
+            let status = get.json.as_ref().unwrap()["Status"].as_i64().unwrap_or(-1);
+            if status == 4 {
+                break;
+            }
+            if std::time::Instant::now() > deadline {
+                eprintln!(
+                    "Timed out waiting for video to reach Finished status (last status={status})"
+                );
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_secs(10));
+        }
+
+        // 4. Heatmap
+        let heatmap = support::hoppy_live_json(&[
+            "stream",
+            "video",
+            "heatmap",
+            "--library-id",
+            &lib_id_str,
+            "--video-id",
+            &video_id,
+        ]);
+        assert!(heatmap.success, "heatmap failed: {}", heatmap.stderr);
+
+        // 5. Resolutions list
+        let res = support::hoppy_live_json(&[
+            "stream",
+            "video",
+            "resolutions",
+            "list",
+            "--library-id",
+            &lib_id_str,
+            "--video-id",
+            &video_id,
+        ]);
+        assert!(res.success, "resolutions list failed: {}", res.stderr);
+
+        // 6. Storage
+        let storage = support::hoppy_live_json(&[
+            "stream",
+            "video",
+            "storage",
+            "--library-id",
+            &lib_id_str,
+            "--video-id",
+            &video_id,
+        ]);
+        assert!(storage.success, "storage failed: {}", storage.stderr);
+
+        // 7. Reencode
+        let reencode = support::hoppy_live_json(&[
+            "stream",
+            "video",
+            "reencode",
+            "--library-id",
+            &lib_id_str,
+            "--video-id",
+            &video_id,
+        ]);
+        assert!(reencode.success, "reencode failed: {}", reencode.stderr);
+
+        // 8. Transcribe
+        let transcribe = support::hoppy_live_json(&[
+            "stream",
+            "video",
+            "transcribe",
+            "--library-id",
+            &lib_id_str,
+            "--video-id",
+            &video_id,
+        ]);
+        assert!(
+            transcribe.success,
+            "transcribe failed: {}",
+            transcribe.stderr
+        );
     });
 }

@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::cli::{
     OutputFormat, StreamAction, StreamCaptionAction, StreamCollectionAction, StreamLibraryAction,
-    StreamVideoAction,
+    StreamResolutionsAction, StreamVideoAction,
 };
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
@@ -9,7 +9,8 @@ use anyhow::{Context as _, Result, bail};
 use bunny_api_core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
 use bunny_api_stream::types::{Collection, Video};
 use bunny_api_stream::{
-    CreateCollection, CreateVideo, FetchVideo, StreamClient, UpdateCollection, UpdateVideo,
+    CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, SmartGenerateSettings,
+    StreamCleanupResolutions, StreamClient, TranscribeSettings, UpdateCollection, UpdateVideo,
 };
 use std::io::{self, BufRead, Write};
 use tokio_util::io::ReaderStream;
@@ -529,6 +530,374 @@ async fn handle_video(
         }
         StreamVideoAction::Caption { action } => {
             handle_caption(action, format, debug, record).await?;
+        }
+        StreamVideoAction::Transcribe {
+            library_id,
+            video_id,
+            force,
+            language,
+            target_languages,
+            generate_title,
+            generate_description,
+            generate_chapters,
+            generate_moments,
+        } => {
+            let mut any = false;
+            let mut settings = TranscribeSettings::new();
+            if let Some(lang) = language {
+                settings = settings.source_language(lang);
+                any = true;
+            }
+            if !target_languages.is_empty() {
+                settings = settings.target_languages(target_languages.iter().map(|s| s.as_str()));
+                any = true;
+            }
+            if *generate_title {
+                settings = settings.generate_title(true);
+                any = true;
+            }
+            if *generate_description {
+                settings = settings.generate_description(true);
+                any = true;
+            }
+            if *generate_chapters {
+                settings = settings.generate_chapters(true);
+                any = true;
+            }
+            if *generate_moments {
+                settings = settings.generate_moments(true);
+                any = true;
+            }
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let status = stream
+                .transcribe_video(
+                    *library_id,
+                    video_id,
+                    *force,
+                    if any { Some(&settings) } else { None },
+                )
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&status).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                eprintln!(
+                    "Triggered transcription for {video_id}: {}",
+                    status.message.as_deref().unwrap_or("queued")
+                );
+            }
+        }
+        StreamVideoAction::Heatmap {
+            library_id,
+            video_id,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let heatmap = stream.get_video_heatmap(*library_id, video_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&heatmap)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                match &heatmap.heatmap {
+                    None => eprintln!("No heatmap data"),
+                    Some(map) if map.is_empty() => eprintln!("No heatmap data"),
+                    Some(map) => {
+                        let mut segments: Vec<_> = map.iter().collect();
+                        segments.sort_by_key(|(k, _)| k.parse::<i64>().unwrap_or(i64::MAX));
+                        #[derive(serde::Serialize, tabled::Tabled)]
+                        struct HeatmapRow {
+                            #[tabled(rename = "Segment")]
+                            segment: String,
+                            #[tabled(rename = "Intensity")]
+                            intensity: i32,
+                        }
+                        let rows: Vec<HeatmapRow> = segments
+                            .into_iter()
+                            .map(|(k, v)| HeatmapRow {
+                                segment: k.clone(),
+                                intensity: *v,
+                            })
+                            .collect();
+                        output::print_data(&rows, format);
+                    }
+                }
+            }
+        }
+        StreamVideoAction::Reencode {
+            library_id,
+            video_id,
+            codec,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let video = if let Some(codec_str) = codec {
+                let c = EncoderOutputCodec::parse(codec_str).ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "invalid codec {:?}; expected one of: x264, vp9, hevc, av1",
+                        codec_str
+                    )
+                })?;
+                stream
+                    .reencode_video_using_codec(*library_id, video_id, c)
+                    .await?
+            } else {
+                stream.reencode_video(*library_id, video_id).await?
+            };
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&video).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let row = VideoRow::from(&video);
+                output::print_single(&row, format);
+            }
+        }
+        StreamVideoAction::Repackage {
+            library_id,
+            video_id,
+            discard_originals,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let video = stream
+                .repackage_video(*library_id, video_id, !discard_originals)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&video).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let row = VideoRow::from(&video);
+                output::print_single(&row, format);
+            }
+        }
+        StreamVideoAction::SmartGenerate {
+            library_id,
+            video_id,
+            language,
+            generate_title,
+            generate_description,
+            generate_chapters,
+            generate_moments,
+        } => {
+            let mut settings = SmartGenerateSettings::new();
+            if let Some(lang) = language {
+                settings = settings.source_language(lang);
+            }
+            if *generate_title {
+                settings = settings.generate_title(true);
+            }
+            if *generate_description {
+                settings = settings.generate_description(true);
+            }
+            if *generate_chapters {
+                settings = settings.generate_chapters(true);
+            }
+            if *generate_moments {
+                settings = settings.generate_moments(true);
+            }
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let status = stream
+                .smart_generate(*library_id, video_id, &settings)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&status).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                eprintln!(
+                    "Triggered smart-generate for {video_id}: {}",
+                    status.message.as_deref().unwrap_or("queued")
+                );
+            }
+        }
+        StreamVideoAction::SetThumbnail {
+            library_id,
+            video_id,
+            thumbnail_url,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let status = stream
+                .set_video_thumbnail(*library_id, video_id, Some(thumbnail_url))
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&status).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                eprintln!(
+                    "Set thumbnail for {video_id}: {}",
+                    status.message.as_deref().unwrap_or("ok")
+                );
+            }
+        }
+        StreamVideoAction::Resolutions { action } => {
+            handle_resolutions(action, format, debug, yes, record).await?;
+        }
+        StreamVideoAction::Storage {
+            library_id,
+            video_id,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let envelope = stream.get_video_storage_size(*library_id, video_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&envelope)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct StorageRow {
+                    #[tabled(rename = "Category")]
+                    category: String,
+                    #[tabled(rename = "Bytes")]
+                    bytes: i64,
+                }
+                if let Some(data) = &envelope.data {
+                    let mut rows = vec![
+                        StorageRow {
+                            category: "Originals".to_owned(),
+                            bytes: data.originals,
+                        },
+                        StorageRow {
+                            category: "Thumbnails".to_owned(),
+                            bytes: data.thumbnails,
+                        },
+                        StorageRow {
+                            category: "Previews".to_owned(),
+                            bytes: data.previews,
+                        },
+                        StorageRow {
+                            category: "MP4 Fallback".to_owned(),
+                            bytes: data.mp4_fallback,
+                        },
+                        StorageRow {
+                            category: "Miscellaneous".to_owned(),
+                            bytes: data.miscellaneous,
+                        },
+                    ];
+                    if let Some(encoded) = &data.encoded {
+                        let mut renditions: Vec<_> = encoded.iter().collect();
+                        renditions.sort_by_key(|(k, _)| k.as_str());
+                        for (key, r) in renditions {
+                            rows.push(StorageRow {
+                                category: format!("Encoded/{key}"),
+                                bytes: r.size,
+                            });
+                        }
+                    }
+                    output::print_data(&rows, format);
+                } else {
+                    eprintln!("No storage data available");
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn handle_resolutions(
+    action: &StreamResolutionsAction,
+    format: OutputFormat,
+    debug: bool,
+    yes: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    match action {
+        StreamResolutionsAction::List {
+            library_id,
+            video_id,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let envelope = stream.get_video_resolutions(*library_id, video_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&envelope)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(data) = &envelope.data {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct ResRow {
+                    #[tabled(rename = "Type")]
+                    res_type: String,
+                    #[tabled(rename = "Resolutions")]
+                    resolutions: String,
+                }
+                let rows = vec![
+                    ResRow {
+                        res_type: "Available".to_owned(),
+                        resolutions: data.available_resolutions.join(", "),
+                    },
+                    ResRow {
+                        res_type: "Configured".to_owned(),
+                        resolutions: data.configured_resolutions.join(", "),
+                    },
+                    ResRow {
+                        res_type: "Playlist".to_owned(),
+                        resolutions: data
+                            .playlist_resolutions
+                            .iter()
+                            .filter_map(|r| r.resolution.as_deref())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    },
+                ];
+                output::print_data(&rows, format);
+            } else {
+                eprintln!("No resolution data available");
+            }
+        }
+        StreamResolutionsAction::Cleanup {
+            library_id,
+            video_id,
+            resolutions,
+            delete_non_configured,
+            delete_original,
+            delete_mp4_files,
+            dry_run,
+        } => {
+            if resolutions.is_none()
+                && !delete_non_configured
+                && !delete_original
+                && !delete_mp4_files
+                && !dry_run
+            {
+                bail!(
+                    "specify what to delete: --resolutions, --delete-non-configured, --delete-original, or --delete-mp4-files (or --dry-run)"
+                );
+            }
+            if !dry_run && !yes {
+                eprint!(
+                    "Cleanup resolutions for video {video_id}? This permanently deletes files. [y/N] "
+                );
+                io::stderr().flush()?;
+                let mut line = String::new();
+                io::stdin().lock().read_line(&mut line)?;
+                let answer = line.trim().to_lowercase();
+                if answer != "y" && answer != "yes" {
+                    eprintln!("Aborted.");
+                    return Ok(());
+                }
+            }
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let opts = StreamCleanupResolutions {
+                resolutions_to_delete: resolutions.as_deref(),
+                delete_non_configured_resolutions: *delete_non_configured,
+                delete_original: *delete_original,
+                delete_mp4_files: *delete_mp4_files,
+                dry_run: *dry_run,
+            };
+            let status = stream
+                .cleanup_video_resolutions(*library_id, video_id, &opts)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&status).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let prefix = if *dry_run { "[dry-run] " } else { "" };
+                eprintln!(
+                    "{prefix}Cleanup for {video_id}: {}",
+                    status.message.as_deref().unwrap_or("done")
+                );
+            }
         }
     }
     Ok(())
