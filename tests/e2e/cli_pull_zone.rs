@@ -590,6 +590,302 @@ async fn pull_zone_hostname_remove_cert() {
         .stderr(predicates::str::contains("Removed certificate"));
 }
 
+// ---------------------------------------------------------------------------
+// Pull Zone access-control (referrer / IP) E2E tests
+// ---------------------------------------------------------------------------
+
+fn pullzone_with_access_control_json() -> String {
+    serde_json::json!({
+        "Id": 1001,
+        "Name": "test-zone",
+        "OriginUrl": "https://example.com",
+        "AllowedReferrers": ["allowed.example.com", "*.partner.com"],
+        "BlockedReferrers": ["badsite.com"],
+        "BlockedIps": ["192.0.2.1", "203.0.113.0/24"]
+    })
+    .to_string()
+}
+
+#[tokio::test]
+async fn pull_zone_referrer_list_table() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(pullzone_with_access_control_json(), "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "pull-zone",
+            "referrer",
+            "list",
+            "--id",
+            "1001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn pull_zone_referrer_list_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(pullzone_with_access_control_json(), "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "referrer",
+            "list",
+            "--id",
+            "1001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn pull_zone_referrer_allow() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addAllowedReferrer"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "*.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "referrer",
+        "allow",
+        "--id",
+        "1001",
+        "--value",
+        "*.example.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Allowed referrer"));
+}
+
+#[tokio::test]
+async fn pull_zone_referrer_remove_allowed() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/removeAllowedReferrer"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "*.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "referrer",
+        "remove-allowed",
+        "--id",
+        "1001",
+        "--value",
+        "*.example.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Removed allowed referrer"));
+}
+
+#[tokio::test]
+async fn pull_zone_referrer_block() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addBlockedReferrer"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "badsite.com" })))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "referrer",
+        "block",
+        "--id",
+        "1001",
+        "--value",
+        "badsite.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Blocked referrer"));
+}
+
+#[tokio::test]
+async fn pull_zone_referrer_remove_blocked() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/removeBlockedReferrer"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "badsite.com" })))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "referrer",
+        "remove-blocked",
+        "--id",
+        "1001",
+        "--value",
+        "badsite.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Removed blocked referrer"));
+}
+
+#[tokio::test]
+async fn pull_zone_ip_list_table() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(pullzone_with_access_control_json(), "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "pull-zone",
+            "ip",
+            "list",
+            "--id",
+            "1001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn pull_zone_ip_list_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(pullzone_with_access_control_json(), "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "ip",
+            "list",
+            "--id",
+            "1001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+#[tokio::test]
+async fn pull_zone_ip_block() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addBlockedIp"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(serde_json::json!({ "BlockedIp": "192.0.2.1" })))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "ip",
+        "block",
+        "--id",
+        "1001",
+        "--value",
+        "192.0.2.1",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Blocked IP"));
+}
+
+#[tokio::test]
+async fn pull_zone_ip_unblock() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/removeBlockedIp"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(serde_json::json!({ "BlockedIp": "192.0.2.1" })))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "ip",
+        "unblock",
+        "--id",
+        "1001",
+        "--value",
+        "192.0.2.1",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Unblocked IP"));
+}
+
 #[cfg(feature = "live-api")]
 #[test]
 fn live_pull_zone_lifecycle() {
@@ -1085,4 +1381,140 @@ async fn pull_zone_edge_rule_enable() {
     cmd.assert().success().stderr(predicates::str::contains(
         "Enabled edge rule a1b2c3d4-e5f6-7890-abcd-ef1234567890 on pull zone 1001",
     ));
+}
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_pull_zone_access_control_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let name = support::unique_name("hoppy-test-ac");
+
+        // 1. Create pull zone
+        let create = support::hoppy_live_json(&[
+            "pull-zone",
+            "create",
+            "--name",
+            &name,
+            "--origin-url",
+            "https://example.com",
+        ]);
+        assert!(create.success, "create failed — stderr: {}", create.stderr);
+        let id = create.json.as_ref().unwrap()["Id"].as_i64().unwrap();
+        let id_str = id.to_string();
+        cleanup.push(&["pull-zone", "delete", "--id", &id_str]);
+
+        // 2. Add allowed referrer
+        let allow = support::hoppy_live_raw(&[
+            "pull-zone",
+            "referrer",
+            "allow",
+            "--id",
+            &id_str,
+            "--value",
+            "*.allowed.example.com",
+        ]);
+        assert!(allow.success, "allow failed — stderr: {}", allow.stderr);
+
+        // 3. Add blocked referrer
+        let block = support::hoppy_live_raw(&[
+            "pull-zone",
+            "referrer",
+            "block",
+            "--id",
+            &id_str,
+            "--value",
+            "blocked.example.com",
+        ]);
+        assert!(block.success, "block failed — stderr: {}", block.stderr);
+
+        // 4. Verify both lists via get
+        let get1 = support::hoppy_live_json(&["pull-zone", "get", "--id", &id_str]);
+        assert!(get1.success, "get failed — stderr: {}", get1.stderr);
+        let allowed = get1.json.as_ref().unwrap()["AllowedReferrers"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .any(|v| v.as_str() == Some("*.allowed.example.com"))
+            })
+            .unwrap_or(false);
+        let blocked = get1.json.as_ref().unwrap()["BlockedReferrers"]
+            .as_array()
+            .map(|a| a.iter().any(|v| v.as_str() == Some("blocked.example.com")))
+            .unwrap_or(false);
+        assert!(allowed, "expected allowed referrer in AllowedReferrers");
+        assert!(blocked, "expected blocked referrer in BlockedReferrers");
+
+        // 5. Remove both referrers
+        let rm_allow = support::hoppy_live_raw(&[
+            "pull-zone",
+            "referrer",
+            "remove-allowed",
+            "--id",
+            &id_str,
+            "--value",
+            "*.allowed.example.com",
+        ]);
+        assert!(
+            rm_allow.success,
+            "remove-allowed failed — stderr: {}",
+            rm_allow.stderr
+        );
+        let rm_block = support::hoppy_live_raw(&[
+            "pull-zone",
+            "referrer",
+            "remove-blocked",
+            "--id",
+            &id_str,
+            "--value",
+            "blocked.example.com",
+        ]);
+        assert!(
+            rm_block.success,
+            "remove-blocked failed — stderr: {}",
+            rm_block.stderr
+        );
+
+        // 6. Block an IP
+        let ip_block = support::hoppy_live_raw(&[
+            "pull-zone",
+            "ip",
+            "block",
+            "--id",
+            &id_str,
+            "--value",
+            "192.0.2.1",
+        ]);
+        assert!(
+            ip_block.success,
+            "ip block failed — stderr: {}",
+            ip_block.stderr
+        );
+
+        // 7. Verify IP via get
+        let get2 = support::hoppy_live_json(&["pull-zone", "get", "--id", &id_str]);
+        assert!(get2.success, "get failed — stderr: {}", get2.stderr);
+        let has_ip = get2.json.as_ref().unwrap()["BlockedIps"]
+            .as_array()
+            .map(|a| a.iter().any(|v| v.as_str() == Some("192.0.2.1")))
+            .unwrap_or(false);
+        assert!(has_ip, "expected blocked IP in BlockedIps");
+
+        // 8. Unblock IP
+        let ip_unblock = support::hoppy_live_raw(&[
+            "pull-zone",
+            "ip",
+            "unblock",
+            "--id",
+            &id_str,
+            "--value",
+            "192.0.2.1",
+        ]);
+        assert!(
+            ip_unblock.success,
+            "ip unblock failed — stderr: {}",
+            ip_unblock.stderr
+        );
+
+        // 9. Cleanup runs via CleanupStack on exit
+    });
 }

@@ -1,5 +1,8 @@
 use crate::auth;
-use crate::cli::{EdgeRuleAction, OutputFormat, PullZoneAction, PullZoneHostnameAction};
+use crate::cli::{
+    EdgeRuleAction, OutputFormat, PullZoneAction, PullZoneHostnameAction, PullZoneIpAction,
+    PullZoneReferrerAction,
+};
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
@@ -221,6 +224,12 @@ pub async fn handle(
         PullZoneAction::EdgeRule { action } => {
             handle_edge_rule(&client, action, format, yes).await?;
         }
+        PullZoneAction::Referrer { action } => {
+            handle_referrer(&client, action, format).await?;
+        }
+        PullZoneAction::Ip { action } => {
+            handle_ip(&client, action, format).await?;
+        }
         PullZoneAction::Statistics {
             id,
             r#type,
@@ -360,6 +369,94 @@ async fn handle_hostname(client: &CoreClient, action: &PullZoneHostnameAction) -
         PullZoneHostnameAction::RemoveCert { id, hostname } => {
             client.remove_certificate(*id, hostname).await?;
             eprintln!("Removed certificate for {hostname} on pull zone {id}");
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Access-control helpers
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct ReferrerRow {
+    #[tabled(rename = "Type")]
+    kind: String,
+    #[tabled(rename = "Hostname")]
+    hostname: String,
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct IpRow {
+    #[tabled(rename = "IP")]
+    ip: String,
+}
+
+async fn handle_referrer(
+    client: &CoreClient,
+    action: &PullZoneReferrerAction,
+    format: OutputFormat,
+) -> Result<()> {
+    match action {
+        PullZoneReferrerAction::List { id } => {
+            let pz = client.get_pull_zone(*id).await?;
+            let mut rows: Vec<ReferrerRow> = Vec::new();
+            for h in &pz.allowed_referrers {
+                rows.push(ReferrerRow {
+                    kind: "allowed".to_owned(),
+                    hostname: h.clone(),
+                });
+            }
+            for h in &pz.blocked_referrers {
+                rows.push(ReferrerRow {
+                    kind: "blocked".to_owned(),
+                    hostname: h.clone(),
+                });
+            }
+            output::print_data(&rows, format);
+        }
+        PullZoneReferrerAction::Allow { id, value } => {
+            client.add_allowed_referrer(*id, value).await?;
+            eprintln!("Allowed referrer {value} on pull zone {id}");
+        }
+        PullZoneReferrerAction::RemoveAllowed { id, value } => {
+            client.remove_allowed_referrer(*id, value).await?;
+            eprintln!("Removed allowed referrer {value} from pull zone {id}");
+        }
+        PullZoneReferrerAction::Block { id, value } => {
+            client.add_blocked_referrer(*id, value).await?;
+            eprintln!("Blocked referrer {value} on pull zone {id}");
+        }
+        PullZoneReferrerAction::RemoveBlocked { id, value } => {
+            client.remove_blocked_referrer(*id, value).await?;
+            eprintln!("Removed blocked referrer {value} from pull zone {id}");
+        }
+    }
+    Ok(())
+}
+
+async fn handle_ip(
+    client: &CoreClient,
+    action: &PullZoneIpAction,
+    format: OutputFormat,
+) -> Result<()> {
+    match action {
+        PullZoneIpAction::List { id } => {
+            let pz = client.get_pull_zone(*id).await?;
+            let rows: Vec<IpRow> = pz
+                .blocked_ips
+                .iter()
+                .map(|ip| IpRow { ip: ip.clone() })
+                .collect();
+            output::print_data(&rows, format);
+        }
+        PullZoneIpAction::Block { id, value } => {
+            client.add_blocked_ip(*id, value).await?;
+            eprintln!("Blocked IP {value} on pull zone {id}");
+        }
+        PullZoneIpAction::Unblock { id, value } => {
+            client.remove_blocked_ip(*id, value).await?;
+            eprintln!("Unblocked IP {value} on pull zone {id}");
         }
     }
     Ok(())

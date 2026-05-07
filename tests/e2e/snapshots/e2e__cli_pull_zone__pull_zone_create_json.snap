@@ -31,5 +31,8 @@ expression: "String::from_utf8_lossy(&output.stdout)"
   "EnableGeoZoneAsia": false,
   "EnableGeoZoneSa": false,
   "EnableGeoZoneAf": false,
-  "EdgeRules": []
+  "EdgeRules": [],
+  "AllowedReferrers": [],
+  "BlockedReferrers": [],
+  "BlockedIps": []
 }

@@ -1,0 +1,11 @@
+---
+source: tests/e2e/cli_pull_zone.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
++----------------+
+| IP             |
++----------------+
+| 192.0.2.1      |
++----------------+
+| 203.0.113.0/24 |
++----------------+
