@@ -1,0 +1,15 @@
+---
+source: tests/e2e/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "name": "latest"
+  },
+  {
+    "name": "alpine"
+  },
+  {
+    "name": "stable"
+  }
+]

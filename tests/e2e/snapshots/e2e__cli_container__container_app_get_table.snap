@@ -1,0 +1,9 @@
+---
+source: tests/e2e/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
++-----------------+------------------------+-------------+---------+---------------+---------------+
+| ID              | Name                   | Status      | Runtime | Min Instances | Max Instances |
++-----------------+------------------------+-------------+---------+---------------+---------------+
+| l3faCv1fWRHAYNU | hoppy-test-fixture-tmp | Progressing | Shared  | 1             | 1             |
++-----------------+------------------------+-------------+---------+---------------+---------------+

@@ -16,3 +16,7 @@ bunny-api-recording = { path = "../bunny-api-recording" }
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 wiremock = "0.6"
+
+[[test]]
+name = "e2e"
+path = "tests/e2e/mod.rs"

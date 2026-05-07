@@ -1,0 +1,7 @@
+---
+source: tests/e2e/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "id": "test-endpoint-id"
+}

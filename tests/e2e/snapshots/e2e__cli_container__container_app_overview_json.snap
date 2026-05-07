@@ -1,0 +1,85 @@
+---
+source: tests/e2e/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "targetLatency": {
+    "indicator": 0.0,
+    "statusGrade": null
+  },
+  "currentLatency": {
+    "indicator": 0.0,
+    "statusGrade": "couldBeBetter"
+  },
+  "activeRegions": {
+    "indicator": 1,
+    "statusGrade": "couldBeBetter"
+  },
+  "activeInstances": {
+    "indicator": 0,
+    "statusGrade": "notBad"
+  },
+  "desiredInstances": 1,
+  "status": "progressing",
+  "averageCPU": {
+    "indicator": 0.0,
+    "statusGrade": "notBad"
+  },
+  "averageRAM": {
+    "indicator": 0.0,
+    "statusGrade": "notBad"
+  },
+  "averageVolumesUsage": {
+    "indicator": 0.0,
+    "statusGrade": "notBad"
+  },
+  "regions": [
+    {
+      "region": "DE",
+      "isRequired": true,
+      "instances": 0,
+      "status": "progressing",
+      "averageCPU": 0.0,
+      "averageRAM": 0.0,
+      "averageVolumesUsagePercentage": 0.0,
+      "requests": 0.0,
+      "anycastTraffic": 0.0,
+      "pods": [
+        {
+          "name": "eDf3ws1l6Sjtfc",
+          "status": "ready",
+          "lastHeartBeat": "2026-03-18T13:56:38.8350428Z",
+          "outboundTrafficChart": {
+            "2026-03-18T13:56:00Z": 0
+          },
+          "cpuUsage": 0.0,
+          "ramUsage": 0.0,
+          "containers": [
+            {
+              "id": "l3faCv1fWRHAYNU-I7t6",
+              "name": "nginx",
+              "cpuUsage": 0.0,
+              "ramUsage": 0.0,
+              "reason": "",
+              "message": "",
+              "status": "ready",
+              "image": "mc-dockerio.b-cdn.net/library/nginx:alpine",
+              "imageDisplay": "nginx:alpine",
+              "numberOfRestarts": 0
+            }
+          ],
+          "message": "",
+          "volumesUtilizationPercentage": {}
+        }
+      ]
+    }
+  ],
+  "averageLatency": 0.0,
+  "totalVolumeSizeInGb": 0.0,
+  "monthlyCost": 0.0,
+  "latencyChart": {
+    "2026-02-18T00:00:00Z": 0.0,
+    "2026-02-20T00:00:00Z": 0.0,
+    "2026-02-19T00:00:00Z": 0.0
+  }
+}

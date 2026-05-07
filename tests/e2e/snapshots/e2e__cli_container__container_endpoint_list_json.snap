@@ -1,0 +1,11 @@
+---
+source: tests/e2e/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "items": [],
+  "meta": {
+    "totalItems": 0
+  },
+  "cursor": null
+}
