@@ -102,6 +102,8 @@ struct DnsRecordRow {
     name: String,
     #[tabled(rename = "Value")]
     value: String,
+    #[tabled(rename = "Priority")]
+    priority: String,
     #[tabled(rename = "TTL")]
     ttl: i32,
     #[tabled(rename = "Disabled")]
@@ -119,6 +121,10 @@ impl From<&DnsRecord> for DnsRecordRow {
                 r.name.clone()
             },
             value: r.value.clone(),
+            priority: match r.record_type {
+                DnsRecordType::MX | DnsRecordType::SRV => r.priority.to_string(),
+                _ => String::new(),
+            },
             ttl: r.ttl,
             disabled: r.disabled,
         }
