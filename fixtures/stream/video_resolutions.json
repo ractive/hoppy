@@ -8,7 +8,10 @@
     "availableResolutions": ["1080p", "720p", "480p", "360p", "240p"],
     "configuredResolutions": ["720p", "480p"],
     "playlistResolutions": [],
-    "storageResolutions": [{"resolution": "720p", "path": "/720p/playlist.m3u8"}],
+    "storageResolutions": [
+      {"resolution": "720p", "path": "/720p/playlist.m3u8"},
+      {"resolution": "480p", "path": "/480p/playlist.m3u8"}
+    ],
     "mp4Resolutions": [],
     "storageObjects": [],
     "oldResolutions": [],

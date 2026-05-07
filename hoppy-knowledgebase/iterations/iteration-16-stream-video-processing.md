@@ -66,7 +66,7 @@ All operate on existing videos within a library. Most are simple POST (trigger) 
 
 ### 6. Set Thumbnail
 
-- [x] API client: `POST /library/{libraryId}/videos/{videoId}/thumbnail` — body: `thumbnailUrl` query param
+- [x] API client: `POST /library/{libraryId}/videos/{videoId}/thumbnail?thumbnailUrl=...` — `thumbnailUrl` is a query parameter (not a JSON body)
 - [x] CLI: `hoppy stream video set-thumbnail --library-id <id> --video-id <id> --thumbnail-url <url>`
 - [x] Wiremock + insta snapshot test
 

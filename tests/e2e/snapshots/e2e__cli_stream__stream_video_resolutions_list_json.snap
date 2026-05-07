@@ -1,5 +1,6 @@
 ---
 source: tests/e2e/cli_stream.rs
+assertion_line: 852
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 {
@@ -25,6 +26,10 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       {
         "resolution": "720p",
         "path": "/720p/playlist.m3u8"
+      },
+      {
+        "resolution": "480p",
+        "path": "/480p/playlist.m3u8"
       }
     ],
     "mp4Resolutions": [],

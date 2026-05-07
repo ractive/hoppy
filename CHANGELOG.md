@@ -10,7 +10,7 @@ New commands for triggering and inspecting video processing on bunny.net Stream:
 
 - `stream video transcribe` — trigger transcription/translation, with optional source/target languages and AI generation flags
 - `stream video heatmap` — fetch the viewer engagement heatmap for a video
-- `stream video reencode` — re-encode a video (optionally targeting a specific codec: `x264`, `vp9`, `hevc`, `av1`)
+- `stream video reencode` — reencode a video (optionally targeting a specific codec: `x264`, `vp9`, `hevc`, `av1`)
 - `stream video repackage` — repackage HLS/DASH manifests (optionally discarding previous file versions)
 - `stream video smart-generate` — trigger AI title/description/chapters/moments generation
 - `stream video set-thumbnail` — set the video thumbnail from a URL
