@@ -18,7 +18,7 @@ use crate::types::{
     GenerateTokenDatabaseGroupPayload, GenerateTokenDatabasePayload,
     GenerateTokenDatabaseV2Payload, GenerateTokenResponse, LimitsResponse, ListConfigResponse,
     ListDatabaseGroupResponse, ListDatabaseResponse, ListDatabaseV2Response,
-    ListVersionsDatabaseGroupPayload, ListVersionsResponse, LiveMetricsForDBResponse,
+    ListVersionsDatabasePayload, ListVersionsResponse, LiveMetricsForDBResponse,
     LiveMetricsForGroupResponse, OptimalConfigResponse, OptimalSingleConfigResponse, PingResult,
     ReadDatabaseGroupResponse, ReadDatabaseResponse, ReadDatabaseV2Response,
     RestoreDatabaseResponse, RestoreVersionDatabasePayload, StatsResponse,
@@ -238,7 +238,7 @@ impl DatabaseClient {
     pub async fn list_database_versions(
         &self,
         db_id: &str,
-        body: &ListVersionsDatabaseGroupPayload,
+        body: &ListVersionsDatabasePayload,
     ) -> Result<ListVersionsResponse> {
         let id = Self::encode(db_id);
         let url = format!("{}/v1/databases/{id}/list_versions", self.base_url);

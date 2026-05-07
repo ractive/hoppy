@@ -1,8 +1,10 @@
+use std::io::{self, BufRead, Write};
+
 use anyhow::{Context as _, Result, bail};
 use bunny_api_database::types::{
     Authorization, CreateDatabaseGroupPayload, CreateDatabasePayload, CreateDatabaseV2Payload,
     Database, DatabaseGroup, ForkDatabasePayload, GenerateTokenDatabaseGroupPayload,
-    GenerateTokenDatabasePayload, GenerateTokenDatabaseV2Payload, ListVersionsDatabaseGroupPayload,
+    GenerateTokenDatabasePayload, GenerateTokenDatabaseV2Payload, ListVersionsDatabasePayload,
     PingResult, RestoreVersionDatabasePayload,
 };
 
@@ -211,12 +213,29 @@ struct GenerationRow {
 // Dispatch
 // ---------------------------------------------------------------------------
 
+fn confirm_destructive(prompt: &str, yes: bool) -> Result<bool> {
+    if yes {
+        return Ok(true);
+    }
+    eprint!("{prompt} [y/N] ");
+    io::stderr().flush()?;
+    let mut line = String::new();
+    io::stdin().lock().read_line(&mut line)?;
+    let answer = line.trim().to_lowercase();
+    if answer == "y" || answer == "yes" {
+        Ok(true)
+    } else {
+        eprintln!("Aborted.");
+        Ok(false)
+    }
+}
+
 #[allow(clippy::too_many_lines)]
 pub async fn handle(
     action: &DbAction,
     format: OutputFormat,
     debug: bool,
-    _yes: bool,
+    yes: bool,
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
@@ -241,6 +260,9 @@ pub async fn handle(
             output::print_single(&detail, format);
         }
         DbAction::Delete { id } => {
+            if !confirm_destructive(&format!("Delete database {id}?"), yes)? {
+                return Ok(());
+            }
             let resp = client.delete_database(id).await?;
             let row = StatusRow {
                 status: format!("deleted: {}", resp.database),
@@ -269,6 +291,14 @@ pub async fn handle(
             output::print_single(&detail, format);
         }
         DbAction::Restore { id, version } => {
+            if !confirm_destructive(
+                &format!(
+                    "Restore database {id} to generation {version}? Current data is overwritten."
+                ),
+                yes,
+            )? {
+                return Ok(());
+            }
             let resp = client
                 .restore_database(
                     id,
@@ -283,7 +313,7 @@ pub async fn handle(
             output::print_single(&row, format);
         }
         DbAction::Versions { id, limit } => {
-            let body = ListVersionsDatabaseGroupPayload {
+            let body = ListVersionsDatabasePayload {
                 limit: *limit,
                 older_than: None,
                 newer_than: None,
@@ -302,7 +332,8 @@ pub async fn handle(
         DbAction::Ping { id, token_file } => {
             let db = client.get_database(id).await?.database;
             let token = if let Some(path) = token_file {
-                std::fs::read_to_string(path)
+                tokio::fs::read_to_string(path)
+                    .await
                     .with_context(|| format!("reading token file {path}"))?
                     .trim()
                     .to_owned()
@@ -346,8 +377,10 @@ pub async fn handle(
             let json = serde_json::to_string_pretty(&resp)?;
             println!("{json}");
         }
-        DbAction::V2 { action } => handle_v2(&client, action, format).await?,
-        DbAction::Group { action } => handle_group(&client, action, format).await?,
+        DbAction::V2 { action } => handle_v2(&client, action, format, yes).await?,
+        DbAction::Group { action } => {
+            handle_group(&client, action, format, yes, redact_cfg).await?;
+        }
         DbAction::Token { action } => handle_token(&client, action, format, redact_cfg).await?,
         DbAction::Config { action } => handle_config(&client, action, format).await?,
     }
@@ -358,6 +391,7 @@ async fn handle_v2(
     client: &bunny_api_database::DatabaseClient,
     action: &DbV2Action,
     format: OutputFormat,
+    yes: bool,
 ) -> Result<()> {
     match action {
         DbV2Action::List {
@@ -402,6 +436,9 @@ async fn handle_v2(
             output::print_single(&row, format);
         }
         DbV2Action::Delete { id } => {
+            if !confirm_destructive(&format!("Delete database {id} (v2)?"), yes)? {
+                return Ok(());
+            }
             let resp = client.delete_database_v2(id).await?;
             let row = StatusRow {
                 status: format!("deleted: {}", resp.db_id),
@@ -416,6 +453,8 @@ async fn handle_group(
     client: &bunny_api_database::DatabaseClient,
     action: &DbGroupAction,
     format: OutputFormat,
+    yes: bool,
+    redact_cfg: &RedactConfig,
 ) -> Result<()> {
     match action {
         DbGroupAction::List { search } => {
@@ -445,6 +484,12 @@ async fn handle_group(
             output::print_single(&row, format);
         }
         DbGroupAction::Delete { id } => {
+            if !confirm_destructive(
+                &format!("Delete database group {id}? All databases in the group are affected."),
+                yes,
+            )? {
+                return Ok(());
+            }
             let resp = client.delete_group(id).await?;
             let row: GroupRow = (&resp.group).into();
             output::print_single(&row, format);
@@ -477,18 +522,13 @@ async fn handle_group(
                 body.expires_at = Some(ts.clone());
             }
             let resp = client.generate_group_keys(id, &body).await?;
-            // Group key minting also surfaces a JWT — same redaction policy
-            // as `db token mint` would be ideal, but groups are batch-only,
-            // so for now we reveal it as it's typically used in scripts that
-            // immediately distribute the token.
-            let row = StatusRow {
-                status: format!(
-                    "minted group token (length={}, expires_at={})",
-                    resp.token.chars().count(),
-                    resp.expires_at.as_deref().unwrap_or("never")
-                ),
-            };
-            output::print_single(&row, format);
+            print_minted_token(
+                &resp.token,
+                *authorization,
+                resp.expires_at.as_deref(),
+                format,
+                redact_cfg,
+            );
         }
         DbGroupAction::InvalidateKeys { id } => {
             client.invalidate_group_keys(id).await?;

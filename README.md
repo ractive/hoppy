@@ -182,7 +182,7 @@ hoppy db config show
 hoppy db live --id db_01HX... --id db_02HX...
 ```
 
-By default, `hoppy db token mint` prints `{ "Token": "<set, length=N>", ... }`
+By default, `hoppy db token mint` prints `{ "token": "<set, length=N>", ... }`
 to keep JWTs out of logs and CI output. Use the global `--reveal` flag to opt
 in to the raw token. Slugs are validated locally (`^[a-z][a-z0-9-]{0,23}$`)
 because the bunny API silently 500s on overlong values.
@@ -195,6 +195,8 @@ because the bunny API silently 500s on overlong values.
 | `--debug` | Show HTTP request details |
 | `--quiet` | Suppress non-essential output |
 | `--yes` / `-y` | Skip confirmation prompts |
+| `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
+| `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
 
 ## Environment variables
 
