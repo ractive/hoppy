@@ -1025,6 +1025,185 @@ pub struct DnsImportResult {
     pub records_skipped: i64,
 }
 
+/// DNSSEC DS record information returned when enabling/disabling DNSSEC.
+///
+/// The DS record fields (`ds_record`, `digest`, `digest_type`, `algorithm`,
+/// `key_tag`, `flags`, `public_key`) are needed to configure DNSSEC at the
+/// domain registrar. `ds_configured` indicates whether bunny.net has detected
+/// matching DS records at the registrar.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsSecDsRecord {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub ds_record: Option<String>,
+    #[serde(default)]
+    pub digest: Option<String>,
+    #[serde(default)]
+    pub digest_type: Option<String>,
+    #[serde(default)]
+    pub algorithm: i32,
+    #[serde(default)]
+    pub public_key: Option<String>,
+    #[serde(default)]
+    pub key_tag: i32,
+    #[serde(default)]
+    pub flags: i32,
+    #[serde(default)]
+    pub ds_configured: bool,
+}
+
+/// Status of a DNS record scan job.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum DnsScanJobStatus {
+    Pending = 0,
+    InProgress = 1,
+    Completed = 2,
+    Failed = 3,
+}
+
+impl std::fmt::Display for DnsScanJobStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pending => write!(f, "Pending"),
+            Self::InProgress => write!(f, "InProgress"),
+            Self::Completed => write!(f, "Completed"),
+            Self::Failed => write!(f, "Failed"),
+        }
+    }
+}
+
+/// Discovered DNS record type returned by the record scan endpoint.
+///
+/// The integer values differ from [`DnsRecordType`] (the scan API uses 12=NS
+/// where the zone API uses 12=NS as well; alignments may vary so we keep a
+/// dedicated enum).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum DnsDiscoveredRecordType {
+    A = 0,
+    AAAA = 1,
+    CNAME = 2,
+    TXT = 3,
+    MX = 4,
+    SRV = 8,
+    CAA = 9,
+    PTR = 10,
+    NS = 12,
+    SVCB = 13,
+    HTTPS = 14,
+    TLSA = 15,
+    SOA = 16,
+}
+
+impl std::fmt::Display for DnsDiscoveredRecordType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::A => "A",
+            Self::AAAA => "AAAA",
+            Self::CNAME => "CNAME",
+            Self::TXT => "TXT",
+            Self::MX => "MX",
+            Self::SRV => "SRV",
+            Self::CAA => "CAA",
+            Self::PTR => "PTR",
+            Self::NS => "NS",
+            Self::SVCB => "SVCB",
+            Self::HTTPS => "HTTPS",
+            Self::TLSA => "TLSA",
+            Self::SOA => "SOA",
+        };
+        f.write_str(s)
+    }
+}
+
+/// A DNS record discovered during a record scan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsDiscoveredRecord {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
+    pub record_type: Option<DnsDiscoveredRecordType>,
+    #[serde(default)]
+    pub ttl: Option<i32>,
+    #[serde(default)]
+    pub value: Option<String>,
+    #[serde(default)]
+    pub priority: Option<i32>,
+    #[serde(default)]
+    pub weight: Option<i32>,
+    #[serde(default)]
+    pub port: Option<i32>,
+    #[serde(default)]
+    pub is_proxied: bool,
+}
+
+/// Response from `POST /dnszone/records/scan` — a scan trigger acknowledgement.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsRecordScanTrigger {
+    #[serde(default)]
+    pub job_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub status: Option<DnsScanJobStatus>,
+}
+
+/// Response from `GET /dnszone/{zoneId}/records/scan` — the latest scan job.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DnsRecordScanResult {
+    #[serde(default)]
+    pub job_id: Option<String>,
+    #[serde(default)]
+    pub zone_id: Option<i64>,
+    #[serde(default)]
+    pub domain: Option<String>,
+    #[serde(default)]
+    pub account_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub status: Option<DnsScanJobStatus>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub completed_at: Option<String>,
+    #[serde(default)]
+    pub records: Vec<DnsDiscoveredRecord>,
+    #[serde(default)]
+    pub error: Option<String>,
+}
+
+/// Request body for `POST /dnszone/records/scan` — provide either `zone_id`
+/// (for an existing zone) or `domain` (pre-creation), but not both.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct TriggerDnsRecordScan {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zone_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+}
+
+impl TriggerDnsRecordScan {
+    #[must_use]
+    pub fn for_zone(zone_id: i64) -> Self {
+        Self {
+            zone_id: Some(zone_id),
+            domain: None,
+        }
+    }
+
+    #[must_use]
+    pub fn for_domain(domain: impl Into<String>) -> Self {
+        Self {
+            zone_id: None,
+            domain: Some(domain.into()),
+        }
+    }
+}
+
 /// Request body for `POST /dnszone` — create a new DNS zone.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "PascalCase")]
