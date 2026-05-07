@@ -1,0 +1,12 @@
+{
+  "data": [
+    {
+      "name": "tx.allowed_methods",
+      "valueEncoded": "R0VUIEhFQUQgUE9TVCBPUFRJT05T"
+    },
+    {
+      "name": "tx.max_num_args",
+      "valueEncoded": "MjU1"
+    }
+  ]
+}

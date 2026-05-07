@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "enumName": "DDoSShieldSensitivity",
+      "enumValues": [
+        {
+          "optionalInput": null,
+          "isPremium": false,
+          "name": "Disabled",
+          "value": 0
+        },
+        {
+          "optionalInput": null,
+          "isPremium": false,
+          "name": "Low",
+          "value": 1
+        },
+        {
+          "optionalInput": null,
+          "isPremium": false,
+          "name": "Medium",
+          "value": 2
+        },
+        {
+          "optionalInput": null,
+          "isPremium": true,
+          "name": "High",
+          "value": 3
+        }
+      ]
+    }
+  ]
+}
