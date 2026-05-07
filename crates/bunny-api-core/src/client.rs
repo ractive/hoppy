@@ -11,9 +11,10 @@ use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::{
     AccountStatistics, AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone,
-    CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord, DnsZone, DnsZoneStatistics,
-    OptimizerStatistics, OriginShieldQueueStatistics, PaginatedList, PullZone, PurgeCache,
-    SafeHopStatistics, StorageZone, StorageZoneStatistics, UpdateDnsRecord, UpdateDnsZone,
+    CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord, DnsRecordScanResult,
+    DnsRecordScanTrigger, DnsSecDsRecord, DnsZone, DnsZoneStatistics, OptimizerStatistics,
+    OriginShieldQueueStatistics, PaginatedList, PullZone, PurgeCache, SafeHopStatistics,
+    StorageZone, StorageZoneStatistics, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
     UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
     VideoLibraryTranscribingStatistics,
 };
@@ -524,6 +525,76 @@ impl CoreClient {
             .auth(self.http.post(&url))
             .header(CONTENT_TYPE, content_type)
             .body(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // DNSSEC endpoints
+    // -----------------------------------------------------------------------
+
+    /// Enable DNSSEC on a DNS zone.
+    ///
+    /// Returns the DS record details (digest, key tag, algorithm, etc.) that
+    /// must be configured at the domain registrar to complete DNSSEC setup.
+    pub async fn enable_dns_zone_dnssec(&self, id: i64) -> Result<DnsSecDsRecord> {
+        let url = format!("{}/dnszone/{id}/dnssec", self.base_url);
+        let rb = self.auth(self.http.post(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Disable DNSSEC on a DNS zone.
+    ///
+    /// Disabling DNSSEC while DS records remain at the registrar will break
+    /// resolution — the caller is expected to remove the DS records first.
+    pub async fn disable_dns_zone_dnssec(&self, id: i64) -> Result<DnsSecDsRecord> {
+        let url = format!("{}/dnszone/{id}/dnssec", self.base_url);
+        let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // DNS Zone wildcard certificate endpoint
+    // -----------------------------------------------------------------------
+
+    /// Issue a free wildcard TLS certificate for a DNS zone.
+    ///
+    /// The zone must be properly delegated to bunny.net nameservers for the
+    /// DNS-01 challenge to succeed (wildcard certificates require DNS-01).
+    /// Returns `()` because the API returns an empty 200 response on success.
+    pub async fn issue_dns_zone_wildcard_certificate(&self, zone_id: i64) -> Result<()> {
+        let url = format!("{}/dnszone/{zone_id}/certificate/issue", self.base_url);
+        let rb = self.auth(self.http.post(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // DNS Record scan endpoints
+    // -----------------------------------------------------------------------
+
+    /// Trigger a background scan for pre-existing DNS records.
+    ///
+    /// The request body must specify either an existing zone (`zone_id`) or a
+    /// raw `domain` (for pre-zone-creation scenarios), but not both. Returns
+    /// the scan job id and initial status; results are fetched separately
+    /// via [`Self::get_dns_zone_record_scan`].
+    pub async fn trigger_dns_record_scan(
+        &self,
+        body: &TriggerDnsRecordScan,
+    ) -> Result<DnsRecordScanTrigger> {
+        let url = format!("{}/dnszone/records/scan", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(body);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch the latest DNS record scan job for a zone.
+    pub async fn get_dns_zone_record_scan(&self, zone_id: i64) -> Result<DnsRecordScanResult> {
+        let url = format!("{}/dnszone/{zone_id}/records/scan", self.base_url);
+        let rb = self.auth(self.http.get(&url));
         let response = self.send(rb).await?;
         self.handle_response(response).await
     }
