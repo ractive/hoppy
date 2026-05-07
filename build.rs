@@ -15,8 +15,11 @@ fn main() {
     let spec_date = newest_spec_mtime().unwrap_or_else(|| "unknown".to_owned());
     println!("cargo:rustc-env=HOPPY_BUNNY_API_SPEC_DATE={spec_date}");
 
-    // Re-run when HEAD moves or the openapi specs change.
-    println!("cargo:rerun-if-changed=.git/HEAD");
+    // Re-run when HEAD moves (only emit when the file actually exists, so
+    // crates.io / tarball builds don't trip "missing rerun-if-changed input").
+    if Path::new(".git/HEAD").exists() {
+        println!("cargo:rerun-if-changed=.git/HEAD");
+    }
     println!("cargo:rerun-if-changed=specs");
 }
 
@@ -44,7 +47,7 @@ fn newest_spec_mtime() -> Option<String> {
     }
     let mut newest: Option<std::time::SystemTime> = None;
     for entry in std::fs::read_dir(specs).ok()?.flatten() {
-        let meta = entry.metadata().ok()?;
+        let Ok(meta) = entry.metadata() else { continue };
         if let Ok(modified) = meta.modified() {
             newest = Some(newest.map_or(modified, |n| n.max(modified)));
         }

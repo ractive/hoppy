@@ -88,12 +88,15 @@ pub fn is_secret_field_name(name: &str) -> bool {
         || lower.contains("credential")
 }
 
-/// Walk a JSON value and rewrite every string-typed field whose name matches
-/// [`is_secret_field_name`] to a placeholder, unless `--reveal` opts in.
+/// Walk a JSON value and rewrite every string- or null-typed field whose name
+/// matches [`is_secret_field_name`] to a placeholder, unless `--reveal` opts in.
+///
+/// - String value → `<set, length=N>` (or `<unset>` if empty)
+/// - `null` value → `<unset>`
+/// - Numbers / booleans / objects / arrays → recursed but not rewritten
 ///
 /// Used by storage-zone JSON output (Password / ReadOnlyPassword) and any
-/// future endpoint that surfaces credentials directly. Non-string values
-/// (numbers, nulls, nested objects) are walked but not rewritten.
+/// future endpoint that surfaces credentials directly.
 pub fn redact_secrets_in_json(value: &mut serde_json::Value, config: &RedactConfig) {
     if config.reveal_field() {
         return;

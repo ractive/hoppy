@@ -52,12 +52,12 @@ async fn storage_zone_get_redacts_passwords_by_default() {
         "raw password leaked into default output"
     );
     assert!(
-        stdout.contains("\"Password\""),
-        "Password field should be present (redacted)"
+        stdout.contains("\"Password\": \"<set, length=25>\""),
+        "expected Password to be replaced with the <set, length=N> placeholder, got: {stdout}"
     );
     assert!(
-        stdout.contains("\"ReadOnlyPassword\""),
-        "ReadOnlyPassword should be present (redacted)"
+        stdout.contains("\"ReadOnlyPassword\": \"<set, length=26>\""),
+        "expected ReadOnlyPassword to be replaced with the <set, length=N> placeholder, got: {stdout}"
     );
 }
 
