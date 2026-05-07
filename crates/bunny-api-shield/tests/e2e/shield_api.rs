@@ -1496,3 +1496,63 @@ async fn get_access_list_enums_returns_map() {
     let action_map = &result["AccessListAction"];
     assert_eq!(action_map.get("Block").map(String::as_str), Some("1"));
 }
+
+#[tokio::test]
+async fn get_promo_state_handles_empty_body() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/promo/state"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri()).get_promo_state().await.unwrap();
+    assert_eq!(result, serde_json::Value::Null);
+}
+
+#[tokio::test]
+async fn get_promo_state_decodes_json_body() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/promo/state"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(r#"{"active":true}"#, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri()).get_promo_state().await.unwrap();
+    assert_eq!(result["active"], serde_json::Value::Bool(true));
+}
+
+#[tokio::test]
+async fn get_promo_state_propagates_problem_details() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/promo/state"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(500).set_body_raw(
+            r#"{"title":"Internal Error","status":500,"detail":"boom"}"#,
+            "application/problem+json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .get_promo_state()
+        .await
+        .unwrap_err();
+    let msg = format!("{err:#}");
+    assert!(
+        msg.contains("Internal Error") || msg.contains("boom"),
+        "expected ProblemDetails error, got: {msg}"
+    );
+}

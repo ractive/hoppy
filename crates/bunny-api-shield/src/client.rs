@@ -2,9 +2,27 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use anyhow::{Context, Result, bail};
+use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
 
 use bunny_api_recording::{capture_request, maybe_record_response};
+
+/// Encode set for path segments per RFC 3986 §3.3.
+const PATH_SEGMENT: &AsciiSet = &CONTROLS
+    .add(b' ')
+    .add(b'"')
+    .add(b'#')
+    .add(b'%')
+    .add(b'/')
+    .add(b'<')
+    .add(b'>')
+    .add(b'?')
+    .add(b'`')
+    .add(b'{')
+    .add(b'}')
+    .add(b'+')
+    .add(b'=')
+    .add(b'&');
 
 use crate::types::{
     AccessListsDetailsResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
@@ -851,12 +869,7 @@ impl ShieldClient {
         date: &str,
         continuation_token: &str,
     ) -> Result<WafLoggingResponse> {
-        // Percent-encode characters that would break the path segment.
-        let encoded_token = continuation_token
-            .replace('%', "%25")
-            .replace('/', "%2F")
-            .replace('+', "%2B")
-            .replace(' ', "%20");
+        let encoded_token = utf8_percent_encode(continuation_token, PATH_SEGMENT).to_string();
         let resp = self
             .execute(self.auth(self.client.get(self.url(&format!(
                 "/shield/event-logs/{shield_zone_id}/{date}/{encoded_token}"
