@@ -424,6 +424,14 @@ pub struct PullZone {
     // Edge rules
     #[serde(default)]
     pub edge_rules: Vec<EdgeRule>,
+
+    // Access control
+    #[serde(default)]
+    pub allowed_referrers: Vec<String>,
+    #[serde(default)]
+    pub blocked_referrers: Vec<String>,
+    #[serde(default)]
+    pub blocked_ips: Vec<String>,
 }
 
 /// Generic paginated list response returned by the bunny.net API.

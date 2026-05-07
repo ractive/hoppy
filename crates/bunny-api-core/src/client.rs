@@ -254,6 +254,70 @@ impl CoreClient {
     }
 
     // -----------------------------------------------------------------------
+    // Pull Zone access-control endpoints
+    // -----------------------------------------------------------------------
+
+    /// Add an allowed referrer to a Pull Zone.
+    pub async fn add_allowed_referrer(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/addAllowedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Remove an allowed referrer from a Pull Zone.
+    pub async fn remove_allowed_referrer(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/removeAllowedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Add a blocked referrer to a Pull Zone.
+    pub async fn add_blocked_referrer(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/addBlockedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Remove a blocked referrer from a Pull Zone.
+    pub async fn remove_blocked_referrer(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/removeBlockedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Add a blocked IP to a Pull Zone.
+    pub async fn add_blocked_ip(&self, id: i64, ip: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/addBlockedIp", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "BlockedIp": ip
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Remove a blocked IP from a Pull Zone.
+    pub async fn remove_blocked_ip(&self, id: i64, ip: &str) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/removeBlockedIp", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "BlockedIp": ip
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
     // Pull Zone edge rule endpoints
     // -----------------------------------------------------------------------
 

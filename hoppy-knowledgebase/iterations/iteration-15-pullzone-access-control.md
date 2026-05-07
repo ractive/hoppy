@@ -1,5 +1,5 @@
 ---
-title: "Iteration 15 — Pull Zone Access Control"
+title: Iteration 15 — Pull Zone Access Control
 type: iteration
 date: 2026-03-20
 tags:
@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - cdn
   - security
-status: planned
+status: in-progress
 branch: iter-15/pullzone-access-control
 ---
 
@@ -32,32 +32,32 @@ Each operation is a single POST call that adds/removes one entry. The current re
 
 Six new endpoints, all POST with simple JSON bodies:
 
-- [ ] `POST /pullzone/{id}/addAllowedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [ ] `POST /pullzone/{id}/removeAllowedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [ ] `POST /pullzone/{id}/addBlockedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [ ] `POST /pullzone/{id}/removeBlockedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [ ] `POST /pullzone/{id}/addBlockedIp` — body: `{ "Value": "1.2.3.4" }`
-- [ ] `POST /pullzone/{id}/removeBlockedIp` — body: `{ "Value": "1.2.3.4" }`
+- [x] `POST /pullzone/{id}/addAllowedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/removeAllowedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/addBlockedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/removeBlockedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/addBlockedIp` — body: `{ "BlockedIp": "1.2.3.4" }`
+- [x] `POST /pullzone/{id}/removeBlockedIp` — body: `{ "BlockedIp": "1.2.3.4" }`
 
-Check the OpenAPI spec for exact request body shapes — the referrer endpoints may use `Hostname` (the origin) and `Value` (the pattern), or just `Value`. Verify against live API.
+Body shapes are taken from `specs/core-platform.json`: the referrer endpoints take a single required `Hostname` field (no `Value`), and the IP endpoints take a single required `BlockedIp` field.
 
 ### CLI Commands
 
-- [ ] `hoppy pull-zone referrer list --id <pull-zone-id>` — show allowed + blocked referrers (from PZ get response)
-- [ ] `hoppy pull-zone referrer allow --id <pull-zone-id> --value <pattern>` — add allowed referrer
-- [ ] `hoppy pull-zone referrer remove-allowed --id <pull-zone-id> --value <pattern>` — remove allowed referrer
-- [ ] `hoppy pull-zone referrer block --id <pull-zone-id> --value <pattern>` — add blocked referrer
-- [ ] `hoppy pull-zone referrer remove-blocked --id <pull-zone-id> --value <pattern>` — remove blocked referrer
-- [ ] `hoppy pull-zone ip list --id <pull-zone-id>` — show blocked IPs (from PZ get response)
-- [ ] `hoppy pull-zone ip block --id <pull-zone-id> --value <ip>` — block an IP
-- [ ] `hoppy pull-zone ip unblock --id <pull-zone-id> --value <ip>` — unblock an IP
+- [x] `hoppy pull-zone referrer list --id <pull-zone-id>` — show allowed + blocked referrers (from PZ get response)
+- [x] `hoppy pull-zone referrer allow --id <pull-zone-id> --value <pattern>` — add allowed referrer
+- [x] `hoppy pull-zone referrer remove-allowed --id <pull-zone-id> --value <pattern>` — remove allowed referrer
+- [x] `hoppy pull-zone referrer block --id <pull-zone-id> --value <pattern>` — add blocked referrer
+- [x] `hoppy pull-zone referrer remove-blocked --id <pull-zone-id> --value <pattern>` — remove blocked referrer
+- [x] `hoppy pull-zone ip list --id <pull-zone-id>` — show blocked IPs (from PZ get response)
+- [x] `hoppy pull-zone ip block --id <pull-zone-id> --value <ip>` — block an IP
+- [x] `hoppy pull-zone ip unblock --id <pull-zone-id> --value <ip>` — unblock an IP
 
 ### Testing
 
-- [ ] Capture fixtures via `--record` for each of the 6 endpoints (response is likely the updated PullZone or empty 204)
-- [ ] Wiremock + insta snapshot tests for all 6 API methods
-- [ ] Wiremock + insta snapshot tests for all 8 CLI commands
-- [ ] Live E2E test: create PZ → add allowed referrer → add blocked referrer → verify via get → remove both → add blocked IP → verify → unblock → delete PZ
+- [x] Capture fixtures via `--record` for each of the 6 endpoints (response is likely the updated PullZone or empty 204)
+- [x] Wiremock + insta snapshot tests for all 6 API methods
+- [x] Wiremock + insta snapshot tests for all 8 CLI commands
+- [x] Live E2E test: create PZ → add allowed referrer → add blocked referrer → verify via get → remove both → add blocked IP → verify → unblock → delete PZ
 
 ---
 

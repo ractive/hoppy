@@ -330,6 +330,122 @@ async fn remove_certificate_sends_correct_body() {
         .unwrap();
 }
 
+// ---------------------------------------------------------------------------
+// Pull Zone access-control tests (referrer / IP)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn add_allowed_referrer_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addAllowedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "*.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_allowed_referrer(1001, "*.example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn remove_allowed_referrer_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/removeAllowedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "*.example.com" }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .remove_allowed_referrer(1001, "*.example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn add_blocked_referrer_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addBlockedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "badsite.com" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_blocked_referrer(1001, "badsite.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn remove_blocked_referrer_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/removeBlockedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "badsite.com" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .remove_blocked_referrer(1001, "badsite.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn add_blocked_ip_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/addBlockedIp"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "BlockedIp": "192.0.2.1" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_blocked_ip(1001, "192.0.2.1")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn remove_blocked_ip_sends_correct_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/removeBlockedIp"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "BlockedIp": "192.0.2.1" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .remove_blocked_ip(1001, "192.0.2.1")
+        .await
+        .unwrap();
+}
+
 #[tokio::test]
 async fn add_hostname_not_found_returns_error() {
     let server = MockServer::start().await;

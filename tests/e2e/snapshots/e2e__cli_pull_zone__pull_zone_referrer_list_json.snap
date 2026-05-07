@@ -1,0 +1,13 @@
+---
+source: tests/e2e/cli_pull_zone.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "AllowedReferrers": [
+    "allowed.example.com",
+    "*.partner.com"
+  ],
+  "BlockedReferrers": [
+    "badsite.com"
+  ]
+}
