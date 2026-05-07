@@ -1,0 +1,24 @@
+---
+source: tests/e2e/cli_stream.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "success": true,
+  "message": "OK",
+  "statusCode": 200,
+  "data": {
+    "encoded": {
+      "x264-720p": {
+        "codec": "x264",
+        "resolution": "720p",
+        "size": 12345678
+      }
+    },
+    "thumbnails": 4096,
+    "previews": 2048,
+    "originals": 52428800,
+    "mp4Fallback": 1024,
+    "miscellaneous": 0,
+    "calculatedAt": "2026-03-20T10:00:00Z"
+  }
+}

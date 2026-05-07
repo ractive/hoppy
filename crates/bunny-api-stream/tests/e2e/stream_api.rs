@@ -1,5 +1,7 @@
 use bunny_api_stream::types::{CreateCollection, UpdateCollection};
-use bunny_api_stream::{CreateVideo, StreamClient};
+use bunny_api_stream::{
+    CreateVideo, SmartGenerateSettings, StreamCleanupResolutions, StreamClient, TranscribeSettings,
+};
 use wiremock::matchers::{body_bytes, body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -25,6 +27,22 @@ const FIXTURE_CAPTION_DELETE: &str =
     include_str!("../../../../fixtures/stream/video_caption_delete.json");
 const FIXTURE_LIBRARY_STATS: &str =
     include_str!("../../../../fixtures/stream/library_statistics.json");
+const FIXTURE_VIDEO_TRANSCRIBE_STATUS: &str =
+    include_str!("../../../../fixtures/stream/video_transcribe_status.json");
+const FIXTURE_VIDEO_HEATMAP: &str = include_str!("../../../../fixtures/stream/video_heatmap.json");
+const FIXTURE_VIDEO_REENCODE: &str =
+    include_str!("../../../../fixtures/stream/video_reencode.json");
+const FIXTURE_VIDEO_REPACKAGE: &str =
+    include_str!("../../../../fixtures/stream/video_repackage.json");
+const FIXTURE_VIDEO_SMART_STATUS: &str =
+    include_str!("../../../../fixtures/stream/video_smart_status.json");
+const FIXTURE_VIDEO_THUMBNAIL_STATUS: &str =
+    include_str!("../../../../fixtures/stream/video_thumbnail_status.json");
+const FIXTURE_VIDEO_RESOLUTIONS: &str =
+    include_str!("../../../../fixtures/stream/video_resolutions.json");
+const FIXTURE_VIDEO_STORAGE: &str = include_str!("../../../../fixtures/stream/video_storage.json");
+const FIXTURE_VIDEO_RESOLUTIONS_CLEANUP_STATUS: &str =
+    include_str!("../../../../fixtures/stream/video_resolutions_cleanup_status.json");
 
 fn test_client(uri: &str) -> StreamClient {
     StreamClient::new("stream-test-key").with_base_url(uri)
@@ -628,4 +646,387 @@ async fn get_library_statistics_returns_data() {
     assert_eq!(stats.views_chart.unwrap().len(), 3);
     assert!(stats.country_view_counts.is_some());
     assert_eq!(stats.country_view_counts.unwrap().len(), 4);
+}
+
+// ---------------------------------------------------------------------------
+// Video processing tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn transcribe_video_with_settings() {
+    let server = MockServer::start().await;
+
+    let settings = TranscribeSettings::new()
+        .target_languages(["de", "fr"])
+        .generate_title(true);
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/transcribe",
+        ))
+        .and(query_param("force", "true"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_VIDEO_TRANSCRIBE_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .transcribe_video(
+            10001,
+            "aaaabbbb-1111-2222-3333-ccccddddeeee",
+            true,
+            Some(&settings),
+        )
+        .await
+        .unwrap();
+
+    assert!(result.success);
+    assert_eq!(result.message.as_deref(), Some("Transcription was queued"));
+}
+
+#[tokio::test]
+async fn transcribe_video_minimal() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/transcribe",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_VIDEO_TRANSCRIBE_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .transcribe_video(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", false, None)
+        .await
+        .unwrap();
+
+    assert!(result.success);
+}
+
+#[tokio::test]
+async fn get_video_heatmap_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/heatmap",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_HEATMAP, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_video_heatmap(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee")
+        .await
+        .unwrap();
+
+    let map = result.heatmap.expect("heatmap should be present");
+    assert_eq!(map.get("0"), Some(&80));
+    assert_eq!(map.get("1"), Some(&100));
+}
+
+#[tokio::test]
+async fn reencode_video_returns_video() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/reencode",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_REENCODE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let video = test_client(&server.uri())
+        .reencode_video(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee")
+        .await
+        .unwrap();
+
+    assert_eq!(video.guid, "aaaabbbb-1111-2222-3333-ccccddddeeee");
+}
+
+#[tokio::test]
+async fn reencode_video_using_codec_uses_correct_path() {
+    use bunny_api_stream::types::EncoderOutputCodec;
+
+    let server = MockServer::start().await;
+
+    // hevc = codec id 2
+    Mock::given(method("PUT"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/outputs/2",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_REENCODE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let video = test_client(&server.uri())
+        .reencode_video_using_codec(
+            10001,
+            "aaaabbbb-1111-2222-3333-ccccddddeeee",
+            EncoderOutputCodec::Hevc,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(video.guid, "aaaabbbb-1111-2222-3333-ccccddddeeee");
+}
+
+#[tokio::test]
+async fn repackage_video_with_keep_original_default() {
+    let server = MockServer::start().await;
+
+    // Default: keepOriginalFiles=true — param should NOT be sent
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/repackage",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_REPACKAGE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let video = test_client(&server.uri())
+        .repackage_video(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", true)
+        .await
+        .unwrap();
+
+    assert_eq!(video.guid, "aaaabbbb-1111-2222-3333-ccccddddeeee");
+}
+
+#[tokio::test]
+async fn repackage_video_discarding_originals() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/repackage",
+        ))
+        .and(query_param("keepOriginalFiles", "false"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_REPACKAGE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let video = test_client(&server.uri())
+        .repackage_video(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", false)
+        .await
+        .unwrap();
+
+    assert_eq!(video.guid, "aaaabbbb-1111-2222-3333-ccccddddeeee");
+}
+
+#[tokio::test]
+async fn smart_generate_sends_body() {
+    let server = MockServer::start().await;
+
+    let settings = SmartGenerateSettings::new()
+        .generate_title(true)
+        .generate_description(true);
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/smart",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_SMART_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .smart_generate(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", &settings)
+        .await
+        .unwrap();
+
+    assert!(result.success);
+    assert_eq!(result.message.as_deref(), Some("Smart action queued"));
+}
+
+#[tokio::test]
+async fn set_video_thumbnail_with_url() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/thumbnail",
+        ))
+        .and(query_param("thumbnailUrl", "https://example.com/thumb.jpg"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_VIDEO_THUMBNAIL_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .set_video_thumbnail(
+            10001,
+            "aaaabbbb-1111-2222-3333-ccccddddeeee",
+            Some("https://example.com/thumb.jpg"),
+        )
+        .await
+        .unwrap();
+
+    assert!(result.success);
+    assert_eq!(result.message.as_deref(), Some("Thumbnail set"));
+}
+
+#[tokio::test]
+async fn get_video_resolutions_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/resolutions",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_RESOLUTIONS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let envelope = test_client(&server.uri())
+        .get_video_resolutions(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee")
+        .await
+        .unwrap();
+
+    assert!(envelope.success);
+    let data = envelope.data.expect("data should be present");
+    assert_eq!(
+        data.available_resolutions,
+        vec!["1080p", "720p", "480p", "360p", "240p"]
+    );
+    assert_eq!(data.configured_resolutions, vec!["720p", "480p"]);
+    assert!(data.has_original);
+}
+
+#[tokio::test]
+async fn cleanup_resolutions_dry_run() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/resolutions/cleanup",
+        ))
+        .and(query_param("dryRun", "true"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_VIDEO_RESOLUTIONS_CLEANUP_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let opts = StreamCleanupResolutions {
+        dry_run: true,
+        ..Default::default()
+    };
+
+    let result = test_client(&server.uri())
+        .cleanup_video_resolutions(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", &opts)
+        .await
+        .unwrap();
+
+    assert!(result.success);
+}
+
+#[tokio::test]
+async fn cleanup_resolutions_with_explicit_list() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/resolutions/cleanup",
+        ))
+        .and(query_param("resolutionsToDelete", "720p,480p"))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_VIDEO_RESOLUTIONS_CLEANUP_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let opts = StreamCleanupResolutions {
+        resolutions_to_delete: Some("720p,480p"),
+        ..Default::default()
+    };
+
+    let result = test_client(&server.uri())
+        .cleanup_video_resolutions(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", &opts)
+        .await
+        .unwrap();
+
+    assert!(result.success);
+    assert_eq!(result.message.as_deref(), Some("Resolutions cleaned"));
+}
+
+#[tokio::test]
+async fn get_video_storage_size_returns_data() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/storage",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_STORAGE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let envelope = test_client(&server.uri())
+        .get_video_storage_size(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee")
+        .await
+        .unwrap();
+
+    assert!(envelope.success);
+    let data = envelope.data.expect("data should be present");
+    assert_eq!(data.originals, 52428800);
+    assert_eq!(data.thumbnails, 4096);
+    assert_eq!(data.mp4_fallback, 1024);
+    let encoded = data.encoded.expect("encoded should be present");
+    let rendition = encoded
+        .get("x264-720p")
+        .expect("x264-720p should be present");
+    assert_eq!(rendition.size, 12345678);
 }

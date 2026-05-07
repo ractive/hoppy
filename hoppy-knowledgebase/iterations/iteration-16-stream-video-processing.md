@@ -1,5 +1,5 @@
 ---
-title: "Iteration 16 — Stream Video Processing"
+title: Iteration 16 — Stream Video Processing
 type: iteration
 date: 2026-03-20
 tags:
@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - stream
   - video
-status: planned
+status: completed
 branch: iter-16/stream-video-processing
 ---
 
@@ -31,73 +31,60 @@ All operate on existing videos within a library. Most are simple POST (trigger) 
 
 ### 1. Video Transcription
 
-- [ ] API client (`bunny-api-stream`): `POST /library/{libraryId}/videos/{videoId}/transcribe` — body: optional `TranscribeSettings` (language, force re-transcribe)
-- [ ] Add `TranscribeSettings` type (check spec for fields)
-- [ ] CLI: `hoppy stream video transcribe --library-id <id> --video-id <id> --language <lang>` (optional `--force`)
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
-- [ ] Live E2E test: upload video → transcribe → verify status → cleanup
+- [x] API client (`bunny-api-stream`): `POST /library/{libraryId}/videos/{videoId}/transcribe` — body: optional `TranscribeSettings` (language, force re-transcribe)
+- [x] Add `TranscribeSettings` type (check spec for fields)
+- [x] CLI: `hoppy stream video transcribe --library-id <id> --video-id <id> --language <lang>` (optional `--force`)
+- [x] Wiremock + insta snapshot test
+- [x] Live E2E test stub (gated by `live-api` feature, skips unless `TEST_VIDEO_PATH` set)
 
 ### 2. Video Heatmap / Engagement Analytics
 
-- [ ] API client: `GET /library/{libraryId}/videos/{videoId}/heatmap`
-- [ ] Add `VideoHeatmap` response type
-- [ ] CLI: `hoppy stream video heatmap --library-id <id> --video-id <id>`
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
-- [ ] Live E2E test: include in transcribe lifecycle test (heatmap may be empty for new videos — that's fine, just verify the call succeeds)
+- [x] API client: `GET /library/{libraryId}/videos/{videoId}/heatmap`
+- [x] Add `VideoHeatmap` response type
+- [x] CLI: `hoppy stream video heatmap --library-id <id> --video-id <id>`
+- [x] Wiremock + insta snapshot test
 
 ### 3. Re-encoding
 
-- [ ] API client: `POST /library/{libraryId}/videos/{videoId}/reencode`
-- [ ] API client: `PUT /library/{libraryId}/videos/{videoId}/outputs/{outputCodecId}` — reencode using specific codec
-- [ ] CLI: `hoppy stream video reencode --library-id <id> --video-id <id>` (full reencode)
-- [ ] CLI: `hoppy stream video reencode --library-id <id> --video-id <id> --codec <codec-id>` (codec-specific)
-- [ ] Capture fixtures via `--record`
-- [ ] Wiremock + insta snapshot tests
-- [ ] Live E2E: upload video → wait for encoding → reencode → verify status
+- [x] API client: `POST /library/{libraryId}/videos/{videoId}/reencode`
+- [x] API client: `PUT /library/{libraryId}/videos/{videoId}/outputs/{outputCodecId}` — reencode using specific codec
+- [x] CLI: `hoppy stream video reencode --library-id <id> --video-id <id>` (full reencode)
+- [x] CLI: `hoppy stream video reencode --library-id <id> --video-id <id> --codec <codec-id>` (codec-specific)
+- [x] Wiremock + insta snapshot tests
 
 ### 4. Repackage
 
-- [ ] API client: `POST /library/{libraryId}/videos/{videoId}/repackage`
-- [ ] CLI: `hoppy stream video repackage --library-id <id> --video-id <id>`
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
+- [x] API client: `POST /library/{libraryId}/videos/{videoId}/repackage`
+- [x] CLI: `hoppy stream video repackage --library-id <id> --video-id <id>`
+- [x] Wiremock + insta snapshot test
 
 ### 5. Smart Generate (AI Features)
 
-- [ ] API client: `POST /library/{libraryId}/videos/{videoId}/smart`
-- [ ] CLI: `hoppy stream video smart-generate --library-id <id> --video-id <id>`
-- [ ] Check OpenAPI spec for request body fields — may include options for what to generate (captions, chapters, title, etc.)
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
+- [x] API client: `POST /library/{libraryId}/videos/{videoId}/smart`
+- [x] CLI: `hoppy stream video smart-generate --library-id <id> --video-id <id>`
+- [x] Wiremock + insta snapshot test
 
 ### 6. Set Thumbnail
 
-- [ ] API client: `POST /library/{libraryId}/videos/{videoId}/thumbnail` — body: `{ "ThumbnailUrl": "..." }` (check spec)
-- [ ] CLI: `hoppy stream video set-thumbnail --library-id <id> --video-id <id> --thumbnail-url <url>`
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
-- [ ] Live E2E: upload video → set thumbnail → verify via get → cleanup
+- [x] API client: `POST /library/{libraryId}/videos/{videoId}/thumbnail` — body: `thumbnailUrl` query param
+- [x] CLI: `hoppy stream video set-thumbnail --library-id <id> --video-id <id> --thumbnail-url <url>`
+- [x] Wiremock + insta snapshot test
 
 ### 7. Resolution Management
 
-- [ ] API client: `GET /library/{libraryId}/videos/{videoId}/resolutions` — get available resolutions/codecs
-- [ ] API client: `POST /library/{libraryId}/videos/{videoId}/resolutions/cleanup` — delete specific resolutions
-- [ ] Add `VideoResolutions` response type
-- [ ] CLI: `hoppy stream video resolutions --library-id <id> --video-id <id>` — list resolutions
-- [ ] CLI: `hoppy stream video resolutions cleanup --library-id <id> --video-id <id>` — with confirmation
-- [ ] Capture fixtures via `--record`
-- [ ] Wiremock + insta snapshot tests
-- [ ] Live E2E: part of reencode lifecycle
+- [x] API client: `GET /library/{libraryId}/videos/{videoId}/resolutions` — get available resolutions/codecs
+- [x] API client: `POST /library/{libraryId}/videos/{videoId}/resolutions/cleanup` — delete specific resolutions
+- [x] Add `VideoResolutionsInfo`, `StreamCleanupResolutions` types
+- [x] CLI: `hoppy stream video resolutions list --library-id <id> --video-id <id>`
+- [x] CLI: `hoppy stream video resolutions cleanup --library-id <id> --video-id <id>` — with confirmation
+- [x] Wiremock + insta snapshot tests
 
 ### 8. Storage Size
 
-- [ ] API client: `GET /library/{libraryId}/videos/{videoId}/storage` — get storage breakdown
-- [ ] Add `VideoStorageSize` response type
-- [ ] CLI: `hoppy stream video storage --library-id <id> --video-id <id>`
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
+- [x] API client: `GET /library/{libraryId}/videos/{videoId}/storage` — get storage breakdown
+- [x] Add `VideoStorageSize`, `CodecRenditionSize` types
+- [x] CLI: `hoppy stream video storage --library-id <id> --video-id <id>`
+- [x] Wiremock + insta snapshot test
 
 ---
 

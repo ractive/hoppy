@@ -1025,6 +1025,132 @@ pub enum StreamVideoAction {
         #[command(subcommand)]
         action: StreamCaptionAction,
     },
+    /// Trigger transcription / translation for a video
+    Transcribe {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        /// Force re-transcribe even if captions exist
+        #[arg(long)]
+        force: bool,
+        /// Source language (ISO 639-1, e.g. `en`)
+        #[arg(long)]
+        language: Option<String>,
+        /// Target languages for translation (ISO 639-1, can repeat)
+        #[arg(long = "target-language")]
+        target_languages: Vec<String>,
+        /// Auto-generate title
+        #[arg(long)]
+        generate_title: bool,
+        /// Auto-generate description
+        #[arg(long)]
+        generate_description: bool,
+        /// Auto-generate chapters
+        #[arg(long)]
+        generate_chapters: bool,
+        /// Auto-generate moments
+        #[arg(long)]
+        generate_moments: bool,
+    },
+    /// Get the engagement heatmap for a video
+    Heatmap {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+    },
+    /// Re-encode a video (optionally for a specific codec)
+    Reencode {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        /// Optional output codec (x264, vp9, hevc, av1)
+        #[arg(long)]
+        codec: Option<String>,
+    },
+    /// Repackage a video's HLS/DASH manifests
+    Repackage {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        /// Discard previous file versions (default: keep)
+        #[arg(long)]
+        discard_originals: bool,
+    },
+    /// Trigger smart-generate (AI title/description/chapters/moments)
+    SmartGenerate {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        #[arg(long)]
+        language: Option<String>,
+        #[arg(long)]
+        generate_title: bool,
+        #[arg(long)]
+        generate_description: bool,
+        #[arg(long)]
+        generate_chapters: bool,
+        #[arg(long)]
+        generate_moments: bool,
+    },
+    /// Set the thumbnail for a video from a URL
+    SetThumbnail {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        #[arg(long)]
+        thumbnail_url: String,
+    },
+    /// Manage video resolutions/encodings
+    Resolutions {
+        #[command(subcommand)]
+        action: StreamResolutionsAction,
+    },
+    /// Show the storage breakdown for a video
+    Storage {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum StreamResolutionsAction {
+    /// List configured/available resolutions for a video
+    List {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+    },
+    /// Cleanup video resolutions/files (destructive — confirmation required unless --yes or --dry-run)
+    Cleanup {
+        #[arg(long)]
+        library_id: i64,
+        #[arg(long)]
+        video_id: String,
+        /// Comma-separated list of resolutions to delete (e.g. `720p,480p`)
+        #[arg(long)]
+        resolutions: Option<String>,
+        /// Delete every rendition not in the library's configured resolutions
+        #[arg(long)]
+        delete_non_configured: bool,
+        /// Delete the original uploaded file
+        #[arg(long)]
+        delete_original: bool,
+        /// Delete MP4 fallback files
+        #[arg(long)]
+        delete_mp4_files: bool,
+        /// Preview only — do not actually delete anything
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]

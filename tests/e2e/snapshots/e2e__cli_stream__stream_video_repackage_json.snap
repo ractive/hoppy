@@ -1,0 +1,33 @@
+---
+source: tests/e2e/cli_stream.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "VideoLibraryId": 10001,
+  "Guid": "aaaabbbb-1111-2222-3333-ccccddddeeee",
+  "Title": "Introduction Video",
+  "DateUploaded": "2024-01-10T12:00:00Z",
+  "Views": 150,
+  "IsPublic": true,
+  "Length": 180,
+  "Status": 4,
+  "Framerate": 30.0,
+  "Width": 1920,
+  "Height": 1080,
+  "OutputCodecs": "x264",
+  "EncodeProgress": 100,
+  "StorageSize": 52428800,
+  "HasMP4Fallback": true,
+  "AverageWatchTime": 120,
+  "TotalWatchTime": 18000,
+  "Description": null,
+  "CollectionId": null,
+  "ThumbnailFileName": null,
+  "ThumbnailBlurhash": null,
+  "AvailableResolutions": null,
+  "Category": null,
+  "Captions": [],
+  "Rotation": null,
+  "HasOriginal": null,
+  "OriginalHash": null
+}

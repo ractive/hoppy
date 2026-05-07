@@ -22,8 +22,11 @@ pub mod client;
 pub mod types;
 
 // Flatten the most-used items into the crate root for ergonomic imports.
+pub use client::StreamCleanupResolutions;
 pub use client::StreamClient;
 pub use types::{
-    Caption, Collection, CreateCollection, CreateVideo, FetchVideo, PaginatedList, StatusMessage,
-    UpdateCollection, UpdateVideo, Video, VideoStatistics, VideoStatus,
+    Caption, CodecRenditionSize, Collection, CreateCollection, CreateVideo, EncoderOutputCodec,
+    FetchVideo, PaginatedList, ResolutionReference, SmartGenerateSettings, StatusEnvelope,
+    StatusMessage, StorageObject, TranscribeSettings, UpdateCollection, UpdateVideo, Video,
+    VideoHeatmap, VideoResolutionsInfo, VideoStatistics, VideoStatus, VideoStorageSize,
 };

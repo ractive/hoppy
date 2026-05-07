@@ -7,11 +7,31 @@ use reqwest::{Client, RequestBuilder};
 use bunny_api_recording::{capture_request, maybe_record_response};
 
 use crate::types::{
-    Collection, CreateCollection, CreateVideo, FetchVideo, PaginatedList, StatusMessage,
-    UpdateCollection, UpdateVideo, Video, VideoStatistics,
+    Collection, CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, PaginatedList,
+    SmartGenerateSettings, StatusEnvelope, StatusMessage, TranscribeSettings, UpdateCollection,
+    UpdateVideo, Video, VideoHeatmap, VideoResolutionsInfo, VideoStatistics, VideoStorageSize,
 };
 
 const BASE_URL: &str = "https://video.bunnycdn.com";
+
+/// Options for [`StreamClient::cleanup_video_resolutions`].
+///
+/// Defaults match the API defaults: nothing is deleted unless explicitly
+/// requested. `dry_run` returns the work that would be done without
+/// performing it.
+#[derive(Debug, Clone, Default)]
+pub struct StreamCleanupResolutions<'a> {
+    /// Comma-separated list of explicit resolutions to delete (e.g. `"720p,480p"`).
+    pub resolutions_to_delete: Option<&'a str>,
+    /// Delete every rendition that is not in the library's configured set.
+    pub delete_non_configured_resolutions: bool,
+    /// Delete the original uploaded file.
+    pub delete_original: bool,
+    /// Delete the MP4 fallback files.
+    pub delete_mp4_files: bool,
+    /// Preview the cleanup without actually changing anything.
+    pub dry_run: bool,
+}
 
 /// Client for the bunny.net Stream (Video) API.
 ///
@@ -244,6 +264,202 @@ impl StreamClient {
         let resp = self
             .send(self.auth(self.http.post(&url)).json(body))
             .await?;
+        self.parse_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Video processing methods
+    // -----------------------------------------------------------------------
+
+    /// Trigger transcription / translation for a video.
+    ///
+    /// Pass `force = true` to re-transcribe a video that already has captions.
+    /// `settings` is optional and overrides the library default transcribe settings.
+    pub async fn transcribe_video(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        force: bool,
+        settings: Option<&TranscribeSettings>,
+    ) -> Result<StatusMessage> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/transcribe",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.post(&url));
+        if force {
+            rb = rb.query(&[("force", "true")]);
+        }
+        if let Some(body) = settings {
+            rb = rb.json(body);
+        }
+        let resp = self.send(rb).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Fetch the engagement heatmap for a video.
+    pub async fn get_video_heatmap(&self, library_id: i64, video_id: &str) -> Result<VideoHeatmap> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/heatmap",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.get(&url))).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Re-encode a video using the library's default output codecs.
+    pub async fn reencode_video(&self, library_id: i64, video_id: &str) -> Result<Video> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/reencode",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.post(&url))).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Re-encode a video using a specific output codec.
+    pub async fn reencode_video_using_codec(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        codec: EncoderOutputCodec,
+    ) -> Result<Video> {
+        let vid = Self::encode(video_id);
+        let codec_id = codec.as_int();
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/outputs/{codec_id}",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.put(&url))).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Repackage a video (re-segment HLS/DASH manifests).
+    ///
+    /// Pass `keep_original_files = false` to delete previous file versions
+    /// after repackaging — the API default keeps them.
+    pub async fn repackage_video(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        keep_original_files: bool,
+    ) -> Result<Video> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/repackage",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.post(&url));
+        // The API default is true — only forward the param when the caller
+        // explicitly wants to override it.
+        if !keep_original_files {
+            rb = rb.query(&[("keepOriginalFiles", "false")]);
+        }
+        let resp = self.send(rb).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Trigger smart-generate (AI title/description/chapters/moments) for a video.
+    pub async fn smart_generate(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        settings: &SmartGenerateSettings,
+    ) -> Result<StatusMessage> {
+        let vid = Self::encode(video_id);
+        let url = format!("{}/library/{library_id}/videos/{vid}/smart", self.base_url);
+        let resp = self
+            .send(self.auth(self.http.post(&url)).json(settings))
+            .await?;
+        self.parse_response(resp).await
+    }
+
+    /// Set the thumbnail for a video from a URL.
+    ///
+    /// The API accepts the thumbnail URL via the `thumbnailUrl` query string —
+    /// pass `None` to drop a previously set thumbnail.
+    pub async fn set_video_thumbnail(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        thumbnail_url: Option<&str>,
+    ) -> Result<StatusMessage> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/thumbnail",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.post(&url));
+        if let Some(u) = thumbnail_url {
+            rb = rb.query(&[("thumbnailUrl", u)]);
+        }
+        let resp = self.send(rb).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Fetch the resolutions / encodings info for a video.
+    pub async fn get_video_resolutions(
+        &self,
+        library_id: i64,
+        video_id: &str,
+    ) -> Result<StatusEnvelope<VideoResolutionsInfo>> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/resolutions",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.get(&url))).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Cleanup video resolutions — delete one or more renditions, optionally
+    /// running in dry-run mode to preview the change.
+    pub async fn cleanup_video_resolutions(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        opts: &StreamCleanupResolutions<'_>,
+    ) -> Result<StatusMessage> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/resolutions/cleanup",
+            self.base_url
+        );
+        let mut rb = self.auth(self.http.post(&url));
+        if let Some(v) = opts.resolutions_to_delete {
+            rb = rb.query(&[("resolutionsToDelete", v)]);
+        }
+        if opts.delete_non_configured_resolutions {
+            rb = rb.query(&[("deleteNonConfiguredResolutions", "true")]);
+        }
+        if opts.delete_original {
+            rb = rb.query(&[("deleteOriginal", "true")]);
+        }
+        if opts.delete_mp4_files {
+            rb = rb.query(&[("deleteMp4Files", "true")]);
+        }
+        if opts.dry_run {
+            rb = rb.query(&[("dryRun", "true")]);
+        }
+        let resp = self.send(rb).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Fetch the storage size breakdown for a video.
+    pub async fn get_video_storage_size(
+        &self,
+        library_id: i64,
+        video_id: &str,
+    ) -> Result<StatusEnvelope<VideoStorageSize>> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/storage",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.get(&url))).await?;
         self.parse_response(resp).await
     }
 

@@ -329,6 +329,296 @@ impl FetchVideo {
 }
 
 // ---------------------------------------------------------------------------
+// Video processing — request bodies and response types
+// ---------------------------------------------------------------------------
+
+/// Output codec used by `PUT /library/{id}/videos/{videoId}/outputs/{outputCodecId}`.
+///
+/// Wire format is the integer value (`0..=3`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum EncoderOutputCodec {
+    X264 = 0,
+    Vp9 = 1,
+    Hevc = 2,
+    Av1 = 3,
+}
+
+impl EncoderOutputCodec {
+    pub fn as_int(self) -> u8 {
+        self as u8
+    }
+
+    /// Parse from the user-friendly name (case-insensitive) or the integer value.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "x264" | "0" => Some(Self::X264),
+            "vp9" | "1" => Some(Self::Vp9),
+            "hevc" | "2" => Some(Self::Hevc),
+            "av1" | "3" => Some(Self::Av1),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for EncoderOutputCodec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::X264 => write!(f, "x264"),
+            Self::Vp9 => write!(f, "vp9"),
+            Self::Hevc => write!(f, "hevc"),
+            Self::Av1 => write!(f, "av1"),
+        }
+    }
+}
+
+/// Request body for `POST /library/{id}/videos/{videoId}/transcribe`.
+///
+/// All fields are optional; only non-`None` values are serialised.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TranscribeSettings {
+    /// Target languages (ISO 639-1 codes) for translation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_languages: Option<Vec<String>>,
+    /// Whether the video title should be auto-generated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_title: Option<bool>,
+    /// Whether the video description should be auto-generated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_description: Option<bool>,
+    /// Whether video chapters should be auto-generated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_chapters: Option<bool>,
+    /// Whether video moments should be auto-generated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_moments: Option<bool>,
+    /// Source language (ISO 639-1 code).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_language: Option<String>,
+}
+
+impl TranscribeSettings {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn target_languages<I, S>(mut self, langs: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.target_languages = Some(langs.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn source_language(mut self, lang: impl Into<String>) -> Self {
+        self.source_language = Some(lang.into());
+        self
+    }
+
+    pub fn generate_title(mut self, v: bool) -> Self {
+        self.generate_title = Some(v);
+        self
+    }
+
+    pub fn generate_description(mut self, v: bool) -> Self {
+        self.generate_description = Some(v);
+        self
+    }
+
+    pub fn generate_chapters(mut self, v: bool) -> Self {
+        self.generate_chapters = Some(v);
+        self
+    }
+
+    pub fn generate_moments(mut self, v: bool) -> Self {
+        self.generate_moments = Some(v);
+        self
+    }
+}
+
+/// Request body for `POST /library/{id}/videos/{videoId}/smart`.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SmartGenerateSettings {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_title: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_description: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_chapters: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generate_moments: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_language: Option<String>,
+}
+
+impl SmartGenerateSettings {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn source_language(mut self, lang: impl Into<String>) -> Self {
+        self.source_language = Some(lang.into());
+        self
+    }
+
+    pub fn generate_title(mut self, v: bool) -> Self {
+        self.generate_title = Some(v);
+        self
+    }
+
+    pub fn generate_description(mut self, v: bool) -> Self {
+        self.generate_description = Some(v);
+        self
+    }
+
+    pub fn generate_chapters(mut self, v: bool) -> Self {
+        self.generate_chapters = Some(v);
+        self
+    }
+
+    pub fn generate_moments(mut self, v: bool) -> Self {
+        self.generate_moments = Some(v);
+        self
+    }
+}
+
+/// Heatmap response from `GET /library/{id}/videos/{videoId}/heatmap`.
+///
+/// `heatmap` maps a segment-index string (e.g. `"0"`, `"1"`, …) to a
+/// normalised intensity (0–100). Missing segments imply 0.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoHeatmap {
+    #[serde(default)]
+    pub heatmap: Option<HashMap<String, i32>>,
+}
+
+/// Resolution + storage path pair returned inside [`VideoResolutionsInfo`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolutionReference {
+    #[serde(default)]
+    pub resolution: Option<String>,
+    #[serde(default)]
+    pub path: Option<String>,
+}
+
+/// Stored object descriptor returned inside [`VideoResolutionsInfo`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StorageObject {
+    #[serde(default)]
+    pub guid: Option<String>,
+    #[serde(default)]
+    pub storage_zone_name: Option<String>,
+    #[serde(default)]
+    pub path: Option<String>,
+    #[serde(default)]
+    pub object_name: Option<String>,
+    #[serde(default)]
+    pub length: i64,
+    #[serde(default)]
+    pub last_changed: Option<String>,
+    #[serde(default)]
+    pub server_id: i32,
+    #[serde(default)]
+    pub is_directory: bool,
+    #[serde(default)]
+    pub user_id: Option<String>,
+    #[serde(default)]
+    pub content_type: Option<String>,
+    #[serde(default)]
+    pub date_created: Option<String>,
+    #[serde(default)]
+    pub storage_zone_id: i64,
+    #[serde(default)]
+    pub checksum: Option<String>,
+    #[serde(default)]
+    pub replicated_zones: Option<String>,
+}
+
+/// Video resolutions info returned inside the `data` field of the response
+/// to `GET /library/{id}/videos/{videoId}/resolutions`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoResolutionsInfo {
+    #[serde(default)]
+    pub video_id: Option<String>,
+    #[serde(default)]
+    pub video_library_id: i64,
+    #[serde(default)]
+    pub available_resolutions: Vec<String>,
+    #[serde(default)]
+    pub configured_resolutions: Vec<String>,
+    #[serde(default)]
+    pub playlist_resolutions: Vec<ResolutionReference>,
+    #[serde(default)]
+    pub storage_resolutions: Vec<ResolutionReference>,
+    #[serde(default)]
+    pub mp4_resolutions: Vec<ResolutionReference>,
+    #[serde(default)]
+    pub storage_objects: Vec<StorageObject>,
+    #[serde(default)]
+    pub old_resolutions: Vec<StorageObject>,
+    #[serde(default)]
+    pub has_both_old_and_new_resolution_format: bool,
+    #[serde(default)]
+    pub has_original: bool,
+}
+
+/// Codec + resolution + size triple inside [`VideoStorageSize::encoded`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodecRenditionSize {
+    #[serde(default)]
+    pub codec: Option<String>,
+    #[serde(default)]
+    pub resolution: Option<String>,
+    #[serde(default)]
+    pub size: i64,
+}
+
+/// Video storage size info returned inside the `data` field of the response
+/// to `GET /library/{id}/videos/{videoId}/storage`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoStorageSize {
+    /// Map of `"<codec> <resolution>"` (or whatever key the API picks) to size info.
+    #[serde(default)]
+    pub encoded: Option<HashMap<String, CodecRenditionSize>>,
+    #[serde(default)]
+    pub thumbnails: i64,
+    #[serde(default)]
+    pub previews: i64,
+    #[serde(default)]
+    pub originals: i64,
+    #[serde(default, alias = "mp4Fallback")]
+    pub mp4_fallback: i64,
+    #[serde(default)]
+    pub miscellaneous: i64,
+    #[serde(default)]
+    pub calculated_at: Option<String>,
+}
+
+/// Generic envelope used by responses that wrap a `data` payload alongside
+/// the standard [`StatusMessage`] fields (e.g. resolutions and storage info).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatusEnvelope<T> {
+    #[serde(default, alias = "Success", alias = "success")]
+    pub success: bool,
+    #[serde(default, alias = "Message", alias = "message")]
+    pub message: Option<String>,
+    #[serde(default, alias = "StatusCode", alias = "statusCode")]
+    pub status_code: i32,
+    #[serde(default = "Option::default")]
+    pub data: Option<T>,
+}
+
+// ---------------------------------------------------------------------------
 // Statistics types
 // ---------------------------------------------------------------------------
 
