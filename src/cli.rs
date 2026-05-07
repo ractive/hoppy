@@ -1,10 +1,22 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
+/// Long-form `--version` string: includes the build SHA and the bunny API
+/// spec date the client crates were generated against. Useful for bug reports.
+const LONG_VERSION: &str = concat!(
+    env!("CARGO_PKG_VERSION"),
+    " (sha=",
+    env!("HOPPY_BUILD_SHA"),
+    ", bunny-api-spec=",
+    env!("HOPPY_BUNNY_API_SPEC_DATE"),
+    ")"
+);
+
 #[derive(Parser)]
 #[command(
     name = "hoppy",
-    version,
+    version = env!("CARGO_PKG_VERSION"),
+    long_version = LONG_VERSION,
     about = "CLI for bunny.net services",
     long_about = "A CLI tool for managing bunny.net cloud and edge services.\n\nSet the BUNNY_API_KEY environment variable to authenticate."
 )]
@@ -48,6 +60,24 @@ pub enum OutputFormat {
     Json,
     Table,
     Text,
+}
+
+/// Pull Zone billing/performance tier (`Type` in the bunny.net API).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum ZoneTier {
+    /// `Type=0` — single, optimised global network (default).
+    Premium,
+    /// `Type=1` — cheaper, optimised for high-traffic static assets.
+    Volume,
+}
+
+impl From<ZoneTier> for bunny_api_core::types::PullZoneType {
+    fn from(t: ZoneTier) -> Self {
+        match t {
+            ZoneTier::Premium => Self::Premium,
+            ZoneTier::Volume => Self::Volume,
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -194,19 +224,53 @@ pub enum PullZoneAction {
         #[arg(long)]
         id: i64,
     },
-    /// Create a new pull zone
+    /// Create a new pull zone.
+    ///
+    /// Exactly one of --origin-url or --storage-zone-id must be supplied.
+    /// Storage-Zone-backed Pull Zones are the most common static-files
+    /// setup; HTTP/HTTPS origins use --origin-url.
+    #[command(group = clap::ArgGroup::new("origin")
+        .required(true)
+        .args(["origin_url", "storage_zone_id"]))]
+    #[command(after_help = "EXAMPLES:
+  # CDN in front of a public HTTP origin
+  hoppy pull-zone create --name my-zone --origin-url https://origin.example.com
+
+  # CDN in front of a Storage Zone (use storage-zone create first)
+  hoppy pull-zone create --name my-zone --storage-zone-id 1234
+
+  # After creation, attach a custom hostname and load a free Let's Encrypt cert
+  hoppy pull-zone hostname add --id <pz-id> --hostname cdn.example.com
+  hoppy pull-zone hostname load-free-cert --hostname cdn.example.com")]
     Create {
         #[arg(long)]
         name: String,
-        #[arg(long)]
-        origin_url: String,
+        /// HTTP/HTTPS origin URL the Pull Zone fetches from. Mutually
+        /// exclusive with --storage-zone-id.
+        #[arg(long, group = "origin")]
+        origin_url: Option<String>,
+        /// Numeric Storage Zone ID to bind this Pull Zone to. Use
+        /// `hoppy storage-zone list` to find IDs. Mutually exclusive with
+        /// --origin-url.
+        #[arg(long, group = "origin")]
+        storage_zone_id: Option<i64>,
+        /// Pull Zone billing/performance tier:
+        /// `premium` (default — single, optimised network) or
+        /// `volume` (cheaper, optimised for high-traffic static assets).
+        #[arg(long, value_enum, default_value_t = ZoneTier::Premium)]
+        zone_tier: ZoneTier,
     },
     /// Update a pull zone
     Update {
         #[arg(long)]
         id: i64,
-        #[arg(long)]
+        /// HTTP/HTTPS origin URL. Mutually exclusive with --storage-zone-id.
+        #[arg(long, conflicts_with = "storage_zone_id")]
         origin_url: Option<String>,
+        /// Re-bind the Pull Zone to a different Storage Zone. Mutually
+        /// exclusive with --origin-url.
+        #[arg(long)]
+        storage_zone_id: Option<i64>,
         #[arg(long)]
         monthly_bandwidth_limit: Option<i64>,
         #[arg(long)]
@@ -343,7 +407,18 @@ pub enum EdgeRuleAction {
 
 #[derive(Subcommand)]
 pub enum PullZoneHostnameAction {
-    /// Add a custom hostname
+    /// Add a custom hostname.
+    ///
+    /// EXAMPLES:
+    ///   # 1. Attach the hostname
+    ///   hoppy pull-zone hostname add --id 1001 --hostname cdn.example.com
+    ///
+    ///   # 2. Issue a free Let's Encrypt cert (CNAME must already point at b-cdn.net)
+    ///   hoppy pull-zone hostname load-free-cert --hostname cdn.example.com
+    ///
+    ///   # 3. Force HTTPS
+    ///   hoppy pull-zone hostname force-ssl --id 1001 \
+    ///     --hostname cdn.example.com --enabled true
     Add {
         #[arg(long)]
         id: i64,
@@ -416,7 +491,18 @@ pub enum StorageZoneAction {
         #[arg(long)]
         id: i64,
     },
-    /// Create a new storage zone
+    /// Create a new storage zone.
+    ///
+    /// EXAMPLES:
+    ///   # Create a zone in Frankfurt
+    ///   hoppy storage-zone create --name my-assets --region DE
+    ///
+    ///   # Create a multi-region zone
+    ///   hoppy storage-zone create --name global-assets --region NY \
+    ///     --replication-regions DE,SG,SYD
+    ///
+    ///   # After creation, retrieve credentials with `--reveal`:
+    ///   hoppy storage-zone get --reveal --id <id>
     Create {
         #[arg(long)]
         name: String,
@@ -616,11 +702,26 @@ pub enum DnsRecordAction {
         #[arg(long)]
         zone_id: i64,
     },
-    /// Add a DNS record
+    /// Add a DNS record.
+    ///
+    /// EXAMPLES:
+    ///   hoppy dns record add --zone-id 50001 --type A    --value 192.0.2.1
+    ///   hoppy dns record add --zone-id 50001 --type CNAME --name www --value example.com
+    ///   hoppy dns record add --zone-id 50001 --type MX    --value mail.example.com --priority 10
+    ///   hoppy dns record add --zone-id 50001 --type CAA   --value letsencrypt.org --tag issue --flags 0
+    ///
+    /// Tip: for Magic-Container-backed Pull Zones, use a `CNAME` record
+    /// pointing at the `b-cdn.net` hostname instead of `--type PullZone`
+    /// (the latter only accepts standard, non-managed Pull Zone IDs and
+    /// will return "pull zone ID is not valid" otherwise).
     Add {
         #[arg(long)]
         zone_id: i64,
-        /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA, Redirect, Flatten, PullZone, Script; case-insensitive)
+        /// Record type (case-insensitive). Commonly used: A, AAAA, CNAME,
+        /// TXT, MX, SRV, CAA, PTR, NS. Also accepted by the bunny API:
+        /// Redirect, Flatten, PullZone, Script, SVCB, HTTPS, TLSA. Some
+        /// of these are smart-routing-only (`Flatten`, `PullZone`) and may
+        /// fail with the API's own error if the zone or value is incompatible.
         #[arg(long, value_name = "TYPE")]
         r#type: String,
         /// Record name (subdomain, omit for apex)
@@ -1558,6 +1659,29 @@ pub enum ContainerAction {
     LogForwarding {
         #[command(subcommand)]
         action: ContainerLogForwardingAction,
+    },
+
+    /// Shortcut for `container app list` — mirrors `pull-zone list` etc.
+    /// `app` is the canonical subcommand; this alias is provided for symmetry.
+    List {
+        #[arg(long)]
+        cursor: Option<String>,
+        #[arg(long)]
+        limit: Option<i32>,
+    },
+    /// Shortcut for `container app get`. `app` is the canonical subcommand.
+    Get {
+        #[arg(long)]
+        id: String,
+    },
+    /// Shortcut for `container app delete`. `app` is the canonical subcommand.
+    Delete {
+        #[arg(long)]
+        id: String,
+        #[arg(long, conflicts_with = "no_cascade")]
+        cascade: bool,
+        #[arg(long)]
+        no_cascade: bool,
     },
 }
 

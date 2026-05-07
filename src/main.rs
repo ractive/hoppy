@@ -24,7 +24,15 @@ async fn main() {
             commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes, record).await
         }
         Commands::StorageZone { action } => {
-            commands::storage_zone::handle(action, cli.format, cli.debug, cli.yes, record).await
+            commands::storage_zone::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.yes,
+                record,
+                &redact_cfg,
+            )
+            .await
         }
         Commands::Storage { action } => {
             commands::storage::handle(action, cli.format, cli.debug, cli.yes, cli.quiet, record)

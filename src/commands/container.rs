@@ -582,6 +582,50 @@ pub async fn handle(
         ContainerAction::LogForwarding { action } => {
             handle_log_forwarding(action, format, debug, yes, record).await
         }
+        ContainerAction::List { cursor, limit } => {
+            handle_app(
+                &ContainerAppAction::List {
+                    cursor: cursor.clone(),
+                    limit: *limit,
+                },
+                format,
+                debug,
+                yes,
+                record,
+                redact,
+            )
+            .await
+        }
+        ContainerAction::Get { id } => {
+            handle_app(
+                &ContainerAppAction::Get { id: id.clone() },
+                format,
+                debug,
+                yes,
+                record,
+                redact,
+            )
+            .await
+        }
+        ContainerAction::Delete {
+            id,
+            cascade,
+            no_cascade,
+        } => {
+            handle_app(
+                &ContainerAppAction::Delete {
+                    id: id.clone(),
+                    cascade: *cascade,
+                    no_cascade: *no_cascade,
+                },
+                format,
+                debug,
+                yes,
+                record,
+                redact,
+            )
+            .await
+        }
     }
 }
 

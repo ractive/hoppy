@@ -112,19 +112,24 @@ struct DnsRecordRow {
 
 impl From<&DnsRecord> for DnsRecordRow {
     fn from(r: &DnsRecord) -> Self {
+        let record_type = r
+            .record_type
+            .map(|t| t.to_string())
+            .unwrap_or_else(|| "Unknown".to_owned());
+        let priority = match r.record_type {
+            Some(DnsRecordType::MX | DnsRecordType::SRV) => r.priority.to_string(),
+            _ => String::new(),
+        };
         Self {
             id: r.id,
-            record_type: r.record_type.to_string(),
+            record_type,
             name: if r.name.is_empty() {
                 "@".to_owned()
             } else {
                 r.name.clone()
             },
             value: r.value.clone(),
-            priority: match r.record_type {
-                DnsRecordType::MX | DnsRecordType::SRV => r.priority.to_string(),
-                _ => String::new(),
-            },
+            priority,
             ttl: r.ttl,
             disabled: r.disabled,
         }

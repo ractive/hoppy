@@ -27,6 +27,76 @@ async fn storage_zone_list_json() {
 }
 
 #[tokio::test]
+async fn storage_zone_get_redacts_passwords_by_default() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "storage-zone", "get", "--id", "9001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("redacted-storage-password"),
+        "raw password leaked into default output"
+    );
+    assert!(
+        stdout.contains("\"Password\""),
+        "Password field should be present (redacted)"
+    );
+    assert!(
+        stdout.contains("\"ReadOnlyPassword\""),
+        "ReadOnlyPassword should be present (redacted)"
+    );
+}
+
+#[tokio::test]
+async fn storage_zone_get_reveal_returns_passwords() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--reveal",
+            "--format",
+            "json",
+            "storage-zone",
+            "get",
+            "--id",
+            "9001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("redacted-storage-password"),
+        "--reveal should bypass redaction"
+    );
+}
+
+#[tokio::test]
 async fn storage_zone_list_table() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
