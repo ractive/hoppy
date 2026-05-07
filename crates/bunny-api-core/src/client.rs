@@ -562,8 +562,8 @@ impl CoreClient {
     /// Issue a free wildcard TLS certificate for a DNS zone.
     ///
     /// The zone must be properly delegated to bunny.net nameservers for the
-    /// HTTP-01/DNS-01 challenge to succeed. Returns `()` because the API
-    /// returns an empty 200 response on success.
+    /// DNS-01 challenge to succeed (wildcard certificates require DNS-01).
+    /// Returns `()` because the API returns an empty 200 response on success.
     pub async fn issue_dns_zone_wildcard_certificate(&self, zone_id: i64) -> Result<()> {
         let url = format!("{}/dnszone/{zone_id}/certificate/issue", self.base_url);
         let rb = self.auth(self.http.post(&url));

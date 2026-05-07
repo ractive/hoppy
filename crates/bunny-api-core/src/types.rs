@@ -1077,9 +1077,9 @@ impl std::fmt::Display for DnsScanJobStatus {
 
 /// Discovered DNS record type returned by the record scan endpoint.
 ///
-/// The integer values differ from [`DnsRecordType`] (the scan API uses 12=NS
-/// where the zone API uses 12=NS as well; alignments may vary so we keep a
-/// dedicated enum).
+/// The integer values use a different numbering scheme than [`DnsRecordType`]
+/// (e.g. the scan API uses A=0 where the zone API uses A=1), so we keep a
+/// dedicated enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
 pub enum DnsDiscoveredRecordType {
