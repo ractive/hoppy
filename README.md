@@ -86,6 +86,18 @@ hoppy pull-zone update --id 123456 --origin-url https://new-origin.example.com
 hoppy pull-zone delete --id 123456 --yes
 hoppy pull-zone purge --id 123456
 hoppy pull-zone purge --id 123456 --cache-tag static-assets
+
+# Referrer access control (anti-hotlinking)
+hoppy pull-zone referrer list --id 123456
+hoppy pull-zone referrer allow --id 123456 --value '*.example.com'
+hoppy pull-zone referrer block --id 123456 --value badsite.com
+hoppy pull-zone referrer remove-allowed --id 123456 --value '*.example.com'
+hoppy pull-zone referrer remove-blocked --id 123456 --value badsite.com
+
+# IP block list
+hoppy pull-zone ip list --id 123456
+hoppy pull-zone ip block --id 123456 --value 192.0.2.1
+hoppy pull-zone ip unblock --id 123456 --value 192.0.2.1
 ```
 
 ### Storage

@@ -332,6 +332,77 @@ pub enum PullZoneAction {
         #[command(subcommand)]
         action: EdgeRuleAction,
     },
+    /// Manage pull zone referrer access control (anti-hotlinking)
+    Referrer {
+        #[command(subcommand)]
+        action: PullZoneReferrerAction,
+    },
+    /// Manage pull zone IP block list
+    Ip {
+        #[command(subcommand)]
+        action: PullZoneIpAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PullZoneReferrerAction {
+    /// List allowed and blocked referrers for a pull zone
+    List {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Add a hostname to the allowed referrer list
+    Allow {
+        #[arg(long)]
+        id: i64,
+        /// Referrer hostname pattern (e.g. example.com or *.example.com)
+        #[arg(long)]
+        value: String,
+    },
+    /// Remove a hostname from the allowed referrer list
+    RemoveAllowed {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        value: String,
+    },
+    /// Add a hostname to the blocked referrer list
+    Block {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        value: String,
+    },
+    /// Remove a hostname from the blocked referrer list
+    RemoveBlocked {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        value: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PullZoneIpAction {
+    /// List blocked IPs for a pull zone
+    List {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Block an IP address (single IP or CIDR range)
+    Block {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        value: String,
+    },
+    /// Unblock an IP address
+    Unblock {
+        #[arg(long)]
+        id: i64,
+        #[arg(long)]
+        value: String,
+    },
 }
 
 #[derive(Subcommand)]
