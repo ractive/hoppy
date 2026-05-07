@@ -770,6 +770,72 @@ pub enum DnsZoneAction {
         #[arg(long)]
         file: Option<String>,
     },
+    /// Manage DNSSEC for a DNS zone
+    Dnssec {
+        #[command(subcommand)]
+        action: DnsDnssecAction,
+    },
+    /// Issue a free wildcard TLS certificate for a DNS zone.
+    ///
+    /// The zone must be properly delegated to bunny.net nameservers — the
+    /// certificate authority needs to validate the domain via DNS challenge.
+    /// If the zone isn't delegated, the API returns an error.
+    IssueCert {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Scan a zone (or domain) for pre-existing DNS records and view results.
+    ///
+    /// Scans run asynchronously: `scan start` triggers a job and returns
+    /// immediately, `scan results` fetches the latest job's findings.
+    Scan {
+        #[command(subcommand)]
+        action: DnsScanAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DnsDnssecAction {
+    /// Enable DNSSEC and display the DS record details to copy to your registrar.
+    Enable {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Disable DNSSEC.
+    ///
+    /// WARNING: if DS records are still configured at your registrar,
+    /// disabling DNSSEC at bunny.net will break resolution. Remove the DS
+    /// records from your registrar first.
+    Disable {
+        #[arg(long)]
+        id: i64,
+    },
+    /// Show the current DNSSEC status (read from the DNS zone metadata).
+    Status {
+        #[arg(long)]
+        id: i64,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DnsScanAction {
+    /// Trigger a background record-discovery scan.
+    ///
+    /// Provide either `--id <zone-id>` for an existing zone or `--domain
+    /// <domain>` to scan before creating the zone (but not both).
+    Start {
+        /// DNS Zone ID (use this for existing zones)
+        #[arg(long, conflicts_with = "domain")]
+        id: Option<i64>,
+        /// Domain name (use this for pre-zone-creation scans)
+        #[arg(long, conflicts_with = "id")]
+        domain: Option<String>,
+    },
+    /// Show the latest scan results for a zone.
+    Results {
+        #[arg(long)]
+        id: i64,
+    },
 }
 
 #[derive(Subcommand)]

@@ -33,11 +33,13 @@ pub mod types;
 pub use client::CoreClient;
 pub use types::{
     AccountStatistics, AddDnsRecord, AddOrUpdateEdgeRule, ApiError, BillingDetails, CreateDnsZone,
-    CreatePullZone, CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord,
-    DnsRecordType, DnsZone, DnsZoneStatistics, EdgeRule, EdgeRuleActionType, EdgeRuleExtraAction,
-    EdgeRuleTrigger, HostnameInfo, MatchingType, OptimizerStatistics, OriginShieldQueueStatistics,
-    OriginType, PaginatedList, PullZone, PullZoneType, PurgeCache, SafeHopStatistics, StorageZone,
-    StorageZoneStatistics, TriggerType, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone,
+    CreatePullZone, CreateStorageZone, CreateVideoLibrary, DnsDiscoveredRecord,
+    DnsDiscoveredRecordType, DnsImportResult, DnsRecord, DnsRecordScanResult, DnsRecordScanTrigger,
+    DnsRecordType, DnsScanJobStatus, DnsSecDsRecord, DnsZone, DnsZoneStatistics, EdgeRule,
+    EdgeRuleActionType, EdgeRuleExtraAction, EdgeRuleTrigger, HostnameInfo, MatchingType,
+    OptimizerStatistics, OriginShieldQueueStatistics, OriginType, PaginatedList, PullZone,
+    PullZoneType, PurgeCache, SafeHopStatistics, StorageZone, StorageZoneStatistics,
+    TriggerDnsRecordScan, TriggerType, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone,
     UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
     VideoLibraryTranscribingStatistics,
 };

@@ -1,0 +1,11 @@
+{
+  "Enabled": false,
+  "DsRecord": null,
+  "Digest": null,
+  "DigestType": null,
+  "Algorithm": 0,
+  "PublicKey": null,
+  "KeyTag": 0,
+  "Flags": 0,
+  "DsConfigured": false
+}

@@ -1,0 +1,42 @@
+{
+  "JobId": "11111111-2222-3333-4444-555555555555",
+  "ZoneId": 50001,
+  "Domain": "example.com",
+  "AccountId": "abc123",
+  "Status": 2,
+  "CreatedAt": "2026-03-20T10:00:00Z",
+  "CompletedAt": "2026-03-20T10:00:30Z",
+  "Records": [
+    {
+      "Name": "@",
+      "Type": 0,
+      "Ttl": 300,
+      "Value": "93.184.216.34",
+      "Priority": null,
+      "Weight": null,
+      "Port": null,
+      "IsProxied": false
+    },
+    {
+      "Name": "www",
+      "Type": 2,
+      "Ttl": 3600,
+      "Value": "example.com.",
+      "Priority": null,
+      "Weight": null,
+      "Port": null,
+      "IsProxied": false
+    },
+    {
+      "Name": "@",
+      "Type": 4,
+      "Ttl": 3600,
+      "Value": "mail.example.com.",
+      "Priority": 10,
+      "Weight": null,
+      "Port": null,
+      "IsProxied": false
+    }
+  ],
+  "Error": null
+}
