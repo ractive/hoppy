@@ -1,0 +1,9 @@
+---
+source: tests/e2e/cli_stream.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Success": true,
+  "Message": "Resolutions cleaned",
+  "StatusCode": 200
+}

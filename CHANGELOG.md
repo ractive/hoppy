@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Stream — video processing (iter-16)
+
+New commands for triggering and inspecting video processing on bunny.net Stream:
+
+- `stream video transcribe` — trigger transcription/translation, with optional source/target languages and AI generation flags
+- `stream video heatmap` — fetch the viewer engagement heatmap for a video
+- `stream video reencode` — reencode a video (optionally targeting a specific codec: `x264`, `vp9`, `hevc`, `av1`)
+- `stream video repackage` — repackage HLS/DASH manifests (optionally discarding previous file versions)
+- `stream video smart-generate` — trigger AI title/description/chapters/moments generation
+- `stream video set-thumbnail` — set the video thumbnail from a URL
+- `stream video resolutions list` — show available/configured/playlist resolutions
+- `stream video resolutions cleanup` — delete renditions (with dry-run and confirmation gate)
+- `stream video storage` — show per-category storage size breakdown (originals, thumbnails, previews, MP4 fallback, per-rendition encoded sizes)
+
 ### Magic Containers — UX & safety (iter-21)
 
 - **`container template env` no longer silently wipes env vars.** A bare

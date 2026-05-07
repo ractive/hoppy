@@ -13,7 +13,7 @@ A CLI for [bunny.net](https://bunny.net) cloud and edge services. Designed for b
 | **Storage Zones** | list, get, create, update, delete |
 | **Storage Files** | upload, download, list, delete (with progress bars) |
 | **DNS** | zone CRUD, record management for all types (A, AAAA, CNAME, MX, TXT, SRV, CAA, ...) |
-| **Video Streaming** | library CRUD, video list/get/upload/delete (with progress bars) |
+| **Video Streaming** | library CRUD, video list/get/upload/delete (with progress bars), transcription, re-encoding, repackage, smart-generate, thumbnails, heatmaps, resolution management, storage breakdown |
 | **Shield (Security)** | WAF rules, rate limiting, access lists, bot detection, DDoS config |
 | **Edge Scripting** | script CRUD, publish, code management, variables, secrets, statistics |
 | **Magic Containers** | apps, templates, endpoints, volumes, registries, regions, nodes, pods |
@@ -134,6 +134,18 @@ hoppy stream video list --library-id 456
 hoppy stream video upload --library-id 456 --file ./video.mp4
 hoppy stream video get --library-id 456 --video-id abc-123
 hoppy stream video delete --library-id 456 --video-id abc-123 --yes
+
+# Processing & analytics
+hoppy stream video transcribe --library-id 456 --video-id abc-123
+hoppy stream video heatmap --library-id 456 --video-id abc-123
+hoppy stream video reencode --library-id 456 --video-id abc-123
+hoppy stream video reencode --library-id 456 --video-id abc-123 --codec hevc
+hoppy stream video repackage --library-id 456 --video-id abc-123
+hoppy stream video smart-generate --library-id 456 --video-id abc-123 --generate-title
+hoppy stream video set-thumbnail --library-id 456 --video-id abc-123 --thumbnail-url https://...
+hoppy stream video resolutions list --library-id 456 --video-id abc-123
+hoppy stream video resolutions cleanup --library-id 456 --video-id abc-123 --dry-run
+hoppy stream video storage --library-id 456 --video-id abc-123
 ```
 
 ### Shield (Security)
