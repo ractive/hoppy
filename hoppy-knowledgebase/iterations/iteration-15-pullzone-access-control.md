@@ -32,14 +32,14 @@ Each operation is a single POST call that adds/removes one entry. The current re
 
 Six new endpoints, all POST with simple JSON bodies:
 
-- [x] `POST /pullzone/{id}/addAllowedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [x] `POST /pullzone/{id}/removeAllowedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [x] `POST /pullzone/{id}/addBlockedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [x] `POST /pullzone/{id}/removeBlockedReferrer` — body: `{ "Hostname": "example.com", "Value": "*.example.com" }`
-- [x] `POST /pullzone/{id}/addBlockedIp` — body: `{ "Value": "1.2.3.4" }`
-- [x] `POST /pullzone/{id}/removeBlockedIp` — body: `{ "Value": "1.2.3.4" }`
+- [x] `POST /pullzone/{id}/addAllowedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/removeAllowedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/addBlockedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/removeBlockedReferrer` — body: `{ "Hostname": "*.example.com" }`
+- [x] `POST /pullzone/{id}/addBlockedIp` — body: `{ "BlockedIp": "1.2.3.4" }`
+- [x] `POST /pullzone/{id}/removeBlockedIp` — body: `{ "BlockedIp": "1.2.3.4" }`
 
-Check the OpenAPI spec for exact request body shapes — the referrer endpoints may use `Hostname` (the origin) and `Value` (the pattern), or just `Value`. Verify against live API.
+Body shapes are taken from `specs/core-platform.json`: the referrer endpoints take a single required `Hostname` field (no `Value`), and the IP endpoints take a single required `BlockedIp` field.
 
 ### CLI Commands
 

@@ -2,17 +2,12 @@
 source: tests/e2e/cli_pull_zone.rs
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
-[
-  {
-    "kind": "allowed",
-    "hostname": "allowed.example.com"
-  },
-  {
-    "kind": "allowed",
-    "hostname": "*.partner.com"
-  },
-  {
-    "kind": "blocked",
-    "hostname": "badsite.com"
-  }
-]
+{
+  "AllowedReferrers": [
+    "allowed.example.com",
+    "*.partner.com"
+  ],
+  "BlockedReferrers": [
+    "badsite.com"
+  ]
+}

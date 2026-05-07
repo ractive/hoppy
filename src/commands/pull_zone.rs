@@ -400,20 +400,30 @@ async fn handle_referrer(
     match action {
         PullZoneReferrerAction::List { id } => {
             let pz = client.get_pull_zone(*id).await?;
-            let mut rows: Vec<ReferrerRow> = Vec::new();
-            for h in &pz.allowed_referrers {
-                rows.push(ReferrerRow {
-                    kind: "allowed".to_owned(),
-                    hostname: h.clone(),
+            if let OutputFormat::Json = format {
+                let payload = serde_json::json!({
+                    "AllowedReferrers": pz.allowed_referrers,
+                    "BlockedReferrers": pz.blocked_referrers,
                 });
+                let json = serde_json::to_string_pretty(&payload)
+                    .context("failed to serialize referrers to JSON")?;
+                println!("{json}");
+            } else {
+                let mut rows: Vec<ReferrerRow> = Vec::new();
+                for h in &pz.allowed_referrers {
+                    rows.push(ReferrerRow {
+                        kind: "allowed".to_owned(),
+                        hostname: h.clone(),
+                    });
+                }
+                for h in &pz.blocked_referrers {
+                    rows.push(ReferrerRow {
+                        kind: "blocked".to_owned(),
+                        hostname: h.clone(),
+                    });
+                }
+                output::print_data(&rows, format);
             }
-            for h in &pz.blocked_referrers {
-                rows.push(ReferrerRow {
-                    kind: "blocked".to_owned(),
-                    hostname: h.clone(),
-                });
-            }
-            output::print_data(&rows, format);
         }
         PullZoneReferrerAction::Allow { id, value } => {
             client.add_allowed_referrer(*id, value).await?;
@@ -443,12 +453,18 @@ async fn handle_ip(
     match action {
         PullZoneIpAction::List { id } => {
             let pz = client.get_pull_zone(*id).await?;
-            let rows: Vec<IpRow> = pz
-                .blocked_ips
-                .iter()
-                .map(|ip| IpRow { ip: ip.clone() })
-                .collect();
-            output::print_data(&rows, format);
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&pz.blocked_ips)
+                    .context("failed to serialize blocked IPs to JSON")?;
+                println!("{json}");
+            } else {
+                let rows: Vec<IpRow> = pz
+                    .blocked_ips
+                    .iter()
+                    .map(|ip| IpRow { ip: ip.clone() })
+                    .collect();
+                output::print_data(&rows, format);
+            }
         }
         PullZoneIpAction::Block { id, value } => {
             client.add_blocked_ip(*id, value).await?;
