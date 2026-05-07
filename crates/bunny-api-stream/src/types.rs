@@ -375,6 +375,10 @@ impl std::fmt::Display for EncoderOutputCodec {
 /// Request body for `POST /library/{id}/videos/{videoId}/transcribe`.
 ///
 /// All fields are optional; only non-`None` values are serialised.
+///
+/// Unlike the older Stream request bodies (`CreateVideo`, `UpdateVideo`,
+/// `FetchVideo`) which use `PascalCase`, the transcribe endpoint expects
+/// `camelCase` keys. The wire format is asserted in the wiremock tests.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TranscribeSettings {
@@ -439,6 +443,9 @@ impl TranscribeSettings {
 }
 
 /// Request body for `POST /library/{id}/videos/{videoId}/smart`.
+///
+/// Like [`TranscribeSettings`], the smart-generate endpoint expects
+/// `camelCase` keys (see that type's doc for context).
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SmartGenerateSettings {
