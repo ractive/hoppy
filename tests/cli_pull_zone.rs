@@ -178,6 +178,7 @@ async fn pull_zone_create_with_volume_tier() {
     });
     Mock::given(method("POST"))
         .and(path("/pullzone"))
+        .and(header("AccessKey", "test-api-key"))
         .and(body_json(expected_body))
         .respond_with(ResponseTemplate::new(201).set_body_raw(
             support::fixture("core/pullzone_get.json"),
@@ -221,7 +222,9 @@ async fn pull_zone_create_requires_origin_or_storage_zone() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("required") && stderr.contains("origin-url"),
+        stderr.contains("required")
+            && stderr.contains("origin-url")
+            && stderr.contains("storage-zone-id"),
         "expected clap to demand --origin-url or --storage-zone-id, got: {stderr}"
     );
 }
@@ -245,7 +248,7 @@ async fn pull_zone_create_rejects_both_origin_and_storage_zone() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("cannot be used") || stderr.contains("argument"),
+        stderr.contains("cannot be used with") || stderr.contains("conflicts with"),
         "expected clap mutual-exclusion error, got: {stderr}"
     );
 }
@@ -258,6 +261,7 @@ async fn pull_zone_update_storage_zone_id() {
     });
     Mock::given(method("POST"))
         .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
         .and(body_json(expected_body))
         .respond_with(ResponseTemplate::new(200).set_body_raw(
             support::fixture("core/pullzone_get.json"),

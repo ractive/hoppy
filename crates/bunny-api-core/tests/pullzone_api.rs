@@ -101,8 +101,10 @@ async fn get_pull_zone_returns_single_zone() {
 #[tokio::test]
 async fn get_pull_zone_with_magic_container_origin_does_not_panic() {
     // Regression: bunny.net returns OriginType=5 for Magic-Container-backed
-    // Pull Zones; before iter-19 this panicked at deserialize time. Now any
-    // unknown repr value falls back to None (lossy round-trip).
+    // Pull Zones; before iter-19 this panicked at deserialize time. The value
+    // is now recognised as `OriginType::MagicContainerEndpoint`. The
+    // fallback-to-None behaviour for *unknown* repr integers is exercised by
+    // `get_pull_zone_with_unknown_origin_type_falls_back_to_none`.
     let server = MockServer::start().await;
 
     Mock::given(method("GET"))
@@ -140,7 +142,9 @@ async fn get_pull_zone_with_unknown_origin_type_falls_back_to_none() {
 
     Mock::given(method("GET"))
         .and(path("/pullzone/9999"))
-        .respond_with(ResponseTemplate::new(200).set_body_string(payload.to_string()))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(payload.to_string(), "application/json"),
+        )
         .expect(1)
         .mount(&server)
         .await;
