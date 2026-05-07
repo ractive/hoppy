@@ -1,0 +1,22 @@
+---
+source: tests/e2e/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "id": 8002,
+  "shieldZoneId": 55001,
+  "userId": "user-abc-123",
+  "ruleName": "API Rate Limit",
+  "ruleDescription": null,
+  "ruleJson": null,
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 0,
+    "severityType": 0,
+    "requestCount": 100,
+    "counterKeyType": 1,
+    "timeframe": 3600,
+    "blockTime": 900
+  },
+  "errorResponse": null
+}

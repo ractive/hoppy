@@ -39,3 +39,6 @@ Never skip a step. Never commit code that fails any of these.
 - One iteration = one branch = one PR
 - Branch naming: `iter-N/short-description`
 - Self-review the diff before requesting review — catch fmt, clippy, dead code yourself
+
+## Integration Tests
+Integration tests live in `tests/e2e/` per crate, declared via `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` in `Cargo.toml`. Add new test files as `mod` declarations in `tests/e2e/mod.rs`, not as new top-level files under `tests/` — top-level files become separate binaries and each one re-links the crate from scratch.

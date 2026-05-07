@@ -1,0 +1,19 @@
+---
+source: tests/e2e/cli_stream.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Id": 10099,
+  "Name": "hoppy-test-library",
+  "VideoCount": 0,
+  "TrafficUsage": 0,
+  "StorageUsage": 0,
+  "DateCreated": "2024-06-01T00:00:00Z",
+  "HasWatermark": false,
+  "PullZoneId": 0,
+  "StorageZoneId": 0,
+  "EnabledResolutions": null,
+  "ReplicationRegions": [],
+  "AllowDirectPlay": true,
+  "EnableMP4Fallback": false
+}

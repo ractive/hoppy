@@ -58,8 +58,8 @@ type: roadmap
 
 | Layer | Location | Purpose | Mocking |
 |-------|----------|---------|---------|
-| API unit tests | `crates/bunny-api-*/tests/` | HTTP client correctness, deserialization | wiremock |
-| CLI E2E tests | `tests/cli_*.rs` | CLI arg parsing → correct HTTP request, output formatting | wiremock + insta |
+| API unit tests | `crates/bunny-api-*/tests/e2e/` (single `e2e` binary per crate) | HTTP client correctness, deserialization | wiremock |
+| CLI E2E tests | `tests/e2e/cli_*.rs` (single `e2e` binary) | CLI arg parsing → correct HTTP request, output formatting | wiremock + insta |
 | Live E2E tests | Same files, `#[cfg(feature = "live-api")]` | Full lifecycle against real API | None |
 
 ### Running Tests

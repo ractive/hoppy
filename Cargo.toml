@@ -48,6 +48,10 @@ reqwest = { version = "0.12", features = ["stream"] }
 [features]
 live-api = []
 
+[[test]]
+name = "e2e"
+path = "tests/e2e/mod.rs"
+
 [dev-dependencies]
 assert_cmd = "2"
 predicates = "3"

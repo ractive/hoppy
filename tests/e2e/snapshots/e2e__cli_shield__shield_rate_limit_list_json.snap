@@ -1,0 +1,13 @@
+---
+source: tests/e2e/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "id": 8001,
+    "shield_zone_id": 55001,
+    "rule_name": "Limit Login Attempts",
+    "request_count": "10",
+    "timeframe": "60s"
+  }
+]

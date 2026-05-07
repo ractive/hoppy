@@ -1,8 +1,0 @@
----
-source: tests/cli_script.rs
-expression: "String::from_utf8_lossy(&output.stdout)"
----
-{
-  "Code": "export default {\n  async fetch(request) {\n    return new Response('Hello from edge!');\n  }\n}",
-  "LastModified": "2024-01-20T08:00:00Z"
-}
