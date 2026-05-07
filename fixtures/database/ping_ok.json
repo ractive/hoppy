@@ -1,0 +1,19 @@
+{
+  "baton": null,
+  "results": [
+    {
+      "type": "ok",
+      "response": {
+        "type": "execute",
+        "result": {
+          "cols": [{"name": "1", "decltype": null}],
+          "rows": [[{"type": "integer", "value": "1"}]],
+          "affected_row_count": 0,
+          "last_insert_rowid": null,
+          "replication_index": "1"
+        }
+      }
+    },
+    {"type": "ok", "response": {"type": "close"}}
+  ]
+}

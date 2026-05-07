@@ -232,7 +232,63 @@ auto-managed Pull Zones backing Magic Containers fail with "pull zone ID is
 not valid". For Magic-Container-backed CDN endpoints, use a `CNAME` to the
 `b-cdn.net` hostname instead.
 
+## Database (libSQL): v2 create returns 500
+
+**Endpoint:** `POST /v2/databases`
+
+As of spec version `0.0.130` (2026-05-05), `POST /v2/databases` returns
+`{"error":"Internal error"}` (HTTP 500) for valid payloads, while
+`POST /v1/databases` works. hoppy defaults `db create` to v1 and exposes
+v2 only under `db v2 create` (with a stderr warning) so users can opt
+in once upstream fixes the issue.
+
+## Database (libSQL): slug-length footgun
+
+**Endpoint:** `POST /v1/databases`
+
+Long slugs cause an opaque `{"error":"Internal error"}` 500 — the API
+does not validate slug length and it leaks through to the storage layer.
+Empirically, 13 chars (`wa-admin-prod`) succeeds; 25 chars
+(`wardrobe-assistants-admin`) fails. hoppy validates locally with
+`^[a-z][a-z0-9-]{0,23}$` (max 24 chars) before any HTTP call.
+
+## Database (libSQL): URL preservation
+
+**Field:** `Database.url` — e.g. `libsql://group_01-my-app.lite.bunnydb.net/`
+
+libSQL clients reject URLs with normalised casing or stripped trailing
+slashes. Pass the value through unchanged — never via a URL parser
+that re-encodes. `hoppy db ping` only rewrites the scheme
+(`libsql://` → `https://`) and appends `/v2/pipeline`; everything
+else is preserved byte-for-byte.
+
+## Database (libSQL): live metrics use custom request headers
+
+**Endpoints:** `POST /v1/live/live_db`, `POST /v1/live/live_group`
+
+The IDs to query are passed both in the JSON body *and* in a
+non-standard request header (`db-ids` or `group-ids`, comma-joined).
+The spec only documents the body; the header is the load-bearing
+input. hoppy's `DatabaseClient::live_metrics_db` /
+`live_metrics_group` set both.
+
+## Database (libSQL): v1 `auth/invalidate` vs v2 `auth/revoke`
+
+Same semantics, different verb. v1 uses `auth/invalidate`; v2 uses
+`auth/revoke`. Both return `204 No Content` and take no body. hoppy
+keeps both verbs to make endpoint-to-doc lookups easy.
+
+## Database (libSQL): `optimal_single` may require `cdn_server_token`
+
+**Endpoint:** `GET /v1/config/optimal_single`
+
+The field bug report flagged this as requiring a `cdn_server_token`
+header. The spec security still lists only `Bearer | AccessKey`, so
+this might be a server-side residual check. Open question — verify
+with a live call when next testing.
+
 ## Related
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks
 - [[api/bunny-api-overview]] — API overview
+- [[api/bunny-database-research]] — full Database API research note
 - [[decision-log]] — decisions influenced by these quirks

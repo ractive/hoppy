@@ -187,6 +187,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bunny-api-database"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bunny-api-recording",
+ "bytes",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "urlencoding",
+ "wiremock",
+]
+
+[[package]]
 name = "bunny-api-recording"
 version = "0.1.0"
 dependencies = [
@@ -717,6 +732,7 @@ dependencies = [
  "bunny-api-compute",
  "bunny-api-containers",
  "bunny-api-core",
+ "bunny-api-database",
  "bunny-api-shield",
  "bunny-api-storage",
  "bunny-api-stream",

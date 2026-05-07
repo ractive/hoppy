@@ -4,6 +4,7 @@ members = [
     "crates/bunny-api-compute",
     "crates/bunny-api-containers",
     "crates/bunny-api-core",
+    "crates/bunny-api-database",
     "crates/bunny-api-shield",
     "crates/bunny-api-storage",
     "crates/bunny-api-stream",
@@ -35,6 +36,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
 bunny-api-compute = { path = "crates/bunny-api-compute" }
 bunny-api-containers = { path = "crates/bunny-api-containers" }
 bunny-api-core = { path = "crates/bunny-api-core" }
+bunny-api-database = { path = "crates/bunny-api-database" }
 bunny-api-shield = { path = "crates/bunny-api-shield" }
 bunny-api-storage = { path = "crates/bunny-api-storage" }
 bunny-api-stream = { path = "crates/bunny-api-stream" }

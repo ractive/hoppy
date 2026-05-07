@@ -1,0 +1,22 @@
+---
+source: tests/cli_database.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "id": "db_01HX0000000000000000000001",
+    "name": "my-app",
+    "group_name": "EU",
+    "version": "0.24.30",
+    "current_size": "16384",
+    "url": "libsql://group_01-my-app.lite.bunnydb.net/"
+  },
+  {
+    "id": "db_01HX0000000000000000000002",
+    "name": "my-app-staging",
+    "group_name": "EU",
+    "version": "0.24.30",
+    "current_size": "8192",
+    "url": "libsql://group_01-my-app-staging.lite.bunnydb.net/"
+  }
+]

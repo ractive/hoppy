@@ -55,6 +55,10 @@ async fn main() {
             commands::container::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
                 .await
         }
+        Commands::Db { action } => {
+            commands::database::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
+                .await
+        }
         Commands::Statistics {
             date_from,
             date_to,

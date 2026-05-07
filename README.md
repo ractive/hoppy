@@ -17,6 +17,7 @@ A CLI for [bunny.net](https://bunny.net) cloud and edge services. Designed for b
 | **Shield (Security)** | WAF rules, rate limiting, access lists, bot detection, DDoS config |
 | **Edge Scripting** | script CRUD, publish, code management, variables, secrets, statistics |
 | **Magic Containers** | apps, templates, endpoints, volumes, registries, regions, nodes, pods |
+| **Database (libSQL)** | databases, groups, tokens, ping (data plane), config, statistics |
 | **Auth** | API key validation, billing/account info |
 
 ## Installation
@@ -159,6 +160,33 @@ hoppy container region list
 hoppy container limits
 ```
 
+### Database (libSQL)
+
+```bash
+# Group + DB lifecycle
+hoppy db group create --display-name EU --storage-region eu-west-1 \
+    --primary-region DE --replicas-region UK
+hoppy db create --slug my-app --group group_01HX...
+hoppy db list
+hoppy db get --id db_01HX...
+
+# Auth tokens (JWT redacted by default — pass --reveal to print)
+hoppy db token mint --db-id db_01HX... --authorization full-access
+hoppy db token invalidate --db-id db_01HX...
+
+# Data-plane health check (mints a short-lived read-only token automatically)
+hoppy db ping --id db_01HX...
+
+# Config & live metrics
+hoppy db config show
+hoppy db live --id db_01HX... --id db_02HX...
+```
+
+By default, `hoppy db token mint` prints `{ "token": "<set, length=N>", ... }`
+to keep JWTs out of logs and CI output. Use the global `--reveal` flag to opt
+in to the raw token. Slugs are validated locally (`^[a-z][a-z0-9-]{0,23}$`)
+because the bunny API silently 500s on overlong values.
+
 ## Global options
 
 | Flag | Description |
@@ -167,6 +195,8 @@ hoppy container limits
 | `--debug` | Show HTTP request details |
 | `--quiet` | Suppress non-essential output |
 | `--yes` / `-y` | Skip confirmation prompts |
+| `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
+| `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
 
 ## Environment variables
 
@@ -214,6 +244,7 @@ You can point any API client at a custom endpoint (useful for proxies, staging, 
 | `BUNNY_STORAGE_URL` | `https://{region}.storage.bunnycdn.com` |
 | `BUNNY_STREAM_URL` | `https://video.bunnycdn.com` |
 | `BUNNY_CONTAINERS_URL` | `https://api.bunny.net` |
+| `BUNNY_DATABASE_URL` | `https://api.bunny.net/database` |
 
 ## Shell completions
 

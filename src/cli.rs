@@ -130,6 +130,12 @@ pub enum Commands {
         action: ContainerAction,
     },
 
+    /// Manage Bunny Databases (libSQL)
+    Db {
+        #[command(subcommand)]
+        action: DbAction,
+    },
+
     /// Authenticate and validate API key
     Auth {
         #[command(subcommand)]
@@ -2263,4 +2269,330 @@ pub enum ContainerLogForwardingAction {
         #[arg(long)]
         app_id: String,
     },
+}
+
+// -- Database (libSQL) --
+
+#[derive(Subcommand)]
+pub enum DbAction {
+    /// List all databases (v1)
+    List {
+        /// Filter by group ID
+        #[arg(long)]
+        group_id: Option<String>,
+    },
+    /// Get a database (v1)
+    Get {
+        /// Database ID (db_<ulid>)
+        #[arg(long)]
+        id: String,
+    },
+    /// Create a database (v1).
+    ///
+    /// EXAMPLES:
+    ///   hoppy db create --slug my-app --group group_01HX...
+    ///
+    /// Slug must be lowercase, start with a letter, max 24 chars
+    /// (`^[a-z][a-z0-9-]{0,23}$`). Long slugs return "Internal error"
+    /// upstream — hoppy validates locally before hitting the API.
+    Create {
+        /// Database slug (lowercase, max 24 chars, see --help)
+        #[arg(
+            long,
+            long_help = "Database slug — must match `^[a-z][a-z0-9-]{0,23}$`. \
+The bunny API silently fails on long slugs ('Internal error' 500). \
+Hoppy validates locally before the API call."
+        )]
+        slug: String,
+        /// Database group ID (group_<ulid>) to create the DB in
+        #[arg(long)]
+        group: String,
+    },
+    /// Delete a database (v1)
+    Delete {
+        /// Database ID
+        #[arg(long)]
+        id: String,
+    },
+    /// Fork a database into a new slug (preview)
+    Fork {
+        /// Source database ID
+        #[arg(long)]
+        id: String,
+        /// New slug for the fork
+        #[arg(long)]
+        target: String,
+        /// Destination group (defaults to the source's group)
+        #[arg(long)]
+        group: Option<String>,
+    },
+    /// Destructive: restore a database to a previous generation (preview)
+    Restore {
+        /// Database ID
+        #[arg(long)]
+        id: String,
+        /// Generation UUID to restore (see `db versions`)
+        #[arg(long)]
+        version: String,
+    },
+    /// List database generation versions (preview)
+    Versions {
+        /// Database ID
+        #[arg(long)]
+        id: String,
+        /// Limit the number of generations returned
+        #[arg(long)]
+        limit: Option<u64>,
+    },
+    /// Ping a database with `SELECT 1` via its libSQL data plane.
+    ///
+    /// EXAMPLES:
+    ///   # Mints a short-lived read-only token automatically
+    ///   hoppy db ping --id db_01HX...
+    ///
+    ///   # Provide a JWT instead of minting one
+    ///   hoppy db ping --id db_01HX... --token-file ~/.bunny/db.jwt
+    Ping {
+        /// Database ID
+        #[arg(long)]
+        id: String,
+        /// File containing a libSQL JWT (skips the implicit token mint)
+        #[arg(long, value_name = "PATH")]
+        token_file: Option<String>,
+    },
+    /// Get statistics for a database (v2)
+    Statistics {
+        #[arg(long)]
+        id: String,
+        /// Start of the time window (RFC 3339)
+        #[arg(long)]
+        from: String,
+        /// End of the time window (RFC 3339)
+        #[arg(long)]
+        to: String,
+    },
+    /// Get aggregated usage for a database (v2)
+    Usage {
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        from: String,
+        #[arg(long)]
+        to: String,
+    },
+    /// Get account-level active database usage (v2)
+    ActiveUsage,
+    /// Get live metrics for one or more databases
+    Live {
+        /// Database IDs (repeatable)
+        #[arg(long = "id", value_name = "DB_ID")]
+        ids: Vec<String>,
+    },
+    /// v2 endpoints (gated; some are broken upstream)
+    V2 {
+        #[command(subcommand)]
+        action: DbV2Action,
+    },
+    /// Manage database groups
+    Group {
+        #[command(subcommand)]
+        action: DbGroupAction,
+    },
+    /// Manage database auth tokens
+    Token {
+        #[command(subcommand)]
+        action: DbTokenAction,
+    },
+    /// Manage / inspect bunny database config (regions, limits, optimal)
+    Config {
+        #[command(subcommand)]
+        action: DbConfigAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DbV2Action {
+    /// List databases (v2)
+    List {
+        #[arg(long, default_value_t = 1)]
+        page: u32,
+        #[arg(long)]
+        per_page: Option<u32>,
+        #[arg(long)]
+        search: Option<String>,
+    },
+    /// Get a database (v2)
+    Get {
+        #[arg(long)]
+        id: String,
+    },
+    /// Create a database (v2). NOTE: returns 500 upstream as of 2026-05-05.
+    ///
+    /// long_help: storage-region uses flat regions (eu-west-1, us-east-1).
+    /// primary-region/replicas-region use compute codes (DE, FR, AMS, …).
+    Create {
+        #[arg(long)]
+        name: String,
+        /// Storage region, e.g. `eu-west-1` (see `db config show`)
+        #[arg(long)]
+        storage_region: String,
+        /// Primary region (compute code, repeatable). Examples: DE, FR, AMS.
+        #[arg(long = "primary-region", value_name = "REGION")]
+        primary_regions: Vec<String>,
+        /// Replica region (compute code, repeatable). Examples: UK, NY.
+        #[arg(long = "replicas-region", value_name = "REGION")]
+        replicas_regions: Vec<String>,
+    },
+    /// Delete a database (v2)
+    Delete {
+        #[arg(long)]
+        id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DbGroupAction {
+    /// List database groups
+    List {
+        #[arg(long)]
+        search: Option<String>,
+    },
+    /// Get a database group
+    Get {
+        #[arg(long)]
+        id: String,
+    },
+    /// Create a database group.
+    ///
+    /// long_help: storage-region uses flat regions (eu-west-1, us-east-1).
+    /// primary-region/replicas-region use compute codes (DE, FR, AMS, UK, …).
+    Create {
+        /// Display name (max 64 chars)
+        #[arg(long)]
+        display_name: String,
+        /// Storage region (e.g. eu-west-1; see `db config show`)
+        #[arg(long)]
+        storage_region: String,
+        /// Primary region (compute code, repeatable). Examples: DE, FR, AMS.
+        #[arg(long = "primary-region", value_name = "REGION")]
+        primary_regions: Vec<String>,
+        /// Replica region (compute code, repeatable). Examples: UK, NY.
+        #[arg(long = "replicas-region", value_name = "REGION")]
+        replicas_regions: Vec<String>,
+    },
+    /// Delete a database group
+    Delete {
+        #[arg(long)]
+        id: String,
+    },
+    /// Get statistics for a database group
+    Stats {
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        from: String,
+        #[arg(long)]
+        to: String,
+    },
+    /// Get aggregated usage for a database group
+    Usage {
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        from: String,
+        #[arg(long)]
+        to: String,
+    },
+    /// Get live metrics for one or more groups
+    Live {
+        #[arg(long = "id", value_name = "GROUP_ID")]
+        ids: Vec<String>,
+    },
+    /// Generate a new auth token for a whole group
+    GenerateKeys {
+        #[arg(long)]
+        id: String,
+        /// Token scope: full-access (default) or read-only
+        #[arg(long, value_enum, default_value_t = TokenAuthorization::FullAccess)]
+        authorization: TokenAuthorization,
+        /// Optional expiry timestamp (RFC 3339)
+        #[arg(long)]
+        expires_at: Option<String>,
+    },
+    /// Invalidate every auth token for a group
+    InvalidateKeys {
+        #[arg(long)]
+        id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DbTokenAction {
+    /// Mint a JWT for a database (v1).
+    ///
+    /// EXAMPLES:
+    ///   hoppy db token mint --db-id db_01HX... --authorization full-access
+    ///   hoppy db token mint --db-id db_01HX... --authorization read-only --expires-at 2026-12-31T23:59:59Z
+    ///
+    /// By default the JWT is redacted in the output (length + scope only).
+    /// Pass `--reveal` (the global flag) to print the raw token.
+    Mint {
+        #[arg(long)]
+        db_id: String,
+        /// Token scope: full-access or read-only
+        #[arg(long, value_enum, default_value_t = TokenAuthorization::FullAccess)]
+        authorization: TokenAuthorization,
+        /// Optional expiry timestamp (RFC 3339)
+        #[arg(long)]
+        expires_at: Option<String>,
+    },
+    /// Invalidate every auth token for a database (v1)
+    Invalidate {
+        #[arg(long)]
+        db_id: String,
+    },
+    /// Mint a JWT for a database (v2)
+    GenerateV2 {
+        #[arg(long)]
+        db_id: String,
+        #[arg(long, value_enum, default_value_t = TokenAuthorization::FullAccess)]
+        authorization: TokenAuthorization,
+        #[arg(long)]
+        expires_at: Option<String>,
+    },
+    /// Revoke every auth token for a database (v2)
+    RevokeV2 {
+        #[arg(long)]
+        db_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DbConfigAction {
+    /// Show available storage and compute regions
+    Show,
+    /// Show account database limits
+    Limits,
+    /// Get the optimal multi-region recommendation for the user
+    Optimal,
+    /// Get the optimal single-region recommendation
+    OptimalSingle,
+}
+
+/// Token scope for `db token mint` and `db group generate-keys`.
+#[derive(Copy, Clone, ValueEnum)]
+pub enum TokenAuthorization {
+    /// Full read+write access (`full-access` over the wire).
+    FullAccess,
+    /// Read-only access (`read-only` over the wire).
+    ReadOnly,
+}
+
+impl From<TokenAuthorization> for bunny_api_database::types::Authorization {
+    fn from(t: TokenAuthorization) -> Self {
+        match t {
+            TokenAuthorization::FullAccess => Self::FullAccess,
+            TokenAuthorization::ReadOnly => Self::ReadOnly,
+        }
+    }
 }

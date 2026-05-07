@@ -1,0 +1,20 @@
+---
+source: tests/cli_database.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "id": "group_01HX0000000000000000000001",
+    "name": "EU",
+    "storage_region": "eu-west-1",
+    "primary_regions": "DE,FR",
+    "replicas_regions": "UK"
+  },
+  {
+    "id": "group_01HX0000000000000000000002",
+    "name": "US",
+    "storage_region": "us-east-1",
+    "primary_regions": "NY",
+    "replicas_regions": ""
+  }
+]
