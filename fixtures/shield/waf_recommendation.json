@@ -1,0 +1,7 @@
+{
+  "shieldZoneId": 42,
+  "ruleId": "941100",
+  "success": true,
+  "recommendation": "This rule is detecting legitimate XSS patterns in your search input. Consider creating a WAF exception for the /search endpoint or tuning the rule sensitivity.",
+  "errorResponse": null
+}

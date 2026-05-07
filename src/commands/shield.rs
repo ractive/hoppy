@@ -1,7 +1,8 @@
 use crate::auth;
 use crate::cli::{
-    OutputFormat, ShieldAccessListAction, ShieldAction, ShieldBotDetectionAction,
-    ShieldMetricsAction, ShieldRateLimitAction, ShieldWafAction, ShieldZoneAction,
+    OutputFormat, ShieldAccessListAction, ShieldAction, ShieldApiGuardianAction,
+    ShieldBotDetectionAction, ShieldMetricsAction, ShieldRateLimitAction,
+    ShieldUploadScanningAction, ShieldWafAction, ShieldZoneAction,
 };
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
@@ -10,11 +11,16 @@ use bunny_api_shield::types::{
     BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
     BrowserFingerprintConfiguration, CreateCustomAccessList, CreateCustomWafRule,
     CreateRateLimitRule, CustomAccessList, CustomWafRule, DdosExecutionMode, DdosShieldSensitivity,
-    IpAddressConfiguration, RateLimitCounterKey, RateLimitRule, RateLimitRuleConfiguration,
-    RequestIntegrityConfiguration, ShieldZoneRequest, ShieldZoneResponse,
-    UpdateAccessListConfiguration, UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule,
-    UpdateRateLimitRule, UpdateShieldZoneRequest, WafExecutionMode, WafProfileMinimal,
-    WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType, WafRuleSeverityType,
+    EventLog, IpAddressConfiguration, RateLimitCounterKey, RateLimitRule,
+    RateLimitRuleConfiguration, RequestIntegrityConfiguration, ReviewActionType,
+    ShieldZonePullZoneMapping, ShieldZoneRequest, ShieldZoneResponse, TriggeredRuleItem,
+    UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest, UpdateApiGuardianRequest,
+    UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
+    UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
+    UpdateUploadScanningConfigurationRequest, UploadOpenApiSpecificationRequest,
+    UploadScanningConfigurationState, UploadScanningScannerMode, WafExecutionMode,
+    WafProfileMinimal, WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType,
+    WafRuleSeverityType,
 };
 use std::io::{self, BufRead, Write};
 
@@ -264,6 +270,200 @@ impl From<&BotDetectionConfigurationState> for BotDetectionRow {
 }
 
 // ---------------------------------------------------------------------------
+// Display rows — API Guardian endpoints
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct ApiGuardianEndpointRow {
+    #[tabled(rename = "Endpoint ID")]
+    endpoint_id: String,
+    #[tabled(rename = "Path")]
+    request_path: String,
+    #[tabled(rename = "Methods")]
+    request_methods: String,
+    #[tabled(rename = "Enabled")]
+    enabled: String,
+    #[tabled(rename = "Validate Req")]
+    validate_request: String,
+    #[tabled(rename = "Validate Resp")]
+    validate_response: String,
+}
+
+impl From<&bunny_api_shield::types::ApiGuardianEndpoint> for ApiGuardianEndpointRow {
+    fn from(e: &bunny_api_shield::types::ApiGuardianEndpoint) -> Self {
+        Self {
+            endpoint_id: e
+                .api_guardian_endpoint_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            request_path: e.request_path.as_deref().unwrap_or("-").to_owned(),
+            request_methods: e.request_methods.as_deref().unwrap_or("-").to_owned(),
+            enabled: e
+                .enabled
+                .map(|b| b.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            validate_request: e
+                .validate_request_body_schema
+                .map(|b| b.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            validate_response: e
+                .validate_response_body_schema
+                .map(|b| b.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display rows — Upload Scanning
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct UploadScanningRow {
+    #[tabled(rename = "Shield Zone ID")]
+    shield_zone_id: String,
+    #[tabled(rename = "Enabled")]
+    is_enabled: String,
+    #[tabled(rename = "Antivirus Mode")]
+    antivirus_mode: String,
+    #[tabled(rename = "CSAM Mode")]
+    csam_mode: String,
+}
+
+impl From<&UploadScanningConfigurationState> for UploadScanningRow {
+    fn from(s: &UploadScanningConfigurationState) -> Self {
+        Self {
+            shield_zone_id: s
+                .shield_zone_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            is_enabled: s
+                .is_enabled
+                .map(|b| b.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            antivirus_mode: s
+                .antivirus_scanning_mode
+                .map(|m| m.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            csam_mode: s
+                .csam_scanning_mode
+                .map(|m| m.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display rows — Event Logs
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct EventLogRow {
+    #[tabled(rename = "Timestamp")]
+    timestamp: String,
+    #[tabled(rename = "Rule ID")]
+    rule_id: String,
+    #[tabled(rename = "Method")]
+    method: String,
+    #[tabled(rename = "Status")]
+    status: String,
+    #[tabled(rename = "Country")]
+    country: String,
+    #[tabled(rename = "Log")]
+    log_snippet: String,
+}
+
+impl From<&EventLog> for EventLogRow {
+    fn from(e: &EventLog) -> Self {
+        let labels = e.labels.as_ref();
+        let log_snippet = e
+            .log
+            .as_deref()
+            .unwrap_or("")
+            .chars()
+            .take(60)
+            .collect::<String>();
+        Self {
+            timestamp: e
+                .timestamp
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            rule_id: labels
+                .and_then(|l| l.rule_id.as_deref())
+                .unwrap_or("-")
+                .to_owned(),
+            method: labels
+                .and_then(|l| l.method.as_deref())
+                .unwrap_or("-")
+                .to_owned(),
+            status: labels
+                .and_then(|l| l.status.as_deref())
+                .unwrap_or("-")
+                .to_owned(),
+            country: labels
+                .and_then(|l| l.country.as_deref())
+                .unwrap_or("-")
+                .to_owned(),
+            log_snippet,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display rows — Triggered WAF rules
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct TriggeredRuleRow {
+    #[tabled(rename = "Rule ID")]
+    rule_id: String,
+    #[tabled(rename = "Description")]
+    description: String,
+    #[tabled(rename = "Total Triggers")]
+    total_triggered: String,
+}
+
+impl From<&TriggeredRuleItem> for TriggeredRuleRow {
+    fn from(r: &TriggeredRuleItem) -> Self {
+        Self {
+            rule_id: r.rule_id.as_deref().unwrap_or("-").to_owned(),
+            description: r.rule_description.as_deref().unwrap_or("-").to_owned(),
+            total_triggered: r
+                .total_triggered_requests
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display rows — Pullzone mapping
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct PullzoneMappingRow {
+    #[tabled(rename = "Shield Zone ID")]
+    shield_zone_id: String,
+    #[tabled(rename = "Pull Zone ID")]
+    pull_zone_id: String,
+}
+
+impl From<&ShieldZonePullZoneMapping> for PullzoneMappingRow {
+    fn from(m: &ShieldZonePullZoneMapping) -> Self {
+        Self {
+            shield_zone_id: m
+                .shield_zone_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            pull_zone_id: m
+                .pull_zone_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Enum conversion helpers (integer -> serde_repr enum via serde_json)
 // ---------------------------------------------------------------------------
 
@@ -301,6 +501,30 @@ pub async fn handle(
             handle_bot_detection(action, format, debug, record).await
         }
         ShieldAction::Metrics { action } => handle_metrics(action, format, debug, record).await,
+        ShieldAction::ApiGuardian { action } => {
+            handle_api_guardian(action, format, debug, record).await
+        }
+        ShieldAction::UploadScanning { action } => {
+            handle_upload_scanning(action, format, debug, record).await
+        }
+        ShieldAction::EventLogs {
+            shield_zone_id,
+            date,
+            continuation_token,
+            all,
+        } => {
+            handle_event_logs(
+                *shield_zone_id,
+                date,
+                continuation_token.as_deref(),
+                *all,
+                format,
+                debug,
+                record,
+            )
+            .await
+        }
+        ShieldAction::PullzoneMapping => handle_pullzone_mapping(format, debug, record).await,
     }
 }
 
@@ -550,6 +774,72 @@ async fn handle_waf(
             }
             client.delete_waf_rule(*id).await?;
             eprintln!("Deleted WAF rule {id}");
+        }
+        ShieldWafAction::TriggeredRules { shield_zone_id } => {
+            let result = client.get_triggered_waf_rules(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let rules = result.triggered_rules.unwrap_or_default();
+                let rows: Vec<TriggeredRuleRow> =
+                    rules.iter().map(TriggeredRuleRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        ShieldWafAction::ReviewTriggeredRule {
+            shield_zone_id,
+            rule_id,
+            action,
+        } => {
+            let body = UpdateReviewTriggeredRuleRequest {
+                rule_id: Some(rule_id.clone()),
+                action: u8_to_enum::<ReviewActionType>(*action, "action")?,
+            };
+            let result = client
+                .review_triggered_waf_rule(*shield_zone_id, body)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let success = result.success.unwrap_or(false);
+                eprintln!(
+                    "Reviewed WAF rule {rule_id}: {}",
+                    if success { "success" } else { "failed" }
+                );
+            }
+        }
+        ShieldWafAction::RecommendTriggeredRule {
+            shield_zone_id,
+            rule_id,
+        } => {
+            let result = client
+                .get_triggered_waf_rule_recommendation(*shield_zone_id, rule_id)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(rec) = &result.recommendation {
+                println!("Recommendation for rule {rule_id}:\n{rec}");
+            } else {
+                eprintln!("No recommendation available for rule {rule_id}.");
+            }
+        }
+        ShieldWafAction::PlanSegmentation => {
+            let result = client.get_waf_plan_segmentation().await?;
+            let json =
+                serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+            println!("{json}");
+        }
+        ShieldWafAction::EngineConfig => {
+            let result = client.get_waf_engine_config().await?;
+            let json =
+                serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+            println!("{json}");
         }
     }
     Ok(())
@@ -1222,6 +1512,261 @@ async fn handle_metrics(
                 eprintln!("No upload scanning metrics data available.");
             }
         }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// API Guardian handler
+// ---------------------------------------------------------------------------
+
+async fn handle_api_guardian(
+    action: &ShieldApiGuardianAction,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let client = auth::shield_client(debug, record)?;
+
+    match action {
+        ShieldApiGuardianAction::Get { shield_zone_id } => {
+            let result = client.get_api_guardian(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let endpoints = result.data.and_then(|d| d.endpoints).unwrap_or_default();
+                let rows: Vec<ApiGuardianEndpointRow> =
+                    endpoints.iter().map(ApiGuardianEndpointRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        ShieldApiGuardianAction::Upload {
+            shield_zone_id,
+            spec_file,
+            enforce_authorization,
+        } => {
+            let contents = std::fs::read_to_string(spec_file)
+                .with_context(|| format!("failed to read spec file {}", spec_file.display()))?;
+            let body = UploadOpenApiSpecificationRequest {
+                content: Some(contents),
+                enforce_authorisation_validation: *enforce_authorization,
+            };
+            let result = client
+                .upload_api_guardian_spec(*shield_zone_id, body)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let endpoints = result.data.and_then(|d| d.endpoints).unwrap_or_default();
+                let rows: Vec<ApiGuardianEndpointRow> =
+                    endpoints.iter().map(ApiGuardianEndpointRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        ShieldApiGuardianAction::Update {
+            shield_zone_id,
+            spec_file,
+            enforce_authorization,
+        } => {
+            let contents = std::fs::read_to_string(spec_file)
+                .with_context(|| format!("failed to read spec file {}", spec_file.display()))?;
+            let body = UpdateApiGuardianRequest {
+                content: contents,
+                enforce_authorisation_validation: *enforce_authorization,
+            };
+            let result = client.update_api_guardian(*shield_zone_id, body).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let endpoints = result.data.and_then(|d| d.endpoints).unwrap_or_default();
+                let rows: Vec<ApiGuardianEndpointRow> =
+                    endpoints.iter().map(ApiGuardianEndpointRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        ShieldApiGuardianAction::UpdateEndpoint {
+            shield_zone_id,
+            endpoint_id,
+            enabled,
+            validate_request_body_schema,
+            validate_response_body_schema,
+            validate_authorization,
+        } => {
+            if enabled.is_none()
+                && validate_request_body_schema.is_none()
+                && validate_response_body_schema.is_none()
+                && validate_authorization.is_none()
+            {
+                bail!(
+                    "at least one update flag is required (--enabled, --validate-request-body-schema, --validate-response-body-schema, --validate-authorization)"
+                );
+            }
+            let body = UpdateApiGuardianEndpointRequest {
+                enabled: *enabled,
+                validate_request_body_schema: *validate_request_body_schema,
+                validate_response_body_schema: *validate_response_body_schema,
+                validate_authorization: *validate_authorization,
+            };
+            let result = client
+                .update_api_guardian_endpoint(*shield_zone_id, *endpoint_id, body)
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(endpoint) = &result.data {
+                let row = ApiGuardianEndpointRow::from(endpoint);
+                output::print_single(&row, format);
+            } else {
+                eprintln!("Updated API Guardian endpoint {endpoint_id}");
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Upload Scanning handler
+// ---------------------------------------------------------------------------
+
+async fn handle_upload_scanning(
+    action: &ShieldUploadScanningAction,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let client = auth::shield_client(debug, record)?;
+
+    match action {
+        ShieldUploadScanningAction::Get { shield_zone_id } => {
+            let result = client.get_upload_scanning(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(state) = &result.data {
+                let row = UploadScanningRow::from(state);
+                output::print_single(&row, format);
+            } else {
+                eprintln!("No upload scanning data returned.");
+            }
+        }
+        ShieldUploadScanningAction::Update {
+            shield_zone_id,
+            enabled,
+            antivirus_mode,
+            csam_mode,
+        } => {
+            if enabled.is_none() && antivirus_mode.is_none() && csam_mode.is_none() {
+                bail!(
+                    "at least one update flag is required (--enabled, --antivirus-mode, --csam-mode)"
+                );
+            }
+            let body = UpdateUploadScanningConfigurationRequest {
+                shield_zone_id: i32::try_from(*shield_zone_id)
+                    .context("shield-zone-id too large for i32")?,
+                is_enabled: *enabled,
+                antivirus_scanning_mode: antivirus_mode
+                    .map(|v| u8_to_enum::<UploadScanningScannerMode>(v, "antivirus-mode"))
+                    .transpose()?,
+                csam_scanning_mode: csam_mode
+                    .map(|v| u8_to_enum::<UploadScanningScannerMode>(v, "csam-mode"))
+                    .transpose()?,
+            };
+            let result = client.update_upload_scanning(*shield_zone_id, body).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else if let Some(state) = &result.data {
+                let row = UploadScanningRow::from(state);
+                output::print_single(&row, format);
+            } else {
+                eprintln!("Updated upload scanning for Shield Zone {shield_zone_id}");
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Event Logs handler
+// ---------------------------------------------------------------------------
+
+async fn handle_event_logs(
+    shield_zone_id: i64,
+    date: &str,
+    continuation_token: Option<&str>,
+    all: bool,
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let client = auth::shield_client(debug, record)?;
+    let mut token = continuation_token.unwrap_or("").to_owned();
+
+    loop {
+        let result = client.get_event_logs(shield_zone_id, date, &token).await?;
+
+        if let OutputFormat::Json = format {
+            let json =
+                serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+            println!("{json}");
+        } else {
+            let logs = result.logs.as_deref().unwrap_or(&[]);
+            if logs.is_empty() {
+                eprintln!("No event logs returned.");
+            } else {
+                let rows: Vec<EventLogRow> = logs.iter().map(EventLogRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+
+        let has_more = result.has_more_data.unwrap_or(false);
+        let next_token = result.continuation_token;
+
+        if !all || !has_more {
+            if has_more && let Some(ref t) = next_token {
+                eprintln!(
+                    "More data available. Use --continuation-token {t} to get the next page."
+                );
+            }
+            break;
+        }
+
+        match next_token {
+            Some(t) if !t.is_empty() => token = t,
+            _ => break,
+        }
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Pullzone mapping handler
+// ---------------------------------------------------------------------------
+
+async fn handle_pullzone_mapping(
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    let client = auth::shield_client(debug, record)?;
+    let result = client.get_shield_zones_pullzone_mapping().await?;
+    if let OutputFormat::Json = format {
+        let json = serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+        println!("{json}");
+    } else {
+        let mappings = result.data.unwrap_or_default();
+        let rows: Vec<PullzoneMappingRow> = mappings.iter().map(PullzoneMappingRow::from).collect();
+        output::print_data(&rows, format);
     }
     Ok(())
 }

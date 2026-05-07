@@ -9,14 +9,21 @@ use bunny_api_recording::{capture_request, maybe_record_response};
 use crate::types::{
     AccessListsDetailsResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
     CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest, CustomAccessList,
-    CustomAccessListResponse, CustomWafRule, GetCustomWafRulesResponse, GetRateLimitRulesResponse,
-    GetShieldZoneResponse, GetShieldZonesResponse, ProblemDetails, RateLimitRule,
+    CustomAccessListResponse, CustomWafRule, GetApiGuardianResponse, GetCustomWafRulesResponse,
+    GetRateLimitRulesResponse, GetShieldZonePullzoneMappingResponse, GetShieldZoneResponse,
+    GetShieldZonesResponse, GetTriggeredRulesResponse, GetWafEngineConfigResponse,
+    GetWafEnumsResponse, GetWafRulesSegmentedByPlanResponse, ProblemDetails, RateLimitRule,
     ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse, ShieldMetricsResponse,
     ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
     ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse, ShieldZoneResponse,
-    UpdateAccessListConfiguration, UpdateBotDetection, UpdateBotDetectionResponse,
-    UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule, UpdateShieldZoneRequest,
-    WafProfileMinimal,
+    TriggeredRuleRecommendationResponse, UpdateAccessListConfiguration,
+    UpdateApiGuardianEndpointRequest, UpdateApiGuardianEndpointResponse, UpdateApiGuardianRequest,
+    UpdateApiGuardianResponse, UpdateBotDetection, UpdateBotDetectionResponse,
+    UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
+    UpdateReviewTriggeredRuleRequest, UpdateReviewTriggeredRuleResponse, UpdateShieldZoneRequest,
+    UpdateUploadScanningConfigurationRequest, UpdateUploadScanningConfigurationResponse,
+    UploadOpenApiSpecificationRequest, UploadOpenApiSpecificationResponse,
+    UploadScanningConfigurationResponse, WafLoggingResponse, WafProfileMinimal,
 };
 
 const BASE_URL: &str = "https://api.bunny.net";
@@ -714,6 +721,299 @@ impl ShieldClient {
             .await?;
         self.handle_response(resp).await
     }
+
+    // -----------------------------------------------------------------------
+    // API Guardian
+    // -----------------------------------------------------------------------
+
+    /// Get the API Guardian configuration for a Shield Zone.
+    ///
+    /// `GET /shield/shield-zone/{shieldZoneId}/api-guardian`
+    pub async fn get_api_guardian(&self, shield_zone_id: i64) -> Result<GetApiGuardianResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/shield-zone/{shield_zone_id}/api-guardian"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Upload a new OpenAPI specification to API Guardian.
+    ///
+    /// `POST /shield/shield-zone/{shieldZoneId}/api-guardian`
+    pub async fn upload_api_guardian_spec(
+        &self,
+        shield_zone_id: i64,
+        body: UploadOpenApiSpecificationRequest,
+    ) -> Result<UploadOpenApiSpecificationResponse> {
+        let resp = self
+            .execute(
+                self.auth(self.client.post(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/api-guardian"
+                ))))
+                .json(&body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Update the API Guardian configuration by uploading an updated OpenAPI spec.
+    ///
+    /// `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian`
+    pub async fn update_api_guardian(
+        &self,
+        shield_zone_id: i64,
+        body: UpdateApiGuardianRequest,
+    ) -> Result<UpdateApiGuardianResponse> {
+        let resp = self
+            .execute(
+                self.auth(self.client.patch(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/api-guardian"
+                ))))
+                .json(&body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Update an individual API Guardian endpoint configuration.
+    ///
+    /// `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian/endpoint/{endpointId}`
+    pub async fn update_api_guardian_endpoint(
+        &self,
+        shield_zone_id: i64,
+        endpoint_id: i64,
+        body: UpdateApiGuardianEndpointRequest,
+    ) -> Result<UpdateApiGuardianEndpointResponse> {
+        let resp = self
+            .execute(
+                self.auth(self.client.patch(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/api-guardian/endpoint/{endpoint_id}"
+                ))))
+                .json(&body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Upload Scanning
+    // -----------------------------------------------------------------------
+
+    /// Get the upload scanning configuration for a Shield Zone.
+    ///
+    /// `GET /shield/shield-zone/{shieldZoneId}/upload-scanning`
+    pub async fn get_upload_scanning(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<UploadScanningConfigurationResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/shield-zone/{shield_zone_id}/upload-scanning"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Update the upload scanning configuration for a Shield Zone.
+    ///
+    /// `PATCH /shield/shield-zone/{shieldZoneId}/upload-scanning`
+    pub async fn update_upload_scanning(
+        &self,
+        shield_zone_id: i64,
+        body: UpdateUploadScanningConfigurationRequest,
+    ) -> Result<UpdateUploadScanningConfigurationResponse> {
+        let resp = self
+            .execute(
+                self.auth(self.client.patch(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/upload-scanning"
+                ))))
+                .json(&body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Event Logs
+    // -----------------------------------------------------------------------
+
+    /// Get event logs for a Shield Zone on a given date.
+    ///
+    /// `GET /shield/event-logs/{shieldZoneId}/{date}/{continuationToken}`
+    ///
+    /// - `date` must be in `MM-dd-yyyy` format.
+    /// - `continuation_token` is required by the path; pass `""` for the first page.
+    ///   The token is percent-encoded before being placed in the URL.
+    pub async fn get_event_logs(
+        &self,
+        shield_zone_id: i64,
+        date: &str,
+        continuation_token: &str,
+    ) -> Result<WafLoggingResponse> {
+        // Percent-encode characters that would break the path segment.
+        let encoded_token = continuation_token
+            .replace('%', "%25")
+            .replace('/', "%2F")
+            .replace('+', "%2B")
+            .replace(' ', "%20");
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/event-logs/{shield_zone_id}/{date}/{encoded_token}"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // WAF Triggered Rules
+    // -----------------------------------------------------------------------
+
+    /// List all triggered WAF rules for a Shield Zone.
+    ///
+    /// `GET /shield/waf/rules/review-triggered/{shieldZoneId}`
+    pub async fn get_triggered_waf_rules(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<GetTriggeredRulesResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/waf/rules/review-triggered/{shield_zone_id}"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Review and update the action for a triggered WAF rule.
+    ///
+    /// `POST /shield/waf/rules/review-triggered/{shieldZoneId}`
+    pub async fn review_triggered_waf_rule(
+        &self,
+        shield_zone_id: i64,
+        body: UpdateReviewTriggeredRuleRequest,
+    ) -> Result<UpdateReviewTriggeredRuleResponse> {
+        let resp = self
+            .execute(
+                self.auth(self.client.post(self.url(&format!(
+                    "/shield/waf/rules/review-triggered/{shield_zone_id}"
+                ))))
+                .json(&body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get an AI recommendation for a triggered WAF rule.
+    ///
+    /// `GET /shield/waf/rules/review-triggered/ai-recommendation/{shieldZoneId}/{ruleId}`
+    pub async fn get_triggered_waf_rule_recommendation(
+        &self,
+        shield_zone_id: i64,
+        rule_id: &str,
+    ) -> Result<TriggeredRuleRecommendationResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/waf/rules/review-triggered/ai-recommendation/{shield_zone_id}/{rule_id}"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Supplementary endpoints
+    // -----------------------------------------------------------------------
+
+    /// Get WAF rules segmented by plan tier.
+    ///
+    /// `GET /shield/waf/rules/plan-segmentation`
+    pub async fn get_waf_plan_segmentation(&self) -> Result<GetWafRulesSegmentedByPlanResponse> {
+        let resp = self
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url("/shield/waf/rules/plan-segmentation")),
+                ),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get the WAF engine configuration variables.
+    ///
+    /// `GET /shield/waf/engine-config`
+    pub async fn get_waf_engine_config(&self) -> Result<GetWafEngineConfigResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url("/shield/waf/engine-config"))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get DDoS enum mappings.
+    ///
+    /// `GET /shield/ddos/enums`
+    pub async fn get_ddos_enums(&self) -> Result<GetWafEnumsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url("/shield/ddos/enums"))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get the mapping of Shield Zones to Pull Zones.
+    ///
+    /// `GET /shield/shield-zones/pullzone-mapping`
+    pub async fn get_shield_zones_pullzone_mapping(
+        &self,
+    ) -> Result<GetShieldZonePullzoneMappingResponse> {
+        let resp = self
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url("/shield/shield-zones/pullzone-mapping")),
+                ),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get the current promotional state for the account.
+    ///
+    /// `GET /shield/promo/state`
+    pub async fn get_promo_state(&self) -> Result<serde_json::Value> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url("/shield/promo/state"))))
+            .await?;
+        let (status, bytes) = self.read_body(resp).await?;
+        if status.is_success() {
+            // The spec declares no response body for this endpoint; return the raw value.
+            if bytes.is_empty() {
+                return Ok(serde_json::Value::Null);
+            }
+            return serde_json::from_slice(&bytes).context("failed to decode promo state");
+        }
+        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
+            anyhow::bail!(problem);
+        }
+        anyhow::bail!("Shield API returned status {status}");
+    }
+
+    /// Get access list enum types and their values for a Shield Zone.
+    ///
+    /// `GET /shield/shield-zone/{shieldZoneId}/access-lists/enums`
+    pub async fn get_access_list_enums(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<std::collections::HashMap<String, std::collections::HashMap<String, String>>> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/shield-zone/{shield_zone_id}/access-lists/enums"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // WAF Profiles
+    // -----------------------------------------------------------------------
 
     /// List available WAF profiles.
     ///

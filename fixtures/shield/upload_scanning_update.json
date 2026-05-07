@@ -1,0 +1,9 @@
+{
+  "error": null,
+  "data": {
+    "shieldZoneId": 42,
+    "isEnabled": true,
+    "csamScanningMode": 2,
+    "antivirusScanningMode": 2
+  }
+}

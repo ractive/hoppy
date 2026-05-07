@@ -1,0 +1,38 @@
+{
+  "logs": [
+    {
+      "logId": "log-abc-123",
+      "timestamp": 1700000001,
+      "log": "WAF blocked request matching rule 941100",
+      "labels": {
+        "asn": "AS12345",
+        "country": "CN",
+        "ruleId": "941100",
+        "severity": "CRITICAL",
+        "method": "POST",
+        "ruleGroup": "REQUEST-941-APPLICATION-ATTACK-XSS",
+        "status": "403",
+        "serverZone": "EU"
+      }
+    },
+    {
+      "logId": "log-def-456",
+      "timestamp": 1700000002,
+      "log": "WAF logged request matching rule 942200",
+      "labels": {
+        "asn": "AS67890",
+        "country": "US",
+        "ruleId": "942200",
+        "severity": "WARNING",
+        "method": "GET",
+        "ruleGroup": "REQUEST-942-APPLICATION-ATTACK-SQLI",
+        "status": "200",
+        "serverZone": "US"
+      }
+    }
+  ],
+  "hasMoreData": false,
+  "continuationToken": null,
+  "startToken": "start-token-xyz",
+  "errorResponse": null
+}
