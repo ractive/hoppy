@@ -26,6 +26,7 @@
 //! ```
 
 pub mod client;
+pub mod serde_helpers;
 pub mod types;
 
 // Flat re-exports for ergonomic `use bunny_api_core::CoreClient` imports.

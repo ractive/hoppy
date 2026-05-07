@@ -43,9 +43,8 @@ impl RedactConfig {
     }
 
     /// True if a generic secret field (no env-var name) should be revealed.
-    /// Used by downstream iterations (iter-19 storage-zone passwords, iter-20
-    /// database tokens) — kept here so they share the redaction surface.
-    #[allow(dead_code)]
+    /// Used by storage-zone passwords (iter-19) and DB token mint (iter-20)
+    /// to share the redaction surface.
     pub fn reveal_field(&self) -> bool {
         self.reveal_all
     }
@@ -66,9 +65,17 @@ pub fn placeholder(value: &str) -> String {
 /// path simply redacts every env-var value by default and does not need this
 /// heuristic. iter-19 (storage-zone Password / ReadOnlyPassword) and iter-20
 /// (DB token mint) consume this — keep public.
-#[allow(dead_code)]
 pub fn is_secret_field_name(name: &str) -> bool {
     let lower = name.to_lowercase();
+    // Allowlist: a few `_key` suffixes are not secrets in this codebase.
+    const KEY_SUFFIX_NOT_SECRET: &[&str] = &[
+        "zonesecuritykey", // PullZone — already gated separately
+        "userpkkey",
+        "publickey",
+    ];
+    if KEY_SUFFIX_NOT_SECRET.iter().any(|s| lower.ends_with(s)) {
+        return false;
+    }
     lower.ends_with("password")
         || lower.ends_with("_password")
         || lower.ends_with("secret")
@@ -79,6 +86,47 @@ pub fn is_secret_field_name(name: &str) -> bool {
         || lower.ends_with("api_key")
         || lower.ends_with("_key")
         || lower.contains("credential")
+}
+
+/// Walk a JSON value and rewrite every string-typed field whose name matches
+/// [`is_secret_field_name`] to a placeholder, unless `--reveal` opts in.
+///
+/// Used by storage-zone JSON output (Password / ReadOnlyPassword) and any
+/// future endpoint that surfaces credentials directly. Non-string values
+/// (numbers, nulls, nested objects) are walked but not rewritten.
+pub fn redact_secrets_in_json(value: &mut serde_json::Value, config: &RedactConfig) {
+    if config.reveal_field() {
+        return;
+    }
+    walk_secrets(value);
+}
+
+fn walk_secrets(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (k, v) in map.iter_mut() {
+                if is_secret_field_name(k) {
+                    if let serde_json::Value::String(raw) = v {
+                        *v = serde_json::Value::String(placeholder(raw));
+                    } else if v.is_null() {
+                        *v = serde_json::Value::String(placeholder(""));
+                    } else {
+                        // Recurse — secret-named nested objects can still hold
+                        // non-secret fields (rare).
+                        walk_secrets(v);
+                    }
+                } else {
+                    walk_secrets(v);
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                walk_secrets(v);
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Walk a JSON value and rewrite every `environmentVariables[*].value` to a
