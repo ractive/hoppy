@@ -666,6 +666,10 @@ async fn transcribe_video_with_settings() {
         ))
         .and(query_param("force", "true"))
         .and(header("AccessKey", "stream-test-key"))
+        .and(body_json(serde_json::json!({
+            "targetLanguages": ["de", "fr"],
+            "generateTitle": true,
+        })))
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_raw(FIXTURE_VIDEO_TRANSCRIBE_STATUS, "application/json"),
@@ -817,6 +821,11 @@ async fn repackage_video_with_keep_original_default() {
         .unwrap();
 
     assert_eq!(video.guid, "aaaabbbb-1111-2222-3333-ccccddddeeee");
+
+    // Verify no query params were sent (the default path should be parameterless).
+    let received = server.received_requests().await.unwrap();
+    assert_eq!(received.len(), 1);
+    assert_eq!(received[0].url.query(), None);
 }
 
 #[tokio::test]
@@ -857,6 +866,10 @@ async fn smart_generate_sends_body() {
             "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/smart",
         ))
         .and(header("AccessKey", "stream-test-key"))
+        .and(body_json(serde_json::json!({
+            "generateTitle": true,
+            "generateDescription": true,
+        })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_SMART_STATUS, "application/json"),
         )

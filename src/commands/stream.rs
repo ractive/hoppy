@@ -854,15 +854,15 @@ async fn handle_resolutions(
             dry_run,
         } => {
             if resolutions.is_none()
-                && !delete_non_configured
-                && !delete_original
-                && !delete_mp4_files
+                && !*delete_non_configured
+                && !*delete_original
+                && !*delete_mp4_files
             {
                 bail!(
                     "specify what to delete: --resolutions, --delete-non-configured, --delete-original, or --delete-mp4-files (combine with --dry-run to preview)"
                 );
             }
-            if !dry_run && !yes {
+            if !*dry_run && !yes {
                 eprint!(
                     "Cleanup resolutions for video {video_id}? This permanently deletes files. [y/N] "
                 );
