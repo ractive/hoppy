@@ -1,0 +1,35 @@
+{
+  "error": null,
+  "data": {
+    "endpoints": [
+      {
+        "apiGuardianEndpointId": 1001,
+        "shieldZoneId": 42,
+        "schemaTitle": "My API",
+        "schemaVersion": "1.0.0",
+        "requestMethods": "POST",
+        "requestPath": "/api/v1/users",
+        "requestBodyType": "application/json",
+        "requestBodySchema": "{\"type\":\"object\",\"properties\":{}}",
+        "responseBodySchema": null,
+        "aiGuardian": false,
+        "aiGuardianGuardrails": null,
+        "validateRequestBodySchema": true,
+        "validateResponseBodySchema": false,
+        "validateAuthorization": true,
+        "authorizationConfiguration": "{\"type\":\"bearer\"}",
+        "enabled": true,
+        "rateLimitingGlobalEnabled": false,
+        "rateLimitingGlobalRequestCount": 0,
+        "rateLimitingGlobalTimeframeSeconds": 0,
+        "rateLimitingGlobalBlockTimeSeconds": 0,
+        "rateLimitingPerIpEnabled": false,
+        "rateLimitingPerIpRequestCount": 0,
+        "rateLimitingPerIpTimeframeSeconds": 0,
+        "rateLimitingPerIpBlockTimeSeconds": 0,
+        "createdAt": "2025-01-01T00:00:00Z",
+        "updatedAt": "2025-01-15T12:00:00Z"
+      }
+    ]
+  }
+}

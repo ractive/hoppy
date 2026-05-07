@@ -1,0 +1,25 @@
+{
+  "errorResponse": null,
+  "triggeredRules": [
+    {
+      "ruleId": "941100",
+      "ruleDescription": "XSS Attack Detected via libinjection",
+      "topTargetedUrls": {
+        "/login": 15,
+        "/search": 8
+      },
+      "totalTriggeredRequests": 23,
+      "ruleLogs": []
+    },
+    {
+      "ruleId": "942200",
+      "ruleDescription": "Detects MySQL comment-/space-obfuscated injections and backtick termination",
+      "topTargetedUrls": {
+        "/api/query": 4
+      },
+      "totalTriggeredRequests": 4,
+      "ruleLogs": []
+    }
+  ],
+  "totalTriggeredRules": 2
+}

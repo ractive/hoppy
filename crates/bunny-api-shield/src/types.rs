@@ -1254,6 +1254,516 @@ pub struct UploadScanningDetailCategory {
 }
 
 // ---------------------------------------------------------------------------
+// API Guardian types
+// ---------------------------------------------------------------------------
+
+/// A single API Guardian endpoint configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiGuardianEndpoint {
+    #[serde(default)]
+    pub api_guardian_endpoint_id: Option<i32>,
+    #[serde(default)]
+    pub shield_zone_id: Option<i32>,
+    #[serde(default)]
+    pub schema_title: Option<String>,
+    #[serde(default)]
+    pub schema_version: Option<String>,
+    #[serde(default)]
+    pub request_methods: Option<String>,
+    #[serde(default)]
+    pub request_path: Option<String>,
+    #[serde(default)]
+    pub request_body_type: Option<String>,
+    #[serde(default)]
+    pub request_body_schema: Option<String>,
+    #[serde(default)]
+    pub response_body_schema: Option<String>,
+    #[serde(default)]
+    pub ai_guardian: Option<bool>,
+    #[serde(default)]
+    pub ai_guardian_guardrails: Option<String>,
+    #[serde(default)]
+    pub validate_request_body_schema: Option<bool>,
+    #[serde(default)]
+    pub validate_response_body_schema: Option<bool>,
+    #[serde(default)]
+    pub validate_authorization: Option<bool>,
+    #[serde(default)]
+    pub authorization_configuration: Option<String>,
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub rate_limiting_global_enabled: Option<bool>,
+    #[serde(default)]
+    pub rate_limiting_global_request_count: Option<i32>,
+    #[serde(default)]
+    pub rate_limiting_global_timeframe_seconds: Option<i32>,
+    #[serde(default)]
+    pub rate_limiting_global_block_time_seconds: Option<i32>,
+    #[serde(default)]
+    pub rate_limiting_per_ip_enabled: Option<bool>,
+    #[serde(default)]
+    pub rate_limiting_per_ip_request_count: Option<i32>,
+    #[serde(default)]
+    pub rate_limiting_per_ip_timeframe_seconds: Option<i32>,
+    #[serde(default)]
+    pub rate_limiting_per_ip_block_time_seconds: Option<i32>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub updated_at: Option<String>,
+}
+
+/// The list of API Guardian endpoints for a Shield Zone.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiGuardianEndpointsResponse {
+    #[serde(default)]
+    pub endpoints: Option<Vec<ApiGuardianEndpoint>>,
+}
+
+/// Response wrapper for GET /shield/shield-zone/{shieldZoneId}/api-guardian.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetApiGuardianResponse {
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub data: Option<ApiGuardianEndpointsResponse>,
+}
+
+/// Request body for POST /shield/shield-zone/{shieldZoneId}/api-guardian
+/// (upload a new OpenAPI specification).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadOpenApiSpecificationRequest {
+    /// The file contents of the OpenAPI specification.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    /// If true, enforce authentication requirements for all endpoints defined in the spec.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enforce_authorisation_validation: Option<bool>,
+}
+
+/// Response wrapper for POST /shield/shield-zone/{shieldZoneId}/api-guardian.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadOpenApiSpecificationResponse {
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub data: Option<ApiGuardianEndpointsResponse>,
+}
+
+/// Request body for PATCH /shield/shield-zone/{shieldZoneId}/api-guardian
+/// (update an existing API Guardian configuration by uploading an updated spec).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateApiGuardianRequest {
+    /// The file contents of the OpenAPI specification.
+    pub content: String,
+    /// If true, enforce authentication requirements for all endpoints defined in the spec.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enforce_authorisation_validation: Option<bool>,
+}
+
+/// Response wrapper for PATCH /shield/shield-zone/{shieldZoneId}/api-guardian.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateApiGuardianResponse {
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub data: Option<ApiGuardianEndpointsResponse>,
+}
+
+/// Request body for PATCH /shield/shield-zone/{shieldZoneId}/api-guardian/endpoint/{endpointId}.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateApiGuardianEndpointRequest {
+    /// Whether the endpoint is enabled.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    /// Whether to validate the request body schema.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validate_request_body_schema: Option<bool>,
+    /// Whether to validate the response body schema.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validate_response_body_schema: Option<bool>,
+    /// Whether to validate authorization.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validate_authorization: Option<bool>,
+}
+
+/// Response wrapper for PATCH /shield/shield-zone/{shieldZoneId}/api-guardian/endpoint/{endpointId}.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateApiGuardianEndpointResponse {
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub data: Option<ApiGuardianEndpoint>,
+}
+
+// ---------------------------------------------------------------------------
+// Upload Scanning types
+// ---------------------------------------------------------------------------
+
+/// Scanner mode for upload scanning (antivirus/CSAM).
+///
+/// Values from the spec: 0 = Disabled, 1 = LogOnly, 2 = Block.
+/// The spec provides only integer values 0/1/2 without explicit names;
+/// these names reflect Bunny's actual semantics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum UploadScanningScannerMode {
+    Disabled = 0,
+    LogOnly = 1,
+    Block = 2,
+}
+
+impl std::fmt::Display for UploadScanningScannerMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UploadScanningScannerMode::Disabled => write!(f, "Disabled"),
+            UploadScanningScannerMode::LogOnly => write!(f, "LogOnly"),
+            UploadScanningScannerMode::Block => write!(f, "Block"),
+        }
+    }
+}
+
+/// Current upload scanning configuration state for a Shield Zone.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadScanningConfigurationState {
+    #[serde(default)]
+    pub shield_zone_id: Option<i32>,
+    #[serde(default)]
+    pub is_enabled: Option<bool>,
+    #[serde(default)]
+    pub csam_scanning_mode: Option<UploadScanningScannerMode>,
+    #[serde(default)]
+    pub antivirus_scanning_mode: Option<UploadScanningScannerMode>,
+}
+
+/// Response wrapper for GET /shield/shield-zone/{shieldZoneId}/upload-scanning.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadScanningConfigurationResponse {
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub data: Option<UploadScanningConfigurationState>,
+}
+
+/// Request body for PATCH /shield/shield-zone/{shieldZoneId}/upload-scanning.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateUploadScanningConfigurationRequest {
+    pub shield_zone_id: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub csam_scanning_mode: Option<UploadScanningScannerMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub antivirus_scanning_mode: Option<UploadScanningScannerMode>,
+}
+
+/// Response wrapper for PATCH /shield/shield-zone/{shieldZoneId}/upload-scanning.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateUploadScanningConfigurationResponse {
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub data: Option<UploadScanningConfigurationState>,
+}
+
+// ---------------------------------------------------------------------------
+// Event Logs types
+// ---------------------------------------------------------------------------
+
+/// Labels attached to a WAF event log entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EventLogLabels {
+    #[serde(default)]
+    pub asn: Option<String>,
+    #[serde(default)]
+    pub country: Option<String>,
+    #[serde(default)]
+    pub rule_id: Option<String>,
+    #[serde(default)]
+    pub severity: Option<String>,
+    #[serde(default)]
+    pub method: Option<String>,
+    #[serde(default)]
+    pub rule_group: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub server_zone: Option<String>,
+}
+
+/// A single WAF event log entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EventLog {
+    #[serde(default)]
+    pub log_id: Option<String>,
+    #[serde(default)]
+    pub timestamp: Option<i64>,
+    #[serde(default)]
+    pub log: Option<String>,
+    #[serde(default)]
+    pub labels: Option<EventLogLabels>,
+}
+
+/// Paginated response for GET /shield/event-logs/{shieldZoneId}/{date}/{continuationToken}.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafLoggingResponse {
+    #[serde(default)]
+    pub logs: Option<Vec<EventLog>>,
+    #[serde(default)]
+    pub has_more_data: Option<bool>,
+    #[serde(default)]
+    pub continuation_token: Option<String>,
+    #[serde(default)]
+    pub start_token: Option<String>,
+    #[serde(default)]
+    pub error_response: Option<GenericRequestResponse>,
+}
+
+// ---------------------------------------------------------------------------
+// WAF Triggered Rules types
+// ---------------------------------------------------------------------------
+
+/// Action type for reviewing a triggered WAF rule.
+///
+/// Values from the spec: 0 = Pending, 1 = Approve, 2 = Reject.
+/// The spec provides only integer values 0/1/2 without explicit names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum ReviewActionType {
+    Pending = 0,
+    Approve = 1,
+    Reject = 2,
+}
+
+impl std::fmt::Display for ReviewActionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReviewActionType::Pending => write!(f, "Pending"),
+            ReviewActionType::Approve => write!(f, "Approve"),
+            ReviewActionType::Reject => write!(f, "Reject"),
+        }
+    }
+}
+
+/// A single triggered WAF rule item.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TriggeredRuleItem {
+    #[serde(default)]
+    pub rule_id: Option<String>,
+    #[serde(default)]
+    pub rule_description: Option<String>,
+    #[serde(default)]
+    pub top_targeted_urls: Option<HashMap<String, i32>>,
+    #[serde(default)]
+    pub total_triggered_requests: Option<i32>,
+    #[serde(default)]
+    pub rule_logs: Option<Vec<EventLog>>,
+}
+
+/// Response for GET /shield/waf/rules/review-triggered/{shieldZoneId}.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTriggeredRulesResponse {
+    #[serde(default)]
+    pub error_response: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub triggered_rules: Option<Vec<TriggeredRuleItem>>,
+    #[serde(default)]
+    pub total_triggered_rules: Option<i32>,
+}
+
+/// Request body for POST /shield/waf/rules/review-triggered/{shieldZoneId}.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateReviewTriggeredRuleRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule_id: Option<String>,
+    pub action: ReviewActionType,
+}
+
+/// Response for POST /shield/waf/rules/review-triggered/{shieldZoneId}.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateReviewTriggeredRuleResponse {
+    #[serde(default)]
+    pub error_response: Option<GenericRequestResponse>,
+    #[serde(default)]
+    pub success: Option<bool>,
+}
+
+/// Response for GET /shield/waf/rules/review-triggered/ai-recommendation/{shieldZoneId}/{ruleId}.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TriggeredRuleRecommendationResponse {
+    #[serde(default)]
+    pub shield_zone_id: Option<i64>,
+    #[serde(default)]
+    pub rule_id: Option<String>,
+    #[serde(default)]
+    pub success: Option<bool>,
+    #[serde(default)]
+    pub recommendation: Option<String>,
+    #[serde(default)]
+    pub error_response: Option<GenericRequestResponse>,
+}
+
+// ---------------------------------------------------------------------------
+// Supplementary endpoint types
+// ---------------------------------------------------------------------------
+
+/// A single WAF rule entry in the plan segmentation response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafRuleModel {
+    #[serde(default)]
+    pub rule_id: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+}
+
+/// A group of WAF rules within a main group/ruleset.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafRuleGroupModel {
+    #[serde(default)]
+    pub id: Option<i64>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub code: Option<String>,
+    #[serde(default)]
+    pub file_name: Option<String>,
+    #[serde(default)]
+    pub main_group: Option<String>,
+    #[serde(default)]
+    pub ruleset: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub rules: Option<Vec<WafRuleModel>>,
+}
+
+/// A top-level WAF rule main group with nested rule groups.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafRuleMainGroupModel {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub ruleset: Option<String>,
+    #[serde(default)]
+    pub rule_groups: Option<Vec<WafRuleGroupModel>>,
+}
+
+/// WAF rules segmented by plan tier.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafRulesByPlanModel {
+    #[serde(default)]
+    pub plan_value: Option<i32>,
+    #[serde(default)]
+    pub plan_name: Option<String>,
+    #[serde(default)]
+    pub rules: Option<Vec<WafRuleMainGroupModel>>,
+}
+
+/// Response for GET /shield/waf/rules/plan-segmentation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetWafRulesSegmentedByPlanResponse {
+    #[serde(default)]
+    pub data: Option<Vec<WafRulesByPlanModel>>,
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+}
+
+/// A minimal WAF engine configuration variable.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigVariableValueMinimal {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub value_encoded: Option<String>,
+}
+
+/// Response for GET /shield/waf/engine-config.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetWafEngineConfigResponse {
+    #[serde(default)]
+    pub data: Option<Vec<ConfigVariableValueMinimal>>,
+}
+
+/// A single mapped enum value (name + integer value + premium flag).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafMappedEnum {
+    #[serde(default)]
+    pub optional_input: Option<bool>,
+    #[serde(default)]
+    pub is_premium: Option<bool>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub value: Option<i32>,
+}
+
+/// A named list of mapped enum values.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WafMappedEnumList {
+    #[serde(default)]
+    pub enum_name: Option<String>,
+    #[serde(default)]
+    pub enum_values: Option<Vec<WafMappedEnum>>,
+}
+
+/// Response for GET /shield/ddos/enums.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetWafEnumsResponse {
+    #[serde(default)]
+    pub data: Option<Vec<WafMappedEnumList>>,
+}
+
+/// A Shield Zone to Pull Zone mapping entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldZonePullZoneMapping {
+    #[serde(default)]
+    pub shield_zone_id: Option<i64>,
+    #[serde(default)]
+    pub pull_zone_id: Option<i64>,
+}
+
+/// Response for GET /shield/shield-zones/pullzone-mapping.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetShieldZonePullzoneMappingResponse {
+    #[serde(default)]
+    pub data: Option<Vec<ShieldZonePullZoneMapping>>,
+}
+
+// ---------------------------------------------------------------------------
 // Rate limit metrics types
 // ---------------------------------------------------------------------------
 
@@ -1466,5 +1976,47 @@ mod tests {
             serde_json::to_string(&WafRuleOperatorType::Pm).unwrap(),
             "12"
         );
+    }
+
+    #[test]
+    fn upload_scanning_scanner_mode_round_trips() {
+        // Disabled = 0
+        let json = serde_json::to_string(&UploadScanningScannerMode::Disabled).unwrap();
+        assert_eq!(json, "0");
+        let decoded: UploadScanningScannerMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, UploadScanningScannerMode::Disabled);
+
+        // LogOnly = 1
+        let json = serde_json::to_string(&UploadScanningScannerMode::LogOnly).unwrap();
+        assert_eq!(json, "1");
+        let decoded: UploadScanningScannerMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, UploadScanningScannerMode::LogOnly);
+
+        // Block = 2
+        let json = serde_json::to_string(&UploadScanningScannerMode::Block).unwrap();
+        assert_eq!(json, "2");
+        let decoded: UploadScanningScannerMode = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, UploadScanningScannerMode::Block);
+    }
+
+    #[test]
+    fn review_action_type_round_trips() {
+        // Pending = 0
+        let json = serde_json::to_string(&ReviewActionType::Pending).unwrap();
+        assert_eq!(json, "0");
+        let decoded: ReviewActionType = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, ReviewActionType::Pending);
+
+        // Approve = 1
+        let json = serde_json::to_string(&ReviewActionType::Approve).unwrap();
+        assert_eq!(json, "1");
+        let decoded: ReviewActionType = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, ReviewActionType::Approve);
+
+        // Reject = 2
+        let json = serde_json::to_string(&ReviewActionType::Reject).unwrap();
+        assert_eq!(json, "2");
+        let decoded: ReviewActionType = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, ReviewActionType::Reject);
     }
 }

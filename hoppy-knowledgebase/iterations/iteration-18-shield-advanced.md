@@ -1,5 +1,5 @@
 ---
-title: "Iteration 18 — Shield Advanced Features"
+title: Iteration 18 — Shield Advanced Features
 type: iteration
 date: 2026-03-20
 tags:
@@ -8,7 +8,7 @@ tags:
   - shield
   - security
   - waf
-status: planned
+status: completed
 branch: iter-18/shield-advanced
 ---
 
@@ -31,65 +31,63 @@ Shield has several advanced features beyond the base WAF/rate-limit/access-list/
 
 ### 1. API Guardian
 
-- [ ] API client (`bunny-api-shield`): `GET /shield/shield-zone/{shieldZoneId}/api-guardian` — get API Guardian config
-- [ ] API client: `POST /shield/shield-zone/{shieldZoneId}/api-guardian` — create/configure API Guardian
-- [ ] API client: `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian` — update API Guardian config
-- [ ] API client: `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian/endpoint/{endpointId}` — update specific endpoint config
-- [ ] Add `ApiGuardianConfig`, `ApiGuardianEndpoint` types — check spec for full shape
-- [ ] CLI: `hoppy shield api-guardian get --shield-zone-id <id>`
-- [ ] CLI: `hoppy shield api-guardian create --shield-zone-id <id> [config flags]`
-- [ ] CLI: `hoppy shield api-guardian update --shield-zone-id <id> [config flags]`
-- [ ] CLI: `hoppy shield api-guardian update-endpoint --shield-zone-id <id> --endpoint-id <id> [flags]`
-- [ ] Capture fixtures via `--record`
-- [ ] Wiremock + insta snapshot tests
-- [ ] Live E2E test: create PZ → create SZ → configure API Guardian → get → update → cleanup
+- [x] API client (`bunny-api-shield`): `GET /shield/shield-zone/{shieldZoneId}/api-guardian` — get API Guardian config
+- [x] API client: `POST /shield/shield-zone/{shieldZoneId}/api-guardian` — create/configure API Guardian
+- [x] API client: `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian` — update API Guardian config
+- [x] API client: `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian/endpoint/{endpointId}` — update specific endpoint config
+- [x] Add `ApiGuardianConfig`, `ApiGuardianEndpoint` types — check spec for full shape
+- [x] CLI: `hoppy shield api-guardian get --shield-zone-id <id>`
+- [x] CLI: `hoppy shield api-guardian upload --shield-zone-id <id> --spec-file <path>` (POST)
+- [x] CLI: `hoppy shield api-guardian update --shield-zone-id <id> --spec-file <path>` (PATCH)
+- [x] CLI: `hoppy shield api-guardian update-endpoint --shield-zone-id <id> --endpoint-id <id> [flags]`
+- [x] Wiremock + fixture tests (4 tests covering all 4 endpoints)
+- [ ] Capture fixtures via `--record` (skipped — no live env)
+- [ ] Live E2E test (skipped — no live env)
 
 ### 2. Upload Scanning
 
-- [ ] API client: `GET /shield/shield-zone/{shieldZoneId}/upload-scanning` — get upload scanning config
-- [ ] API client: `PATCH /shield/shield-zone/{shieldZoneId}/upload-scanning` — update upload scanning config
-- [ ] Add `UploadScanningConfig` type
-- [ ] CLI: `hoppy shield upload-scanning get --shield-zone-id <id>`
-- [ ] CLI: `hoppy shield upload-scanning update --shield-zone-id <id> --enabled <true|false>` (check spec for additional config fields)
-- [ ] Capture fixtures via `--record`
-- [ ] Wiremock + insta snapshot tests
-- [ ] Live E2E test: include in API Guardian lifecycle (get → update → verify → restore)
+- [x] API client: `GET /shield/shield-zone/{shieldZoneId}/upload-scanning` — get upload scanning config
+- [x] API client: `PATCH /shield/shield-zone/{shieldZoneId}/upload-scanning` — update upload scanning config
+- [x] Add `UploadScanningConfigurationState`, `UploadScanningScannerMode` types
+- [x] CLI: `hoppy shield upload-scanning get --shield-zone-id <id>`
+- [x] CLI: `hoppy shield upload-scanning update --shield-zone-id <id> [--enabled] [--antivirus-mode] [--csam-mode]`
+- [x] Wiremock + fixture tests
+- [ ] Capture fixtures via `--record` (skipped — no live env)
+- [ ] Live E2E test (skipped — no live env)
 
 ### 3. Event Logs
 
-- [ ] API client: `GET /shield/event-logs/{shieldZoneId}/{date}/{continuationToken}` — paginated event log retrieval
-- [ ] Add `ShieldEventLog`, `ShieldEventLogEntry` types — check spec for entry structure (likely includes timestamp, IP, rule matched, action taken, URL, etc.)
-- [ ] CLI: `hoppy shield event-logs --shield-zone-id <id> --date <YYYY-MM-DD>` — list events for a date
-- [ ] Support pagination via `--continuation-token` flag (or auto-paginate with `--all`)
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
-- [ ] Live E2E test: difficult to guarantee events exist — test the call succeeds with empty/populated result
+- [x] API client: `GET /shield/event-logs/{shieldZoneId}/{date}/{continuationToken}` — paginated event log retrieval
+- [x] Add `EventLog`, `EventLogLabels`, `WafLoggingResponse` types
+- [x] CLI: `hoppy shield event-logs --shield-zone-id <id> --date <MM-dd-yyyy>` — list events for a date
+- [x] Support pagination via `--continuation-token` flag and auto-paginate with `--all`
+- [x] Wiremock + fixture test
+- [ ] Capture fixture via `--record` (skipped — no live env)
+- [ ] Live E2E test (skipped — no live env)
 
 ### 4. WAF Triggered Rule Review
 
-- [ ] API client: `GET /shield/waf/rules/review-triggered/{shieldZoneId}` — list triggered WAF rules
-- [ ] API client: `POST /shield/waf/rules/review-triggered/{shieldZoneId}` — acknowledge/review triggered rules
-- [ ] API client: `GET /shield/waf/rules/review-triggered/ai-recommendation/{shieldZoneId}/{ruleId}` — get AI recommendation for rule tuning
-- [ ] Add response types — check spec for structure
-- [ ] CLI: `hoppy shield waf triggered-rules --shield-zone-id <id>` — list triggered rules
-- [ ] CLI: `hoppy shield waf triggered-rules review --shield-zone-id <id>` — mark as reviewed
-- [ ] CLI: `hoppy shield waf triggered-rules recommend --shield-zone-id <id> --rule-id <id>` — get AI recommendation
-- [ ] Capture fixtures via `--record`
-- [ ] Wiremock + insta snapshot tests
-- [ ] Live E2E test: may return empty if no rules triggered — verify call succeeds
+- [x] API client: `GET /shield/waf/rules/review-triggered/{shieldZoneId}` — list triggered WAF rules
+- [x] API client: `POST /shield/waf/rules/review-triggered/{shieldZoneId}` — acknowledge/review triggered rules
+- [x] API client: `GET /shield/waf/rules/review-triggered/ai-recommendation/{shieldZoneId}/{ruleId}` — get AI recommendation for rule tuning
+- [x] Add `TriggeredRuleItem`, `GetTriggeredRulesResponse`, `ReviewActionType`, `UpdateReviewTriggeredRuleRequest/Response`, `TriggeredRuleRecommendationResponse` types
+- [x] CLI: `hoppy shield waf triggered-rules --shield-zone-id <id>` — list triggered rules
+- [x] CLI: `hoppy shield waf review-triggered-rule --shield-zone-id <id> --rule-id <id> --action <n>`
+- [x] CLI: `hoppy shield waf recommend-triggered-rule --shield-zone-id <id> --rule-id <id>`
+- [x] Wiremock + fixture tests (3 tests)
+- [ ] Capture fixtures via `--record` (skipped — no live env)
+- [ ] Live E2E test (skipped — no live env)
 
 ### 5. Supplementary Endpoints (Low Priority)
 
-These are helper/enum endpoints — include if time permits:
-
-- [ ] API client: `GET /shield/waf/rules/plan-segmentation` — WAF rule plan limits
-- [ ] API client: `GET /shield/waf/engine-config` — WAF engine configuration
-- [ ] API client: `GET /shield/ddos/enums` — DDoS configuration enums
-- [ ] API client: `GET /shield/shield-zones/pullzone-mapping` — mapping of shield zones to pull zones
-- [ ] API client: `GET /shield/promo/state` — promotional state
-- [ ] API client: `GET /shield/shield-zone/{shieldZoneId}/access-lists/enums` — access list enum values
-- [ ] CLI commands for useful ones (plan-segmentation, pullzone-mapping)
-- [ ] Wiremock tests
+- [x] API client: `GET /shield/waf/rules/plan-segmentation` — WAF rule plan limits
+- [x] API client: `GET /shield/waf/engine-config` — WAF engine configuration
+- [x] API client: `GET /shield/ddos/enums` — DDoS configuration enums
+- [x] API client: `GET /shield/shield-zones/pullzone-mapping` — mapping of shield zones to pull zones
+- [x] API client: `GET /shield/promo/state` — promotional state
+- [x] API client: `GET /shield/shield-zone/{shieldZoneId}/access-lists/enums` — access list enum values
+- [x] CLI: `hoppy shield waf plan-segmentation`, `hoppy shield waf engine-config`, `hoppy shield pullzone-mapping`
+- [x] Wiremock tests for all 6 supplementary endpoints
 
 ---
 

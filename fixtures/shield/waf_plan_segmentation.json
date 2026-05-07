@@ -1,0 +1,32 @@
+{
+  "data": [
+    {
+      "planValue": 0,
+      "planName": "Basic",
+      "rules": [
+        {
+          "name": "OWASP CRS",
+          "ruleset": "owasp-crs",
+          "ruleGroups": [
+            {
+              "id": 1,
+              "name": "XSS",
+              "code": "xss",
+              "fileName": "REQUEST-941",
+              "mainGroup": "owasp-crs",
+              "ruleset": "owasp-crs",
+              "description": "Cross-Site Scripting rules",
+              "rules": [
+                {
+                  "ruleId": "941100",
+                  "description": "XSS Attack Detected via libinjection"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "error": null
+}
