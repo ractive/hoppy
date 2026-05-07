@@ -1,0 +1,22 @@
+---
+source: tests/e2e/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "list_id": 1,
+    "name": "Known Bad IPs",
+    "list_type": "Ip",
+    "is_enabled": true,
+    "action": "Block",
+    "entry_count": 5000
+  },
+  {
+    "list_id": 9001,
+    "name": "Blocked Countries",
+    "list_type": "Country",
+    "is_enabled": true,
+    "action": "Block",
+    "entry_count": 3
+  }
+]

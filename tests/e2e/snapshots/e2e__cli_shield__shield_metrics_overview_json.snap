@@ -1,0 +1,51 @@
+---
+source: tests/e2e/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "data": {
+    "overview": {
+      "dDoSMitigated": 142,
+      "wafTriggeredRules": 87,
+      "ratelimitBreaches": 23,
+      "botDetectionChallenged": 456,
+      "accessListActions": 12,
+      "uploadScanningBlocks": 3
+    },
+    "waf": {
+      "totalTriggeredRules": 87,
+      "blockedRequests": 54,
+      "loggedRequests": 28,
+      "challengedRequests": 5
+    },
+    "dDoS": {
+      "loggedRequests": 312,
+      "verifiedRequests": 170,
+      "blockedRequests": 95,
+      "challengedRequests": 47
+    },
+    "ratelimit": {
+      "totalBreaches": 23,
+      "loggedBreaches": 8,
+      "challengedBreaches": 5,
+      "blockedBreaches": 10
+    },
+    "botDetection": {
+      "loggedRequests": 234,
+      "challengedRequests": 456
+    },
+    "accessList": {
+      "totalActions": 12,
+      "blockedRequests": 9,
+      "loggedRequests": 2,
+      "challengedRequests": 1
+    },
+    "uploadScanning": {
+      "loggedRequests": 5,
+      "blockedRequests": 3,
+      "filesScanned": 150
+    },
+    "totalCleanRequestsLimit": 1000000,
+    "totalBillableRequests": 245678
+  }
+}

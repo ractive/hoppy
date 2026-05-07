@@ -53,12 +53,12 @@ hoppy --record=fixtures/ --format json <your-new-command>
 ### 4. Rust wiremock test
 
 - [ ] Add `include_str!("../../../fixtures/<service>/<resource>_<action>.json")` constant
-- [ ] Add wiremock test in `crates/bunny-api-*/tests/*_api.rs` using the fixture
+- [ ] Add wiremock test in `crates/bunny-api-*/tests/e2e/*_api.rs` using the fixture (and declare it as `mod` in that crate's `tests/e2e/mod.rs`)
 - [ ] Cover both success and error paths (create error fixture manually if needed)
 
 ### 5. Rust live API test
 
-- [ ] Add a `#[cfg(feature = "live-api")]` lifecycle test to the appropriate `tests/cli_*.rs`
+- [ ] Add a `#[cfg(feature = "live-api")]` lifecycle test to the appropriate `tests/e2e/cli_*.rs`
 - [ ] Use `run_lifecycle(|cleanup| { ... })` for panic-safe cleanup
 - [ ] Register cleanup early with `cleanup.push(&[...])`
 - [ ] Follow the pattern: create → get → list → update → verify → delete

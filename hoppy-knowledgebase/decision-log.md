@@ -113,6 +113,7 @@ Significant architectural and design decisions made during development. API-spec
 | 2026-05-07 | Storage Zone passwords surfaced through redaction layer | `Password`/`ReadOnlyPassword` are no longer `skip_serializing`; CLI redacts via `redact_secrets_in_json` with `--reveal` opt-in. Operators were forced to `curl` for credentials without this (iter-19) |
 | 2026-05-07 | `pull-zone create` ArgGroup for origin | Exactly-one-of `--origin-url` / `--storage-zone-id` enforced at clap parse time, no runtime API 400 (iter-19) |
 | 2026-05-07 | Build provenance in `--version` | `build.rs` embeds short git SHA + bunny-spec mtime; long-version output for bug reports (iter-19) |
+| 2026-05-07 | Single `e2e` test binary per crate | Cargo treats every top-level `.rs` under `tests/` as its own binary, each re-linking the crate-under-test from scratch. Collapsing into `tests/e2e/mod.rs` declared via `[[test]] name = "e2e"` cuts the linker pass to once per crate. Add new test files as `mod` declarations inside `tests/e2e/mod.rs` — never as new top-level files (iter-22) |
 
 ## Related
 - [[development-roadmap]] — iteration history

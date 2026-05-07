@@ -1,0 +1,21 @@
+---
+source: tests/e2e/cli_dns.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Id": 100099,
+  "Type": 0,
+  "Ttl": 300,
+  "Value": "192.0.2.1",
+  "Name": "test",
+  "Weight": 0,
+  "Priority": 0,
+  "Port": 0,
+  "Flags": 0,
+  "Tag": null,
+  "Accelerated": false,
+  "AcceleratedPullZoneId": 0,
+  "LinkName": null,
+  "Disabled": false,
+  "Comment": null
+}

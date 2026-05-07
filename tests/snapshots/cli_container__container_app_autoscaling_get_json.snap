@@ -1,8 +1,0 @@
----
-source: tests/cli_container.rs
-expression: "String::from_utf8_lossy(&output.stdout)"
----
-{
-  "min": 1,
-  "max": 1
-}
