@@ -857,10 +857,9 @@ async fn handle_resolutions(
                 && !delete_non_configured
                 && !delete_original
                 && !delete_mp4_files
-                && !dry_run
             {
                 bail!(
-                    "specify what to delete: --resolutions, --delete-non-configured, --delete-original, or --delete-mp4-files (or --dry-run)"
+                    "specify what to delete: --resolutions, --delete-non-configured, --delete-original, or --delete-mp4-files (combine with --dry-run to preview)"
                 );
             }
             if !dry_run && !yes {

@@ -887,6 +887,7 @@ async fn stream_video_resolutions_cleanup_json() {
         "10001",
         "--video-id",
         "aaaabbbb-1111-2222-3333-ccccddddeeee",
+        "--delete-original",
         "--dry-run",
     ])
     .output()
@@ -1242,10 +1243,9 @@ fn live_stream_video_processing_lifecycle() {
                 break;
             }
             if std::time::Instant::now() > deadline {
-                eprintln!(
+                panic!(
                     "Timed out waiting for video to reach Finished status (last status={status})"
                 );
-                return;
             }
             std::thread::sleep(std::time::Duration::from_secs(10));
         }
