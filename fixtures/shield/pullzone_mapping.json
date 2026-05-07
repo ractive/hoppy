@@ -1,0 +1,12 @@
+{
+  "data": [
+    {
+      "shieldZoneId": 55001,
+      "pullZoneId": 100001
+    },
+    {
+      "shieldZoneId": 55002,
+      "pullZoneId": 100002
+    }
+  ]
+}

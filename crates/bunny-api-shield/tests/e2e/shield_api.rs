@@ -1,9 +1,12 @@
 use bunny_api_shield::ShieldClient;
 use bunny_api_shield::types::{
     AccessListType, CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule,
-    RateLimitCounterKey, RateLimitRuleConfiguration, UpdateAccessListConfiguration,
+    RateLimitCounterKey, RateLimitRuleConfiguration, ReviewActionType,
+    UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest, UpdateApiGuardianRequest,
     UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
-    UpdateShieldZoneRequest, WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType,
+    UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
+    UpdateUploadScanningConfigurationRequest, UploadOpenApiSpecificationRequest,
+    UploadScanningScannerMode, WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType,
     WafRuleSeverityType,
 };
 use bunny_api_shield::types::{
@@ -59,6 +62,34 @@ const FIXTURE_METRICS_BOT_DETECTION: &str =
     include_str!("../../../../fixtures/shield/metrics_bot_detection.json");
 const FIXTURE_METRICS_UPLOAD_SCANNING: &str =
     include_str!("../../../../fixtures/shield/metrics_upload_scanning.json");
+const FIXTURE_API_GUARDIAN_GET: &str =
+    include_str!("../../../../fixtures/shield/api_guardian_get.json");
+const FIXTURE_API_GUARDIAN_UPLOAD: &str =
+    include_str!("../../../../fixtures/shield/api_guardian_upload.json");
+const FIXTURE_API_GUARDIAN_UPDATE: &str =
+    include_str!("../../../../fixtures/shield/api_guardian_update.json");
+const FIXTURE_API_GUARDIAN_ENDPOINT_UPDATE: &str =
+    include_str!("../../../../fixtures/shield/api_guardian_endpoint_update.json");
+const FIXTURE_UPLOAD_SCANNING_GET: &str =
+    include_str!("../../../../fixtures/shield/upload_scanning_get.json");
+const FIXTURE_UPLOAD_SCANNING_UPDATE: &str =
+    include_str!("../../../../fixtures/shield/upload_scanning_update.json");
+const FIXTURE_EVENT_LOGS: &str = include_str!("../../../../fixtures/shield/event_logs.json");
+const FIXTURE_WAF_TRIGGERED_RULES: &str =
+    include_str!("../../../../fixtures/shield/waf_triggered_rules.json");
+const FIXTURE_WAF_TRIGGERED_REVIEW: &str =
+    include_str!("../../../../fixtures/shield/waf_triggered_review.json");
+const FIXTURE_WAF_RECOMMENDATION: &str =
+    include_str!("../../../../fixtures/shield/waf_recommendation.json");
+const FIXTURE_WAF_PLAN_SEGMENTATION: &str =
+    include_str!("../../../../fixtures/shield/waf_plan_segmentation.json");
+const FIXTURE_WAF_ENGINE_CONFIG: &str =
+    include_str!("../../../../fixtures/shield/waf_engine_config.json");
+const FIXTURE_DDOS_ENUMS: &str = include_str!("../../../../fixtures/shield/ddos_enums.json");
+const FIXTURE_PULLZONE_MAPPING: &str =
+    include_str!("../../../../fixtures/shield/pullzone_mapping.json");
+const FIXTURE_ACCESS_LIST_ENUMS: &str =
+    include_str!("../../../../fixtures/shield/access_list_enums.json");
 
 fn test_client(uri: &str) -> ShieldClient {
     ShieldClient::with_base_url("test-api-key", uri)
@@ -1030,4 +1061,498 @@ async fn get_metrics_upload_scanning_returns_data() {
     assert_eq!(data.total_files_scanned, 155);
     let history = data.overview_past_twenty_eight_days.unwrap();
     assert_eq!(history.len(), 3);
+}
+
+// ---------------------------------------------------------------------------
+// API Guardian
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn get_api_guardian_returns_endpoints() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/api-guardian"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_API_GUARDIAN_GET, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_api_guardian(42)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    let endpoints = data.endpoints.unwrap();
+    assert_eq!(endpoints.len(), 1);
+    assert_eq!(endpoints[0].api_guardian_endpoint_id, Some(1001));
+    assert_eq!(endpoints[0].request_path.as_deref(), Some("/api/v1/users"));
+    assert_eq!(endpoints[0].enabled, Some(true));
+}
+
+#[tokio::test]
+async fn upload_api_guardian_spec_returns_endpoints() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/shield/shield-zone/42/api-guardian"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_API_GUARDIAN_UPLOAD, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UploadOpenApiSpecificationRequest {
+        content: Some("openapi: 3.0.0".to_string()),
+        enforce_authorisation_validation: Some(false),
+    };
+    let result = test_client(&server.uri())
+        .upload_api_guardian_spec(42, body)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    let endpoints = data.endpoints.unwrap();
+    assert_eq!(endpoints.len(), 1);
+    assert_eq!(endpoints[0].api_guardian_endpoint_id, Some(2001));
+}
+
+#[tokio::test]
+async fn update_api_guardian_returns_endpoints() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/shield/shield-zone/42/api-guardian"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_API_GUARDIAN_UPDATE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdateApiGuardianRequest {
+        content: "openapi: 3.0.0\ninfo:\n  version: '1.1.0'".to_string(),
+        enforce_authorisation_validation: Some(true),
+    };
+    let result = test_client(&server.uri())
+        .update_api_guardian(42, body)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    let endpoints = data.endpoints.unwrap();
+    assert_eq!(endpoints.len(), 1);
+    assert_eq!(endpoints[0].validate_response_body_schema, Some(true));
+}
+
+#[tokio::test]
+async fn update_api_guardian_endpoint_returns_updated_endpoint() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/shield/shield-zone/42/api-guardian/endpoint/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_API_GUARDIAN_ENDPOINT_UPDATE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdateApiGuardianEndpointRequest {
+        enabled: Some(false),
+        validate_request_body_schema: None,
+        validate_response_body_schema: None,
+        validate_authorization: None,
+    };
+    let result = test_client(&server.uri())
+        .update_api_guardian_endpoint(42, 1001, body)
+        .await
+        .unwrap();
+
+    let endpoint = result.data.unwrap();
+    assert_eq!(endpoint.api_guardian_endpoint_id, Some(1001));
+    assert_eq!(endpoint.enabled, Some(false));
+}
+
+// ---------------------------------------------------------------------------
+// Upload Scanning
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn get_upload_scanning_returns_config() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/upload-scanning"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_UPLOAD_SCANNING_GET, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_upload_scanning(42)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.shield_zone_id, Some(42));
+    assert_eq!(data.is_enabled, Some(true));
+    assert_eq!(
+        data.csam_scanning_mode,
+        Some(UploadScanningScannerMode::Block)
+    );
+    assert_eq!(
+        data.antivirus_scanning_mode,
+        Some(UploadScanningScannerMode::LogOnly)
+    );
+}
+
+#[tokio::test]
+async fn update_upload_scanning_returns_updated_config() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/shield/shield-zone/42/upload-scanning"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_UPLOAD_SCANNING_UPDATE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdateUploadScanningConfigurationRequest {
+        shield_zone_id: 42,
+        is_enabled: Some(true),
+        antivirus_scanning_mode: Some(UploadScanningScannerMode::Block),
+        csam_scanning_mode: None,
+    };
+    let result = test_client(&server.uri())
+        .update_upload_scanning(42, body)
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(
+        data.antivirus_scanning_mode,
+        Some(UploadScanningScannerMode::Block)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Event Logs
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn get_event_logs_returns_logs() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/event-logs/42/05-01-2025/"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_EVENT_LOGS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_event_logs(42, "05-01-2025", "")
+        .await
+        .unwrap();
+
+    let logs = result.logs.unwrap();
+    assert_eq!(logs.len(), 2);
+    assert_eq!(logs[0].log_id.as_deref(), Some("log-abc-123"));
+    let labels = logs[0].labels.as_ref().unwrap();
+    assert_eq!(labels.rule_id.as_deref(), Some("941100"));
+    assert_eq!(labels.method.as_deref(), Some("POST"));
+    assert_eq!(result.has_more_data, Some(false));
+}
+
+// ---------------------------------------------------------------------------
+// WAF Triggered Rules
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn get_triggered_waf_rules_returns_rules() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/rules/review-triggered/42"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_WAF_TRIGGERED_RULES, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_triggered_waf_rules(42)
+        .await
+        .unwrap();
+
+    let rules = result.triggered_rules.unwrap();
+    assert_eq!(rules.len(), 2);
+    assert_eq!(rules[0].rule_id.as_deref(), Some("941100"));
+    assert_eq!(rules[0].total_triggered_requests, Some(23));
+    assert_eq!(result.total_triggered_rules, Some(2));
+}
+
+#[tokio::test]
+async fn review_triggered_waf_rule_returns_success() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/shield/waf/rules/review-triggered/42"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_WAF_TRIGGERED_REVIEW, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdateReviewTriggeredRuleRequest {
+        rule_id: Some("941100".to_string()),
+        action: ReviewActionType::Approve,
+    };
+    let result = test_client(&server.uri())
+        .review_triggered_waf_rule(42, body)
+        .await
+        .unwrap();
+
+    assert_eq!(result.success, Some(true));
+}
+
+#[tokio::test]
+async fn get_triggered_waf_rule_recommendation_returns_text() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/shield/waf/rules/review-triggered/ai-recommendation/42/941100",
+        ))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_WAF_RECOMMENDATION, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_triggered_waf_rule_recommendation(42, "941100")
+        .await
+        .unwrap();
+
+    assert_eq!(result.rule_id.as_deref(), Some("941100"));
+    assert_eq!(result.success, Some(true));
+    assert!(result.recommendation.is_some());
+}
+
+// ---------------------------------------------------------------------------
+// Supplementary endpoints
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn get_waf_plan_segmentation_returns_plans() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/rules/plan-segmentation"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_WAF_PLAN_SEGMENTATION, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_waf_plan_segmentation()
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.len(), 1);
+    assert_eq!(data[0].plan_name.as_deref(), Some("Basic"));
+}
+
+#[tokio::test]
+async fn get_waf_engine_config_returns_variables() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/engine-config"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_WAF_ENGINE_CONFIG, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_waf_engine_config()
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.len(), 2);
+    assert_eq!(data[0].name.as_deref(), Some("tx.allowed_methods"));
+}
+
+#[tokio::test]
+async fn get_ddos_enums_returns_enum_list() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/ddos/enums"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_DDOS_ENUMS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri()).get_ddos_enums().await.unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.len(), 1);
+    assert_eq!(data[0].enum_name.as_deref(), Some("DDoSShieldSensitivity"));
+    let values = data[0].enum_values.as_ref().unwrap();
+    assert_eq!(values.len(), 4);
+}
+
+#[tokio::test]
+async fn get_shield_zones_pullzone_mapping_returns_mappings() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zones/pullzone-mapping"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_PULLZONE_MAPPING, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_shield_zones_pullzone_mapping()
+        .await
+        .unwrap();
+
+    let data = result.data.unwrap();
+    assert_eq!(data.len(), 2);
+    assert_eq!(data[0].shield_zone_id, Some(55001));
+    assert_eq!(data[0].pull_zone_id, Some(100001));
+}
+
+#[tokio::test]
+async fn get_access_list_enums_returns_map() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/access-lists/enums"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_ACCESS_LIST_ENUMS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_access_list_enums(42)
+        .await
+        .unwrap();
+
+    assert!(result.contains_key("AccessListAction"));
+    assert!(result.contains_key("AccessListType"));
+    let action_map = &result["AccessListAction"];
+    assert_eq!(action_map.get("Block").map(String::as_str), Some("1"));
+}
+
+#[tokio::test]
+async fn get_promo_state_handles_empty_body() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/promo/state"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri()).get_promo_state().await.unwrap();
+    assert_eq!(result, serde_json::Value::Null);
+}
+
+#[tokio::test]
+async fn get_promo_state_decodes_json_body() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/promo/state"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(r#"{"active":true}"#, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri()).get_promo_state().await.unwrap();
+    assert_eq!(result["active"], serde_json::Value::Bool(true));
+}
+
+#[tokio::test]
+async fn get_promo_state_propagates_problem_details() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/promo/state"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(500).set_body_raw(
+            r#"{"title":"Internal Error","status":500,"detail":"boom"}"#,
+            "application/problem+json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .get_promo_state()
+        .await
+        .unwrap_err();
+    let msg = format!("{err:#}");
+    assert!(
+        msg.contains("Internal Error") || msg.contains("boom"),
+        "expected ProblemDetails error, got: {msg}"
+    );
 }

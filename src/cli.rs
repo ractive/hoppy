@@ -1333,6 +1333,32 @@ pub enum ShieldAction {
         #[command(subcommand)]
         action: ShieldMetricsAction,
     },
+    /// Manage API Guardian (OpenAPI schema enforcement)
+    ApiGuardian {
+        #[command(subcommand)]
+        action: ShieldApiGuardianAction,
+    },
+    /// Manage upload scanning configuration
+    UploadScanning {
+        #[command(subcommand)]
+        action: ShieldUploadScanningAction,
+    },
+    /// Retrieve event logs for a Shield Zone
+    EventLogs {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Date of logs in MM-dd-yyyy format
+        #[arg(long)]
+        date: String,
+        /// Continuation token for the next page (omit for the first page)
+        #[arg(long)]
+        continuation_token: Option<String>,
+        /// Automatically paginate through all available pages
+        #[arg(long, default_value_t = false)]
+        all: bool,
+    },
+    /// Get the mapping of Shield Zones to Pull Zones
+    PullzoneMapping,
 }
 
 #[derive(Subcommand)]
@@ -1466,6 +1492,107 @@ pub enum ShieldWafAction {
     DeleteRule {
         #[arg(long)]
         id: i64,
+    },
+    /// List triggered WAF rules for a Shield Zone
+    TriggeredRules {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Review/update action for a triggered WAF rule
+    ReviewTriggeredRule {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Rule ID to review
+        #[arg(long)]
+        rule_id: String,
+        /// Review action (0 = Pending, 1 = Approve, 2 = Reject)
+        #[arg(long)]
+        action: u8,
+    },
+    /// Get an AI recommendation for a triggered WAF rule
+    RecommendTriggeredRule {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Rule ID
+        #[arg(long)]
+        rule_id: String,
+    },
+    /// Get WAF rules segmented by plan tier
+    PlanSegmentation,
+    /// Get WAF engine configuration variables
+    EngineConfig,
+}
+
+#[derive(Subcommand)]
+pub enum ShieldApiGuardianAction {
+    /// Get the API Guardian configuration for a Shield Zone
+    Get {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Upload a new OpenAPI specification to API Guardian
+    Upload {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Path to the OpenAPI specification file
+        #[arg(long)]
+        spec_file: std::path::PathBuf,
+        /// Enforce authorization validation for all endpoints
+        #[arg(long)]
+        enforce_authorization: Option<bool>,
+    },
+    /// Update the API Guardian configuration with an updated OpenAPI spec
+    Update {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Path to the OpenAPI specification file
+        #[arg(long)]
+        spec_file: std::path::PathBuf,
+        /// Enforce authorization validation for all endpoints
+        #[arg(long)]
+        enforce_authorization: Option<bool>,
+    },
+    /// Update an individual API Guardian endpoint configuration
+    UpdateEndpoint {
+        #[arg(long)]
+        shield_zone_id: i64,
+        #[arg(long)]
+        endpoint_id: i64,
+        /// Enable or disable this endpoint
+        #[arg(long)]
+        enabled: Option<bool>,
+        /// Validate the request body schema
+        #[arg(long)]
+        validate_request_body_schema: Option<bool>,
+        /// Validate the response body schema
+        #[arg(long)]
+        validate_response_body_schema: Option<bool>,
+        /// Validate authorization
+        #[arg(long)]
+        validate_authorization: Option<bool>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldUploadScanningAction {
+    /// Get the upload scanning configuration for a Shield Zone
+    Get {
+        #[arg(long)]
+        shield_zone_id: i64,
+    },
+    /// Update the upload scanning configuration for a Shield Zone
+    Update {
+        #[arg(long)]
+        shield_zone_id: i64,
+        /// Enable or disable upload scanning
+        #[arg(long)]
+        enabled: Option<bool>,
+        /// Antivirus scanning mode (0 = Disabled, 1 = LogOnly, 2 = Block)
+        #[arg(long)]
+        antivirus_mode: Option<u8>,
+        /// CSAM scanning mode (0 = Disabled, 1 = LogOnly, 2 = Block)
+        #[arg(long)]
+        csam_mode: Option<u8>,
     },
 }
 

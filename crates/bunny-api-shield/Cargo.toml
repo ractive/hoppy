@@ -12,6 +12,7 @@ serde_json = "1"
 serde_repr = "0.1"
 anyhow = "1"
 bytes = "1"
+percent-encoding = "2"
 bunny-api-recording = { path = "../bunny-api-recording" }
 
 [dev-dependencies]
