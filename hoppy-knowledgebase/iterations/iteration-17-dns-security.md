@@ -1,5 +1,5 @@
 ---
-title: "Iteration 17 — DNS Security & Record Scanning"
+title: Iteration 17 — DNS Security & Record Scanning
 type: iteration
 date: 2026-03-20
 tags:
@@ -8,7 +8,7 @@ tags:
   - dns
   - security
   - dnssec
-status: planned
+status: in-progress
 branch: iter-17/dns-security
 ---
 
@@ -28,40 +28,40 @@ Record scanning auto-discovers existing DNS records for a domain (useful during 
 
 ### 1. DNSSEC Management
 
-- [ ] API client (`bunny-api-core`): `POST /dnszone/{id}/dnssec` — enable DNSSEC. Check spec for request body (may be empty or contain configuration).
-- [ ] API client: `DELETE /dnszone/{id}/dnssec` — disable DNSSEC
-- [ ] Add response types — enabling DNSSEC likely returns DS record info (digest, key tag, algorithm) needed for registrar configuration
-- [ ] CLI: `hoppy dns zone dnssec enable --id <zone-id>` — enable and display DS record details
-- [ ] CLI: `hoppy dns zone dnssec disable --id <zone-id>` — with confirmation (disabling DNSSEC can break resolution if DS records are at registrar)
-- [ ] CLI: `hoppy dns zone dnssec status --id <zone-id>` — show current DNSSEC status (may come from `get_dns_zone()` response)
-- [ ] Capture fixtures via `--record`
-- [ ] Wiremock + insta snapshot tests
-- [ ] Live E2E test: create zone → enable DNSSEC → verify status → disable → verify → delete zone
+- [x] API client (`bunny-api-core`): `POST /dnszone/{id}/dnssec` — enable DNSSEC. Check spec for request body (may be empty or contain configuration).
+- [x] API client: `DELETE /dnszone/{id}/dnssec` — disable DNSSEC
+- [x] Add response types — enabling DNSSEC likely returns DS record info (digest, key tag, algorithm) needed for registrar configuration
+- [x] CLI: `hoppy dns zone dnssec enable --id <zone-id>` — enable and display DS record details
+- [x] CLI: `hoppy dns zone dnssec disable --id <zone-id>` — with confirmation (disabling DNSSEC can break resolution if DS records are at registrar)
+- [x] CLI: `hoppy dns zone dnssec status --id <zone-id>` — show current DNSSEC status (may come from `get_dns_zone()` response)
+- [x] Capture fixtures via `--record`
+- [x] Wiremock + insta snapshot tests
+- [x] Live E2E test: create zone → enable DNSSEC → verify status → disable → verify → delete zone
 
 ### 2. Wildcard Certificate Issuance
 
-- [ ] API client: `POST /dnszone/{zoneId}/certificate/issue` — issue wildcard certificate for zone
-- [ ] Check spec for response — likely returns certificate status or async job ID
-- [ ] CLI: `hoppy dns zone issue-cert --id <zone-id>` — issue wildcard certificate
-- [ ] Capture fixture via `--record`
-- [ ] Wiremock + insta snapshot test
-- [ ] Live E2E test: include in DNSSEC lifecycle if feasible (requires zone to be properly delegated — may need to be a manual test or skipped in CI)
+- [x] API client: `POST /dnszone/{zoneId}/certificate/issue` — issue wildcard certificate for zone
+- [x] Check spec for response — likely returns certificate status or async job ID
+- [x] CLI: `hoppy dns zone issue-cert --id <zone-id>` — issue wildcard certificate
+- [x] Capture fixture via `--record`
+- [x] Wiremock + insta snapshot test
+- [x] Live E2E test: include in DNSSEC lifecycle if feasible (requires zone to be properly delegated — may need to be a manual test or skipped in CI)
 
 ### 3. DNS Record Scanning
 
-- [ ] API client: `POST /dnszone/records/scan` — trigger background scan for existing DNS records. Check spec for request body (likely contains zone ID).
-- [ ] API client: `GET /dnszone/{zoneId}/records/scan` — get latest scan results
-- [ ] Add `DnsRecordScanResult` response type
-- [ ] CLI: `hoppy dns zone scan --id <zone-id>` — trigger scan and display results
-- [ ] Consider: should the CLI poll for results? The scan is async — trigger returns immediately, results come later. Two options:
+- [x] API client: `POST /dnszone/records/scan` — trigger background scan for existing DNS records. Check spec for request body (likely contains zone ID).
+- [x] API client: `GET /dnszone/{zoneId}/records/scan` — get latest scan results
+- [x] Add `DnsRecordScanResult` response type
+- [x] CLI: `hoppy dns zone scan --id <zone-id>` — trigger scan and display results
+- [x] Consider: should the CLI poll for results? The scan is async — trigger returns immediately, results come later. Two options:
   - (a) Separate `scan start` / `scan results` subcommands
   - (b) Single `scan` command that triggers and polls (with timeout)
   - Recommendation: option (a) for simplicity, matching the API shape
-- [ ] CLI: `hoppy dns zone scan start --id <zone-id>` — trigger scan
-- [ ] CLI: `hoppy dns zone scan results --id <zone-id>` — show latest scan results
-- [ ] Capture fixtures via `--record`
-- [ ] Wiremock + insta snapshot tests
-- [ ] Live E2E test: create zone → trigger scan → poll for results → verify → delete zone
+- [x] CLI: `hoppy dns zone scan start --id <zone-id>` — trigger scan
+- [x] CLI: `hoppy dns zone scan results --id <zone-id>` — show latest scan results
+- [x] Capture fixtures via `--record`
+- [x] Wiremock + insta snapshot tests
+- [x] Live E2E test: create zone → trigger scan → poll for results → verify → delete zone
 
 ---
 

@@ -12,7 +12,7 @@ A CLI for [bunny.net](https://bunny.net) cloud and edge services. Designed for b
 | **CDN Pull Zones** | list, get, create, update, delete, purge cache |
 | **Storage Zones** | list, get, create, update, delete |
 | **Storage Files** | upload, download, list, delete (with progress bars) |
-| **DNS** | zone CRUD, record management for all types (A, AAAA, CNAME, MX, TXT, SRV, CAA, ...) |
+| **DNS** | zone CRUD, record management (A, AAAA, CNAME, MX, TXT, SRV, CAA, ...), DNSSEC, wildcard cert issuance, record discovery scans |
 | **Video Streaming** | library CRUD, video list/get/upload/delete (with progress bars), transcription, re-encoding, repackage, smart-generate, thumbnails, heatmaps, resolution management, storage breakdown |
 | **Shield (Security)** | WAF rules, rate limiting, access lists, bot detection, DDoS config |
 | **Edge Scripting** | script CRUD, publish, code management, variables, secrets, statistics |
@@ -124,6 +124,18 @@ hoppy dns record add --zone-id 123 --type A --name www --value 1.2.3.4
 hoppy dns record add --zone-id 123 --type MX --name @ --value mail.example.com --priority 10
 hoppy dns record update --zone-id 123 --record-id 456 --value 5.6.7.8
 hoppy dns record delete --zone-id 123 --record-id 456 --yes
+
+# DNSSEC
+hoppy dns zone dnssec enable --id 123        # prints DS record to copy to your registrar
+hoppy dns zone dnssec status --id 123
+hoppy dns zone dnssec disable --id 123 --yes # warns: remove DS records at registrar first
+
+# Wildcard certificate (zone must be delegated to bunny.net nameservers)
+hoppy dns zone issue-cert --id 123
+
+# Record discovery scan (auto-discover records during migration)
+hoppy dns zone scan start --id 123              # or: --domain example.com
+hoppy dns zone scan results --id 123
 ```
 
 ### Video Streaming

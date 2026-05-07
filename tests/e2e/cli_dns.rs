@@ -534,6 +534,122 @@ fn live_dns_record_lifecycle() {
 
 #[cfg(feature = "live-api")]
 #[test]
+fn live_dns_zone_dnssec_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let domain = format!("{}.test", support::unique_name("hoppytest"));
+
+        // 1. Create zone
+        let create = support::hoppy_live_json(&["dns", "zone", "create", "--domain", &domain]);
+        assert!(create.success, "create zone failed: {}", create.stderr);
+        let zone_id = create.json.as_ref().unwrap()["Id"].as_i64().unwrap();
+        let zone_id_str = zone_id.to_string();
+        cleanup.push(&["dns", "zone", "delete", "--id", &zone_id_str]);
+
+        // 2. Initial status: DNSSEC disabled
+        let status_before =
+            support::hoppy_live_json(&["dns", "zone", "dnssec", "status", "--id", &zone_id_str]);
+        assert!(
+            status_before.success,
+            "status failed: {}",
+            status_before.stderr
+        );
+        assert_eq!(
+            status_before.json.as_ref().unwrap()["DnsSecEnabled"]
+                .as_bool()
+                .unwrap_or(true),
+            false,
+            "expected DnsSecEnabled to start as false"
+        );
+
+        // 3. Enable DNSSEC
+        let enable =
+            support::hoppy_live_json(&["dns", "zone", "dnssec", "enable", "--id", &zone_id_str]);
+        assert!(enable.success, "enable dnssec failed: {}", enable.stderr);
+        assert_eq!(
+            enable.json.as_ref().unwrap()["Enabled"].as_bool(),
+            Some(true)
+        );
+
+        // 4. Verify status now true
+        let status_after =
+            support::hoppy_live_json(&["dns", "zone", "dnssec", "status", "--id", &zone_id_str]);
+        assert!(
+            status_after.success,
+            "status failed: {}",
+            status_after.stderr
+        );
+        assert_eq!(
+            status_after.json.as_ref().unwrap()["DnsSecEnabled"]
+                .as_bool()
+                .unwrap_or(false),
+            true,
+            "expected DnsSecEnabled to be true after enable"
+        );
+
+        // 5. Disable DNSSEC (with --yes)
+        let disable = support::hoppy_live_json_yes(&[
+            "dns",
+            "zone",
+            "dnssec",
+            "disable",
+            "--id",
+            &zone_id_str,
+        ]);
+        assert!(disable.success, "disable dnssec failed: {}", disable.stderr);
+
+        // 6. Zone cleanup handled by cleanup stack
+    });
+}
+
+#[cfg(feature = "live-api")]
+#[test]
+fn live_dns_zone_record_scan_lifecycle() {
+    support::run_lifecycle(|cleanup| {
+        let domain = format!("{}.test", support::unique_name("hoppytest"));
+
+        // 1. Create zone
+        let create = support::hoppy_live_json(&["dns", "zone", "create", "--domain", &domain]);
+        assert!(create.success, "create zone failed: {}", create.stderr);
+        let zone_id = create.json.as_ref().unwrap()["Id"].as_i64().unwrap();
+        let zone_id_str = zone_id.to_string();
+        cleanup.push(&["dns", "zone", "delete", "--id", &zone_id_str]);
+
+        // 2. Trigger scan
+        let trigger =
+            support::hoppy_live_json(&["dns", "zone", "scan", "start", "--id", &zone_id_str]);
+        assert!(trigger.success, "scan start failed: {}", trigger.stderr);
+        assert!(trigger.json.as_ref().unwrap()["JobId"].is_string());
+
+        // 3. Poll for results (up to ~30s)
+        let mut attempts = 0;
+        let mut got_status: Option<i64> = None;
+        while attempts < 15 {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let res =
+                support::hoppy_live_json(&["dns", "zone", "scan", "results", "--id", &zone_id_str]);
+            if res.success {
+                if let Some(s) = res.json.as_ref().and_then(|j| j["Status"].as_i64()) {
+                    got_status = Some(s);
+                    if s == 2 || s == 3 {
+                        break;
+                    }
+                }
+            }
+            attempts += 1;
+        }
+        // Either Completed (2) or Failed (3) is acceptable; scan reaching a
+        // terminal state means the API plumbing works.
+        assert!(
+            matches!(got_status, Some(2) | Some(3)),
+            "scan did not reach a terminal state (last status: {got_status:?})"
+        );
+
+        // 4. Zone cleanup handled by cleanup stack
+    });
+}
+
+#[cfg(feature = "live-api")]
+#[test]
 fn live_dns_record_mx_priority() {
     support::run_lifecycle(|cleanup| {
         let domain = format!("{}.test", support::unique_name("hoppytest"));
@@ -651,6 +767,268 @@ async fn dns_record_add_mx_with_priority() {
 
     assert!(output.status.success());
     insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+// ---------------------------------------------------------------------------
+// DNSSEC tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn dns_zone_dnssec_enable_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/dnssec"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnssec_enable.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "json", "dns", "zone", "dnssec", "enable", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert_eq!(json["Enabled"], true);
+    assert_eq!(json["KeyTag"], 12345);
+    assert_eq!(json["Algorithm"], 13);
+}
+
+#[tokio::test]
+async fn dns_zone_dnssec_enable_table_shows_ds_record() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/dnssec"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnssec_enable.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "table", "dns", "zone", "dnssec", "enable", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("DS record"));
+    assert!(stderr.contains("12345"));
+}
+
+#[tokio::test]
+async fn dns_zone_dnssec_disable_with_yes() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/dnszone/50001/dnssec"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnssec_disable.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--yes", "--format", "json", "dns", "zone", "dnssec", "disable", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert_eq!(json["Enabled"], false);
+}
+
+#[tokio::test]
+async fn dns_zone_dnssec_status_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "json", "dns", "zone", "dnssec", "status", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert_eq!(json["Id"], 50001);
+    assert_eq!(json["DnsSecEnabled"], false);
+}
+
+// ---------------------------------------------------------------------------
+// Wildcard certificate tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn dns_zone_issue_cert_succeeds() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/certificate/issue"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "issue-cert", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Issued wildcard certificate"));
+}
+
+// ---------------------------------------------------------------------------
+// DNS record scan tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn dns_zone_scan_start_with_id_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_trigger.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "json", "dns", "zone", "scan", "start", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert!(json["JobId"].is_string());
+}
+
+#[tokio::test]
+async fn dns_zone_scan_start_with_domain_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/records/scan"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_trigger.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "zone",
+            "scan",
+            "start",
+            "--domain",
+            "example.com",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn dns_zone_scan_start_requires_id_or_domain() {
+    let server = MockServer::start().await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "scan", "start"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--id") || stderr.contains("--domain"));
+}
+
+#[tokio::test]
+async fn dns_zone_scan_results_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_result.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "json", "dns", "zone", "scan", "results", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert_eq!(json["ZoneId"], 50001);
+    let records = json["Records"].as_array().expect("records array");
+    assert_eq!(records.len(), 3);
 }
 
 #[tokio::test]

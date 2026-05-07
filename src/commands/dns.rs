@@ -1,10 +1,13 @@
 use crate::auth;
-use crate::cli::{DnsAction, DnsRecordAction, DnsZoneAction, OutputFormat};
+use crate::cli::{
+    DnsAction, DnsDnssecAction, DnsRecordAction, DnsScanAction, DnsZoneAction, OutputFormat,
+};
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{
-    AddDnsRecord, CreateDnsZone, DnsRecord, DnsRecordType, DnsZone, UpdateDnsRecord, UpdateDnsZone,
+    AddDnsRecord, CreateDnsZone, DnsDiscoveredRecord, DnsRecord, DnsRecordScanResult,
+    DnsRecordType, DnsSecDsRecord, DnsZone, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
 };
 use std::io::{self, BufRead, Read, Write};
 
@@ -132,6 +135,134 @@ impl From<&DnsRecord> for DnsRecordRow {
             priority,
             ttl: r.ttl,
             disabled: r.disabled,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Display structs — DNSSEC
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct DnssecRow {
+    #[tabled(rename = "Enabled")]
+    enabled: bool,
+    #[tabled(rename = "Key Tag")]
+    key_tag: i32,
+    #[tabled(rename = "Algorithm")]
+    algorithm: i32,
+    #[tabled(rename = "Digest Type")]
+    digest_type: String,
+    #[tabled(rename = "Digest")]
+    digest: String,
+    #[tabled(rename = "Flags")]
+    flags: i32,
+    #[tabled(rename = "DS Configured")]
+    ds_configured: bool,
+}
+
+impl From<&DnsSecDsRecord> for DnssecRow {
+    fn from(r: &DnsSecDsRecord) -> Self {
+        Self {
+            enabled: r.enabled,
+            key_tag: r.key_tag,
+            algorithm: r.algorithm,
+            digest_type: r.digest_type.clone().unwrap_or_else(|| "-".to_owned()),
+            digest: r.digest.clone().unwrap_or_else(|| "-".to_owned()),
+            flags: r.flags,
+            ds_configured: r.ds_configured,
+        }
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct DnssecStatusRow {
+    #[tabled(rename = "Zone ID")]
+    id: i64,
+    #[tabled(rename = "Domain")]
+    domain: String,
+    #[tabled(rename = "DNSSEC Enabled")]
+    enabled: bool,
+}
+
+// ---------------------------------------------------------------------------
+// Display structs — DNS record scan
+// ---------------------------------------------------------------------------
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct DnsScanTriggerRow {
+    #[tabled(rename = "Job ID")]
+    job_id: String,
+    #[tabled(rename = "Status")]
+    status: String,
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct DnsScanSummaryRow {
+    #[tabled(rename = "Job ID")]
+    job_id: String,
+    #[tabled(rename = "Zone ID")]
+    zone_id: String,
+    #[tabled(rename = "Domain")]
+    domain: String,
+    #[tabled(rename = "Status")]
+    status: String,
+    #[tabled(rename = "Records")]
+    record_count: usize,
+    #[tabled(rename = "Created")]
+    created_at: String,
+    #[tabled(rename = "Completed")]
+    completed_at: String,
+}
+
+impl From<&DnsRecordScanResult> for DnsScanSummaryRow {
+    fn from(r: &DnsRecordScanResult) -> Self {
+        Self {
+            job_id: r.job_id.clone().unwrap_or_else(|| "-".to_owned()),
+            zone_id: r
+                .zone_id
+                .map(|i| i.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            domain: r.domain.clone().unwrap_or_else(|| "-".to_owned()),
+            status: r
+                .status
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            record_count: r.records.len(),
+            created_at: r.created_at.clone().unwrap_or_else(|| "-".to_owned()),
+            completed_at: r.completed_at.clone().unwrap_or_else(|| "-".to_owned()),
+        }
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct DnsDiscoveredRecordRow {
+    #[tabled(rename = "Type")]
+    record_type: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Value")]
+    value: String,
+    #[tabled(rename = "TTL")]
+    ttl: String,
+    #[tabled(rename = "Priority")]
+    priority: String,
+}
+
+impl From<&DnsDiscoveredRecord> for DnsDiscoveredRecordRow {
+    fn from(r: &DnsDiscoveredRecord) -> Self {
+        Self {
+            record_type: r
+                .record_type
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "Unknown".to_owned()),
+            name: r.name.clone().unwrap_or_else(|| "@".to_owned()),
+            value: r.value.clone().unwrap_or_default(),
+            ttl: r
+                .ttl
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "-".to_owned()),
+            priority: r.priority.map(|p| p.to_string()).unwrap_or_default(),
         }
     }
 }
@@ -280,6 +411,19 @@ async fn handle_zone(
                 );
             }
         }
+        DnsZoneAction::Dnssec { action } => {
+            handle_dnssec(client, action, format, yes).await?;
+            return Ok(());
+        }
+        DnsZoneAction::IssueCert { id } => {
+            client.issue_dns_zone_wildcard_certificate(*id).await?;
+            eprintln!("Issued wildcard certificate for DNS zone {id}");
+            return Ok(());
+        }
+        DnsZoneAction::Scan { action } => {
+            handle_scan(client, action, format).await?;
+            return Ok(());
+        }
         DnsZoneAction::Statistics {
             id,
             date_from,
@@ -306,6 +450,134 @@ async fn handle_zone(
                 }];
                 output::print_data(&rows, format);
             }
+        }
+    }
+    Ok(())
+}
+
+async fn handle_dnssec(
+    client: &CoreClient,
+    action: &DnsDnssecAction,
+    format: OutputFormat,
+    yes: bool,
+) -> Result<()> {
+    match action {
+        DnsDnssecAction::Enable { id } => {
+            let ds = client.enable_dns_zone_dnssec(*id).await?;
+            print_dnssec(&ds, format)?;
+        }
+        DnsDnssecAction::Disable { id } => {
+            if !yes {
+                eprintln!(
+                    "WARNING: disabling DNSSEC at bunny.net while DS records remain at your registrar will break DNS resolution. Remove the DS records from your registrar first."
+                );
+                eprint!("Disable DNSSEC for DNS zone {id}? [y/N] ");
+                io::stderr().flush()?;
+                let mut line = String::new();
+                io::stdin().lock().read_line(&mut line)?;
+                let answer = line.trim().to_lowercase();
+                if answer != "y" && answer != "yes" {
+                    eprintln!("Aborted.");
+                    return Ok(());
+                }
+            }
+            let ds = client.disable_dns_zone_dnssec(*id).await?;
+            print_dnssec(&ds, format)?;
+        }
+        DnsDnssecAction::Status { id } => {
+            let zone = client.get_dns_zone(*id).await?;
+            if let OutputFormat::Json = format {
+                let row = serde_json::json!({
+                    "Id": zone.id,
+                    "Domain": zone.domain,
+                    "DnsSecEnabled": zone.dns_sec_enabled,
+                });
+                let json =
+                    serde_json::to_string_pretty(&row).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let row = DnssecStatusRow {
+                    id: zone.id,
+                    domain: zone.domain.clone(),
+                    enabled: zone.dns_sec_enabled,
+                };
+                output::print_single(&row, format);
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn handle_scan(
+    client: &CoreClient,
+    action: &DnsScanAction,
+    format: OutputFormat,
+) -> Result<()> {
+    match action {
+        DnsScanAction::Start { id, domain } => {
+            let body = match (id, domain) {
+                (Some(zone_id), None) => TriggerDnsRecordScan::for_zone(*zone_id),
+                (None, Some(d)) => TriggerDnsRecordScan::for_domain(d),
+                (None, None) => unreachable!("clap ArgGroup ensures one of --id/--domain is set"),
+                (Some(_), Some(_)) => {
+                    unreachable!(
+                        "clap conflicts_with ensures --id and --domain are mutually exclusive"
+                    )
+                }
+            };
+            let trigger = client.trigger_dns_record_scan(&body).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&trigger)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let row = DnsScanTriggerRow {
+                    job_id: trigger.job_id.clone().unwrap_or_else(|| "-".to_owned()),
+                    status: trigger
+                        .status
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "-".to_owned()),
+                };
+                output::print_single(&row, format);
+            }
+        }
+        DnsScanAction::Results { id } => {
+            let result = client.get_dns_zone_record_scan(*id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let summary = DnsScanSummaryRow::from(&result);
+                output::print_single(&summary, format);
+                if !result.records.is_empty() {
+                    let rows: Vec<DnsDiscoveredRecordRow> = result
+                        .records
+                        .iter()
+                        .map(DnsDiscoveredRecordRow::from)
+                        .collect();
+                    output::print_data(&rows, format);
+                }
+                if let Some(err) = &result.error {
+                    eprintln!("Scan error: {err}");
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn print_dnssec(ds: &DnsSecDsRecord, format: OutputFormat) -> Result<()> {
+    if let OutputFormat::Json = format {
+        let json = serde_json::to_string_pretty(ds).context("failed to serialize to JSON")?;
+        println!("{json}");
+    } else {
+        let row = DnssecRow::from(ds);
+        output::print_single(&row, format);
+        if let Some(rec) = &ds.ds_record {
+            eprintln!();
+            eprintln!("DS record (copy this to your domain registrar):");
+            eprintln!("  {rec}");
         }
     }
     Ok(())

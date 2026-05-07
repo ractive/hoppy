@@ -1,5 +1,6 @@
 use bunny_api_core::types::{
-    AddDnsRecord, CreateDnsZone, DnsRecordType, UpdateDnsRecord, UpdateDnsZone,
+    AddDnsRecord, CreateDnsZone, DnsDiscoveredRecordType, DnsRecordType, DnsScanJobStatus,
+    TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
 };
 use bunny_api_core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
@@ -17,6 +18,12 @@ const FIXTURE_UNAUTHORIZED: &str =
 const FIXTURE_EXPORT: &str = include_str!("../../../../fixtures/core/dnszone_export.txt");
 const FIXTURE_IMPORT: &str = include_str!("../../../../fixtures/core/dnszone_import.json");
 const FIXTURE_STATISTICS: &str = include_str!("../../../../fixtures/core/dnszone_statistics.json");
+const FIXTURE_DNSSEC_ENABLE: &str = include_str!("../../../../fixtures/core/dnssec_enable.json");
+const FIXTURE_DNSSEC_DISABLE: &str = include_str!("../../../../fixtures/core/dnssec_disable.json");
+const FIXTURE_SCAN_TRIGGER: &str =
+    include_str!("../../../../fixtures/core/dnszone_scan_trigger.json");
+const FIXTURE_SCAN_RESULT: &str =
+    include_str!("../../../../fixtures/core/dnszone_scan_result.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -553,4 +560,246 @@ async fn get_dns_zone_statistics_returns_data() {
     assert_eq!(stats.total_queries_served, 85000);
     assert!(stats.queries_served_chart.is_some());
     assert_eq!(stats.queries_served_chart.unwrap().len(), 3);
+}
+
+// ---------------------------------------------------------------------------
+// DNSSEC tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn enable_dnssec_returns_ds_record_details() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/dnssec"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_DNSSEC_ENABLE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .enable_dns_zone_dnssec(50001)
+        .await
+        .unwrap();
+
+    assert!(result.enabled);
+    assert_eq!(result.algorithm, 13);
+    assert_eq!(result.key_tag, 12345);
+    assert_eq!(result.flags, 257);
+    assert_eq!(result.digest_type.as_deref(), Some("SHA-256"));
+    assert!(result.ds_record.as_ref().unwrap().contains("DS"));
+    assert!(!result.ds_configured);
+}
+
+#[tokio::test]
+async fn disable_dnssec_returns_disabled_status() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/dnszone/50001/dnssec"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_DNSSEC_DISABLE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .disable_dns_zone_dnssec(50001)
+        .await
+        .unwrap();
+
+    assert!(!result.enabled);
+    assert_eq!(result.key_tag, 0);
+    assert!(result.ds_record.is_none());
+}
+
+#[tokio::test]
+async fn enable_dnssec_for_missing_zone_returns_404() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/dnszone/99999/dnssec"))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_raw(FIXTURE_NOT_FOUND, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .enable_dns_zone_dnssec(99999)
+        .await
+        .unwrap_err();
+
+    let api_err = err
+        .downcast_ref::<ApiError>()
+        .expect("should be an ApiError");
+    assert_eq!(api_err.status_code, 404);
+}
+
+// ---------------------------------------------------------------------------
+// Wildcard certificate tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn issue_wildcard_certificate_succeeds_with_empty_response() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/certificate/issue"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .issue_dns_zone_wildcard_certificate(50001)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn issue_wildcard_certificate_for_missing_zone_returns_404() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/dnszone/99999/certificate/issue"))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_raw(FIXTURE_NOT_FOUND, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .issue_dns_zone_wildcard_certificate(99999)
+        .await
+        .unwrap_err();
+
+    let api_err = err
+        .downcast_ref::<ApiError>()
+        .expect("should be an ApiError");
+    assert_eq!(api_err.status_code, 404);
+}
+
+// ---------------------------------------------------------------------------
+// DNS record scan tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn trigger_dns_record_scan_with_zone_id() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "ZoneId": 50001 });
+
+    Mock::given(method("POST"))
+        .and(path("/dnszone/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(&expected_body))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_SCAN_TRIGGER, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = TriggerDnsRecordScan::for_zone(50001);
+    let result = test_client(&server.uri())
+        .trigger_dns_record_scan(&body)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        result.job_id.as_deref(),
+        Some("11111111-2222-3333-4444-555555555555")
+    );
+    assert_eq!(result.status, Some(DnsScanJobStatus::Pending));
+}
+
+#[tokio::test]
+async fn trigger_dns_record_scan_with_domain() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "Domain": "example.com" });
+
+    Mock::given(method("POST"))
+        .and(path("/dnszone/records/scan"))
+        .and(body_json(&expected_body))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_SCAN_TRIGGER, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = TriggerDnsRecordScan::for_domain("example.com");
+    let result = test_client(&server.uri())
+        .trigger_dns_record_scan(&body)
+        .await
+        .unwrap();
+
+    assert!(result.job_id.is_some());
+}
+
+#[tokio::test]
+async fn get_dns_zone_record_scan_returns_completed_results() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_SCAN_RESULT, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_dns_zone_record_scan(50001)
+        .await
+        .unwrap();
+
+    assert_eq!(result.zone_id, Some(50001));
+    assert_eq!(result.domain.as_deref(), Some("example.com"));
+    assert_eq!(result.status, Some(DnsScanJobStatus::Completed));
+    assert_eq!(result.records.len(), 3);
+
+    let a = &result.records[0];
+    assert_eq!(a.record_type, Some(DnsDiscoveredRecordType::A));
+    assert_eq!(a.value.as_deref(), Some("93.184.216.34"));
+
+    let mx = &result.records[2];
+    assert_eq!(mx.record_type, Some(DnsDiscoveredRecordType::MX));
+    assert_eq!(mx.priority, Some(10));
+}
+
+#[tokio::test]
+async fn get_dns_zone_record_scan_not_found() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dnszone/99999/records/scan"))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_raw(FIXTURE_NOT_FOUND, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .get_dns_zone_record_scan(99999)
+        .await
+        .unwrap_err();
+
+    let api_err = err
+        .downcast_ref::<ApiError>()
+        .expect("should be an ApiError");
+    assert_eq!(api_err.status_code, 404);
 }
