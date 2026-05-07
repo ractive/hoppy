@@ -8,7 +8,7 @@ tags:
   - dns
   - security
   - dnssec
-status: in-progress
+status: completed
 branch: iter-17/dns-security
 ---
 
