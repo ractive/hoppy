@@ -464,7 +464,7 @@ async fn handle_dnssec(
     match action {
         DnsDnssecAction::Enable { id } => {
             let ds = client.enable_dns_zone_dnssec(*id).await?;
-            print_dnssec(&ds, format);
+            print_dnssec(&ds, format)?;
         }
         DnsDnssecAction::Disable { id } => {
             if !yes {
@@ -482,7 +482,7 @@ async fn handle_dnssec(
                 }
             }
             let ds = client.disable_dns_zone_dnssec(*id).await?;
-            print_dnssec(&ds, format);
+            print_dnssec(&ds, format)?;
         }
         DnsDnssecAction::Status { id } => {
             let zone = client.get_dns_zone(*id).await?;
@@ -518,8 +518,12 @@ async fn handle_scan(
             let body = match (id, domain) {
                 (Some(zone_id), None) => TriggerDnsRecordScan::for_zone(*zone_id),
                 (None, Some(d)) => TriggerDnsRecordScan::for_domain(d),
-                (None, None) => bail!("either --id or --domain is required"),
-                (Some(_), Some(_)) => bail!("--id and --domain are mutually exclusive"),
+                (None, None) => unreachable!("clap ArgGroup ensures one of --id/--domain is set"),
+                (Some(_), Some(_)) => {
+                    unreachable!(
+                        "clap conflicts_with ensures --id and --domain are mutually exclusive"
+                    )
+                }
             };
             let trigger = client.trigger_dns_record_scan(&body).await?;
             if let OutputFormat::Json = format {
@@ -563,9 +567,9 @@ async fn handle_scan(
     Ok(())
 }
 
-fn print_dnssec(ds: &DnsSecDsRecord, format: OutputFormat) {
+fn print_dnssec(ds: &DnsSecDsRecord, format: OutputFormat) -> Result<()> {
     if let OutputFormat::Json = format {
-        let json = serde_json::to_string_pretty(ds).expect("failed to serialize to JSON");
+        let json = serde_json::to_string_pretty(ds).context("failed to serialize to JSON")?;
         println!("{json}");
     } else {
         let row = DnssecRow::from(ds);
@@ -576,6 +580,7 @@ fn print_dnssec(ds: &DnsSecDsRecord, format: OutputFormat) {
             eprintln!("  {rec}");
         }
     }
+    Ok(())
 }
 
 async fn handle_record(

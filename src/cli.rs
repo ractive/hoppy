@@ -823,6 +823,7 @@ pub enum DnsScanAction {
     ///
     /// Provide either `--id <zone-id>` for an existing zone or `--domain
     /// <domain>` to scan before creating the zone (but not both).
+    #[command(group = clap::ArgGroup::new("scan_target").required(true).args(["id", "domain"]))]
     Start {
         /// DNS Zone ID (use this for existing zones)
         #[arg(long, conflicts_with = "domain")]
