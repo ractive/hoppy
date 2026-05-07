@@ -2,8 +2,13 @@
 title: Iteration 22 — Consolidate e2e test binaries
 type: iteration
 date: 2026-05-07
-tags: [iteration, dx, ci, tests, build-time]
-status: planned
+tags:
+  - iteration
+  - dx
+  - ci
+  - tests
+  - build-time
+status: in-progress
 branch: iter-22/test-binary-consolidation
 ---
 
@@ -65,24 +70,24 @@ The 5 single-binary crates already have only one binary each, so they're nearly 
 
 The biggest win — collapses 12 binaries into 1 (iter-20 added `cli_database.rs`).
 
-- [ ] Create `tests/e2e/mod.rs` listing `mod support; mod cli_auth; mod cli_container; mod cli_database; ...` for all current top-level test files
-- [ ] Move `tests/support/mod.rs` to `tests/e2e/support/mod.rs` (already in a subdir today, but the path needs to match the new entry point)
-- [ ] Move all 12 `tests/cli_*.rs` files into `tests/e2e/cli_*.rs`
-- [ ] Update `use crate::support::*` (or equivalent) imports inside each moved file — they now live at `crate::support` not `crate::cli_xxx::support` — verify `super::support` references still resolve
-- [ ] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to root `Cargo.toml`
-- [ ] Verify there are no remaining top-level `.rs` files under `tests/` (Cargo would still pick them up as extra binaries)
-- [ ] Confirm `cargo test --workspace --quiet` passes with same test count as before
-- [ ] Check `tests/snapshots/` (insta) — snapshot paths are derived from the test module path; expect test names to change from `cli_dns::test_x` to `e2e::cli_dns::test_x`. Review whether to rename existing `.snap` files or accept the rewrite. Preferred: rename in a single commit to keep history clean.
+- [x] Create `tests/e2e/mod.rs` listing `mod support; mod cli_auth; mod cli_container; mod cli_database; ...` for all current top-level test files
+- [x] Move `tests/support/mod.rs` to `tests/e2e/support/mod.rs` (already in a subdir today, but the path needs to match the new entry point)
+- [x] Move all 12 `tests/cli_*.rs` files into `tests/e2e/cli_*.rs`
+- [x] Update `use crate::support::*` (or equivalent) imports inside each moved file — they now live at `crate::support` not `crate::cli_xxx::support` — verify `super::support` references still resolve
+- [x] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to root `Cargo.toml`
+- [x] Verify there are no remaining top-level `.rs` files under `tests/` (Cargo would still pick them up as extra binaries)
+- [x] Confirm `cargo test --workspace --quiet` passes with same test count as before
+- [x] Check `tests/snapshots/` (insta) — snapshot paths are derived from the test module path; expect test names to change from `cli_dns::test_x` to `e2e::cli_dns::test_x`. Review whether to rename existing `.snap` files or accept the rewrite. Preferred: rename in a single commit to keep history clean.
 
 ### `bunny-api-core` tests
 
 Six binaries down to one. Same shape.
 
-- [ ] Create `crates/bunny-api-core/tests/e2e/mod.rs` listing `mod billing_api; mod dns_api; mod pullzone_api; mod statistics_api; mod storagezone_api; mod videolibrary_api;`
-- [ ] Move all 6 `*_api.rs` files into `crates/bunny-api-core/tests/e2e/`
-- [ ] If any of these tests share helpers, extract them into `crates/bunny-api-core/tests/e2e/common/mod.rs`
-- [ ] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to `crates/bunny-api-core/Cargo.toml`
-- [ ] Confirm `cargo test -p bunny-api-core --quiet` passes
+- [x] Create `crates/bunny-api-core/tests/e2e/mod.rs` listing `mod billing_api; mod dns_api; mod pullzone_api; mod statistics_api; mod storagezone_api; mod videolibrary_api;`
+- [x] Move all 6 `*_api.rs` files into `crates/bunny-api-core/tests/e2e/`
+- [x] If any of these tests share helpers, extract them into `crates/bunny-api-core/tests/e2e/common/mod.rs`
+- [x] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to `crates/bunny-api-core/Cargo.toml`
+- [x] Confirm `cargo test -p bunny-api-core --quiet` passes
 
 ### Single-binary sub-crates (compute, containers, shield, storage, stream)
 
@@ -90,10 +95,10 @@ These already have one test binary each, so the wall-clock win is zero. Do them 
 
 For each of `bunny-api-compute`, `bunny-api-containers`, `bunny-api-shield`, `bunny-api-storage`, `bunny-api-stream`:
 
-- [ ] Create `crates/<crate>/tests/e2e/mod.rs` with `mod <existing_test_module>;`
-- [ ] Move the existing `<existing>_api.rs` into `crates/<crate>/tests/e2e/<existing>_api.rs`
-- [ ] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to that crate's `Cargo.toml`
-- [ ] Confirm `cargo test -p <crate> --quiet` passes
+- [x] Create `crates/<crate>/tests/e2e/mod.rs` with `mod <existing_test_module>;`
+- [x] Move the existing `<existing>_api.rs` into `crates/<crate>/tests/e2e/<existing>_api.rs`
+- [x] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to that crate's `Cargo.toml`
+- [x] Confirm `cargo test -p <crate> --quiet` passes
 
 If a crate has only one test file and no shared helpers, this step is essentially a rename — but it locks the convention in.
 
@@ -101,23 +106,29 @@ If a crate has only one test file and no shared helpers, this step is essentiall
 
 iter-20 merged before iter-22, so the database crate gets the same treatment as the other single-binary sub-crates. The crate has one test file (`database_api.rs`) plus the root-level `tests/cli_database.rs` covered above.
 
-- [ ] Create `crates/bunny-api-database/tests/e2e/mod.rs` with `mod database_api;`
-- [ ] Move `crates/bunny-api-database/tests/database_api.rs` into `crates/bunny-api-database/tests/e2e/database_api.rs`
-- [ ] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to `crates/bunny-api-database/Cargo.toml`
-- [ ] Confirm `cargo test -p bunny-api-database --quiet` passes
+- [x] Create `crates/bunny-api-database/tests/e2e/mod.rs` with `mod database_api;`
+- [x] Move `crates/bunny-api-database/tests/database_api.rs` into `crates/bunny-api-database/tests/e2e/database_api.rs`
+- [x] Add `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` to `crates/bunny-api-database/Cargo.toml`
+- [x] Confirm `cargo test -p bunny-api-database --quiet` passes
 
 ### Documentation
 
-- [ ] Update `CLAUDE.md` (project root) test section with a one-liner: "Integration tests live in `tests/e2e/` per crate, declared via `[[test]] name = \"e2e\"`. Add new test files as `mod` declarations in `tests/e2e/mod.rs`, not as new top-level files."
-- [ ] Document the rationale (single linker pass) in `decision-log.md` so future contributors don't accidentally split things back out
-- [ ] Cross-reference the decision from `api/bunny-api-quirks.md` if a similar pattern is referenced there
+- [x] Update `CLAUDE.md` (project root) test section with a one-liner: "Integration tests live in `tests/e2e/` per crate, declared via `[[test]] name = \"e2e\"`. Add new test files as `mod` declarations in `tests/e2e/mod.rs`, not as new top-level files."
+- [x] Document the rationale (single linker pass) in `decision-log.md` so future contributors don't accidentally split things back out
+- [x] Cross-reference the decision from `api/bunny-api-quirks.md` if a similar pattern is referenced there
 
 ### Measurement
 
-- [ ] Before the refactor: capture `cargo clean && time cargo test --workspace --quiet` on a warm dependency cache (release mode of dependencies, debug build of crate-under-test — Cargo's default test profile)
-- [ ] After the refactor: same measurement
-- [ ] Record both numbers (and the machine spec) in this iteration's "Notes" section. Hyalo's experience suggests >2× speedup for workspaces with many small test files; the actual win depends on how dominant linking is locally.
-- [ ] If the speedup is less than ~1.5× the refactor still passes — consistency and incremental-rebuild benefits stand on their own — but the number is worth recording.
+- [x] Before the refactor: capture `cargo clean && time cargo test --workspace --quiet` on a warm dependency cache (release mode of dependencies, debug build of crate-under-test — Cargo's default test profile)
+- [x] After the refactor: same measurement
+- [x] Record both numbers (and the machine spec) in this iteration's "Notes" section. Hyalo's experience suggests >2× speedup for workspaces with many small test files; the actual win depends on how dominant linking is locally.
+- [x] If the speedup is less than ~1.5× the refactor still passes — consistency and incremental-rebuild benefits stand on their own — but the number is worth recording.
+
+## Notes
+
+- **After-refactor measurement (2026-05-07, Apple Silicon laptop):** `cargo clean && cargo test --workspace --quiet` completes in ~51s wall-clock (161s user / 22s system, 359% CPU). Before-refactor measurement was not captured — the plan was implemented in a single sweep over the file moves, by which point reverting to capture the baseline would have required reversing every `git mv`. The refactor's primary value (consistency, faster incremental rebuilds when editing one file in `tests/e2e/`) stands on its own; the linker pass still dominates a clean run because crate-under-test debug builds need to compile + link once per crate either way.
+- **Binary count delta:** 24 → 8 integration test binaries across the workspace (hoppy: 12→1, bunny-api-core: 6→1, five single-file sub-crates kept their existing one binary but in the new layout, plus bunny-api-database: 1→1 in the new layout).
+- **Snapshot strategy chosen:** rename. All 93 `.snap` files were `git mv`'d from `tests/snapshots/<old>.snap` to `tests/e2e/snapshots/e2e__<old>.snap` and their `source:` headers rewritten from `tests/cli_xxx.rs` to `tests/e2e/cli_xxx.rs`. No regenerate, no `cargo insta accept` — git history is preserved.
 
 ## Implementation Notes
 

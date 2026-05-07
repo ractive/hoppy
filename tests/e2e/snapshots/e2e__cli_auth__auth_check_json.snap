@@ -1,0 +1,16 @@
+---
+source: tests/e2e/cli_auth.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "Balance": 42.5,
+  "ThisMonthCharges": 7.12,
+  "BillingEnabled": true,
+  "MinimumMonthlyCommit": 0.0,
+  "AutomaticRechargeEnabled": true,
+  "AutomaticRechargeTreshold": 5.0,
+  "AutomaticPaymentAmount": 25.0,
+  "AutomaticPaymentCardType": "Visa",
+  "AutomaticPaymentIdentifier": "****1234",
+  "MonthlyBandwidthUsed": 10737418240
+}

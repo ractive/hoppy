@@ -1,0 +1,14 @@
+---
+source: tests/e2e/cli_shield.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+{
+  "id": 9001,
+  "name": "Blocked Countries",
+  "description": "Block traffic from specific countries",
+  "type": 1,
+  "content": "CN\nRU\nKP",
+  "checksum": "abc123def456",
+  "entryCount": 3,
+  "lastModified": "2025-01-15T10:00:00Z"
+}

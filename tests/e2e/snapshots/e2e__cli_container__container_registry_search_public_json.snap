@@ -1,0 +1,18 @@
+---
+source: tests/e2e/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+[
+  {
+    "id": "nginx",
+    "namespace": "dhi"
+  },
+  {
+    "id": "nginx",
+    "namespace": "library"
+  },
+  {
+    "id": "nginx-ingress",
+    "namespace": "nginx"
+  }
+]
