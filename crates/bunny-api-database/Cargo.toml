@@ -5,6 +5,10 @@ edition.workspace = true
 description = "Hand-written bunny.net Database (libSQL) API client"
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["bunny", "bunnycdn", "database", "libsql", "api"]
+categories = ["web-programming::http-client", "api-bindings"]
 
 [dependencies]
 reqwest.workspace = true

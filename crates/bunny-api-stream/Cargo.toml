@@ -5,6 +5,10 @@ edition.workspace = true
 description = "Hand-written bunny.net Stream (Video) API client"
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["bunny", "bunnycdn", "stream", "video", "api"]
+categories = ["web-programming::http-client", "api-bindings"]
 
 [dependencies]
 reqwest.workspace = true
