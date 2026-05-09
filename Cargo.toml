@@ -9,6 +9,7 @@ members = [
     "crates/bunny-api-storage",
     "crates/bunny-api-stream",
     "crates/bunny-api-recording",
+    "crates/bunny-syslog-receiver",
     "xtask",
 ]
 resolver = "3"
@@ -31,6 +32,7 @@ bunny-api-recording = { path = "crates/bunny-api-recording" }
 bunny-api-shield = { path = "crates/bunny-api-shield" }
 bunny-api-storage = { path = "crates/bunny-api-storage" }
 bunny-api-stream = { path = "crates/bunny-api-stream" }
+bunny-syslog-receiver = { path = "crates/bunny-syslog-receiver" }
 hoppy = { path = "." }
 
 # External dependencies
@@ -80,7 +82,7 @@ serde.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 anyhow.workspace = true
 tabled.workspace = true
-tokio = { workspace = true, features = ["fs"] }
+tokio = { workspace = true, features = ["fs", "signal"] }
 indicatif.workspace = true
 tokio-util.workspace = true
 console.workspace = true
@@ -92,6 +94,7 @@ bunny-api-database.workspace = true
 bunny-api-shield.workspace = true
 bunny-api-storage.workspace = true
 bunny-api-stream.workspace = true
+bunny-syslog-receiver.workspace = true
 
 [features]
 live-api = []

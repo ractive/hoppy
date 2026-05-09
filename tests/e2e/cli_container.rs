@@ -2193,3 +2193,18 @@ fn live_container_app_lifecycle() {
         // 12. Delete is handled by cleanup
     });
 }
+
+// ---------------------------------------------------------------------------
+// container logs — help snapshot
+// ---------------------------------------------------------------------------
+
+#[test]
+fn container_logs_help() {
+    let output = support::hoppy_cmd()
+        .args(["container", "logs", "--help"])
+        .output()
+        .unwrap();
+    // --help exits with 0
+    assert!(output.status.success(), "status: {}", output.status);
+    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
