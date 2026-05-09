@@ -23,7 +23,7 @@ Step-by-step checklist for cutting a hoppy release. Follow in order.
 - [ ] `cargo deny check` — licenses and advisories clean
 - [ ] Secrets set in GitHub repository settings:
   - `CARGO_TOKEN` — crates.io API token (owner: james)
-  - `HOMEBREW_TAP_TOKEN` — fine-grained PAT with `contents: write` on `ractive/homebrew-hoppy`
+  - `HOMEBREW_TAP_TOKEN` — fine-grained PAT with `contents: write` on `ractive/homebrew-tap`
   - `SCOOP_BUCKET_TOKEN` — fine-grained PAT with `contents: write` on `ractive/scoop-bucket`
 
 ## Cut the release
@@ -36,7 +36,7 @@ Step-by-step checklist for cutting a hoppy release. Follow in order.
 
 - [ ] All GitHub Actions jobs green
 - [ ] `cargo install hoppy` succeeds on a clean machine
-- [ ] `brew tap ractive/hoppy && brew install hoppy` works on macOS
+- [ ] `brew tap ractive/tap && brew install hoppy` works on macOS
 - [ ] `scoop bucket add ractive https://github.com/ractive/scoop-bucket && scoop install hoppy` works on Windows
 - [ ] `hoppy --version` prints the new version string
 - [ ] Release assets on GitHub include: per-target `.tar.gz`/`.zip`, `.deb`, `.rpm`, `SHA256SUMS`
@@ -53,7 +53,7 @@ Step-by-step checklist for cutting a hoppy release. Follow in order.
 | Secret | Owner | Scope |
 |--------|-------|-------|
 | `CARGO_TOKEN` | james (crates.io account) | publish to crates.io |
-| `HOMEBREW_TAP_TOKEN` | james (GitHub PAT) | `contents: write` on `ractive/homebrew-hoppy` |
+| `HOMEBREW_TAP_TOKEN` | james (GitHub PAT) | `contents: write` on `ractive/homebrew-tap` |
 | `SCOOP_BUCKET_TOKEN` | james (GitHub PAT) | `contents: write` on `ractive/scoop-bucket` |
 
 ## Version bump rule

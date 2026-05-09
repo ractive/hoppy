@@ -25,7 +25,7 @@ A CLI for [bunny.net](https://bunny.net) cloud and edge services. Designed for b
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap ractive/hoppy
+brew tap ractive/tap
 brew install hoppy
 ```
 

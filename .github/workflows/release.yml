@@ -61,15 +61,19 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             cross: true
+            runnable: false
           - target: x86_64-apple-darwin
             os: macos-13
           - target: aarch64-apple-darwin
             os: macos-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+          # aarch64-pc-windows-msvc cross-compiles natively on Windows x86_64
+          # (no Docker / cross). It is not runnable on the host, so smoke-test
+          # and completion-generation steps are skipped.
           - target: aarch64-pc-windows-msvc
             os: windows-latest
-            cross: true
+            runnable: false
 
     runs-on: ${{ matrix.os }}
 
@@ -94,7 +98,7 @@ jobs:
         run: ${{ matrix.cross && 'cross' || 'cargo' }} build --release --target ${{ matrix.target }}
 
       - name: Smoke test — verify CLI runs and subcommands exist
-        if: "!matrix.cross"
+        if: matrix.runnable != false
         shell: bash
         run: |
           cargo run --release --target ${{ matrix.target }} -p hoppy -- --help | \
@@ -103,15 +107,15 @@ jobs:
           BUNNY_API_KEY: placeholder
 
       # Generate shell completions by running a native host build.
-      # For cross-compiled targets the matrix binary cannot run on the host, so we
-      # build natively (no --target flag) just to produce completions. The
-      # completions output is architecture-independent.
+      # For non-runnable targets (cross-compiled aarch64) the matrix binary
+      # cannot run on the host, so we build natively (no --target flag) just
+      # to produce completions. The completions output is architecture-independent.
       - name: Generate shell completions
         if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p completions
-          if [ "${{ matrix.cross }}" = "true" ]; then
+          if [ "${{ matrix.runnable }}" = "false" ]; then
             cargo run --release -- completions bash  > completions/hoppy.bash
             cargo run --release -- completions zsh   > completions/_hoppy
             cargo run --release -- completions fish  > completions/hoppy.fish
@@ -129,7 +133,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path completions | Out-Null
-          if ("${{ matrix.cross }}" -eq "true") {
+          if ("${{ matrix.runnable }}" -eq "false") {
             cargo run --release -- completions bash  | Set-Content -NoNewline completions/hoppy.bash
             cargo run --release -- completions zsh   | Set-Content -NoNewline completions/_hoppy
             cargo run --release -- completions fish  | Set-Content -NoNewline completions/hoppy.fish
@@ -336,7 +340,7 @@ jobs:
             fi
           done
 
-      # Publish mid-tier crates in parallel steps (all depend on bunny-api-recording; none depend on each other)
+      # Publish mid-tier crates sequentially (all depend on bunny-api-recording; none depend on each other, but jobs run serially within this step list)
       - name: Publish bunny-api-compute to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
@@ -469,7 +473,7 @@ jobs:
             fi
           done
 
-      # bunny-syslog-receiver has no bunny-api-* deps; publish in parallel with mid-tier
+      # bunny-syslog-receiver has no bunny-api-* deps; published after mid-tier crates in this sequential job
       - name: Publish bunny-syslog-receiver to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
@@ -634,7 +638,7 @@ jobs:
           # Remove leading whitespace from heredoc
           sed -i 's/^          //' formula.rb
 
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/ractive/homebrew-hoppy.git" tap
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/ractive/homebrew-tap.git" tap
           cp formula.rb tap/Formula/hoppy.rb
           cd tap
           git config user.name "github-actions[bot]"
