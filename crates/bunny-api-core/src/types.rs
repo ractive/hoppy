@@ -284,9 +284,10 @@ impl std::str::FromStr for MatchingType {
 
 /// Where a watermark image is placed on optimised images.
 ///
-/// Bunny.net may add new positions in future API versions. The CLI uses
-/// [`crate::serde_helpers::deserialize_repr_option`] so unknown values
-/// deserialise to `None` instead of failing.
+/// Bunny.net may add new positions in future API versions. The
+/// `optimizer_watermark_position` field on [`PullZone`] is deserialised via
+/// [`crate::serde_helpers::deserialize_repr_option`] so unknown values become
+/// `None` instead of failing the whole response.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
 pub enum OptimizerWatermarkPosition {
