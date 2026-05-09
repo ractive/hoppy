@@ -47,7 +47,7 @@ Several things must be true before the project can be published. Audit each:
 - [x] **README polish.** Hoppy's `README.md` exists; before publishing, audit it as the package landing page on crates.io and the Homebrew formula description. Sections needed: install (Homebrew + cargo + binary download), quickstart, command map, configuration (BUNNY_API_KEY env var), troubleshooting, link to docs. **Note:** mention that `bore` is an *optional* runtime dep used by `hoppy container logs` (added in iter-24); the rest of hoppy works without it. Homebrew formula should not declare `bore` as a hard dependency — only as a "depends_on (recommended)" or in the post-install caveats.
 - [x] **CHANGELOG.md** (set up in iter-23) gets a `## [0.1.0] - YYYY-MM-DD` entry summarising every iteration that shipped.
 - [x] **LICENSE present and matches Cargo.toml `license = "MIT"`** — already true; verify.
-- [x] **Crates publish in dependency order**: `bunny-api-core` first (no internal deps), then `bunny-api-{compute,containers,database,recording,shield,storage,stream}` (each depends on `bunny-api-core` only? verify), then `bunny-syslog-receiver` (transport-only, no internal deps — can publish in parallel with the `bunny-api-*` group), then `hoppy` (or `hoppy-cli` after iter-23 §9 lands). The release workflow must publish in this order or `cargo publish` fails.
+- [x] **Crates publish in dependency order**: `bunny-api-recording` first (the only `bunny-api-*` crate with no internal deps), then `bunny-api-core` (depends on `bunny-api-recording`), then the mid-tier crates `bunny-api-{compute,containers,database,shield,storage,stream}` (each depends on `bunny-api-recording`; none depend on each other), then `bunny-syslog-receiver` (transport-only, no internal deps), then `hoppy` (depends on all of the above). The release workflow must publish in this order or `cargo publish` fails.
 - [x] **`[workspace.package]` hoist** (from iter-23 §3) makes version-bumping a single edit. Confirm it's in place.
 
 ### 2. Release workflow upgrades — version + security gates
@@ -89,7 +89,7 @@ Hyalo and ff-rdp both maintain a `homebrew-tap` repo (e.g. `ractive/homebrew-tap
   - Update the formula file (`Formula/hoppy.rb`) with new version + per-target SHA256s + tarball URLs
   - `git push` to the tap repo
 - [x] **Test the formula locally before relying on it in CI**: `brew install --build-from-source ./Formula/hoppy.rb` after a manual edit to verify the formula's structure works for hoppy.
-- [x] **Document the install path** in README: `brew tap ractive/tap && brew install hoppy`.
+- [x] **Document the install path** in README: `brew tap ractive/tap && brew install hoppy` (uses the shared `ractive/homebrew-tap`).
 
 ### 6. Scoop manifest (Windows)
 
@@ -105,7 +105,7 @@ ff-rdp has Scoop publishing; hyalo does too. Same pattern.
 ff-rdp includes a winget-pkgs PR step. This is more involved (forks `microsoft/winget-pkgs`, creates a manifest PR per release, requires Microsoft review). Defer unless the user wants Windows users to find hoppy via `winget install`.
 
 - [x] **Decision point**: include winget in iter-25 or defer to a follow-up? Recommendation: defer. Scoop covers most Windows power-users; winget submission has Microsoft review delays and rejection paths. Land iter-25 without it, add as a later iteration.
-- [x] If included: lift the winget job from ff-rdp verbatim, change package name + identifier.
+- [ ] If included: lift the winget job from ff-rdp verbatim, change package name + identifier. (Deferred — see decision above; no winget job in `release.yml`.)
 
 ### 8. SHA256SUMS aggregation
 

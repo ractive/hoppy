@@ -15,10 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `version-check` job: release tag must match `Cargo.toml` version
 - `security` job: `cargo audit` + `cargo deny check` before any build
 - `crates-io` job: publishes all 9 crates in dependency order with index-propagation retry
-- `scoop` job: updates `ractive/scoop-bucket` Homebrew manifest on each release
+- `scoop` job: updates `ractive/scoop-bucket` Scoop manifest (`bucket/hoppy.json`) on each release
 - Homebrew formula updated with macOS x86 target, caveats for optional `bore` dependency
 - `deny.toml` added for license and advisory gating
-- All crate `Cargo.toml` files: added `homepage`, `keywords`, `categories`, `readme`; internal workspace deps now carry `version = "0.1.0"` for crates.io compatibility
+- All crate `Cargo.toml` files: added `homepage`, `keywords`, `categories`, `readme`; internal workspace deps now carry `version = "0.1.1"` for crates.io compatibility
 - Minimal `README.md` added to each sub-crate
 
 ### Magic Containers — container logs tunnel (iter-24)
