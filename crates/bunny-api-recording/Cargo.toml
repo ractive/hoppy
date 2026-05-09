@@ -5,6 +5,10 @@ edition.workspace = true
 description = "Shared HTTP response recording helper for bunny-api-* crates"
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["bunny", "bunnycdn", "http", "recording", "testing"]
+categories = ["development-tools::testing", "web-programming::http-client"]
 
 [dependencies]
 serde_json.workspace = true

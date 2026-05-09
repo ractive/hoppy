@@ -5,6 +5,10 @@ edition.workspace = true
 description = "Hand-written bunny.net Shield API client (WAF, DDoS, Rate Limiting, Bot Detection, Access Lists)"
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["bunny", "bunnycdn", "waf", "security", "api"]
+categories = ["web-programming::http-client", "api-bindings"]
 
 [dependencies]
 reqwest.workspace = true
