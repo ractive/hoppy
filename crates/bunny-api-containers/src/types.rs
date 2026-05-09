@@ -144,10 +144,18 @@ pub enum ImagePullPolicy {
 }
 
 /// Network protocol.
+///
+/// The Bunny API is inconsistent about casing: registry suggestions return
+/// PascalCase (`"Tcp"`) while container endpoint responses return lowercase
+/// (`"tcp"`). Aliases let us deserialize both; serialization stays PascalCase
+/// since that is what the API accepts on requests.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Protocol {
+    #[serde(alias = "tcp", alias = "TCP")]
     Tcp,
+    #[serde(alias = "udp", alias = "UDP")]
     Udp,
+    #[serde(alias = "sctp", alias = "SCTP")]
     Sctp,
 }
 
@@ -1621,6 +1629,29 @@ mod tests {
             let decoded: VolumeInstanceStatus = serde_json::from_str(&json).unwrap();
             assert_eq!(decoded, variant);
         }
+    }
+
+    #[test]
+    fn protocol_deserializes_pascal_and_lowercase() {
+        // API responses come in lowercase; suggestions come in PascalCase.
+        assert_eq!(
+            serde_json::from_str::<Protocol>("\"tcp\"").unwrap(),
+            Protocol::Tcp
+        );
+        assert_eq!(
+            serde_json::from_str::<Protocol>("\"Tcp\"").unwrap(),
+            Protocol::Tcp
+        );
+        assert_eq!(
+            serde_json::from_str::<Protocol>("\"udp\"").unwrap(),
+            Protocol::Udp
+        );
+        assert_eq!(
+            serde_json::from_str::<Protocol>("\"sctp\"").unwrap(),
+            Protocol::Sctp
+        );
+        // Serialization stays PascalCase (API accepts that on requests).
+        assert_eq!(serde_json::to_string(&Protocol::Tcp).unwrap(), "\"Tcp\"");
     }
 
     #[test]
