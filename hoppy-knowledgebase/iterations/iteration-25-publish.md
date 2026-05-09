@@ -9,7 +9,7 @@ tags:
   - packaging
   - crates-io
   - homebrew
-status: in-progress
+status: completed
 branch: iter-25/publish
 ---
 
