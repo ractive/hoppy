@@ -25,7 +25,7 @@ Every resource hoppy creates during dogfooding **must** start with `hoppy-test-`
 
 - pull zone: `hoppy-test-cdn-2026-05-09`
 - storage zone: `hoppy-test-storage-roundtrip`
-- DNS zone: `hoppy-test.example.invalid` (use a domain you own and can throw away)
+- DNS zone: `hoppy-test.example.com` (use a real domain you own that you can safely use for testing)
 - container app: `hoppy-test-app-smoke`
 
 Why: the cleanup script greps for `hoppy-test-` and refuses to touch anything that doesn't match. If you forget the prefix, cleanup will leak the resource — you'll have to remove it by hand from the dashboard.
@@ -60,13 +60,20 @@ If a `live-api` test fails halfway and leaks a resource, the cleanup script (nex
 
 ## Cleanup script
 
-`hoppy-knowledgebase/dogfooding/cleanup.sh` is the single tool that walks every API surface, lists resources matching `hoppy-test-`, and deletes them. It is **idempotent** — safe to run before AND after a session. It must:
+`hoppy-knowledgebase/dogfooding/cleanup.sh` is **currently a skeleton**. Each surface block prints the manual `hoppy <noun> list` command you should run; no automated deletion has been implemented yet, and `--yes` deliberately refuses to proceed until the real delete paths exist. Until then, treat this section as a checklist for manual cleanup:
+
+1. Run the script in its (default) dry-run mode to see the listing commands per surface.
+2. For each surface, run `hoppy <noun> list`, grep for `hoppy-test-`, and delete matches manually (via `hoppy <noun> delete --id <id> --yes` or the dashboard).
+3. Track implementation of the automated path in iter-25 / a dedicated backlog item.
+
+Once implemented, the script will:
 
 - list-and-skip anything not matching the prefix (defence in depth — never delete an unprefixed resource even if requested)
 - print what it is about to delete and require `--yes` to proceed (default is dry-run)
 - exit non-zero if any deletion fails so CI can catch leaks
+- be **idempotent** — safe to run before AND after a session
 
-The script is intentionally a shell script (not Rust) so anyone can read and audit it. It's the only polyglot tool in the repo and lives only in the knowledgebase, not the build.
+The script is intentionally a shell script (not Rust) so anyone can read and audit it. It's a knowledgebase helper script, not part of the build — see CLAUDE.md "Code Patterns" for the Rust-only rule and its exemption.
 
 ## Friction → backlog
 

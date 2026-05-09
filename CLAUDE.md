@@ -60,7 +60,7 @@ Do *not* merge with `--squash`.
 - No `.unwrap()` / `.expect()` outside of tests — use `anyhow::Context` with `?`
 - No `clone()` unless the borrow checker demands it — try references first
 - No unnecessary `pub` on struct fields
-- All code stays in Rust — no polyglot tooling (no Bun, Node, Python scripts)
+- All build/runtime code stays in Rust — no polyglot tooling in the build (no Bun, Node, Python scripts). Knowledgebase helper scripts under `hoppy-knowledgebase/` are exempt: they're auditable shell snippets, not part of the build.
 - New crates go in `crates/` with naming convention `bunny-api-<domain>` (the `bunny-api-` prefix advertises the bunny.net API surface, not hoppy itself — see `decision-log.md`)
 
 ## PR Discipline

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Dogfooding cleanup — list and (with --yes) delete every bunny.net resource
-# whose name starts with the dogfooding prefix. Idempotent; safe to run before
-# and after each session.
+# Dogfooding cleanup SKELETON — currently a placeholder. Each surface block
+# below is a stub that prints the manual command to run; no deletes happen.
+# When implemented, it will list and (with --yes) delete every bunny.net
+# resource whose name starts with the dogfooding prefix, idempotently.
 #
-# Default mode is dry-run. Pass --yes to actually delete.
+# Default mode is dry-run. Pass --yes to actually delete (refused today —
+# see the "not yet implemented" guard below).
 set -euo pipefail
 
 PREFIX="${HOPPY_TEST_PREFIX:-hoppy-test-}"
@@ -16,6 +18,15 @@ for arg in "$@"; do
         *) echo "unknown arg: $arg" >&2; exit 2 ;;
     esac
 done
+
+# Until real deletion logic exists, refuse --yes so operators don't think
+# cleanup ran when nothing was deleted.
+if [[ "$DRY_RUN" == 0 ]]; then
+    echo "cleanup.sh is a placeholder — --yes is not yet supported." >&2
+    echo "Run \`hoppy <noun> list\` manually and delete matches via the dashboard or" >&2
+    echo "via \`hoppy <noun> delete\`. Track implementation in iteration-25 / backlog." >&2
+    exit 2
+fi
 
 if [[ ! -x "$HOPPY" ]]; then
     echo "hoppy binary not found at $HOPPY — run: cargo build --release" >&2
@@ -38,9 +49,14 @@ echo "dogfooding cleanup — prefix='$PREFIX' dry-run=$DRY_RUN"
 cleanup_pull_zones() {
     echo "== pull zones =="
     # Placeholder: real implementation should:
-    #   "$HOPPY" pull-zone list --output json | jq -r '.[] | select(.Name | startswith("'"$PREFIX"'")) | .Id'
-    # then "$HOPPY" pull-zone delete --id <id> --yes
-    # for each match.
+    #   ids=$("$HOPPY" pull-zone list --output json | jq -r '.[] | select(.Name | startswith("'"$PREFIX"'")) | .Id')
+    #   for id in $ids; do
+    #       if [[ "$DRY_RUN" == 1 ]]; then
+    #           echo "  [dry-run] would delete pull zone $id"
+    #       else
+    #           "$HOPPY" pull-zone delete --id "$id" --yes
+    #       fi
+    #   done
     echo "  (not yet implemented — run \`hoppy pull-zone list\` manually and grep '$PREFIX')"
 }
 
