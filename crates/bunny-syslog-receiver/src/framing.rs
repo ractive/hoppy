@@ -67,9 +67,6 @@ pub enum FramingError {
     Io(#[from] std::io::Error),
 }
 
-// We only depend on `thiserror` for these errors. Add it to Cargo.toml if
-// not already present; otherwise switch to a hand-rolled `Display` impl.
-
 /// Detect the framing mode from the first byte without consuming it.
 ///
 /// Returns `Ok(None)` on EOF (caller should close the connection cleanly),
@@ -158,26 +155,27 @@ async fn read_lf_terminated<R>(reader: &mut R) -> Result<Option<Vec<u8>>, Framin
 where
     R: AsyncBufRead + Unpin,
 {
-    let mut buf = Vec::with_capacity(512);
-    let n = reader.read_until(b'\n', &mut buf).await?;
-    if n == 0 {
-        return Ok(None);
+    loop {
+        let mut buf = Vec::with_capacity(512);
+        let n = reader.read_until(b'\n', &mut buf).await?;
+        if n == 0 {
+            return Ok(None);
+        }
+        if buf.len() > MAX_FRAME_BYTES {
+            return Err(FramingError::FrameTooLarge);
+        }
+        // Strip the trailing LF (and a CR if present, for CRLF tolerance).
+        if buf.last() == Some(&b'\n') {
+            buf.pop();
+        }
+        if buf.last() == Some(&b'\r') {
+            buf.pop();
+        }
+        if !buf.is_empty() {
+            return Ok(Some(buf));
+        }
+        // Bare LF — keep reading until we get a real frame or EOF.
     }
-    if buf.len() > MAX_FRAME_BYTES {
-        return Err(FramingError::FrameTooLarge);
-    }
-    // Strip the trailing LF (and a CR if present, for CRLF tolerance).
-    if buf.last() == Some(&b'\n') {
-        buf.pop();
-    }
-    if buf.last() == Some(&b'\r') {
-        buf.pop();
-    }
-    if buf.is_empty() {
-        // A bare LF — skip and keep reading.
-        return Box::pin(read_lf_terminated(reader)).await;
-    }
-    Ok(Some(buf))
 }
 
 #[cfg(test)]

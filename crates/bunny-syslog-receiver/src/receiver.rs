@@ -2,10 +2,9 @@
 //!
 //! Bind a kernel-assigned port (or a caller-chosen one), accept connections,
 //! detect framing on the first byte, and forward parsed [`LogEvent`]s on an
-//! `mpsc` channel. Shutdown is cooperative: drop the
+//! `mpsc` channel. Shutdown is cooperative: call `.cancel()` on the
 //! [`tokio_util::sync::CancellationToken`] passed to [`run_receiver`] (or
-//! hold it via [`spawn_receiver`] and call `.cancel()` on the returned
-//! handle).
+//! hold a clone of it and `.cancel()` after [`spawn_receiver`]).
 
 use std::net::SocketAddr;
 
@@ -298,7 +297,7 @@ mod tests {
         assert_eq!(e1.hostname.as_deref(), Some("hostA"));
 
         cancel.cancel();
-        let _ = server.await;
+        server.await.expect("server task panicked").unwrap();
     }
 
     #[tokio::test]
@@ -323,7 +322,7 @@ mod tests {
         assert_eq!(e2.message, "beta");
 
         cancel.cancel();
-        let _ = server.await;
+        server.await.expect("server task panicked").unwrap();
     }
 
     #[tokio::test]
@@ -351,7 +350,7 @@ mod tests {
         assert_eq!(e.message, "after-bad");
 
         cancel.cancel();
-        let _ = server.await;
+        server.await.expect("server task panicked").unwrap();
     }
 
     #[test]

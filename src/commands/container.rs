@@ -2159,9 +2159,9 @@ async fn handle_logs(
             if !replace_existing {
                 bail!(
                     "app {app_id} already has a log-forwarding config \
-                         (endpoint={}). Run `hoppy log-forwarding delete \
-                         --app-id {app_id}` first, or use --replace-existing \
-                         to take it over.",
+                         (endpoint={}). Run `hoppy container log-forwarding \
+                         delete --app-id {app_id}` first, or use \
+                         --replace-existing to take it over.",
                     existing.endpoint,
                 );
             }
@@ -2192,9 +2192,19 @@ async fn handle_logs(
     };
 
     // --- 4. Bind local listener -----------------------------------------------
-    let listener = LocalListener::bind(local_port)
-        .await
-        .context("failed to bind local syslog listener")?;
+    // For `--tunnel none` the user is providing their own ingress (VPN,
+    // public IP, ssh -R from a different host, …) and that ingress will
+    // not be able to reach a listener bound to 127.0.0.1. Bind all
+    // interfaces in that case so the configured ingress can reach us.
+    // For bore / a static tunnel-host the tunnel terminates on the same
+    // machine so 127.0.0.1 is correct (and safer).
+    let bind_all = tunnel == "none" && tunnel_host.is_none();
+    let listener = if bind_all {
+        LocalListener::bind_all_interfaces(local_port).await
+    } else {
+        LocalListener::bind(local_port).await
+    }
+    .context("failed to bind local syslog listener")?;
     let bound_port = listener.local_addr().port();
 
     // --- 5. Construct tunnel --------------------------------------------------
@@ -2230,7 +2240,7 @@ async fn handle_logs(
 
     let created_config: Option<LogForwardingConfiguration> = if skip_forwarding {
         eprintln!(
-            "Local syslog: 127.0.0.1:{bound_port}. \
+            "Local syslog: 0.0.0.0:{bound_port} (all interfaces). \
              Configure forwarding manually."
         );
         None

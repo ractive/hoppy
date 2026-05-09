@@ -123,7 +123,7 @@ impl Tunnel for BoreTunnel {
                     anyhow!(
                         "`{}` not found on PATH. Install with `cargo install bore-cli` or \
                          `brew install bore-cli`, or pass `--tunnel none` / \
-                         `--tunnel-host <host:port>` to skip the bundled tunnel.",
+                         `--tunnel-host <host:port>` to skip bore.",
                         self.binary
                     )
                 } else {

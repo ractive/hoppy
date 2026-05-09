@@ -281,9 +281,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "bytes",
  "serde",
- "serde_json",
  "syslog_loose",
  "thiserror",
  "tokio",
