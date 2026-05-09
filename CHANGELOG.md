@@ -7,52 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-09
+
+### Release pipeline (iter-25)
+
+- SHA-pinned GitHub Actions in `ci.yml` and `release.yml`
+- `version-check` job: release tag must match `Cargo.toml` version
+- `security` job: `cargo audit` + `cargo deny check` before any build
+- `crates-io` job: publishes all 9 crates in dependency order with index-propagation retry
+- `scoop` job: updates `ractive/scoop-bucket` Scoop manifest (`bucket/hoppy.json`) on each release
+- Homebrew formula updated with macOS x86 target, caveats for optional `bore` dependency
+- `deny.toml` added for license and advisory gating
+- All crate `Cargo.toml` files: added `homepage`, `keywords`, `categories`, `readme`; internal workspace deps now carry `version = "0.1.1"` for crates.io compatibility
+- Minimal `README.md` added to each sub-crate
+
+### Magic Containers — container logs tunnel (iter-24)
+
+- `hoppy container logs` — streams Magic Containers syslog via an in-process RFC 5424/3164 receiver
+- Auto-tunnel via [bore](https://github.com/ekzhang/bore): zero-config public ingress on a kernel-assigned port
+- `--tunnel none` / `--tunnel-host host:port` for custom ingress (SSH reverse-forward or private bore server)
+- `--bore-server` flag to point at a self-hosted bore relay
+- `bunny-syslog-receiver` crate extracted as a reusable, independently publishable library
+- NDJSON output with `--format json`; `--format table` rejected (logs are not tabular)
+
 ### Project hygiene & dogfooding (iter-23)
 
-- Hyalo schema alignment: rich `.hyalo.toml` with type schemas for `iteration`, `research`, `backlog`, `docs`, `decision`; saved views (`planned`, `stale-in-progress`, `completed-with-todos`, `missing-status`, `missing-type`, `open-tasks`, `orphans`)
-- Cargo workspace hygiene: hoisted shared dependencies to `[workspace.dependencies]`, added `[workspace.package]` (version/edition/license/repository), switched to `resolver = "3"`, added optimised `[profile.release]` (`lto = true`, `codegen-units = 1`, `panic = "abort"`, `strip = true`), `[workspace.lints.rust] unsafe_code = "forbid"`
-- `AI_NOTICE` file at repo root disclosing AI-generated code
-- `hoppy-knowledgebase/dogfooding/dogfooding-playbook.md` — safe real-API loop with `hoppy-test-` prefix convention and idempotent cleanup script
-- `hoppy-knowledgebase/cli/command-tree.md` — generated CLI surface map
-- `hoppy-knowledgebase/cli/help-text-style.md` — LLM-friendly help text template (one-line + `long_about` + `after_help` examples + cross-refs)
-- `CLAUDE.md`: Agents directive at top, expanded hyalo CLI usage block, Dogfooding section, performance/streaming hint, cross-platform note, fixed task-checkbox spec to `- [ ] Task`
+- Cargo workspace hygiene: `[workspace.dependencies]`, `[workspace.package]`, `resolver = "3"`, optimised `[profile.release]`, `unsafe_code = "forbid"`
+- `AI_NOTICE`, dogfooding playbook, CLI command tree, help-text style guide
 
 ### Stream — video processing (iter-16)
 
-New commands for triggering and inspecting video processing on bunny.net Stream:
-
-- `stream video transcribe` — trigger transcription/translation, with optional source/target languages and AI generation flags
-- `stream video heatmap` — fetch the viewer engagement heatmap for a video
-- `stream video reencode` — reencode a video (optionally targeting a specific codec: `x264`, `vp9`, `hevc`, `av1`)
-- `stream video repackage` — repackage HLS/DASH manifests (optionally discarding previous file versions)
-- `stream video smart-generate` — trigger AI title/description/chapters/moments generation
-- `stream video set-thumbnail` — set the video thumbnail from a URL
-- `stream video resolutions list` — show available/configured/playlist resolutions
-- `stream video resolutions cleanup` — delete renditions (with dry-run and confirmation gate)
-- `stream video storage` — show per-category storage size breakdown (originals, thumbnails, previews, MP4 fallback, per-rendition encoded sizes)
+- `stream video transcribe`, `heatmap`, `reencode`, `repackage`, `smart-generate`, `set-thumbnail`, `resolutions list/cleanup`, `storage`
 
 ### Magic Containers — UX & safety (iter-21)
 
-- **`container template env` no longer silently wipes env vars.** A bare
-  invocation now errors with a recipe. New flags: `--add KEY=VAL`,
-  `--remove KEY`, `--update KEY=VAL` (granular merge), `--replace-all
-  --env K=V …` (explicit destructive replace), `--clear` (explicit wipe),
-  `--list` (show current env, redacted by default).
-- **`container app delete` now refuses to orphan auto-managed Pull Zones.**
-  Pass `--cascade` to delete the app + its CDN Pull Zones, or `--no-cascade`
-  to delete only the app and print orphan IDs with a cleanup recipe.
-- **`container app create` returns the full app document by default.**
-  No more chained `app get` calls to grab template / endpoint ids. Pass
-  `--minimal` to opt back into the legacy `{"id": "..."}` shape.
-- **`container app create --env KEY=VAL`** sets initial env vars in one call
-  (combine with the image flags).
-- **Secret redaction.** Env-var values are masked as `<set, length=N>` (or
-  `<unset>`) in JSON, table, and text output. Opt in with the global
-  `--reveal` (all secrets) or `--reveal-env KEY` (a specific var).
-- Destructive `--clear` and shrinking `--replace-all` now require typing
-  "wipe" / "replace" — `--yes` alone is not enough.
+- Granular env-var mutation (`--add`, `--remove`, `--update`, `--replace-all`, `--clear`, `--list`)
+- `container app delete --cascade` / `--no-cascade` to control Pull Zone orphaning
+- `container app create` returns full document by default; `--minimal` for legacy shape
+- `container app create --env KEY=VAL` for initial env in one call
+- Secret redaction: env values masked as `<set, length=N>`; `--reveal` / `--reveal-env KEY` to opt in
+- Confirmation phrases required for destructive env operations
 
-## [0.1.0] — 2026-03-18
+## [0.1.0] - 2026-03-18
 
 Initial release.
 
@@ -79,5 +75,6 @@ Initial release.
 - Pagination support across all list commands
 - Credentials excluded from JSON output for security
 
-[Unreleased]: https://github.com/ractive/hoppy/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ractive/hoppy/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ractive/hoppy/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ractive/hoppy/releases/tag/v0.1.0

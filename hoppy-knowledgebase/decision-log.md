@@ -58,7 +58,7 @@ Significant architectural and design decisions made during development. API-spec
 | Decision | Rationale |
 |----------|-----------|
 | `cargo install --git` instead of crates.io | Publishing to crates.io requires all 7 crates published in dependency order — too much for v0.1.0 |
-| Homebrew tap: `ractive/homebrew-hoppy` | Single-formula tap keeps things isolated |
+| Homebrew tap: `ractive/homebrew-tap` | Use shared `ractive/homebrew-tap` (multi-formula) — `brew tap ractive/tap && brew install hoppy`. Supersedes earlier 2026-03-18 decision to use a dedicated `ractive/homebrew-hoppy` tap. |
 | Shell completions: stdout-only | Industry standard (starship, rustup, gh). Package managers handle installation |
 | cross-rs for Linux aarch64 only | Native runners for everything else. cross-rs more reliable than cargo-zigbuild |
 | Windows aarch64 included | Builds natively on `windows-latest` runner — zero extra effort |

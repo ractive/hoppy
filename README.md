@@ -25,7 +25,21 @@ A CLI for [bunny.net](https://bunny.net) cloud and edge services. Designed for b
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew install ractive/hoppy/hoppy
+brew tap ractive/tap
+brew install hoppy
+```
+
+### Scoop (Windows)
+
+```bash
+scoop bucket add ractive https://github.com/ractive/scoop-bucket
+scoop install hoppy
+```
+
+### cargo install
+
+```bash
+cargo install hoppy
 ```
 
 ### Direct download
@@ -34,13 +48,19 @@ Download the latest binary from [GitHub Releases](https://github.com/ractive/hop
 
 Archives include the binary, shell completions, man page, and LICENSE.
 
-### From source
+### Linux packages
+
+`.deb` and `.rpm` packages are available on the [releases page](https://github.com/ractive/hoppy/releases/latest). They include shell completions and man pages.
 
 ```bash
-cargo install --git https://github.com/ractive/hoppy
+# Debian / Ubuntu
+sudo dpkg -i hoppy_0.1.1_amd64.deb
+
+# Fedora / RHEL
+sudo rpm -i hoppy-0.1.1-1.x86_64.rpm
 ```
 
-Or clone and build:
+### From source
 
 ```bash
 git clone https://github.com/ractive/hoppy.git
@@ -49,23 +69,7 @@ cargo build --release
 # Binary is at target/release/hoppy
 ```
 
-### Linux packages
-
-`.deb` and `.rpm` packages are available on the [releases page](https://github.com/ractive/hoppy/releases/latest). They include shell completions and man pages.
-
-```bash
-# Debian / Ubuntu
-sudo dpkg -i hoppy_0.1.0_amd64.deb
-
-# Fedora / RHEL
-sudo rpm -i hoppy-0.1.0-1.x86_64.rpm
-```
-
-### Windows
-
-Download the `.zip` from [GitHub Releases](https://github.com/ractive/hoppy/releases/latest) and add the binary to your PATH.
-
-winget support will be available after the first release.
+> **Note:** `hoppy container logs` requires [bore](https://github.com/ekzhang/bore) for automatic tunnel setup (`cargo install bore-cli` or `brew install bore-cli`). This is optional — the rest of hoppy works without it. See `hoppy container logs --help` for alternatives.
 
 ## Quick start
 
