@@ -8,7 +8,8 @@ use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
 use bunny_api_core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
-    MatchingType, PullZone, PullZoneType, PurgeCache, TriggerType, UpdatePullZone,
+    MatchingType, OptimizerWatermarkPosition, PullZone, PullZoneType, PurgeCache, TriggerType,
+    UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
 
@@ -170,6 +171,29 @@ pub async fn handle(
             enable_geo_zone_asia,
             enable_geo_zone_sa,
             enable_geo_zone_af,
+            optimizer_enabled,
+            optimizer_automatic_optimization,
+            optimizer_desktop_max_width,
+            optimizer_mobile_max_width,
+            optimizer_image_quality,
+            optimizer_mobile_image_quality,
+            optimizer_webp,
+            optimizer_upscaling,
+            optimizer_minify_css,
+            optimizer_minify_js,
+            optimizer_manipulation_engine,
+            optimizer_classes,
+            optimizer_force_classes,
+            optimizer_watermark,
+            optimizer_watermark_url,
+            optimizer_watermark_position,
+            optimizer_watermark_offset,
+            optimizer_watermark_min_image_size,
+            optimizer_static_html,
+            optimizer_static_html_wp_path,
+            optimizer_static_html_wp_bypass_cookie,
+            optimizer_prerender_html,
+            optimizer_tunnel,
         } => {
             let mut body = UpdatePullZone::new();
             if let Some(url) = origin_url {
@@ -192,6 +216,40 @@ pub async fn handle(
             body.enable_geo_zone_asia = *enable_geo_zone_asia;
             body.enable_geo_zone_sa = *enable_geo_zone_sa;
             body.enable_geo_zone_af = *enable_geo_zone_af;
+            // Optimizer fields
+            body.optimizer_enabled = *optimizer_enabled;
+            body.optimizer_automatic_optimization_enabled = *optimizer_automatic_optimization;
+            body.optimizer_desktop_max_width = *optimizer_desktop_max_width;
+            body.optimizer_mobile_max_width = *optimizer_mobile_max_width;
+            body.optimizer_image_quality = *optimizer_image_quality;
+            body.optimizer_mobile_image_quality = *optimizer_mobile_image_quality;
+            body.optimizer_enable_web_p = *optimizer_webp;
+            body.optimizer_enable_upscaling = *optimizer_upscaling;
+            body.optimizer_minify_css = *optimizer_minify_css;
+            body.optimizer_minify_java_script = *optimizer_minify_js;
+            body.optimizer_enable_manipulation_engine = *optimizer_manipulation_engine;
+            if let Some(cls) = optimizer_classes {
+                body = body.optimizer_classes(cls.as_str());
+            }
+            body.optimizer_force_classes = *optimizer_force_classes;
+            body.optimizer_watermark_enabled = *optimizer_watermark;
+            if let Some(url) = optimizer_watermark_url {
+                body = body.optimizer_watermark_url(url.as_str());
+            }
+            if let Some(pos) = optimizer_watermark_position {
+                body = body.optimizer_watermark_position(OptimizerWatermarkPosition::from(*pos));
+            }
+            body.optimizer_watermark_offset = *optimizer_watermark_offset;
+            body.optimizer_watermark_min_image_size = *optimizer_watermark_min_image_size;
+            body.optimizer_static_html_enabled = *optimizer_static_html;
+            if let Some(path) = optimizer_static_html_wp_path {
+                body = body.optimizer_static_html_word_press_path(path.as_str());
+            }
+            if let Some(cookie) = optimizer_static_html_wp_bypass_cookie {
+                body = body.optimizer_static_html_word_press_bypass_cookie(cookie.as_str());
+            }
+            body.optimizer_prerender_html = *optimizer_prerender_html;
+            body.optimizer_tunnel_enabled = *optimizer_tunnel;
             let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format);
         }

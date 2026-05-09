@@ -1518,3 +1518,66 @@ fn live_pull_zone_access_control_lifecycle() {
         // 9. Cleanup runs via CleanupStack on exit
     });
 }
+
+// ---------------------------------------------------------------------------
+// Optimizer CLI tests
+// ---------------------------------------------------------------------------
+
+/// Verifies that all Optimizer flags are wired to the correct wire keys.
+/// Notably: `--optimizer-minify-js` → `OptimizerMinifyJavaScript` (long form),
+/// `--optimizer-watermark-position center` → `OptimizerWatermarkPosition: 4`.
+#[tokio::test]
+async fn pull_zone_update_optimizer_settings() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "OptimizerEnabled": true,
+        "OptimizerEnableWebP": true,
+        "OptimizerMinifyCSS": true,
+        "OptimizerMinifyJavaScript": true,
+        "OptimizerImageQuality": 80,
+        "OptimizerWatermarkPosition": 4
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "update",
+            "--id",
+            "1001",
+            "--optimizer-enabled",
+            "true",
+            "--optimizer-webp",
+            "true",
+            "--optimizer-minify-css",
+            "true",
+            "--optimizer-minify-js",
+            "true",
+            "--optimizer-image-quality",
+            "80",
+            "--optimizer-watermark-position",
+            "center",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
