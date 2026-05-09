@@ -13,12 +13,18 @@ use bunny_api_containers::{
     ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest, ContainersClient,
     EndpointListItem, EndpointRequest, GetContainerConfigSuggestionsRequest,
     GetContainerImageDigestRequest, Granularity, ImageTagInfo, ListContainerImageTagsRequest,
-    LogForwardingRequest, PatchApplicationRequest, PatchContainerRequest, PatchVolumeRequest,
-    RegionSettings, RegistryCredentials, SearchPublicContainerImagesRequest,
-    UpdateRegionSettingsRequest,
+    LogForwardingConfiguration, LogForwardingRequest, LogForwardingType, PatchApplicationRequest,
+    PatchContainerRequest, PatchVolumeRequest, RegionSettings, RegistryCredentials,
+    SearchPublicContainerImagesRequest, SyslogFormat, UpdateRegionSettingsRequest,
 };
+use bunny_syslog_receiver::{
+    BoreTunnel, LocalListener, LogEvent, NoopTunnel, Severity, StaticTunnel, Tunnel, spawn_receiver,
+};
+use console::style;
 use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 // ---------------------------------------------------------------------------
 // Helper: build the client
@@ -623,6 +629,29 @@ pub async fn handle(
                 yes,
                 record,
                 redact,
+            )
+            .await
+        }
+        ContainerAction::Logs {
+            app_id,
+            tunnel,
+            tunnel_host,
+            local_port,
+            replace_existing,
+            format: log_format,
+            follow: _,
+            bore_server,
+        } => {
+            handle_logs(
+                app_id,
+                tunnel,
+                tunnel_host.as_deref(),
+                *local_port,
+                *replace_existing,
+                log_format,
+                bore_server.as_deref(),
+                debug,
+                record,
             )
             .await
         }
@@ -2051,4 +2080,293 @@ async fn handle_log_forwarding(
         }
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Logs — live syslog streaming
+// ---------------------------------------------------------------------------
+
+/// Local format selector for `handle_logs`. The global `OutputFormat` is not
+/// used directly because "table" is invalid for streaming tail output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LogsFormat {
+    Text,
+    Json,
+}
+
+/// Pretty-print a single [`LogEvent`] in human-readable form to stdout.
+fn print_log_text(ev: &LogEvent) {
+    // Extract HH:MM:SS from the RFC 3339 timestamp when available.
+    let time_str = ev
+        .timestamp
+        .as_deref()
+        .and_then(|ts| ts.get(11..19))
+        .unwrap_or("??:??:??");
+
+    let sev_label = ev.severity.map(Severity::label).unwrap_or("     ");
+
+    let app_name = ev.app_name.as_deref().unwrap_or("-");
+
+    let coloured_sev = match ev.severity {
+        Some(Severity::Emergency | Severity::Alert | Severity::Critical | Severity::Error) => {
+            style(sev_label).red().to_string()
+        }
+        Some(Severity::Warning) => style(sev_label).yellow().to_string(),
+        Some(Severity::Notice) => style(sev_label).cyan().to_string(),
+        Some(Severity::Informational) => style(sev_label).green().to_string(),
+        Some(Severity::Debug) => style(sev_label).dim().to_string(),
+        None => sev_label.to_owned(),
+    };
+
+    println!("{time_str} {coloured_sev} {app_name} | {}", ev.message);
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_logs(
+    app_id: &str,
+    tunnel: &str,
+    tunnel_host: Option<&str>,
+    local_port: u16,
+    replace_existing: bool,
+    format: &str,
+    bore_server: Option<&str>,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<()> {
+    // --- 1. Validate format ---------------------------------------------------
+    let logs_format = match format {
+        "text" => LogsFormat::Text,
+        "json" => LogsFormat::Json,
+        "table" => bail!(
+            "`hoppy container logs` does not support --format table; \
+             tail output is not tabular. Use --format text (default) or --format json."
+        ),
+        other => bail!("unknown format '{other}'; expected text or json"),
+    };
+
+    // --- 2. Build client and verify app exists --------------------------------
+    let c = client(debug, record)?;
+    c.get_application(app_id)
+        .await
+        .with_context(|| format!("application '{app_id}' not found or inaccessible"))?;
+
+    // --- 3. Idempotency check -------------------------------------------------
+    // Store a prior config if --replace-existing is requested so we can
+    // restore it on clean exit.
+    let prior_config: Option<LogForwardingConfiguration> = match c.get_log_forwarding(app_id).await
+    {
+        Ok(existing) => {
+            if !replace_existing {
+                bail!(
+                    "app {app_id} already has a log-forwarding config \
+                         (endpoint={}). Run `hoppy container log-forwarding \
+                         delete --app-id {app_id}` first, or use \
+                         --replace-existing to take it over.",
+                    existing.endpoint,
+                );
+            }
+            // Delete the existing config; we'll restore it on exit.
+            if debug {
+                eprintln!(
+                    "[debug] replacing existing log-forwarding config for {app_id} \
+                         (endpoint={})",
+                    existing.endpoint
+                );
+            }
+            c.delete_log_forwarding(app_id)
+                .await
+                .context("failed to delete existing log-forwarding config")?;
+            Some(existing)
+        }
+        Err(e) => {
+            // A 404 / "not found" is the expected case — proceed normally.
+            // Any other error is noted at debug verbosity but we carry on
+            // (v1 best-effort; a typed error would be cleaner).
+            if debug {
+                eprintln!(
+                    "[debug] get_log_forwarding returned an error (assuming no config exists): {e:#}"
+                );
+            }
+            None
+        }
+    };
+
+    // --- 4. Bind local listener -----------------------------------------------
+    // For `--tunnel none` the user is providing their own ingress (VPN,
+    // public IP, ssh -R from a different host, …) and that ingress will
+    // not be able to reach a listener bound to 127.0.0.1. Bind all
+    // interfaces in that case so the configured ingress can reach us.
+    // For bore / a static tunnel-host the tunnel terminates on the same
+    // machine so 127.0.0.1 is correct (and safer).
+    let bind_all = tunnel == "none" && tunnel_host.is_none();
+    let listener = if bind_all {
+        LocalListener::bind_all_interfaces(local_port).await
+    } else {
+        LocalListener::bind(local_port).await
+    }
+    .context("failed to bind local syslog listener")?;
+    let bound_port = listener.local_addr().port();
+
+    // --- 5. Construct tunnel --------------------------------------------------
+    let tunnel_impl: Box<dyn Tunnel> = if let Some(host_port) = tunnel_host {
+        let (host, port_str) = host_port
+            .rsplit_once(':')
+            .with_context(|| format!("--tunnel-host '{host_port}' must be host:port"))?;
+        let port: u16 = port_str
+            .parse()
+            .with_context(|| format!("invalid port in --tunnel-host '{host_port}'"))?;
+        Box::new(StaticTunnel {
+            host: host.to_owned(),
+            port,
+        })
+    } else if tunnel == "none" {
+        Box::new(NoopTunnel::default())
+    } else {
+        // Default: bore
+        Box::new(BoreTunnel {
+            server: bore_server.unwrap_or("bore.pub").to_owned(),
+            ..Default::default()
+        })
+    };
+
+    // --- 6. Start tunnel ------------------------------------------------------
+    let mut tunnel_handle = tunnel_impl
+        .start(bound_port)
+        .await
+        .context("failed to start tunnel")?;
+
+    // --- 7. Register log forwarding with Bunny (skip for --tunnel none) -------
+    let skip_forwarding = tunnel == "none" && tunnel_host.is_none();
+
+    let created_config: Option<LogForwardingConfiguration> = if skip_forwarding {
+        eprintln!(
+            "Local syslog: 0.0.0.0:{bound_port} (all interfaces). \
+             Configure forwarding manually."
+        );
+        None
+    } else {
+        let req = LogForwardingRequest {
+            app: app_id.to_owned(),
+            forwarding_type: LogForwardingType::SyslogTcp,
+            endpoint: tunnel_handle.public_host.clone(),
+            port: i32::from(tunnel_handle.public_port),
+            format: SyslogFormat::SyslogRfc5424,
+            enabled: true,
+            token: None,
+        };
+        let cfg = c
+            .create_log_forwarding(&req)
+            .await
+            .context("failed to create log-forwarding configuration")?;
+        Some(cfg)
+    };
+
+    // --- 9. Print banner to stderr (stdout stays clean for --format json) -----
+    if !skip_forwarding {
+        eprintln!(
+            "Listening on {}:{} → app {app_id}. \
+             Logs may take 10–30s to start arriving (Bunny delivery delay). \
+             Press Ctrl-C to stop.",
+            tunnel_handle.public_host, tunnel_handle.public_port,
+        );
+    }
+
+    // --- 10. Spawn receiver ---------------------------------------------------
+    let (tx, mut rx) = mpsc::channel::<LogEvent>(1024);
+    let cancel = CancellationToken::new();
+    let (_addr, _server_handle) = spawn_receiver(listener, tx, cancel.clone());
+
+    // --- 11. Stream loop ------------------------------------------------------
+    // We await cleanup directly in all exit paths (normal Ctrl-C, bore child
+    // exit, or channel close).  A panic in this async task will leak the
+    // forwarding config — documented as a known limitation.
+    let stream_result: Result<()> = async {
+        loop {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    break;
+                }
+                maybe_ev = rx.recv() => {
+                    match maybe_ev {
+                        Some(ev) => {
+                            match logs_format {
+                                LogsFormat::Text => print_log_text(&ev),
+                                LogsFormat::Json => {
+                                    let line = serde_json::to_string(&ev)
+                                        .context("failed to serialise LogEvent to JSON")?;
+                                    println!("{line}");
+                                }
+                            }
+                        }
+                        // Channel closed — receiver loop exited.
+                        None => break,
+                    }
+                }
+                // Race bore child exit: if bore dies unexpectedly surface it.
+                Some(status) = async {
+                    if let Some(child) = tunnel_handle.child_mut() {
+                        child.wait().await.ok()
+                    } else {
+                        // Non-bore tunnel: never resolves, so this arm is
+                        // disabled by the `Some(…)` pattern.
+                        None
+                    }
+                } => {
+                    let code = status.code().unwrap_or(-1);
+                    bail!("bore tunnel exited unexpectedly (exit code {code})");
+                }
+            }
+        }
+        Ok(())
+    }
+    .await;
+
+    // --- 12. Cleanup ----------------------------------------------------------
+    cancel.cancel();
+
+    // Delete the forwarding config we created.
+    if let Some(ref cfg) = created_config {
+        if let Err(e) = c.delete_log_forwarding(&cfg.app).await {
+            eprintln!(
+                "Warning: failed to delete log-forwarding config for app {}: {e:#}",
+                cfg.app,
+            );
+        } else {
+            eprintln!("Log-forwarding config deleted for app {}.", cfg.app);
+        }
+    }
+
+    // If --replace-existing was used, restore the prior config (best-effort).
+    if let Some(prior) = prior_config {
+        let restore_req = LogForwardingRequest {
+            app: prior.app.clone(),
+            forwarding_type: prior.forwarding_type,
+            endpoint: prior.endpoint.clone(),
+            port: prior.port,
+            format: prior.format,
+            enabled: prior.enabled,
+            token: prior.token,
+        };
+        if let Err(e) = c.create_log_forwarding(&restore_req).await {
+            eprintln!(
+                "Warning: failed to restore previous log-forwarding config for app {}: {e:#}",
+                prior.app,
+            );
+        } else {
+            eprintln!(
+                "Restored previous log-forwarding config for app {}.",
+                prior.app
+            );
+        }
+    }
+
+    // Stop the tunnel (best-effort).
+    if let Err(e) = tunnel_handle.stop().await
+        && debug
+    {
+        eprintln!("[debug] tunnel stop returned an error: {e:#}");
+    }
+
+    // Propagate any stream error after cleanup.
+    stream_result
 }

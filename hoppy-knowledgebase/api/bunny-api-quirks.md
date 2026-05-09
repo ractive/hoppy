@@ -167,6 +167,10 @@ and exposes:
 - `--clear` — explicit wipe; requires the operator to type "wipe".
 - `--list` — names + redacted values; opt in with `--reveal` to see raws.
 
+## Magic Containers: no logs-fetch endpoint
+
+**Logs.** Bunny does not expose a logs-fetch endpoint for Magic Containers (verified against the LLM-friendly docs index at https://docs.bunny.net/llms.txt — 0 of 60 endpoints retrieve logs). The only path is **log-forwarding configuration** (5 endpoints): the operator points Bunny at a syslog receiver they control. `hoppy container logs` automates this round-trip with a transient receiver + tunnel.
+
 ## Magic Containers: env-var values are returned in plaintext
 
 **Affected endpoints:** `GET /apps/{appId}` (`containerTemplates[*].environmentVariables`),

@@ -33,15 +33,21 @@ Today's hoppy release matrix already builds: `x86_64-unknown-linux-gnu`, `aarch6
 
 ### 1. Pre-publish hygiene (hard pre-requisites)
 
+> **iter-24 update:** the workspace now has 9 publishable crates instead
+> of 8 — `bunny-syslog-receiver` was added. Audit it alongside the
+> `bunny-api-*` family (uniqueness, metadata, publish order). `bore` is
+> an *optional* runtime dependency for `hoppy container logs`;
+> Homebrew/Scoop must not declare it as a hard dependency.
+
 Several things must be true before the project can be published. Audit each:
 
-- [ ] **Crate names are unique on crates.io.** Check `cargo search hoppy bunny-api-core bunny-api-compute bunny-api-containers bunny-api-database bunny-api-recording bunny-api-shield bunny-api-storage bunny-api-stream` — confirm none are taken by an unrelated package. If `hoppy` is taken, pick a fallback (`bunny-hoppy`?) and document the choice. The `bunny-api-*` names are likely free but verify each.
+- [ ] **Crate names are unique on crates.io.** Check `cargo search hoppy bunny-api-core bunny-api-compute bunny-api-containers bunny-api-database bunny-api-recording bunny-api-shield bunny-api-storage bunny-api-stream bunny-syslog-receiver` — confirm none are taken by an unrelated package. If `hoppy` is taken, pick a fallback (`bunny-hoppy`?) and document the choice. The `bunny-api-*` and `bunny-syslog-receiver` names are likely free but verify each. (`bunny-syslog-receiver` was added in iter-24 — transport library, not a `bunny-api-*` API client.)
 - [ ] **Version bump from 0.1.0 to a release version.** Decide: stay at `0.1.0` for the first publish (signals early-but-stable, breaking changes still allowed pre-1.0), or jump straight to `1.0.0` (commits to semver from day one)? Hyalo is at `0.14.0`; ff-rdp's version is whatever is current. Recommendation: ship as `0.1.0` (first public, room to iterate) and bump from there. Document the version-bump rule (semver) in `decision-log.md`.
 - [ ] **Every `Cargo.toml` has a `description`, `license`, `repository`, `homepage`, `readme`, `keywords`, `categories`.** The root has these; sub-crates may not. Audit and fix. crates.io rejects publishes missing required fields.
-- [ ] **README polish.** Hoppy's `README.md` exists; before publishing, audit it as the package landing page on crates.io and the Homebrew formula description. Sections needed: install (Homebrew + cargo + binary download), quickstart, command map, configuration (BUNNY_API_KEY env var), troubleshooting, link to docs.
+- [ ] **README polish.** Hoppy's `README.md` exists; before publishing, audit it as the package landing page on crates.io and the Homebrew formula description. Sections needed: install (Homebrew + cargo + binary download), quickstart, command map, configuration (BUNNY_API_KEY env var), troubleshooting, link to docs. **Note:** mention that `bore` is an *optional* runtime dep used by `hoppy container logs` (added in iter-24); the rest of hoppy works without it. Homebrew formula should not declare `bore` as a hard dependency — only as a "depends_on (recommended)" or in the post-install caveats.
 - [ ] **CHANGELOG.md** (set up in iter-23) gets a `## [0.1.0] - YYYY-MM-DD` entry summarising every iteration that shipped.
 - [ ] **LICENSE present and matches Cargo.toml `license = "MIT"`** — already true; verify.
-- [ ] **Crates publish in dependency order**: `bunny-api-core` first (no internal deps), then `bunny-api-{compute,containers,database,recording,shield,storage,stream}` (each depends on `bunny-api-core` only? verify), then `hoppy` (or `hoppy-cli` after iter-23 §9 lands). The release workflow must publish in this order or `cargo publish` fails.
+- [ ] **Crates publish in dependency order**: `bunny-api-core` first (no internal deps), then `bunny-api-{compute,containers,database,recording,shield,storage,stream}` (each depends on `bunny-api-core` only? verify), then `bunny-syslog-receiver` (transport-only, no internal deps — can publish in parallel with the `bunny-api-*` group), then `hoppy` (or `hoppy-cli` after iter-23 §9 lands). The release workflow must publish in this order or `cargo publish` fails.
 - [ ] **`[workspace.package]` hoist** (from iter-23 §3) makes version-bumping a single edit. Confirm it's in place.
 
 ### 2. Release workflow upgrades — version + security gates
@@ -66,6 +72,7 @@ Today hoppy uses `actions/checkout@v4`, `Swatinem/rust-cache@v2`, etc. Hyalo and
 - [ ] **Add a `verify-cargo-token` step** before publishing that fails fast with a clear message if the secret is missing. Lift from hyalo.
 - [ ] **Add a `publish-crates` job** (post-build, post-upload). Steps:
   - Publish each `bunny-api-*` crate in dependency order — use `cargo publish -p <crate> --token "${{ secrets.CARGO_TOKEN }}"`.
+  - Publish `bunny-syslog-receiver` (added in iter-24 — no `bunny-api-*` deps, but `hoppy` consumes it).
   - Then publish `hoppy` (or `hoppy-cli`).
   - Between each publish, sleep 30s to let crates.io's index propagate so the next dependent crate can resolve.
 - [ ] **Test the publish path with `--dry-run` first**: in a separate workflow run (not on tag), do `cargo publish -p <each crate> --dry-run --token "${{ secrets.CARGO_TOKEN }}"`. Confirms each crate has all required metadata.

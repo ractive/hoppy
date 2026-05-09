@@ -1,0 +1,20 @@
+[package]
+name = "bunny-syslog-receiver"
+version.workspace = true
+edition.workspace = true
+description = "Embedded RFC 5424 / 3164 syslog TCP receiver with a pluggable tunnel abstraction (used by `hoppy container logs`)"
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "process", "time"] }
+tokio-util = { workspace = true, features = ["io"] }
+syslog_loose = "0.23"
+thiserror = "2"
+async-trait = "0.1"
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "process", "time", "test-util"] }
