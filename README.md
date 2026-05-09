@@ -196,6 +196,36 @@ hoppy container region list
 hoppy container limits
 ```
 
+#### Tailing Magic Containers logs
+
+Bunny does not expose a logs-fetch API for Magic Containers — logs are syslog-forwarded only, so there's no `--tail` flag to look for.
+
+```bash
+hoppy container logs --app-id app-uuid
+```
+
+This spins up a local TCP syslog (RFC 5424) receiver on a kernel-assigned port, opens a public tunnel via [bore](https://github.com/ekzhang/bore), registers a Bunny log-forwarding configuration pointed at the tunnel's public address, and streams incoming lines to your terminal. Ctrl-C tears everything down (forwarding config, tunnel, receiver).
+
+If you see `bore: command not found`:
+
+```bash
+cargo install bore-cli      # or
+brew install bore-cli
+```
+
+If you already have public ingress, skip bore entirely:
+
+```bash
+hoppy container logs --app-id app-uuid --tunnel none
+hoppy container logs --app-id app-uuid --tunnel-host vps.example.com:5514   # after `ssh -R 5514:localhost:5514 user@vps`
+```
+
+Privacy note: `bore.pub` is a third-party relay run by the bore project — your log lines traverse it. For sensitive workloads use `--tunnel-host` with your own ingress, or run `bore server` on your own VPS and pass `--bore-server <host>`.
+
+Bunny adds a 10–30 second delivery delay before forwarded lines arrive, so don't expect real-time tailing.
+
+JSON output: pass `--format json` for NDJSON. `--format table` is rejected (logs aren't tabular).
+
 ### Database (libSQL)
 
 ```bash
