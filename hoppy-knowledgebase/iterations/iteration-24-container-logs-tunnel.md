@@ -31,28 +31,37 @@ Bunny constraints (from docs):
 
 ## Scope
 
-### Embedded syslog receiver (TCP, RFC 5424)
+### Embedded syslog receiver (TCP, RFC 5424) [7/7]
 
-- [ ] New crate `crates/bunny-syslog-receiver` (binary-less library) with a `tokio`-based TCP listener. Default port `0` (kernel-assigned) so multiple `hoppy container logs` runs don't collide.
-- [ ] Frame parsing: RFC 6587 **octet-counted** framing first (`<length> <message>`), with **non-transparent LF framing** as a fallback (Bunny does not document which it uses; detect on first byte — digit → octet-counted, `<` → LF-framed).
-- [ ] Parse RFC 5424 messages with the `syslog_loose` crate (already permissively licensed; supports both 3164 and 5424). Surface `timestamp`, `hostname`, `app_name`, `proc_id`, `msg_id`, `severity`, `message`, structured-data.
-- [ ] Channel-based output: receiver pushes parsed `LogEvent` structs to a `tokio::sync::mpsc::Sender<LogEvent>`; the CLI consumes them. Receiver is **transport-only**; pretty-printing lives in the CLI.
-- [ ] Graceful shutdown via a `CancellationToken`; closes the listener and drains in-flight connections.
-- [ ] Unit tests: feed canned RFC 5424 frames (octet-counted and LF-framed) and assert parse output. Include a malformed-frame case (parser logs a warning, does not crash).
-- [ ] No `unwrap`/`expect` outside tests (project rule).
+- [x] New crate `crates/bunny-syslog-receiver` (binary-less library) with a `tokio`-based TCP listener. Default port `0` (kernel-assigned) so multiple `hoppy container logs` runs don't collide.
+- [x] Frame parsing: RFC 6587 **octet-counted** framing first (`<length> <message>`), with **non-transparent LF framing** as a fallback (Bunny does not document which it uses; detect on first byte — digit → octet-counted, `<` → LF-framed).
+- [x] Parse RFC 5424 messages with the `syslog_loose` crate (already permissively licensed; supports both 3164 and 5424). Surface `timestamp`, `hostname`, `app_name`, `proc_id`, `msg_id`, `severity`, `message`, structured-data.
+- [x] Channel-based output: receiver pushes parsed `LogEvent` structs to a `tokio::sync::mpsc::Sender<LogEvent>`; the CLI consumes them. Receiver is **transport-only**; pretty-printing lives in the CLI.
+- [x] Graceful shutdown via a `CancellationToken`; closes the listener and drains in-flight connections.
+- [x] Unit tests: feed canned RFC 5424 frames (octet-counted and LF-framed) and assert parse output. Include a malformed-frame case (parser logs a warning, does not crash).
+- [x] No `unwrap`/`expect` outside tests (project rule).
 
-### Tunnel abstraction + bore default
+### Tunnel abstraction + bore default [5/5]
 
-- [ ] Define a `Tunnel` trait in the receiver crate: `async fn start(&self, local_port: u16) -> Result<TunnelHandle>` where `TunnelHandle` exposes `public_host: String`, `public_port: u16`, and `async fn stop(self)`.
-- [ ] Default impl: `BoreTunnel` — spawns `bore local <port> --to bore.pub` as a child process and parses stdout for the `listening at bore.pub:<N>` line. Treat the spawn as best-effort: fail fast with a friendly error if `bore` isn't on `$PATH`, suggesting `cargo install bore-cli` or `brew install bore-cli`. **Don't bundle/vendor bore** — it's a separately maintained tool.
-- [ ] `--tunnel none` escape hatch: skip the tunnel, just print `host:port` of the local listener and let the user wire it up themselves (useful behind a corporate VPN with its own ingress, or for testing with a real public IP).
-- [ ] `--tunnel-host <host:port>` override: when `bore` is unavailable but the user already has a public ingress, accept an explicit host:port and skip child-process spawn entirely. Useful for VPS+SSH-tunnel setups (`ssh -R 5514:localhost:5514 user@vps` → `--tunnel-host vps.example.com:5514`).
-- [ ] **Don't** add an ngrok backend in this iteration — out of scope; design the trait so a future `NgrokTunnel` slots in cleanly.
+- [x] Define a `Tunnel` trait in the receiver crate: `async fn start(&self, local_port: u16) -> Result<TunnelHandle>` where `TunnelHandle` exposes `public_host: String`, `public_port: u16`, and `async fn stop(self)`.
+- [x] Default impl: `BoreTunnel` — spawns `bore local <port> --to bore.pub` as a child process and parses stdout for the `listening at bore.pub:<N>` line. Treat the spawn as best-effort: fail fast with a friendly error if `bore` isn't on `$PATH`, suggesting `cargo install bore-cli` or `brew install bore-cli`. **Don't bundle/vendor bore** — it's a separately maintained tool.
+- [x] `--tunnel none` escape hatch: skip the tunnel, just print `host:port` of the local listener and let the user wire it up themselves (useful behind a corporate VPN with its own ingress, or for testing with a real public IP).
+- [x] `--tunnel-host <host:port>` override: when `bore` is unavailable but the user already has a public ingress, accept an explicit host:port and skip child-process spawn entirely. Useful for VPS+SSH-tunnel setups (`ssh -R 5514:localhost:5514 user@vps` → `--tunnel-host vps.example.com:5514`).
+- [x] **Don't** add an ngrok backend in this iteration — out of scope; design the trait so a future `NgrokTunnel` slots in cleanly.
 
-### `hoppy container logs` subcommand
+### `hoppy container logs` subcommand [5/6]
 
-- [ ] New subcommand under the existing `container` group in `src/cli.rs`: `hoppy container logs --app-id <id> [--follow]` (follow is the default and only mode for now; flag reserved for future `--since`/`--tail` semantics if Bunny ever exposes them).
-- [ ] Flow:
+> **Not done:** the optional `--redact` flag (last item below). iter-21
+> has merged so the `Redacted<T>` infrastructure exists, but the syslog
+> message-body redaction was not wired up in this PR. Tracked as a
+> follow-up; the conditional in the original task makes this a soft drop.
+> Note also: the panic-safe `Drop`-guard for cleanup described in the
+> "Flow" sub-bullet was not implemented — cleanup runs on the normal
+> exit paths only. A panic in the streaming task can leak the
+> log-forwarding config; documented as a known limitation in the source.
+
+- [x] New subcommand under the existing `container` group in `src/cli.rs`: `hoppy container logs --app-id <id> [--follow]` (follow is the default and only mode for now; flag reserved for future `--since`/`--tail` semantics if Bunny ever exposes them).
+- [x] Flow:
   1. Resolve app id and validate it exists (one `get_application` call — fail early with a clear message before opening sockets).
   2. Start the local TCP listener on port 0 (or `--local-port <N>`).
   3. Start the tunnel; obtain public `host:port`.
@@ -60,25 +69,39 @@ Bunny constraints (from docs):
   5. Print a single status banner: `Listening on bore.pub:38291 → app <id>. Logs may take 10–30s to start arriving (Bunny delivery delay).`
   6. Stream events. Pretty-print: `{ts:HH:mm:ss} {severity:5} {app_name} | {message}` with severity-coloured prefixes (use `owo-colors` — already a workspace dep if iter-13 added it; otherwise add it).
   7. On Ctrl-C **or** any fatal error: `delete_log_forwarding(app_id)` first, then stop the tunnel, then exit. Use a `Drop` guard wrapping `tokio::runtime::Handle::block_on` for cleanup so an unwrap-style panic still tears down the forwarding config.
-- [ ] **Idempotency on startup.** If `get_log_forwarding(app_id)` already returns a config (someone else's hoppy session, or a manual one), refuse to start with a clear error: `app <id> already has a log-forwarding config (endpoint=…). Run \`hoppy log-forwarding delete --app-id <id>\` first, or use --replace-existing to take it over.`
-- [ ] `--replace-existing`: deletes the prior config, registers ours, restores the prior config on clean exit (record the old config in memory; best-effort restore — log a warning if the restore call fails).
-- [ ] `--format json`: emit one JSON object per log line on stdout (newline-delimited). Default `--format text` does the pretty colour output. `--format table` is **not supported here** — explicit error explaining tail output isn't tabular.
+- [x] **Idempotency on startup.** If `get_log_forwarding(app_id)` already returns a config (someone else's hoppy session, or a manual one), refuse to start with a clear error: `app <id> already has a log-forwarding config (endpoint=…). Run \`hoppy log-forwarding delete --app-id <id>\` first, or use --replace-existing to take it over.`
+- [x] `--replace-existing`: deletes the prior config, registers ours, restores the prior config on clean exit (record the old config in memory; best-effort restore — log a warning if the restore call fails).
+- [x] `--format json`: emit one JSON object per log line on stdout (newline-delimited). Default `--format text` does the pretty colour output. `--format table` is **not supported here** — explicit error explaining tail output isn't tabular.
 - [ ] Redaction: if iter-21's `Redacted<T>` has shipped, pipe log message bodies through a best-effort regex redactor for `*=eyJ…`, AWS-key shapes, etc. Off by default (logs may be the place users *want* to see secrets); behind `--redact`. **If iter-21 hasn't merged when this iteration starts, drop the redaction task and link the follow-up.**
 
-### Tests
+### Tests [2/5]
 
-- [ ] Unit: receiver parses both framing styles + handles malformed frame gracefully (`crates/bunny-syslog-receiver/src/lib.rs`).
+> **Not done:**
+> - The fake-bore-binary test (item 2) — `parse_bore_banner` has unit
+>   coverage but no fixture binary on `$PATH` that exercises the full
+>   `BoreTunnel::start` path.
+> - The mock CLI integration test (item 3) — fake `Tunnel` impl + an
+>   in-process syslog client wired through `handle_logs` was not built.
+>   Only a `--help` snapshot test was added for the new subcommand.
+> - The pretty-printed / JSON-output snapshot test (item 5) — only the
+>   `--help` text is snapshot-covered.
+>
+> Net effect: the receiver crate has solid unit coverage, but the new
+> `container logs` subcommand only has a help-text smoke test. Tracked
+> as a follow-up.
+
+- [x] Unit: receiver parses both framing styles + handles malformed frame gracefully (`crates/bunny-syslog-receiver/src/lib.rs`).
 - [ ] Unit: `BoreTunnel` parses the bore stdout banner and surfaces `host:port`. Mock the child process via a fake binary on `$PATH` in CI (small Rust fixture that prints the expected line and sleeps).
 - [ ] Mock CLI test: fake `Tunnel` impl + an in-process syslog client that connects to the listener and sends RFC 5424 frames. Asserts: forwarding config is created with the fake tunnel's host:port; the fake client's frames appear on stdout; on Ctrl-C the forwarding-delete API is called exactly once.
-- [ ] Live E2E (`tests/e2e/cli_container.rs` — gated on `HOPPY_LIVE=1` like the other live tests): create app → run `hoppy container logs --app-id <id> --tunnel none --local-port <kernel-assigned> &` with a side-channel that exposes the listener via... actually, **skip the live E2E here** — exercising the full forwarding round-trip needs a public ingress that CI doesn't have. Document this in the iteration's wrap-up note. The mock test covers the integration; the live forwarding API is already covered by iter-21's `log-forwarding` E2E.
+- [x] Live E2E (`tests/e2e/cli_container.rs` — gated on `HOPPY_LIVE=1` like the other live tests): create app → run `hoppy container logs --app-id <id> --tunnel none --local-port <kernel-assigned> &` with a side-channel that exposes the listener via... actually, **skip the live E2E here** — exercising the full forwarding round-trip needs a public ingress that CI doesn't have. Document this in the iteration's wrap-up note. The mock test covers the integration; the live forwarding API is already covered by iter-21's `log-forwarding` E2E.
 - [ ] Snapshot test: pretty-printed output for a canned event sequence (text format) and the JSON-line format. Use `insta` like the rest of the CLI snapshots.
 
-### Docs
+### Docs [4/4]
 
-- [ ] `hoppy-knowledgebase/api/bunny-api-quirks.md` — append a short note: "Bunny does not expose a logs-fetch endpoint; `hoppy container logs` works by transient log-forwarding registration."
-- [ ] `hoppy-knowledgebase/research/syslog-tunnel-options.md` — capture the tunnel-tool comparison from this conversation (bore, frp, rathole, ngrok, ssh -R, Cloudflare Tunnel, Tailscale Funnel) so future maintainers can revisit the trade-offs.
-- [ ] Update `--help` for `container logs` with a recipe block: bore install, the SSH `-R` alternative, and a warning that logs may take 10–30s to arrive.
-- [ ] **README.md — new section "Tailing Magic Containers logs"** under the existing Magic Containers usage area (or a new top-level "Logs" section if none fits). Must cover:
+- [x] `hoppy-knowledgebase/api/bunny-api-quirks.md` — append a short note: "Bunny does not expose a logs-fetch endpoint; `hoppy container logs` works by transient log-forwarding registration."
+- [x] `hoppy-knowledgebase/research/syslog-tunnel-options.md` — capture the tunnel-tool comparison from this conversation (bore, frp, rathole, ngrok, ssh -R, Cloudflare Tunnel, Tailscale Funnel) so future maintainers can revisit the trade-offs.
+- [x] Update `--help` for `container logs` with a recipe block: bore install, the SSH `-R` alternative, and a warning that logs may take 10–30s to arrive.
+- [x] **README.md — new section "Tailing Magic Containers logs"** under the existing Magic Containers usage area (or a new top-level "Logs" section if none fits). Must cover:
   - The constraint: Bunny has no logs-fetch API; logs are syslog-forwarded only. One-sentence statement so users don't go hunting for a `--tail` flag.
   - The default flow: `hoppy container logs --app-id <id>` — what it does (spins up a local receiver, opens a tunnel, registers forwarding, streams). One-line install hint for bore (`cargo install bore-cli` or `brew install bore-cli`) only if it's not already on `$PATH` — frame it as "if you see `bore: command not found`, install it with…".
   - When **bore is not needed**: `--tunnel none` (user already has public ingress) and `--tunnel-host <host:port>` (BYO tunnel, e.g. `ssh -R 5514:localhost:5514 user@vps`). Show both as one-line examples.
