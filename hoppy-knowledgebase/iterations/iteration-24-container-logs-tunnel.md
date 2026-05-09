@@ -9,7 +9,7 @@ tags:
   - dx
   - syslog
   - tunnel
-status: in-progress
+status: completed
 branch: iter-24/container-logs-tunnel
 ---
 
