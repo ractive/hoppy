@@ -2,7 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Project hygiene & dogfooding (iter-23)
+
+- Hyalo schema alignment: rich `.hyalo.toml` with type schemas for `iteration`, `research`, `backlog`, `docs`, `decision`; saved views (`planned`, `stale-in-progress`, `completed-with-todos`, `missing-status`, `missing-type`, `open-tasks`, `orphans`)
+- Cargo workspace hygiene: hoisted shared dependencies to `[workspace.dependencies]`, added `[workspace.package]` (version/edition/license/repository), switched to `resolver = "3"`, added optimised `[profile.release]` (`lto = true`, `codegen-units = 1`, `panic = "abort"`, `strip = true`), `[workspace.lints.rust] unsafe_code = "forbid"`
+- `AI_NOTICE` file at repo root disclosing AI-generated code
+- `hoppy-knowledgebase/dogfooding/dogfooding-playbook.md` — safe real-API loop with `hoppy-test-` prefix convention and idempotent cleanup script
+- `hoppy-knowledgebase/cli/command-tree.md` — generated CLI surface map
+- `hoppy-knowledgebase/cli/help-text-style.md` — LLM-friendly help text template (one-line + `long_about` + `after_help` examples + cross-refs)
+- `CLAUDE.md`: Agents directive at top, expanded hyalo CLI usage block, Dogfooding section, performance/streaming hint, cross-platform note, fixed task-checkbox spec to `- [ ] Task`
 
 ### Stream — video processing (iter-16)
 
@@ -66,4 +79,5 @@ Initial release.
 - Pagination support across all list commands
 - Credentials excluded from JSON output for security
 
+[Unreleased]: https://github.com/ractive/hoppy/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ractive/hoppy/releases/tag/v0.1.0
