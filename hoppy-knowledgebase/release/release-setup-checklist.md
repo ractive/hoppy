@@ -20,14 +20,14 @@ One-time setup steps before the first release.
 
 ## Homebrew Tap
 
-- [x] Create public repo `ractive/homebrew-hoppy` on GitHub
+- [x] Create public repo `ractive/homebrew-tap` on GitHub
 - [x] Create `Formula/` directory in the tap repo
 - [ ] Create a **fine-grained** GitHub Personal Access Token:
   1. Go to https://github.com/settings/personal-access-tokens/new
   2. Token name: `hoppy-homebrew-tap`
   3. Expiration: 1 year (or custom — you'll need to rotate it)
   4. Resource owner: `ractive`
-  5. Repository access: **Only select repositories** → select `ractive/homebrew-hoppy`
+  5. Repository access: **Only select repositories** → select `ractive/homebrew-tap`
   6. Permissions:
      - **Contents**: Read and write (needed to push the updated formula)
      - Everything else: No access

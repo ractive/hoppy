@@ -5,6 +5,10 @@ edition.workspace = true
 description = "Hand-written bunny.net API client (Pull Zone and related resources)"
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords = ["bunny", "bunnycdn", "cdn", "pull-zone", "api"]
+categories = ["web-programming::http-client", "api-bindings"]
 
 [dependencies]
 reqwest.workspace = true
