@@ -1,11 +1,13 @@
 [package]
 name = "xtask"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 publish = false
 
 [dependencies]
-hoppy = { path = ".." }
-clap_mangen = "0.2"
-clap = { version = "4", features = ["derive", "env"] }
-anyhow = "1"
+hoppy.workspace = true
+clap_mangen.workspace = true
+clap.workspace = true
+anyhow.workspace = true

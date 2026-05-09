@@ -11,39 +11,87 @@ members = [
     "crates/bunny-api-recording",
     "xtask",
 ]
-resolver = "2"
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/ractive/hoppy"
+
+[workspace.dependencies]
+# Internal crates — path-only until publish time. When iter-25 starts publishing
+# to crates.io, add `version = "..."` (must match `[workspace.package].version`,
+# else Cargo errors on the path+version mismatch). See iter-25 publish plan.
+bunny-api-compute = { path = "crates/bunny-api-compute" }
+bunny-api-containers = { path = "crates/bunny-api-containers" }
+bunny-api-core = { path = "crates/bunny-api-core" }
+bunny-api-database = { path = "crates/bunny-api-database" }
+bunny-api-recording = { path = "crates/bunny-api-recording" }
+bunny-api-shield = { path = "crates/bunny-api-shield" }
+bunny-api-storage = { path = "crates/bunny-api-storage" }
+bunny-api-stream = { path = "crates/bunny-api-stream" }
+hoppy = { path = "." }
+
+# External dependencies
+anyhow = "1"
+assert_cmd = "2"
+bytes = "1"
+clap = { version = "4", features = ["derive", "env"] }
+clap_complete = "4"
+clap_mangen = "0.2"
+console = "0.16.3"
+indicatif = { version = "0.18.4", features = ["tokio"] }
+insta = { version = "1", features = ["json", "redactions"] }
+percent-encoding = "2"
+predicates = "3"
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_repr = "0.1"
+tabled = "0.17"
+tempfile = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio-util = { version = "0.7.18", features = ["io"] }
+urlencoding = "2"
+wiremock = "0.6"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+# Pedantic lints deferred — see iter-23 plan; future iteration to enable incrementally.
 
 [package]
 name = "hoppy"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 description = "CLI for bunny.net services"
-license = "MIT"
-repository = "https://github.com/ractive/hoppy"
+license.workspace = true
+repository.workspace = true
 homepage = "https://github.com/ractive/hoppy"
 readme = "README.md"
 keywords = ["bunny", "cdn", "cli", "dns", "edge"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-clap = { version = "4", features = ["derive", "env"] }
-clap_complete = "4"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
-anyhow = "1"
-tabled = "0.17"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
-bunny-api-compute = { path = "crates/bunny-api-compute" }
-bunny-api-containers = { path = "crates/bunny-api-containers" }
-bunny-api-core = { path = "crates/bunny-api-core" }
-bunny-api-database = { path = "crates/bunny-api-database" }
-bunny-api-shield = { path = "crates/bunny-api-shield" }
-bunny-api-storage = { path = "crates/bunny-api-storage" }
-bunny-api-stream = { path = "crates/bunny-api-stream" }
-indicatif = { version = "0.18.4", features = ["tokio"] }
-tokio-util = { version = "0.7.18", features = ["io"] }
-console = "0.16.3"
-reqwest = { version = "0.12", features = ["stream"] }
+clap = { workspace = true }
+clap_complete.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+anyhow.workspace = true
+tabled.workspace = true
+tokio = { workspace = true, features = ["fs"] }
+indicatif.workspace = true
+tokio-util.workspace = true
+console.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
+bunny-api-compute.workspace = true
+bunny-api-containers.workspace = true
+bunny-api-core.workspace = true
+bunny-api-database.workspace = true
+bunny-api-shield.workspace = true
+bunny-api-storage.workspace = true
+bunny-api-stream.workspace = true
 
 [features]
 live-api = []
@@ -53,12 +101,12 @@ name = "e2e"
 path = "tests/e2e/mod.rs"
 
 [dev-dependencies]
-assert_cmd = "2"
-predicates = "3"
-insta = { version = "1", features = ["json", "redactions"] }
-wiremock = "0.6"
-serde_json = "1"
-tempfile = "3"
+assert_cmd.workspace = true
+predicates.workspace = true
+insta.workspace = true
+wiremock.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+tempfile.workspace = true
 
 [package.metadata.deb]
 maintainer = "ractive"
@@ -85,3 +133,9 @@ assets = [
     { source = "LICENSE", dest = "/usr/share/doc/hoppy/LICENSE", mode = "644", doc = true },
     { source = "README.md", dest = "/usr/share/doc/hoppy/README.md", mode = "644", doc = true },
 ]
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = "abort"
+strip = true
