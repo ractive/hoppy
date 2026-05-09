@@ -35,4 +35,4 @@ Implementation: a `--no-hints` global flag (default off) suppresses them. `--for
 ## Reference
 
 - `../hyalo` iter-107 commit `d28325d`
-- [[../cli/help-text-style]]
+- [[cli/help-text-style]]
