@@ -1,3 +1,4 @@
+use bunny_api_core::types::OptimizerWatermarkPosition;
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
@@ -76,6 +77,33 @@ impl From<ZoneTier> for bunny_api_core::types::PullZoneType {
         match t {
             ZoneTier::Premium => Self::Premium,
             ZoneTier::Volume => Self::Volume,
+        }
+    }
+}
+
+/// Watermark position for the Optimizer (kebab-case names for the CLI).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum OptimizerWatermarkPositionArg {
+    /// Top-left corner (value 0)
+    TopLeft,
+    /// Top-right corner (value 1)
+    TopRight,
+    /// Bottom-left corner (value 2)
+    BottomLeft,
+    /// Bottom-right corner (value 3)
+    BottomRight,
+    /// Centered (value 4)
+    Center,
+}
+
+impl From<OptimizerWatermarkPositionArg> for OptimizerWatermarkPosition {
+    fn from(a: OptimizerWatermarkPositionArg) -> Self {
+        match a {
+            OptimizerWatermarkPositionArg::TopLeft => Self::TopLeft,
+            OptimizerWatermarkPositionArg::TopRight => Self::TopRight,
+            OptimizerWatermarkPositionArg::BottomLeft => Self::BottomLeft,
+            OptimizerWatermarkPositionArg::BottomRight => Self::BottomRight,
+            OptimizerWatermarkPositionArg::Center => Self::Center,
         }
     }
 }
@@ -267,6 +295,13 @@ pub enum PullZoneAction {
         zone_tier: ZoneTier,
     },
     /// Update a pull zone
+    #[command(after_help = "EXAMPLES:
+  # Enable Optimizer with WebP, CSS/JS minify, and image quality 80
+  hoppy pull-zone update --id <id> --optimizer-enabled true --optimizer-webp true \\
+    --optimizer-minify-css true --optimizer-minify-js true --optimizer-image-quality 80
+
+  # After enabling, read Optimizer usage stats
+  hoppy pull-zone statistics --id <id> --type optimizer")]
     Update {
         #[arg(long)]
         id: i64,
@@ -293,6 +328,80 @@ pub enum PullZoneAction {
         enable_geo_zone_sa: Option<bool>,
         #[arg(long)]
         enable_geo_zone_af: Option<bool>,
+
+        // ── Optimizer ────────────────────────────────────────────────────────
+        /// Enable or disable the Bunny Optimizer for this Pull Zone.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_enabled: Option<bool>,
+        /// Let Optimizer auto-select settings based on content type.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_automatic_optimization: Option<bool>,
+        /// Maximum image width (px) served to desktop visitors.
+        #[arg(long, value_name = "PX", help_heading = "Optimizer")]
+        optimizer_desktop_max_width: Option<i32>,
+        /// Maximum image width (px) served to mobile visitors.
+        #[arg(long, value_name = "PX", help_heading = "Optimizer")]
+        optimizer_mobile_max_width: Option<i32>,
+        /// JPEG/WebP quality (0–100) for desktop images.
+        #[arg(long, value_name = "0-100", help_heading = "Optimizer")]
+        optimizer_image_quality: Option<i32>,
+        /// JPEG/WebP quality (0–100) for mobile images.
+        #[arg(long, value_name = "0-100", help_heading = "Optimizer")]
+        optimizer_mobile_image_quality: Option<i32>,
+        /// Convert images to WebP when the browser supports it.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_webp: Option<bool>,
+        /// Upscale images smaller than the max-width to fill the requested size.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_upscaling: Option<bool>,
+        /// Minify CSS files on the fly.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_minify_css: Option<bool>,
+        /// Minify JavaScript files on the fly.
+        /// Serialises to `OptimizerMinifyJavaScript` on the wire.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_minify_js: Option<bool>,
+        /// Enable the image manipulation engine (resize, crop, etc. via URL params).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_manipulation_engine: Option<bool>,
+        /// JSON map of named class definitions (class-name → URL params).
+        /// See https://docs.bunny.net/docs/optimizer-classes for format.
+        /// Example: `'{"thumb":"width=200,quality=80"}'`
+        #[arg(long, value_name = "JSON", help_heading = "Optimizer")]
+        optimizer_classes: Option<String>,
+        /// Force the use of classes defined in --optimizer-classes.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_force_classes: Option<bool>,
+        /// Enable watermark overlay on images.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_watermark: Option<bool>,
+        /// URL of the watermark image.
+        #[arg(long, value_name = "URL", help_heading = "Optimizer")]
+        optimizer_watermark_url: Option<String>,
+        /// Position of the watermark: top-left, top-right, bottom-left, bottom-right, center.
+        #[arg(long, value_name = "POS", help_heading = "Optimizer")]
+        optimizer_watermark_position: Option<OptimizerWatermarkPositionArg>,
+        /// Watermark offset from the edge as a percentage (0.0–100.0).
+        #[arg(long, value_name = "PCT", help_heading = "Optimizer")]
+        optimizer_watermark_offset: Option<f64>,
+        /// Minimum image size (px) required for a watermark to be applied.
+        #[arg(long, value_name = "PX", help_heading = "Optimizer")]
+        optimizer_watermark_min_image_size: Option<i32>,
+        /// Enable Optimizer Static HTML (WordPress caching).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_static_html: Option<bool>,
+        /// WordPress installation path used by Static HTML caching.
+        #[arg(long, value_name = "PATH", help_heading = "Optimizer")]
+        optimizer_static_html_wp_path: Option<String>,
+        /// Cookie name that bypasses Static HTML caching for logged-in users.
+        #[arg(long, value_name = "NAME", help_heading = "Optimizer")]
+        optimizer_static_html_wp_bypass_cookie: Option<String>,
+        /// Pre-render HTML for crawlers (may increase origin load).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_prerender_html: Option<bool>,
+        /// Route Optimizer traffic through a dedicated tunnel for origin privacy.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        optimizer_tunnel: Option<bool>,
     },
     /// Delete a pull zone
     Delete {

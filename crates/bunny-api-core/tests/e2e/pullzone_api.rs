@@ -1,5 +1,6 @@
 use bunny_api_core::types::{
-    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, MatchingType, OriginType, TriggerType,
+    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, MatchingType,
+    OptimizerWatermarkPosition, OriginType, TriggerType, UpdatePullZone,
 };
 use bunny_api_core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
@@ -8,6 +9,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 const FIXTURE_LIST_PAGINATED: &str =
     include_str!("../../../../fixtures/core/pullzone_list_paginated.json");
 const FIXTURE_GET: &str = include_str!("../../../../fixtures/core/pullzone_get.json");
+const FIXTURE_GET_WITH_OPTIMIZER: &str =
+    include_str!("../../../../fixtures/core/pullzone_get_with_optimizer.json");
 const FIXTURE_GET_WITH_EDGERULES: &str =
     include_str!("../../../../fixtures/core/pullzone_get_with_edgerules.json");
 const FIXTURE_GET_MAGIC_CONTAINER: &str =
@@ -697,4 +700,208 @@ async fn get_pull_zone_deserializes_edge_rules() {
         Some(TriggerType::CountryCode)
     );
     assert_eq!(block_rule.triggers[0].pattern_matches, vec!["CN", "RU"]);
+}
+
+// ---------------------------------------------------------------------------
+// Optimizer field tests
+// ---------------------------------------------------------------------------
+
+/// Only the three explicitly-set fields should appear in the serialised body;
+/// no other Optimizer keys should be present.
+#[tokio::test]
+async fn update_pull_zone_with_optimizer_enabled_sends_only_set_fields() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "OptimizerEnabled": true,
+        "OptimizerImageQuality": 80,
+        "OptimizerEnableWebP": true
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .optimizer_enabled(true)
+        .optimizer_image_quality(80)
+        .optimizer_enable_web_p(true);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// `false` must NOT be skipped by `skip_serializing_if = "Option::is_none"`.
+#[tokio::test]
+async fn update_pull_zone_with_optimizer_enabled_false_serializes_false() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "OptimizerEnabled": false });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().optimizer_enabled(false);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// The wire key must be the long form `OptimizerMinifyJavaScript`, not
+/// `OptimizerMinifyJs` or any abbreviation.
+#[tokio::test]
+async fn update_pull_zone_with_optimizer_minify_javascript_uses_long_form_key() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "OptimizerMinifyJavaScript": true });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().optimizer_minify_java_script(true);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// The watermark position enum must serialise as its integer discriminant.
+/// `Center` is 4 on the wire.
+#[tokio::test]
+async fn update_pull_zone_with_optimizer_watermark_position_serializes_as_int() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "OptimizerWatermarkPosition": 4 });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body =
+        UpdatePullZone::new().optimizer_watermark_position(OptimizerWatermarkPosition::Center);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// The Optimizer-rich fixture must deserialise without panic, and all Optimizer
+/// fields must match the fixture values. Also verifies that `OptimizerEnableWebP`
+/// (capital P) deserialises correctly via PascalCase rename.
+#[tokio::test]
+async fn get_pull_zone_with_optimizer_round_trips_all_fields() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone/2002"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_GET_WITH_OPTIMIZER, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(2002)
+        .await
+        .unwrap();
+
+    assert_eq!(zone.id, 2002);
+
+    // Master switches
+    assert_eq!(zone.optimizer_enabled, Some(true));
+    assert_eq!(zone.optimizer_automatic_optimization_enabled, Some(true));
+
+    // Image dimensions & quality
+    assert_eq!(zone.optimizer_desktop_max_width, Some(1920));
+    assert_eq!(zone.optimizer_mobile_max_width, Some(960));
+    assert_eq!(zone.optimizer_image_quality, Some(80));
+    assert_eq!(zone.optimizer_mobile_image_quality, Some(65));
+
+    // Format & upscale — verifies `OptimizerEnableWebP` (capital P)
+    assert_eq!(zone.optimizer_enable_web_p, Some(true));
+    assert_eq!(zone.optimizer_enable_upscaling, Some(true));
+
+    // Minify — verifies `OptimizerMinifyJavaScript` long form
+    assert_eq!(zone.optimizer_minify_css, Some(true));
+    assert_eq!(zone.optimizer_minify_java_script, Some(true));
+
+    // Manipulation engine — verifies string form of classes
+    assert_eq!(zone.optimizer_enable_manipulation_engine, Some(true));
+    assert_eq!(
+        zone.optimizer_classes.as_deref(),
+        Some("{\"thumb\":\"width=200,quality=80\"}")
+    );
+    assert_eq!(zone.optimizer_force_classes, Some(true));
+
+    // Watermark
+    assert_eq!(zone.optimizer_watermark_enabled, Some(true));
+    assert_eq!(
+        zone.optimizer_watermark_url.as_deref(),
+        Some("https://example.com/watermark.png")
+    );
+    assert_eq!(
+        zone.optimizer_watermark_position,
+        Some(OptimizerWatermarkPosition::Center)
+    );
+    assert_eq!(zone.optimizer_watermark_offset, Some(5.0));
+    assert_eq!(zone.optimizer_watermark_min_image_size, Some(500));
+
+    // Static HTML
+    assert_eq!(zone.optimizer_static_html_enabled, Some(true));
+    assert_eq!(
+        zone.optimizer_static_html_word_press_path.as_deref(),
+        Some("/wp-content")
+    );
+    assert_eq!(
+        zone.optimizer_static_html_word_press_bypass_cookie
+            .as_deref(),
+        Some("bypass_cache")
+    );
+
+    // Prerender & tunnel
+    assert_eq!(zone.optimizer_prerender_html, Some(true));
+    assert_eq!(zone.optimizer_tunnel_enabled, Some(true));
+
+    // Read-only pricing (float, not int)
+    assert_eq!(zone.optimizer_pricing, Some(9.5));
+
+    // Round-trip: serialise back to JSON and verify key Optimizer fields survive
+    let json_val = serde_json::to_value(&zone).unwrap();
+    assert_eq!(json_val["OptimizerEnabled"], serde_json::json!(true));
+    assert_eq!(json_val["OptimizerEnableWebP"], serde_json::json!(true));
+    assert_eq!(
+        json_val["OptimizerMinifyJavaScript"],
+        serde_json::json!(true)
+    );
+    assert_eq!(json_val["OptimizerWatermarkPosition"], serde_json::json!(4));
 }

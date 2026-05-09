@@ -291,6 +291,49 @@ header. The spec security still lists only `Bearer | AccessKey`, so
 this might be a server-side residual check. Open question — verify
 with a live call when next testing.
 
+## Optimizer fields
+
+### `OptimizerClasses` — documented as string, returns array when empty
+
+**Field:** `PullZoneModel.OptimizerClasses`
+
+The bunny.net API documents `OptimizerClasses` as a JSON string
+(a serialised map of class-name → URL parameters, e.g.
+`"{\"thumb\":\"width=200,quality=80\"}"`). However, the live API
+returns `[]` (an empty JSON array) when no classes are configured.
+
+hoppy handles this with `deserialize_string_lossy_option`: any
+non-string JSON value (including arrays and objects) deserialises to
+`None`. When the field holds a string it is preserved as `Some(s)`.
+This means an empty-array response is silently dropped on read.
+
+### `OptimizerPricing` — server-set float, not writable
+
+**Field:** `PullZoneModel.OptimizerPricing`
+
+The spec hints at an integer type, but the live API returns a float
+(e.g. `9.5`). hoppy maps it to `Option<f64>` on `PullZone` and
+excludes it entirely from `UpdatePullZone` (server-set, ignored on
+writes).
+
+### `OptimizerWatermarkPosition` — repr-based enum, may grow
+
+**Field:** `PullZoneModel.OptimizerWatermarkPosition`
+
+Values: `0=TopLeft, 1=TopRight, 2=BottomLeft, 3=BottomRight, 4=Center`.
+Bunny may add new positions in future API versions. hoppy uses
+`deserialize_repr_option` so unknown future values deserialise to
+`None` instead of panicking.
+
+### `OptimizerMinifyCSS` — irregular capitalisation
+
+**Field:** `PullZoneModel.OptimizerMinifyCSS`
+
+PascalCase renaming of `optimizer_minify_css` would produce
+`OptimizerMinifyCss`, but the wire format uses all-caps `CSS`.
+hoppy applies `#[serde(rename = "OptimizerMinifyCSS")]` explicitly
+on this field in both the response and request structs.
+
 ## Related
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks
 - [[api/bunny-api-overview]] — API overview
