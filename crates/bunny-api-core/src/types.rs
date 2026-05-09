@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::serde_helpers::deserialize_repr_option;
+use crate::serde_helpers::{deserialize_repr_option, deserialize_string_lossy_option};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -282,6 +282,53 @@ impl std::str::FromStr for MatchingType {
     }
 }
 
+/// Where a watermark image is placed on optimised images.
+///
+/// Bunny.net may add new positions in future API versions. The
+/// `optimizer_watermark_position` field on [`PullZone`] is deserialised via
+/// [`crate::serde_helpers::deserialize_repr_option`] so unknown values become
+/// `None` instead of failing the whole response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum OptimizerWatermarkPosition {
+    TopLeft = 0,
+    TopRight = 1,
+    BottomLeft = 2,
+    BottomRight = 3,
+    Center = 4,
+}
+
+impl std::fmt::Display for OptimizerWatermarkPosition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::TopLeft => "top-left",
+            Self::TopRight => "top-right",
+            Self::BottomLeft => "bottom-left",
+            Self::BottomRight => "bottom-right",
+            Self::Center => "center",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for OptimizerWatermarkPosition {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "top-left" => Ok(Self::TopLeft),
+            "top-right" => Ok(Self::TopRight),
+            "bottom-left" => Ok(Self::BottomLeft),
+            "bottom-right" => Ok(Self::BottomRight),
+            "center" => Ok(Self::Center),
+            _ => Err(format!(
+                "unknown watermark position: {s:?}; \
+                 expected one of: top-left, top-right, bottom-left, bottom-right, center"
+            )),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Response models
 // ---------------------------------------------------------------------------
@@ -420,6 +467,75 @@ pub struct PullZone {
     pub enable_geo_zone_sa: bool,
     #[serde(default)]
     pub enable_geo_zone_af: bool,
+
+    // Optimizer — master switches
+    #[serde(default)]
+    pub optimizer_enabled: Option<bool>,
+    #[serde(default)]
+    pub optimizer_automatic_optimization_enabled: Option<bool>,
+
+    // Optimizer — image dimensions & quality
+    #[serde(default)]
+    pub optimizer_desktop_max_width: Option<i32>,
+    #[serde(default)]
+    pub optimizer_mobile_max_width: Option<i32>,
+    #[serde(default)]
+    pub optimizer_image_quality: Option<i32>,
+    #[serde(default)]
+    pub optimizer_mobile_image_quality: Option<i32>,
+
+    // Optimizer — format & upscale
+    #[serde(default)]
+    pub optimizer_enable_web_p: Option<bool>,
+    #[serde(default)]
+    pub optimizer_enable_upscaling: Option<bool>,
+
+    // Optimizer — minify
+    #[serde(rename = "OptimizerMinifyCSS", default)]
+    pub optimizer_minify_css: Option<bool>,
+    #[serde(rename = "OptimizerMinifyJavaScript", default)]
+    pub optimizer_minify_java_script: Option<bool>,
+
+    // Optimizer — manipulation engine
+    #[serde(default)]
+    pub optimizer_enable_manipulation_engine: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_string_lossy_option")]
+    pub optimizer_classes: Option<String>,
+    #[serde(default)]
+    pub optimizer_force_classes: Option<bool>,
+
+    // Optimizer — watermark
+    #[serde(default)]
+    pub optimizer_watermark_enabled: Option<bool>,
+    #[serde(default)]
+    pub optimizer_watermark_url: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub optimizer_watermark_position: Option<OptimizerWatermarkPosition>,
+    #[serde(default)]
+    pub optimizer_watermark_offset: Option<f64>,
+    #[serde(default)]
+    pub optimizer_watermark_min_image_size: Option<i32>,
+
+    // Optimizer — static HTML / WordPress
+    #[serde(default)]
+    pub optimizer_static_html_enabled: Option<bool>,
+    #[serde(default)]
+    pub optimizer_static_html_word_press_path: Option<String>,
+    #[serde(default)]
+    pub optimizer_static_html_word_press_bypass_cookie: Option<String>,
+
+    // Optimizer — prerender & tunnel
+    #[serde(default)]
+    pub optimizer_prerender_html: Option<bool>,
+    #[serde(default)]
+    pub optimizer_tunnel_enabled: Option<bool>,
+
+    // Optimizer — read-only pricing tier (server-set; not writable)
+    /// Server-set float indicating the Optimizer pricing tier. Not writable —
+    /// omit from `UpdatePullZone`. The wire format is a float (e.g. 9.5),
+    /// despite the API docs suggesting an integer.
+    #[serde(default)]
+    pub optimizer_pricing: Option<f64>,
 
     // Edge rules
     #[serde(default)]
@@ -586,6 +702,72 @@ pub struct UpdatePullZone {
     pub enable_geo_zone_sa: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enable_geo_zone_af: Option<bool>,
+
+    // Optimizer — master switches
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_automatic_optimization_enabled: Option<bool>,
+
+    // Optimizer — image dimensions & quality
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_desktop_max_width: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_mobile_max_width: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_image_quality: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_mobile_image_quality: Option<i32>,
+
+    // Optimizer — format & upscale
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_enable_web_p: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_enable_upscaling: Option<bool>,
+
+    // Optimizer — minify
+    #[serde(rename = "OptimizerMinifyCSS", skip_serializing_if = "Option::is_none")]
+    pub optimizer_minify_css: Option<bool>,
+    #[serde(
+        rename = "OptimizerMinifyJavaScript",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub optimizer_minify_java_script: Option<bool>,
+
+    // Optimizer — manipulation engine
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_enable_manipulation_engine: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_classes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_force_classes: Option<bool>,
+
+    // Optimizer — watermark
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_watermark_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_watermark_url: Option<String>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_watermark_position: Option<OptimizerWatermarkPosition>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_watermark_offset: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_watermark_min_image_size: Option<i32>,
+
+    // Optimizer — static HTML / WordPress
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_static_html_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_static_html_word_press_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_static_html_word_press_bypass_cookie: Option<String>,
+
+    // Optimizer — prerender & tunnel
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_prerender_html: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optimizer_tunnel_enabled: Option<bool>,
 }
 
 impl UpdatePullZone {
@@ -627,6 +809,144 @@ impl UpdatePullZone {
     #[must_use]
     pub fn zone_security_enabled(mut self, enabled: bool) -> Self {
         self.zone_security_enabled = Some(enabled);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_enabled(mut self, v: bool) -> Self {
+        self.optimizer_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_automatic_optimization_enabled(mut self, v: bool) -> Self {
+        self.optimizer_automatic_optimization_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_desktop_max_width(mut self, v: i32) -> Self {
+        self.optimizer_desktop_max_width = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_mobile_max_width(mut self, v: i32) -> Self {
+        self.optimizer_mobile_max_width = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_image_quality(mut self, v: i32) -> Self {
+        self.optimizer_image_quality = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_mobile_image_quality(mut self, v: i32) -> Self {
+        self.optimizer_mobile_image_quality = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_enable_web_p(mut self, v: bool) -> Self {
+        self.optimizer_enable_web_p = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_enable_upscaling(mut self, v: bool) -> Self {
+        self.optimizer_enable_upscaling = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_minify_css(mut self, v: bool) -> Self {
+        self.optimizer_minify_css = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_minify_java_script(mut self, v: bool) -> Self {
+        self.optimizer_minify_java_script = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_enable_manipulation_engine(mut self, v: bool) -> Self {
+        self.optimizer_enable_manipulation_engine = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_classes(mut self, v: impl Into<String>) -> Self {
+        self.optimizer_classes = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_force_classes(mut self, v: bool) -> Self {
+        self.optimizer_force_classes = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_watermark_enabled(mut self, v: bool) -> Self {
+        self.optimizer_watermark_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_watermark_url(mut self, v: impl Into<String>) -> Self {
+        self.optimizer_watermark_url = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_watermark_position(mut self, v: OptimizerWatermarkPosition) -> Self {
+        self.optimizer_watermark_position = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_watermark_offset(mut self, v: f64) -> Self {
+        self.optimizer_watermark_offset = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_watermark_min_image_size(mut self, v: i32) -> Self {
+        self.optimizer_watermark_min_image_size = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_static_html_enabled(mut self, v: bool) -> Self {
+        self.optimizer_static_html_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_static_html_word_press_path(mut self, v: impl Into<String>) -> Self {
+        self.optimizer_static_html_word_press_path = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_static_html_word_press_bypass_cookie(mut self, v: impl Into<String>) -> Self {
+        self.optimizer_static_html_word_press_bypass_cookie = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_prerender_html(mut self, v: bool) -> Self {
+        self.optimizer_prerender_html = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn optimizer_tunnel_enabled(mut self, v: bool) -> Self {
+        self.optimizer_tunnel_enabled = Some(v);
         self
     }
 }

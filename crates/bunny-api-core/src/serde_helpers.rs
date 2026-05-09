@@ -37,11 +37,82 @@ where
     }))
 }
 
+/// Deserialize an `Option<String>` that is *tolerant* of non-string JSON values.
+///
+/// The bunny.net API documents `OptimizerClasses` as a JSON string (a serialised
+/// map of class-name → URL parameters), but returns an empty array `[]` when
+/// no classes are configured. This helper returns:
+///
+/// - `None` for JSON `null` or any non-string value (array, object, integer, …)
+/// - `Some(s)` for a JSON string value
+///
+/// Use as `#[serde(default, deserialize_with = "deserialize_string_lossy_option")]`.
+pub fn deserialize_string_lossy_option<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(raw.and_then(|v| {
+        if let serde_json::Value::String(s) = v {
+            Some(s)
+        } else {
+            None
+        }
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
     use serde_repr::{Deserialize_repr, Serialize_repr};
+
+    // ── deserialize_string_lossy_option tests ────────────────────────────────
+
+    #[derive(Debug, Deserialize)]
+    struct StringWrapper {
+        #[serde(default, deserialize_with = "deserialize_string_lossy_option")]
+        value: Option<String>,
+    }
+
+    #[test]
+    fn string_lossy_null_becomes_none() {
+        let w: StringWrapper = serde_json::from_str(r#"{"value":null}"#).unwrap();
+        assert_eq!(w.value, None);
+    }
+
+    #[test]
+    fn string_lossy_string_becomes_some() {
+        let w: StringWrapper =
+            serde_json::from_str(r#"{"value":"{\"thumb\":\"width=200\"}"}"#).unwrap();
+        assert_eq!(w.value, Some("{\"thumb\":\"width=200\"}".to_owned()));
+    }
+
+    #[test]
+    fn string_lossy_array_becomes_none() {
+        let w: StringWrapper = serde_json::from_str(r#"{"value":[]}"#).unwrap();
+        assert_eq!(w.value, None);
+    }
+
+    #[test]
+    fn string_lossy_object_becomes_none() {
+        let w: StringWrapper = serde_json::from_str(r#"{"value":{"a":1}}"#).unwrap();
+        assert_eq!(w.value, None);
+    }
+
+    #[test]
+    fn string_lossy_integer_becomes_none() {
+        let w: StringWrapper = serde_json::from_str(r#"{"value":42}"#).unwrap();
+        assert_eq!(w.value, None);
+    }
+
+    #[test]
+    fn string_lossy_missing_field_becomes_none() {
+        let w: StringWrapper = serde_json::from_str(r#"{}"#).unwrap();
+        assert_eq!(w.value, None);
+    }
+
+    // ── deserialize_repr_option tests ────────────────────────────────────────
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
     #[repr(u8)]
