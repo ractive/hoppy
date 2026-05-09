@@ -63,7 +63,7 @@ Add the following fields to the response struct in `crates/bunny-api-core/src/ty
 **Watermark**
 - [x] `optimizer_watermark_enabled: Option<bool>`
 - [x] `optimizer_watermark_url: Option<String>`
-- [x] `optimizer_watermark_position: Option<i32>` (enum: top-left=0, top-right=1, bottom-left=2, bottom-right=3, center=4 — confirm against spec)
+- [x] `optimizer_watermark_position: Option<OptimizerWatermarkPosition>` — repr-enum (top-left=0, top-right=1, bottom-left=2, bottom-right=3, center=4); unknown discriminants deserialise to `None` via `deserialize_repr_option`
 - [x] `optimizer_watermark_offset: Option<f64>`
 - [x] `optimizer_watermark_min_image_size: Option<i32>`
 
@@ -77,7 +77,7 @@ Add the following fields to the response struct in `crates/bunny-api-core/src/ty
 - [x] `optimizer_tunnel_enabled: Option<bool>`
 
 **Read-only (response only — do NOT add to `UpdatePullZone`)**
-- [x] `optimizer_pricing: Option<i32>` — appears to be a server-set tier indicator
+- [x] `optimizer_pricing: Option<f64>` — server-set tier indicator returned as a float (e.g. `9.5`) despite docs suggesting an integer
 
 Mirror the writable subset (everything except `optimizer_pricing`) onto `UpdatePullZone` with `#[serde(skip_serializing_if = "Option::is_none")]` so unset flags don't overwrite server state.
 
