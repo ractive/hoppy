@@ -1,0 +1,77 @@
+---
+source: tests/e2e/cli_container.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+Stream live syslog output from a Magic Containers application.
+
+How it works ============ hoppy binds a local TCP syslog listener, exposes it via a tunnel so that Bunny's log-forwarding service can reach it, creates a temporary log-forwarding configuration for your application, then streams the incoming syslog messages to your terminal. On Ctrl-C (or any error) the forwarding configuration is deleted and the tunnel is torn down.
+
+Bunny delivers logs with a 10–30 s delay after the forwarding configuration is active — wait a moment before concluding that nothing is arriving.
+
+Tunnel options ============== • bore (default)   — shells out to the `bore` binary, which opens a reverse tunnel through bore.pub.  Install: `cargo install bore-cli` or `brew install bore-cli`. WARNING: bore.pub is a third-party relay run by the bore project. For sensitive logs prefer --tunnel-host or --tunnel none.
+
+• --tunnel none    — no tunnel is created; hoppy prints the local address so you can configure your own ingress (VPN, public IP, etc.).
+
+• --tunnel-host <host:port> You have already opened a tunnel (e.g. `ssh -R 5514:localhost:5514 user@vps.example.com`) and want hoppy to register that public address with Bunny.  Pass the public endpoint as host:port.
+
+Examples ======== # Default — bore tunnel through bore.pub hoppy container logs --app-id my-app-id
+
+# No tunnel — use your own ingress hoppy container logs --app-id my-app-id --tunnel none
+
+# Pre-established SSH tunnel ssh -R 5514:localhost:5514 user@vps.example.com & hoppy container logs --app-id my-app-id --tunnel-host vps.example.com:5514
+
+Usage: hoppy container logs [OPTIONS] --app-id <APP_ID>
+
+Options:
+      --app-id <APP_ID>
+          Application ID to stream logs from
+
+      --debug
+          Enable debug output (shows HTTP requests)
+
+      --tunnel <TUNNEL>
+          Tunnel provider.  Use "bore" (default) to expose the local listener via bore.pub, or "none" if you have your own ingress. Conflicts with --tunnel-host
+          
+          [default: bore]
+          [possible values: bore, none]
+
+      --quiet
+          Suppress non-essential output
+
+      --tunnel-host <TUNNEL_HOST>
+          Static public endpoint for a pre-established tunnel (host:port). When set, hoppy registers this address with Bunny and listens locally.  Conflicts with --tunnel. Example: --tunnel-host vps.example.com:5514
+
+      --local-port <LOCAL_PORT>
+          Local TCP port for the syslog listener.  0 = kernel-assigned (default)
+          
+          [default: 0]
+
+  -y, --yes
+          Skip confirmation prompts
+
+      --replace-existing
+          Overwrite an existing log-forwarding configuration and restore it on clean exit
+
+      --reveal
+          Reveal redacted secrets in output (env values, passwords, tokens). Off by default for safety; opt in explicitly
+
+      --format <FORMAT>
+          Output format: "text" (default) or "json". "table" is not supported for streaming tail output
+          
+          [default: text]
+          [possible values: text, json]
+
+      --reveal-env <KEY>
+          Reveal a specific env-var by name (case-insensitive). Repeatable. Useful when you want one variable but not all secrets
+
+      --follow
+          Accept the --follow flag for forward-compatibility (no-op; the command always follows)
+
+      --record <DIR>
+          Record API responses to files in the given directory
+
+      --bore-server <BORE_SERVER>
+          Bore relay server host.  Defaults to bore.pub.  Use this to point at a self-hosted bore server
+
+  -h, --help
+          Print help (see a summary with '-h')
