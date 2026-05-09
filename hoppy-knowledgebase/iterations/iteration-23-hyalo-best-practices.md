@@ -10,7 +10,7 @@ tags:
   - cli-consistency
   - dogfooding
   - code-review
-status: in-progress
+status: completed
 branch: iter-23/hyalo-best-practices
 ---
 
