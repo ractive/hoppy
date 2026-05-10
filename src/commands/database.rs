@@ -1,5 +1,6 @@
 use std::io::{self, BufRead, Write};
 
+use crate::date;
 use anyhow::{Context as _, Result, bail};
 use bunny_api_database::types::{
     Authorization, CreateDatabaseGroupPayload, CreateDatabasePayload, CreateDatabaseV2Payload,
@@ -264,10 +265,12 @@ pub async fn handle(
                 return Ok(());
             }
             let resp = client.delete_database(id).await?;
-            let row = StatusRow {
-                status: format!("deleted: {}", resp.database),
-            };
-            output::print_single(&row, format);
+            if let OutputFormat::Json = format {
+                let json = serde_json::json!({ "deleted": resp.database });
+                println!("{}", serde_json::to_string_pretty(&json)?);
+            } else {
+                eprintln!("Deleted database {}", resp.database);
+            }
         }
         DbAction::Fork { id, target, group } => {
             validate_slug(target)?;
@@ -354,13 +357,17 @@ pub async fn handle(
             }
         }
         DbAction::Statistics { id, from, to } => {
-            let stats = client.get_database_statistics_v2(id, from, to).await?;
+            let from = date::normalise_datetime(from)?;
+            let to = date::normalise_datetime(to)?;
+            let stats = client.get_database_statistics_v2(id, &from, &to).await?;
             // Statistics is a complex nested object; print as JSON regardless.
             let json = serde_json::to_string_pretty(&stats)?;
             println!("{json}");
         }
         DbAction::Usage { id, from, to } => {
-            let usage = client.get_database_usage_v2(id, from, to).await?;
+            let from = date::normalise_datetime(from)?;
+            let to = date::normalise_datetime(to)?;
+            let usage = client.get_database_usage_v2(id, &from, &to).await?;
             let json = serde_json::to_string_pretty(&usage)?;
             println!("{json}");
         }
@@ -491,16 +498,24 @@ async fn handle_group(
                 return Ok(());
             }
             let resp = client.delete_group(id).await?;
-            let row: GroupRow = (&resp.group).into();
-            output::print_single(&row, format);
+            if let OutputFormat::Json = format {
+                let json = serde_json::json!({ "deleted": resp.group.id });
+                println!("{}", serde_json::to_string_pretty(&json)?);
+            } else {
+                eprintln!("Deleted database group {}", resp.group.id);
+            }
         }
         DbGroupAction::Stats { id, from, to } => {
-            let stats = client.get_group_stats(id, from, to).await?;
+            let from = date::normalise_datetime(from)?;
+            let to = date::normalise_datetime(to)?;
+            let stats = client.get_group_stats(id, &from, &to).await?;
             let json = serde_json::to_string_pretty(&stats)?;
             println!("{json}");
         }
         DbGroupAction::Usage { id, from, to } => {
-            let usage = client.get_group_aggregated_usage(id, from, to).await?;
+            let from = date::normalise_datetime(from)?;
+            let to = date::normalise_datetime(to)?;
+            let usage = client.get_group_aggregated_usage(id, &from, &to).await?;
             let json = serde_json::to_string_pretty(&usage)?;
             println!("{json}");
         }

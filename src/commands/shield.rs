@@ -4,6 +4,7 @@ use crate::cli::{
     ShieldBotDetectionAction, ShieldMetricsAction, ShieldRateLimitAction,
     ShieldUploadScanningAction, ShieldWafAction, ShieldZoneAction,
 };
+use crate::date;
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
 use bunny_api_shield::types::{
@@ -572,9 +573,10 @@ pub async fn handle(
             continuation_token,
             all,
         } => {
+            let normalised_date = date::normalise_shield_date(date)?;
             handle_event_logs(
                 *shield_zone_id,
-                date,
+                &normalised_date,
                 continuation_token.as_deref(),
                 *all,
                 format,

@@ -31,7 +31,7 @@ async fn storage_ls_json() {
         "ls",
         "--zone",
         "my-zone",
-        "--path",
+        "--remote-path",
         "/test-dir",
     ])
     .output()
@@ -69,7 +69,7 @@ async fn storage_ls_table() {
         "ls",
         "--zone",
         "my-zone",
-        "--path",
+        "--remote-path",
         "/test-dir",
     ])
     .output()
@@ -192,7 +192,7 @@ async fn storage_download() {
         "my-zone",
         "--remote-path",
         "/test-dir/hello.txt",
-        "--output",
+        "--file",
         temp_path.to_str().unwrap(),
     ])
     .output()
@@ -253,7 +253,7 @@ fn live_storage_file_ops() {
 
         // 4. List — verify hello.txt appears
         let list =
-            support::hoppy_live_json(&["storage", "ls", "--zone", &zone_name, "--path", "test"]);
+            support::hoppy_live_json(&["storage", "ls", "--zone", &zone_name, "--remote-path", "test"]);
         assert!(list.success, "ls failed: {}", list.stderr);
         let found = list.stdout.contains("hello.txt");
         assert!(found, "hello.txt not found in ls output");
@@ -267,7 +267,7 @@ fn live_storage_file_ops() {
             &zone_name,
             "--remote-path",
             "test/hello.txt",
-            "--output",
+            "--file",
             &download_path,
         ]);
         assert!(download.success, "download failed: {}", download.stderr);
