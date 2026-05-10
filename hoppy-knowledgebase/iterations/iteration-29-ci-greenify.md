@@ -6,7 +6,7 @@ tags:
   - iteration
   - ci
   - infrastructure
-status: in-progress
+status: completed
 branch: iter-29/ci-greenify
 ---
 
