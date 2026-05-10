@@ -26,6 +26,12 @@ Options:
       --app-id <APP_ID>
           Application ID to stream logs from
 
+      --format <FORMAT>
+          Output format
+          
+          [default: table]
+          [possible values: json, table, text]
+
       --debug
           Enable debug output (shows HTTP requests)
 
@@ -55,23 +61,17 @@ Options:
       --reveal
           Reveal redacted secrets in output (env values, passwords, tokens). Off by default for safety; opt in explicitly
 
-      --format <FORMAT>
-          Output format: "text" (default) or "json". "table" is not supported for streaming tail output
-          
-          [default: text]
-          [possible values: text, json]
+      --follow
+          Accept the --follow flag for forward-compatibility (no-op; the command always follows)
 
       --reveal-env <KEY>
           Reveal a specific env-var by name (case-insensitive). Repeatable. Useful when you want one variable but not all secrets
 
-      --follow
-          Accept the --follow flag for forward-compatibility (no-op; the command always follows)
+      --bore-server <BORE_SERVER>
+          Bore relay server host.  Defaults to bore.pub.  Use this to point at a self-hosted bore server
 
       --record <DIR>
           Record API responses to files in the given directory
-
-      --bore-server <BORE_SERVER>
-          Bore relay server host.  Defaults to bore.pub.  Use this to point at a self-hosted bore server
 
   -h, --help
           Print help (see a summary with '-h')

@@ -638,7 +638,6 @@ pub async fn handle(
             tunnel_host,
             local_port,
             replace_existing,
-            format: log_format,
             follow: _,
             bore_server,
         } => {
@@ -648,7 +647,7 @@ pub async fn handle(
                 tunnel_host.as_deref(),
                 *local_port,
                 *replace_existing,
-                log_format,
+                format,
                 bore_server.as_deref(),
                 debug,
                 record,
@@ -2128,20 +2127,18 @@ async fn handle_logs(
     tunnel_host: Option<&str>,
     local_port: u16,
     replace_existing: bool,
-    format: &str,
+    format: OutputFormat,
     bore_server: Option<&str>,
     debug: bool,
     record: Option<&str>,
 ) -> Result<()> {
     // --- 1. Validate format ---------------------------------------------------
+    // Tail output is a live stream, not tabular data. The global `--format`
+    // flag defaults to `table`, so silently fall back to `text` for that case
+    // rather than failing every default invocation.
     let logs_format = match format {
-        "text" => LogsFormat::Text,
-        "json" => LogsFormat::Json,
-        "table" => bail!(
-            "`hoppy container logs` does not support --format table; \
-             tail output is not tabular. Use --format text (default) or --format json."
-        ),
-        other => bail!("unknown format '{other}'; expected text or json"),
+        OutputFormat::Text | OutputFormat::Table => LogsFormat::Text,
+        OutputFormat::Json => LogsFormat::Json,
     };
 
     // --- 2. Build client and verify app exists --------------------------------
