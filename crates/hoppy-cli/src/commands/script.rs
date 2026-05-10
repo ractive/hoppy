@@ -5,8 +5,8 @@ use crate::cli::{
 };
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Result, bail};
-use bunny_api::compute::ComputeClient;
-use bunny_api::compute::{
+use bunny_net_api::compute::ComputeClient;
+use bunny_net_api::compute::{
     AddSecret, AddVariable, CreateEdgeScript, EdgeScript, EdgeScriptCode, EdgeScriptRelease,
     EdgeScriptSecret, EdgeScriptStatistics, EdgeScriptVariable, PublishScript, ScriptType,
     SecretList, UpdateEdgeScript, UpdateSecret, UpdateVariable, UpsertSecret, UpsertVariable,
@@ -158,8 +158,8 @@ struct ReleaseRow {
 impl From<&EdgeScriptRelease> for ReleaseRow {
     fn from(r: &EdgeScriptRelease) -> Self {
         let status = match r.status {
-            bunny_api::compute::ReleaseStatus::Live => "Live",
-            bunny_api::compute::ReleaseStatus::Archived => "Archived",
+            bunny_net_api::compute::ReleaseStatus::Live => "Live",
+            bunny_net_api::compute::ReleaseStatus::Archived => "Archived",
         };
         Self {
             id: r.id,

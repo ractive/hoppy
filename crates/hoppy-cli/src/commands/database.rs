@@ -2,7 +2,7 @@ use std::io::{self, BufRead, Write};
 
 use crate::date;
 use anyhow::{Context as _, Result, bail};
-use bunny_api::database::types::{
+use bunny_net_api::database::types::{
     Authorization, CreateDatabaseGroupPayload, CreateDatabasePayload, CreateDatabaseV2Payload,
     Database, DatabaseGroup, ForkDatabasePayload, GenerateTokenDatabaseGroupPayload,
     GenerateTokenDatabasePayload, GenerateTokenDatabaseV2Payload, ListVersionsDatabasePayload,
@@ -395,7 +395,7 @@ pub async fn handle(
 }
 
 async fn handle_v2(
-    client: &bunny_api::database::DatabaseClient,
+    client: &bunny_net_api::database::DatabaseClient,
     action: &DbV2Action,
     format: OutputFormat,
     yes: bool,
@@ -457,7 +457,7 @@ async fn handle_v2(
 }
 
 async fn handle_group(
-    client: &bunny_api::database::DatabaseClient,
+    client: &bunny_net_api::database::DatabaseClient,
     action: &DbGroupAction,
     format: OutputFormat,
     yes: bool,
@@ -557,7 +557,7 @@ async fn handle_group(
 }
 
 async fn handle_token(
-    client: &bunny_api::database::DatabaseClient,
+    client: &bunny_net_api::database::DatabaseClient,
     action: &DbTokenAction,
     format: OutputFormat,
     redact_cfg: &RedactConfig,
@@ -648,7 +648,7 @@ fn print_minted_token(
 }
 
 async fn handle_config(
-    client: &bunny_api::database::DatabaseClient,
+    client: &bunny_net_api::database::DatabaseClient,
     action: &DbConfigAction,
     format: OutputFormat,
 ) -> Result<()> {

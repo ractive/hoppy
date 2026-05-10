@@ -17,7 +17,7 @@ hoppy/
 │   │   │   ├── output.rs   # Output formatting (JSON, table, text)
 │   │   │   └── commands/   # One handler per service
 │   │   └── tests/e2e/      # End-to-end CLI tests (wiremock + insta)
-│   ├── bunny-api/          # Hand-written bunny.net API clients (one crate, feature-gated modules)
+│   ├── bunny-net-api/          # Hand-written bunny.net API clients (one crate, feature-gated modules)
 │   │   └── src/
 │   │       ├── lib.rs       # Feature-gated module declarations
 │   │       ├── core/        # Pull zones, storage zones, DNS, video libraries
@@ -58,7 +58,7 @@ CI runs these across Linux (gnu), macOS (x86_64 + aarch64), and Windows (msvc).
 ## Key Design Decisions
 
 - **Hand-written API clients** (not code-generated). Progenitor codegen was evaluated and rejected because it cannot handle `application/octet-stream` binary bodies. Manual clients give tighter control over binary upload APIs and type refinements.
-- **Single `bunny-api` crate** with services as feature-gated modules (`bunny_api::core`, `bunny_api::stream`, etc.). The former per-service `bunny-api-*` crates were merged in iter-32.
+- **Single `bunny-net-api` crate** with services as feature-gated modules (`bunny_net_api::core`, `bunny_net_api::stream`, etc.). The former per-service `bunny-net-api-*` crates were merged in iter-32.
 - **CLI package is `hoppy-cli`**, binary is `hoppy`. Install: `cargo install hoppy-cli`.
 - **Three output formats** for every list operation: JSON, table, text (TSV).
 - **Destructive operations** (delete) require user confirmation unless `--yes` is passed.

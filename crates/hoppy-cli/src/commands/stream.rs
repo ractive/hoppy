@@ -7,9 +7,9 @@ use crate::date;
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
 use anyhow::{Context as _, Result, bail};
-use bunny_api::core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
-use bunny_api::stream::types::{Collection, Video};
-use bunny_api::stream::{
+use bunny_net_api::core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
+use bunny_net_api::stream::types::{Collection, Video};
+use bunny_net_api::stream::{
     CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, SmartGenerateSettings,
     StreamCleanupResolutions, StreamClient, TranscribeSettings, UpdateCollection, UpdateVideo,
 };
@@ -1071,7 +1071,7 @@ async fn handle_collection(
 }
 
 /// Whether a `PaginatedList` has more pages after the current one.
-fn has_more_items<T>(list: &bunny_api::stream::PaginatedList<T>) -> bool {
+fn has_more_items<T>(list: &bunny_net_api::stream::PaginatedList<T>) -> bool {
     list.current_page.saturating_mul(list.items_per_page as i64) < list.total_items
 }
 

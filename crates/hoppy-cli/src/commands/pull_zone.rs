@@ -6,8 +6,8 @@ use crate::cli::{
 use crate::date;
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
-use bunny_api::core::CoreClient;
-use bunny_api::core::types::{
+use bunny_net_api::core::CoreClient;
+use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
     MatchingType, OptimizerWatermarkPosition, PullZone, PullZoneType, PurgeCache, TriggerType,
     UpdatePullZone,

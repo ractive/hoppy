@@ -2,7 +2,7 @@ use crate::auth;
 use crate::cli::{AuthAction, OutputFormat};
 use crate::output;
 use anyhow::{Context, Result};
-use bunny_api::core::types::BillingDetails;
+use bunny_net_api::core::types::BillingDetails;
 
 // ---------------------------------------------------------------------------
 // Display row

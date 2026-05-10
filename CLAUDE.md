@@ -61,7 +61,7 @@ Do *not* merge with `--squash`.
 - No `clone()` unless the borrow checker demands it — try references first
 - No unnecessary `pub` on struct fields
 - All build/runtime code stays in Rust — no polyglot tooling in the build (no Bun, Node, Python scripts). Knowledgebase helper scripts under `hoppy-knowledgebase/` are exempt: they're auditable shell snippets, not part of the build.
-- New API service coverage goes into `crates/bunny-api/src/<service>/` as a feature-gated module (declare the feature in `crates/bunny-api/Cargo.toml` and add `pub mod <service>;` to `crates/bunny-api/src/lib.rs`). The `bunny-api-<domain>` per-crate pattern was retired in iter-32 — see `decision-log.md`.
+- New API service coverage goes into `crates/bunny-net-api/src/<service>/` as a feature-gated module (declare the feature in `crates/bunny-net-api/Cargo.toml` and add `pub mod <service>;` to `crates/bunny-net-api/src/lib.rs`). The `bunny-net-api-<domain>` per-crate pattern was retired in iter-32 — see `decision-log.md`.
 - The CLI binary lives in `crates/hoppy-cli/` (package name `hoppy-cli`, binary name `hoppy`).
 
 ## PR Discipline
