@@ -96,7 +96,10 @@ The five real bugs ship in iter-27 — see
 ## Acceptance
 
 - [x] No remaining `--<noun>-id` flags on `delete` subcommands.
-- [x] No remaining "(0 = …, 1 = …)" help text.
+- [x] No remaining "(0 = …, 1 = …)" help text on `script create` and
+      `storage-zone create` (iter-28 scope). Shield's numeric WAF / DDoS /
+      access-list / rate-limit flags still expose raw enum ints — tracked
+      separately as a follow-up backlog item.
 - [x] Date flags accept date-only input across the CLI.
 - [x] All `delete` commands print a confirmation line in text mode.
 - [x] `dns zone dnssec status` text view shows DS record, digest, key tag,

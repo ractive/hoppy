@@ -14,7 +14,10 @@ use anyhow::{Result, bail};
 
 /// Accepted date formats listed in user-facing error messages.
 const ISO_DATE_FORMAT: &str = "YYYY-MM-DD";
-const ISO_DATETIME_FORMAT: &str = "YYYY-MM-DDThh:mm:ssZ";
+/// Anything starting with `YYYY-MM-DDT` is forwarded as-is — fractional
+/// seconds and offset suffixes are accepted, so the user-facing label is
+/// deliberately the broad RFC 3339 / ISO 8601 datetime form.
+const ISO_DATETIME_FORMAT: &str = "RFC 3339 datetime (e.g. 2024-03-15T12:30:00Z)";
 
 /// Normalise a date-range string to a full ISO 8601 datetime.
 ///
@@ -37,7 +40,7 @@ pub fn normalise_datetime(input: &str) -> Result<String> {
     bail!("invalid date {input:?} — accepted formats: {ISO_DATE_FORMAT} or {ISO_DATETIME_FORMAT}");
 }
 
-/// Same as [`normalise_datetime`] but operates on an `Option<String>`,
+/// Same as [`normalise_datetime`] but operates on an `Option<&str>`,
 /// returning `None` when the input is `None`.
 pub fn normalise_datetime_opt(input: Option<&str>) -> Result<Option<String>> {
     input.map(normalise_datetime).transpose()
@@ -87,8 +90,19 @@ fn looks_like_iso_date(s: &str) -> bool {
 
 /// Returns `true` if the string starts with `YYYY-MM-DDT` (contains a `T`
 /// after the date part), indicating it's already a datetime string.
+///
+/// Operates on bytes only — slicing `&s[..10]` would panic on non-ASCII
+/// input that lands in the middle of a UTF-8 codepoint.
 fn looks_like_datetime(s: &str) -> bool {
-    s.len() > 10 && looks_like_iso_date(&s[..10]) && s.as_bytes()[10] == b'T'
+    let b = s.as_bytes();
+    if b.len() < 11 || b[10] != b'T' {
+        return false;
+    }
+    b[4] == b'-'
+        && b[7] == b'-'
+        && b[..4].iter().all(u8::is_ascii_digit)
+        && b[5..7].iter().all(u8::is_ascii_digit)
+        && b[8..10].iter().all(u8::is_ascii_digit)
 }
 
 /// Returns `true` if the string looks like `MM-dd-yyyy` (10 chars, 2-2-4 digit groups).
@@ -159,5 +173,16 @@ mod tests {
     #[test]
     fn shield_date_invalid_returns_error() {
         assert!(normalise_shield_date("2024/03/15").is_err());
+    }
+
+    #[test]
+    fn non_ascii_input_does_not_panic() {
+        // Multi-byte UTF-8 input used to panic when looks_like_datetime
+        // sliced &s[..10] across a codepoint boundary. We only assert
+        // that the call returns (no panic) — the Ok/Err split depends on
+        // the prefix shape.
+        let _ = normalise_datetime("日本語のテスト文");
+        let _ = normalise_datetime("éééé-éé-éé");
+        let _ = normalise_shield_date("日本語のテスト文");
     }
 }

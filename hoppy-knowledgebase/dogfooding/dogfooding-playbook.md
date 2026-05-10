@@ -52,7 +52,7 @@ Why: the cleanup script greps for `hoppy-test-` and refuses to touch anything th
 
 `cargo test --workspace --features live-api --quiet` runs E2E tests that hit the real API. They:
 
-- read credentials from the standard config (or env vars — see `bunny-api-core` for the resolution order)
+- read credentials from the `BUNNY_API_KEY` environment variable (see the auth section above — there is no on-disk config file)
 - create resources prefixed `hoppy-test-` and tear them down at the end
 - are gated so plain `cargo test --workspace` never touches the network
 

@@ -631,8 +631,14 @@ fn live_script_lifecycle() {
         let name = support::unique_name("hpsc");
 
         // 1. Create script
-        let create =
-            support::hoppy_live_json(&["script", "create", "--name", &name, "--script-type", "cdn"]);
+        let create = support::hoppy_live_json(&[
+            "script",
+            "create",
+            "--name",
+            &name,
+            "--script-type",
+            "cdn",
+        ]);
         assert!(create.success, "create failed: {}", create.stderr);
         let id = create.json.as_ref().unwrap()["Id"]
             .as_i64()
@@ -735,8 +741,14 @@ fn live_script_variable_lifecycle() {
         let name = support::unique_name("hpscv");
 
         // 1. Create script
-        let create =
-            support::hoppy_live_json(&["script", "create", "--name", &name, "--script-type", "cdn"]);
+        let create = support::hoppy_live_json(&[
+            "script",
+            "create",
+            "--name",
+            &name,
+            "--script-type",
+            "cdn",
+        ]);
         assert!(create.success, "create failed: {}", create.stderr);
         let id = create.json.as_ref().unwrap()["Id"]
             .as_i64()
@@ -837,8 +849,14 @@ fn live_script_secret_lifecycle() {
         let name = support::unique_name("hpscs");
 
         // 1. Create script
-        let create =
-            support::hoppy_live_json(&["script", "create", "--name", &name, "--script-type", "cdn"]);
+        let create = support::hoppy_live_json(&[
+            "script",
+            "create",
+            "--name",
+            &name,
+            "--script-type",
+            "cdn",
+        ]);
         assert!(create.success, "create failed: {}", create.stderr);
         let id = create.json.as_ref().unwrap()["Id"]
             .as_i64()
