@@ -37,6 +37,22 @@ where
     }))
 }
 
+/// Deserialize a `Vec<T>` that tolerates a JSON `null` value.
+///
+/// The bunny.net scan API returns `"Records": null` for in-progress jobs
+/// (before any records have been discovered). Serde's built-in `#[serde(default)]`
+/// only fills in the default when the field is *absent*; it still fails on an
+/// explicit `null`. This helper coerces `null` → empty `Vec`.
+///
+/// Use as `#[serde(default, deserialize_with = "null_to_empty_vec")]`.
+pub fn null_to_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    Ok(Option::<Vec<T>>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 /// Deserialize an `Option<String>` that is *tolerant* of non-string JSON values.
 ///
 /// The bunny.net API documents `OptimizerClasses` as a JSON string (a serialised
@@ -66,6 +82,32 @@ mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
     use serde_repr::{Deserialize_repr, Serialize_repr};
+
+    // ── null_to_empty_vec tests ──────────────────────────────────────────────
+
+    #[derive(Debug, Deserialize)]
+    struct VecWrapper {
+        #[serde(default, deserialize_with = "null_to_empty_vec")]
+        items: Vec<u32>,
+    }
+
+    #[test]
+    fn null_vec_becomes_empty() {
+        let w: VecWrapper = serde_json::from_str(r#"{"items":null}"#).unwrap();
+        assert!(w.items.is_empty());
+    }
+
+    #[test]
+    fn missing_vec_becomes_empty() {
+        let w: VecWrapper = serde_json::from_str(r#"{}"#).unwrap();
+        assert!(w.items.is_empty());
+    }
+
+    #[test]
+    fn populated_vec_is_preserved() {
+        let w: VecWrapper = serde_json::from_str(r#"{"items":[1,2,3]}"#).unwrap();
+        assert_eq!(w.items, vec![1, 2, 3]);
+    }
 
     // ── deserialize_string_lossy_option tests ────────────────────────────────
 

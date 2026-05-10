@@ -2231,10 +2231,6 @@ pub enum ContainerAction {
         /// on clean exit.
         #[arg(long)]
         replace_existing: bool,
-        /// Output format: "text" (default) or "json".
-        /// "table" is not supported for streaming tail output.
-        #[arg(long, default_value = "text", value_parser = ["text", "json"])]
-        format: String,
         /// Accept the --follow flag for forward-compatibility (no-op; the
         /// command always follows).
         #[arg(long)]
@@ -3153,7 +3149,8 @@ pub enum DbConfigAction {
     Limits,
     /// Get the optimal multi-region recommendation for the user
     Optimal,
-    /// Get the optimal single-region recommendation
+    /// Get the optimal single-region recommendation (broken upstream — hidden)
+    #[command(hide = true)]
     OptimalSingle,
 }
 
@@ -3172,5 +3169,35 @@ impl From<TokenAuthorization> for bunny_api_database::types::Authorization {
             TokenAuthorization::FullAccess => Self::FullAccess,
             TokenAuthorization::ReadOnly => Self::ReadOnly,
         }
+    }
+}
+
+#[cfg(test)]
+mod cli_parse_tests {
+    use super::Cli;
+    use clap::Parser;
+
+    /// Regression test: `container logs` must parse without panicking.
+    /// Previously crashed with "Mismatch between definition and access of 'format'"
+    /// because the subcommand defined its own `--format` conflicting with the
+    /// global flag.
+    #[test]
+    fn container_logs_parses_without_panic() {
+        let result = Cli::try_parse_from(["hoppy", "container", "logs", "--app-id", "test-app-id"]);
+        assert!(result.is_ok(), "CLI parse failed: {:?}", result.err());
+    }
+
+    #[test]
+    fn container_logs_with_global_format_json() {
+        let result = Cli::try_parse_from([
+            "hoppy",
+            "--format",
+            "json",
+            "container",
+            "logs",
+            "--app-id",
+            "test-app-id",
+        ]);
+        assert!(result.is_ok(), "CLI parse failed: {:?}", result.err());
     }
 }

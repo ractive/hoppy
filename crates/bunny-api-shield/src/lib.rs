@@ -84,6 +84,8 @@ pub use types::{
     RequestIntegrityConfiguration,
     ReviewActionType,
     ShieldAccessListSummary,
+    ShieldApiErrorEnvelope,
+    ShieldApiErrorInner,
     ShieldBotDetectionMetricsResponse,
     ShieldBotDetectionSummary,
     ShieldDdosSummary,
@@ -147,4 +149,5 @@ pub use types::{
     WafRuleSeverityType,
     WafRuleTransformationType,
     WafRulesByPlanModel,
+    parse_shield_error,
 };

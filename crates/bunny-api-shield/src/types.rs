@@ -460,6 +460,59 @@ impl std::fmt::Display for ProblemDetails {
 
 impl std::error::Error for ProblemDetails {}
 
+// ---------------------------------------------------------------------------
+// Nested error envelope (actual Shield API error shape)
+// ---------------------------------------------------------------------------
+
+/// Inner error object nested under `"error"` in Shield API error responses.
+///
+/// Real shape: `{"error": {"statusCode": 404, "errorKey": "zone.not_found", "message": "..."}, "data": null}`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldApiErrorInner {
+    #[serde(default)]
+    pub status_code: Option<i32>,
+    #[serde(default)]
+    pub error_key: Option<String>,
+    #[serde(default)]
+    pub message: Option<String>,
+}
+
+/// Top-level envelope wrapping [`ShieldApiErrorInner`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShieldApiErrorEnvelope {
+    pub error: ShieldApiErrorInner,
+}
+
+impl std::fmt::Display for ShieldApiErrorEnvelope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let e = &self.error;
+        let code = e.status_code.unwrap_or(0);
+        match (&e.error_key, &e.message) {
+            (Some(key), Some(msg)) => write!(f, "Shield API error {code}: {key}: {msg}"),
+            (Some(key), None) => write!(f, "Shield API error {code}: {key}"),
+            (None, Some(msg)) => write!(f, "Shield API error {code}: {msg}"),
+            (None, None) => write!(f, "Shield API error {code}"),
+        }
+    }
+}
+
+impl std::error::Error for ShieldApiErrorEnvelope {}
+
+/// Parse a Shield API error body, trying the real nested envelope first, then
+/// the RFC 7807 `ProblemDetails` format as a fallback.
+///
+/// Returns `Some(err)` when either format is recognised, `None` otherwise.
+pub fn parse_shield_error(bytes: &[u8]) -> Option<anyhow::Error> {
+    if let Ok(env) = serde_json::from_slice::<ShieldApiErrorEnvelope>(bytes) {
+        return Some(anyhow::anyhow!(env));
+    }
+    if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(bytes) {
+        return Some(anyhow::anyhow!(problem));
+    }
+    None
+}
+
 /// Generic API operation result embedded in many Shield responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -2018,5 +2071,56 @@ mod tests {
         assert_eq!(json, "2");
         let decoded: ReviewActionType = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded, ReviewActionType::Reject);
+    }
+
+    #[test]
+    fn parse_shield_error_nested_envelope() {
+        // Real API shape: {"error": {"statusCode": 404, "errorKey": "...", "message": "..."}, "data": null}
+        let body = br#"{"error":{"statusCode":404,"errorKey":"zone.config.not_found","message":"No api-guardian config for zone 42"},"data":null}"#;
+        let err = parse_shield_error(body).expect("should parse nested envelope");
+        let msg = err.to_string();
+        assert!(msg.contains("404"), "expected status 404 in: {msg}");
+        assert!(
+            msg.contains("zone.config.not_found"),
+            "expected errorKey in: {msg}"
+        );
+        assert!(
+            msg.contains("No api-guardian config for zone 42"),
+            "expected message in: {msg}"
+        );
+    }
+
+    #[test]
+    fn parse_shield_error_rfc7807_fallback() {
+        let body = br#"{"status":403,"title":"Forbidden","detail":"Access denied"}"#;
+        let err = parse_shield_error(body).expect("should parse RFC 7807");
+        let msg = err.to_string();
+        assert!(msg.contains("403"), "expected status 403 in: {msg}");
+        assert!(msg.contains("Forbidden"), "expected title in: {msg}");
+    }
+
+    #[test]
+    fn parse_shield_error_does_not_panic_on_unknown_body() {
+        // Envelope requires the "error" key; this body lacks it, so the envelope
+        // parser will fail. ProblemDetails has all-optional fields and will succeed
+        // with defaults — that is acceptable behaviour. Either way, no panic.
+        let body = br#"{"something":"unexpected"}"#;
+        let _ = parse_shield_error(body);
+    }
+
+    #[test]
+    fn shield_error_envelope_display_status_and_key() {
+        let env = ShieldApiErrorEnvelope {
+            error: ShieldApiErrorInner {
+                status_code: Some(404),
+                error_key: Some("zone.config.not_found".to_owned()),
+                message: Some("No api-guardian config for zone 42".to_owned()),
+            },
+        };
+        let s = env.to_string();
+        assert_eq!(
+            s,
+            "Shield API error 404: zone.config.not_found: No api-guardian config for zone 42"
+        );
     }
 }
