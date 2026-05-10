@@ -201,19 +201,22 @@ jobs:
       - name: Build release binary
         run: cargo build --release
 
+      # cargo-deb and cargo-generate-rpm resolve relative asset paths from
+      # the package directory (crates/hoppy-cli/), so completions and man
+      # pages must land there — not at the workspace root.
       - name: Generate shell completions
         run: |
-          mkdir -p completions
-          ./target/release/hoppy completions bash > completions/hoppy.bash
-          ./target/release/hoppy completions zsh  > completions/_hoppy
-          ./target/release/hoppy completions fish > completions/hoppy.fish
+          mkdir -p crates/hoppy-cli/completions
+          ./target/release/hoppy completions bash > crates/hoppy-cli/completions/hoppy.bash
+          ./target/release/hoppy completions zsh  > crates/hoppy-cli/completions/_hoppy
+          ./target/release/hoppy completions fish > crates/hoppy-cli/completions/hoppy.fish
         env:
           BUNNY_API_KEY: placeholder
 
       - name: Generate man pages
         run: |
-          mkdir -p man
-          cargo xtask --output-dir man
+          mkdir -p crates/hoppy-cli/man
+          cargo xtask --output-dir crates/hoppy-cli/man
 
       - name: Install packaging tools
         uses: taiki-e/install-action@a1df9120380005ebdc788c62449b841b205541dd # v2
@@ -222,12 +225,14 @@ jobs:
 
       - name: Build deb package
         run: cargo deb -p hoppy-cli --no-build --no-strip
-        # cargo-deb picks up the binary from target/release/ and assets from
-        # the paths listed in [package.metadata.deb] in crates/hoppy-cli/Cargo.toml
+        # cargo-deb picks up the binary from target/release/ and assets
+        # from paths in [package.metadata.deb] in crates/hoppy-cli/Cargo.toml,
+        # resolved relative to that package directory.
 
       - name: Build rpm package
         run: cargo generate-rpm -p hoppy-cli
-        # cargo-generate-rpm reads [package.metadata.generate-rpm] from crates/hoppy-cli/Cargo.toml
+        # cargo-generate-rpm reads [package.metadata.generate-rpm] from
+        # crates/hoppy-cli/Cargo.toml — same package-relative resolution.
 
       - name: Rename packages with version
         run: |
