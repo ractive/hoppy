@@ -230,9 +230,10 @@ jobs:
         # resolved relative to that package directory.
 
       - name: Build rpm package
-        run: cargo generate-rpm -p hoppy-cli
-        # cargo-generate-rpm reads [package.metadata.generate-rpm] from
-        # crates/hoppy-cli/Cargo.toml — same package-relative resolution.
+        run: cargo generate-rpm -p crates/hoppy-cli
+        # cargo-generate-rpm's `-p` is a path (NOT a workspace package
+        # name like cargo's own -p flag), so pass the relative directory.
+        # It reads [package.metadata.generate-rpm] from that Cargo.toml.
 
       - name: Rename packages with version
         run: |
