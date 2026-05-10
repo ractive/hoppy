@@ -1,5 +1,6 @@
 use crate::auth;
 use crate::cli::{OutputFormat, StorageZoneAction};
+use crate::date;
 use crate::output::{self, PaginatedListJson};
 use crate::redact::{RedactConfig, redact_secrets_in_json};
 use anyhow::{Context, Result, bail};
@@ -155,7 +156,7 @@ pub async fn handle(
                 body = body.replication_regions(replication_regions.clone());
             }
             if let Some(tier) = zone_tier {
-                body = body.zone_tier(*tier);
+                body = body.zone_tier(i64::from(*tier));
             }
             let sz = client.create_storage_zone(&body).await?;
             print_storage_zone(&sz, format, redact_cfg);
@@ -207,6 +208,8 @@ pub async fn handle(
             date_from,
             date_to,
         } => {
+            let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
+            let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
             let stats = client
                 .get_storage_zone_statistics(*id, date_from.as_deref(), date_to.as_deref())
                 .await?;

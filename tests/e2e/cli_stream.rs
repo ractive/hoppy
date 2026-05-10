@@ -499,7 +499,7 @@ async fn stream_library_statistics_json() {
         "stream",
         "library",
         "statistics",
-        "--library-id",
+        "--id",
         "12345",
     ])
     .output()
@@ -1004,7 +1004,7 @@ fn live_stream_library_lifecycle() {
 
         // 6. Stream library statistics
         let lib_stats =
-            support::hoppy_live_json(&["stream", "library", "statistics", "--library-id", &id_str]);
+            support::hoppy_live_json(&["stream", "library", "statistics", "--id", &id_str]);
         assert!(
             lib_stats.success,
             "stream library statistics failed — stderr: {}",
