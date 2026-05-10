@@ -1,0 +1,72 @@
+[package]
+name = "hoppy-cli"
+description = "CLI for bunny.net cloud and edge services"
+keywords = ["bunny", "cdn", "cli", "dns", "edge"]
+categories = ["command-line-utilities"]
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[[bin]]
+name = "hoppy"
+path = "src/main.rs"
+
+[[test]]
+name = "e2e"
+path = "tests/e2e/mod.rs"
+
+[features]
+live-api = []
+
+[dependencies]
+bunny-api = { workspace = true }
+bunny-syslog-receiver = { workspace = true }
+clap = { workspace = true }
+clap_complete.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+anyhow.workspace = true
+tabled.workspace = true
+tokio = { workspace = true, features = ["fs", "signal"] }
+indicatif.workspace = true
+tokio-util.workspace = true
+console.workspace = true
+reqwest = { workspace = true, features = ["stream"] }
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+insta.workspace = true
+wiremock.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+tempfile.workspace = true
+tokio.workspace = true
+
+[package.metadata.deb]
+maintainer = "ractive"
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/hoppy", "usr/bin/", "755"],
+    ["completions/hoppy.bash", "usr/share/bash-completion/completions/hoppy", "644"],
+    ["completions/_hoppy", "usr/share/zsh/vendor-completions/_hoppy", "644"],
+    ["completions/hoppy.fish", "usr/share/fish/vendor_completions.d/hoppy.fish", "644"],
+    ["man/*.1", "usr/share/man/man1/", "644"],
+    ["LICENSE", "usr/share/doc/hoppy/", "644"],
+    ["README.md", "usr/share/doc/hoppy/", "644"],
+]
+extended-description = "A CLI tool for managing bunny.net cloud and edge services including CDN pull zones, storage, DNS, video streaming, security (WAF/DDoS), edge scripting, and magic containers."
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/hoppy", dest = "/usr/bin/hoppy", mode = "755" },
+    { source = "completions/hoppy.bash", dest = "/usr/share/bash-completion/completions/hoppy", mode = "644" },
+    { source = "completions/_hoppy", dest = "/usr/share/zsh/site-functions/_hoppy", mode = "644" },
+    { source = "completions/hoppy.fish", dest = "/usr/share/fish/vendor_completions.d/hoppy.fish", mode = "644" },
+    { source = "man/*.1", dest = "/usr/share/man/man1/", mode = "644" },
+    { source = "LICENSE", dest = "/usr/share/doc/hoppy/LICENSE", mode = "644", doc = true },
+    { source = "README.md", dest = "/usr/share/doc/hoppy/README.md", mode = "644", doc = true },
+]

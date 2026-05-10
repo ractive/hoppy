@@ -21,6 +21,7 @@ Significant architectural and design decisions made during development. API-spec
 | Table output as default for TTY | Follows az/gcloud/clig.dev pattern. JSON auto-default when piped |
 | Branch per iteration | Keeps main stable. Branch naming: `iter-N/description`. Merge via PR |
 | PaginatedList/ApiError kept separate per crate | Intentionally duplicated across bunny-api-core and bunny-api-compute — independent workspace members, shared extraction would add coupling without benefit |
+| Consolidate bunny-api-* into one bunny-api crate (iter-32) | 8 per-service crates were premature splitting. No downstream consumer exists (nothing published), every release bumped all 8 in lockstep, cross-cutting changes multiplied per crate. One `bunny-api` lib with feature-gated modules mirrors hyalo's shape. CLI moves to `hoppy-cli` package (binary still `hoppy`). Install: `cargo install hoppy-cli`. |
 | Magic Containers API hand-written from docs | No OpenAPI spec available. 47 endpoints. Uses camelCase serde (like Shield), cursor-based pagination, ProblemDetails+ErrorDetails error handling |
 
 ## Security

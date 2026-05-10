@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use clap::CommandFactory;
 use clap_mangen::Man;
-use hoppy::cli::Cli;
+use hoppy_cli::cli::Cli;
 
 fn main() -> anyhow::Result<()> {
     let output_dir = parse_output_dir();
