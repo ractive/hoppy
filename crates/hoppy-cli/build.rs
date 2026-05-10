@@ -5,14 +5,18 @@
 //! git checkout (e.g. `cargo install` from crates.io), the SHA falls back to
 //! `unknown` rather than failing the build.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
     let sha = git_sha().unwrap_or_else(|| "unknown".to_owned());
     println!("cargo:rustc-env=HOPPY_BUILD_SHA={sha}");
 
-    let spec_date = newest_spec_mtime().unwrap_or_else(|| "unknown".to_owned());
+    // specs/ lives at the workspace root, two levels up from this crate
+    // (crates/hoppy-cli/). Build from CARGO_MANIFEST_DIR so the lookup
+    // works regardless of the cwd that drove cargo.
+    let specs_dir = workspace_specs_dir();
+    let spec_date = newest_spec_mtime(&specs_dir).unwrap_or_else(|| "unknown".to_owned());
     println!("cargo:rustc-env=HOPPY_BUNNY_API_SPEC_DATE={spec_date}");
 
     // Re-run when HEAD moves (only emit when the file actually exists, so
@@ -20,7 +24,16 @@ fn main() {
     if Path::new(".git/HEAD").exists() {
         println!("cargo:rerun-if-changed=.git/HEAD");
     }
-    println!("cargo:rerun-if-changed=specs");
+    if specs_dir.is_dir() {
+        println!("cargo:rerun-if-changed={}", specs_dir.display());
+    }
+}
+
+fn workspace_specs_dir() -> PathBuf {
+    let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    manifest_dir.join("..").join("..").join("specs")
 }
 
 fn git_sha() -> Option<String> {
@@ -40,8 +53,7 @@ fn git_sha() -> Option<String> {
     }
 }
 
-fn newest_spec_mtime() -> Option<String> {
-    let specs = Path::new("specs");
+fn newest_spec_mtime(specs: &Path) -> Option<String> {
     if !specs.is_dir() {
         return None;
     }
