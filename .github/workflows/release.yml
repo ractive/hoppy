@@ -297,8 +297,8 @@ jobs:
             exit 1
           fi
 
-      # Publish bunny-api first — all other crates depend on it
-      - name: Publish bunny-api to crates.io
+      # Publish bunny-net-api first — all other crates depend on it
+      - name: Publish bunny-net-api to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
         run: |
@@ -306,15 +306,15 @@ jobs:
           max_attempts=10
           delay=15
           for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api --locked 2>&1); then
+            echo "Publishing bunny-net-api (attempt $attempt/$max_attempts)..."
+            if output=$(cargo publish --package bunny-net-api --locked 2>&1); then
               echo "$output"
-              echo "bunny-api published successfully."
+              echo "bunny-net-api published successfully."
               exit 0
             fi
             echo "$output"
             if echo "$output" | grep -q 'already uploaded'; then
-              echo "bunny-api already published, skipping."
+              echo "bunny-net-api already published, skipping."
               exit 0
             fi
             if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
@@ -331,7 +331,7 @@ jobs:
             fi
           done
 
-      # bunny-syslog-receiver has no bunny-api deps; publish after bunny-api in this sequential job
+      # bunny-syslog-receiver has no bunny-net-api deps; publish after bunny-net-api in this sequential job
       - name: Publish bunny-syslog-receiver to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
@@ -354,7 +354,7 @@ jobs:
             fi
           done
 
-      # hoppy-cli depends on bunny-api and bunny-syslog-receiver — publish last
+      # hoppy-cli depends on bunny-net-api and bunny-syslog-receiver — publish last
       # Install with: cargo install hoppy-cli  (binary name: hoppy)
       - name: Publish hoppy-cli to crates.io
         env:

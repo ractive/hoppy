@@ -4,7 +4,7 @@ use crate::date;
 use crate::output::{self, PaginatedListJson};
 use crate::redact::{RedactConfig, redact_secrets_in_json};
 use anyhow::{Context, Result, bail};
-use bunny_api::core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
+use bunny_net_api::core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
 use std::io::{self, BufRead, Write};
 
 // ---------------------------------------------------------------------------

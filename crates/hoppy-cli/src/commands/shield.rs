@@ -7,7 +7,7 @@ use crate::cli::{
 use crate::date;
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
-use bunny_api::shield::types::{
+use bunny_net_api::shield::types::{
     AccessListAction, AccessListDetails, AccessListType, BotDetectionConfigurationState,
     BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
     BrowserFingerprintConfiguration, CreateCustomAccessList, CreateCustomWafRule,
@@ -290,8 +290,8 @@ struct ApiGuardianEndpointRow {
     validate_response: String,
 }
 
-impl From<&bunny_api::shield::types::ApiGuardianEndpoint> for ApiGuardianEndpointRow {
-    fn from(e: &bunny_api::shield::types::ApiGuardianEndpoint) -> Self {
+impl From<&bunny_net_api::shield::types::ApiGuardianEndpoint> for ApiGuardianEndpointRow {
+    fn from(e: &bunny_net_api::shield::types::ApiGuardianEndpoint) -> Self {
         Self {
             endpoint_id: e
                 .api_guardian_endpoint_id
@@ -480,8 +480,8 @@ struct WafPlanSegmentationRow {
     rule_count: String,
 }
 
-impl From<&bunny_api::shield::types::WafRulesByPlanModel> for WafPlanSegmentationRow {
-    fn from(p: &bunny_api::shield::types::WafRulesByPlanModel) -> Self {
+impl From<&bunny_net_api::shield::types::WafRulesByPlanModel> for WafPlanSegmentationRow {
+    fn from(p: &bunny_net_api::shield::types::WafRulesByPlanModel) -> Self {
         let main_groups = p.rules.as_ref().map(|r| r.len()).unwrap_or(0);
         let rule_count: usize = p
             .rules
@@ -514,8 +514,8 @@ struct WafEngineConfigRow {
     value_encoded: String,
 }
 
-impl From<&bunny_api::shield::types::ConfigVariableValueMinimal> for WafEngineConfigRow {
-    fn from(c: &bunny_api::shield::types::ConfigVariableValueMinimal) -> Self {
+impl From<&bunny_net_api::shield::types::ConfigVariableValueMinimal> for WafEngineConfigRow {
+    fn from(c: &bunny_net_api::shield::types::ConfigVariableValueMinimal) -> Self {
         Self {
             name: c.name.as_deref().unwrap_or("-").to_owned(),
             value_encoded: c.value_encoded.as_deref().unwrap_or("-").to_owned(),
