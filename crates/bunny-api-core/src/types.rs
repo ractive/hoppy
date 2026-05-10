@@ -1489,7 +1489,7 @@ pub struct DnsRecordScanResult {
     pub created_at: Option<String>,
     #[serde(default)]
     pub completed_at: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "crate::serde_helpers::null_to_empty_vec")]
     pub records: Vec<DnsDiscoveredRecord>,
     #[serde(default)]
     pub error: Option<String>,
@@ -2034,4 +2034,50 @@ pub struct VideoLibraryTranscribingStatistics {
     #[serde(default)]
     pub total_transcription_seconds: i64,
     pub transcription_seconds_chart: Option<HashMap<String, i64>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression: the Bunny API returns `"Records": null` for in-progress
+    /// scans. Verify that `DnsRecordScanResult` deserialises to an empty vec
+    /// rather than panicking.
+    #[test]
+    fn dns_record_scan_result_null_records_becomes_empty_vec() {
+        let json = r#"{
+            "JobId": "abc123",
+            "ZoneId": 42,
+            "Domain": "example.com",
+            "Status": 1,
+            "Records": null
+        }"#;
+        let result: DnsRecordScanResult = serde_json::from_str(json).unwrap();
+        assert!(result.records.is_empty());
+        assert_eq!(result.domain.as_deref(), Some("example.com"));
+    }
+
+    /// Confirm that a populated `Records` array still deserialises correctly.
+    #[test]
+    fn dns_record_scan_result_with_records() {
+        let json = r#"{
+            "JobId": "abc123",
+            "ZoneId": 42,
+            "Domain": "example.com",
+            "Status": 2,
+            "Records": [
+                {"Value": "1.2.3.4", "Ttl": 300, "Type": 0}
+            ]
+        }"#;
+        let result: DnsRecordScanResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.records.len(), 1);
+    }
+
+    /// Confirm that an absent `Records` field also yields an empty vec.
+    #[test]
+    fn dns_record_scan_result_missing_records_becomes_empty_vec() {
+        let json = r#"{"JobId": "abc123"}"#;
+        let result: DnsRecordScanResult = serde_json::from_str(json).unwrap();
+        assert!(result.records.is_empty());
+    }
 }
