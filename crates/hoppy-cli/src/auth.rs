@@ -1,9 +1,9 @@
 use anyhow::{Result, bail};
-use bunny_api::compute::ComputeClient;
-use bunny_api::containers::ContainersClient;
-use bunny_api::core::CoreClient;
-use bunny_api::database::DatabaseClient;
-use bunny_api::shield::ShieldClient;
+use bunny_net_api::compute::ComputeClient;
+use bunny_net_api::containers::ContainersClient;
+use bunny_net_api::core::CoreClient;
+use bunny_net_api::database::DatabaseClient;
+use bunny_net_api::shield::ShieldClient;
 use std::env;
 
 /// Read the bunny.net API key from the BUNNY_API_KEY environment variable.

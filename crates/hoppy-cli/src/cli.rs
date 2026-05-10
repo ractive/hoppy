@@ -1,4 +1,4 @@
-use bunny_api::core::types::OptimizerWatermarkPosition;
+use bunny_net_api::core::types::OptimizerWatermarkPosition;
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
@@ -8,7 +8,7 @@ const LONG_VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     " (sha=",
     env!("HOPPY_BUILD_SHA"),
-    ", bunny-api-spec=",
+    ", bunny-net-api-spec=",
     env!("HOPPY_BUNNY_API_SPEC_DATE"),
     ")"
 );
@@ -72,7 +72,7 @@ pub enum ZoneTier {
     Volume,
 }
 
-impl From<ZoneTier> for bunny_api::core::types::PullZoneType {
+impl From<ZoneTier> for bunny_net_api::core::types::PullZoneType {
     fn from(t: ZoneTier) -> Self {
         match t {
             ZoneTier::Premium => Self::Premium,
@@ -3208,7 +3208,7 @@ pub enum TokenAuthorization {
     ReadOnly,
 }
 
-impl From<TokenAuthorization> for bunny_api::database::types::Authorization {
+impl From<TokenAuthorization> for bunny_net_api::database::types::Authorization {
     fn from(t: TokenAuthorization) -> Self {
         match t {
             TokenAuthorization::FullAccess => Self::FullAccess,

@@ -1,0 +1,153 @@
+//! Hand-written bunny.net Shield API client.
+//!
+//! Covers the main Shield resources: Shield Zones, custom WAF rules,
+//! rate limit rules, access lists, and bot detection configuration.
+//!
+//! # Quick start
+//!
+//! ```no_run
+//! use bunny_net_api::shield::ShieldClient;
+//!
+//! # async fn example() -> anyhow::Result<()> {
+//! let client = ShieldClient::new("your-api-key");
+//! let zone = client.get_shield_zone(12345).await?;
+//! println!("Shield Zone: {:?}", zone.shield_zone_id);
+//! # Ok(())
+//! # }
+//! ```
+
+pub mod client;
+pub mod types;
+
+pub use client::ShieldClient;
+pub use types::{
+    // Enums
+    AccessListAction,
+    // Metrics types
+    AccessListDetailCategory,
+    // Response types
+    AccessListDetails,
+    AccessListType,
+    AccessListsDetailsResponse,
+    // API Guardian types
+    ApiGuardianEndpoint,
+    ApiGuardianEndpointsResponse,
+    BlockedLoggedChallengedMetrics,
+    BotDetectionConfigurationResponse,
+    BotDetectionConfigurationState,
+    BotDetectionDetailCategory,
+    BotDetectionDetailMetrics,
+    BotDetectionExecutionMode,
+    BotDetectionMetricsData,
+    BotDetectionSensitivity,
+    BrowserFingerprintAggression,
+    BrowserFingerprintConfiguration,
+    ConfigVariableValueMinimal,
+    // Request types
+    CreateCustomAccessList,
+    CreateCustomWafRule,
+    CreateRateLimitRule,
+    CreateShieldZoneRequest,
+    CustomAccessList,
+    CustomAccessListResponse,
+    CustomWafRule,
+    DdosDetailCategory,
+    DdosDetailMetrics,
+    DdosExecutionMode,
+    DdosShieldSensitivity,
+    // Event Logs types
+    EventLog,
+    EventLogLabels,
+    GenericRequestResponse,
+    GetApiGuardianResponse,
+    GetCustomWafRulesResponse,
+    GetRateLimitRulesResponse,
+    GetShieldZonePullzoneMappingResponse,
+    GetShieldZoneResponse,
+    GetShieldZonesResponse,
+    GetTriggeredRulesResponse,
+    GetWafEngineConfigResponse,
+    GetWafEnumsResponse,
+    GetWafRulesSegmentedByPlanResponse,
+    IpAddressConfiguration,
+    PaginationResponse,
+    ProblemDetails,
+    RateLimitActionType,
+    RateLimitBlockDuration,
+    RateLimitCounterKey,
+    RateLimitDetailCategory,
+    RateLimitDetailMetrics,
+    RateLimitMetricsEntry,
+    RateLimitRule,
+    RateLimitRuleConfiguration,
+    RateLimitTimeframe,
+    RequestIntegrityConfiguration,
+    ReviewActionType,
+    ShieldAccessListSummary,
+    ShieldApiErrorEnvelope,
+    ShieldApiErrorInner,
+    ShieldBotDetectionMetricsResponse,
+    ShieldBotDetectionSummary,
+    ShieldDdosSummary,
+    ShieldDetailedMetricsData,
+    ShieldDetailedMetricsResponse,
+    ShieldMetricsData,
+    ShieldMetricsResponse,
+    ShieldOverviewSummary,
+    ShieldPlanType,
+    ShieldRateLimitMetricsResponse,
+    ShieldRateLimitsMetricsResponse,
+    ShieldRatelimitSummary,
+    ShieldUploadScanningMetricsResponse,
+    ShieldUploadScanningSummary,
+    ShieldWafRuleMetricsResponse,
+    ShieldWafSummary,
+    ShieldZonePullZoneMapping,
+    ShieldZoneRequest,
+    ShieldZoneResponse,
+    TriggeredRuleItem,
+    TriggeredRuleRecommendationResponse,
+    UpdateAccessListConfiguration,
+    UpdateApiGuardianEndpointRequest,
+    UpdateApiGuardianEndpointResponse,
+    UpdateApiGuardianRequest,
+    UpdateApiGuardianResponse,
+    UpdateBotDetection,
+    UpdateBotDetectionResponse,
+    UpdateCustomAccessList,
+    UpdateCustomWafRule,
+    UpdateRateLimitRule,
+    UpdateReviewTriggeredRuleRequest,
+    UpdateReviewTriggeredRuleResponse,
+    UpdateShieldZoneRequest,
+    UpdateUploadScanningConfigurationRequest,
+    UpdateUploadScanningConfigurationResponse,
+    UploadOpenApiSpecificationRequest,
+    UploadOpenApiSpecificationResponse,
+    UploadScanningConfigurationResponse,
+    UploadScanningConfigurationState,
+    UploadScanningDetailCategory,
+    UploadScanningDetailMetrics,
+    UploadScanningMetricsData,
+    UploadScanningScannerMode,
+    WafChainedRuleCondition,
+    WafDetailCategory,
+    WafExecutionMode,
+    WafLoggingResponse,
+    WafMappedEnum,
+    WafMappedEnumList,
+    WafPayloadLimitAction,
+    WafProfileMinimal,
+    WafRuleActionType,
+    WafRuleConfiguration,
+    WafRuleDetailMetrics,
+    WafRuleGroupModel,
+    WafRuleMainGroupModel,
+    WafRuleMetricsData,
+    WafRuleModel,
+    WafRuleOperatorType,
+    WafRuleSeverityType,
+    WafRuleTransformationType,
+    WafRulesByPlanModel,
+    parse_shield_error,
+};

@@ -4,8 +4,8 @@ use crate::cli::{
 };
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
-use bunny_api::core::CoreClient;
-use bunny_api::core::types::{
+use bunny_net_api::core::CoreClient;
+use bunny_net_api::core::types::{
     AddDnsRecord, CreateDnsZone, DnsDiscoveredRecord, DnsRecord, DnsRecordScanResult,
     DnsRecordType, DnsSecDsRecord, DnsZone, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
 };

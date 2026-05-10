@@ -22,7 +22,7 @@ path = "tests/e2e/mod.rs"
 live-api = []
 
 [dependencies]
-bunny-api = { workspace = true }
+bunny-net-api = { workspace = true }
 bunny-syslog-receiver = { workspace = true }
 clap = { workspace = true }
 clap_complete.workspace = true

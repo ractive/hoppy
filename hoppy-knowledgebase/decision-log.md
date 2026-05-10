@@ -10,7 +10,7 @@ type: log
 
 # Decision Log
 
-Significant architectural and design decisions made during development. API-specific quirks are documented separately in [[api/bunny-api-quirks]].
+Significant architectural and design decisions made during development. API-specific quirks are documented separately in [[api/bunny-net-api-quirks]].
 
 ## Architecture
 
@@ -20,8 +20,8 @@ Significant architectural and design decisions made during development. API-spec
 | No `--api-key` flag | clig.dev: don't pass secrets via flags (visible in ps/history). `BUNNY_API_KEY` env var only |
 | Table output as default for TTY | Follows az/gcloud/clig.dev pattern. JSON auto-default when piped |
 | Branch per iteration | Keeps main stable. Branch naming: `iter-N/description`. Merge via PR |
-| PaginatedList/ApiError kept separate per crate | Intentionally duplicated across bunny-api-core and bunny-api-compute — independent workspace members, shared extraction would add coupling without benefit |
-| Consolidate bunny-api-* into one bunny-api crate (iter-32) | 8 per-service crates were premature splitting. No downstream consumer exists (nothing published), every release bumped all 8 in lockstep, cross-cutting changes multiplied per crate. One `bunny-api` lib with feature-gated modules mirrors hyalo's shape. CLI moves to `hoppy-cli` package (binary still `hoppy`). Install: `cargo install hoppy-cli`. |
+| PaginatedList/ApiError kept separate per crate | Intentionally duplicated across bunny-net-api-core and bunny-net-api-compute — independent workspace members, shared extraction would add coupling without benefit |
+| Consolidate bunny-net-api-* into one bunny-net-api crate (iter-32) | 8 per-service crates were premature splitting. No downstream consumer exists (nothing published), every release bumped all 8 in lockstep, cross-cutting changes multiplied per crate. One `bunny-net-api` lib with feature-gated modules mirrors hyalo's shape. CLI moves to `hoppy-cli` package (binary still `hoppy`). Install: `cargo install hoppy-cli`. |
 | Magic Containers API hand-written from docs | No OpenAPI spec available. 47 endpoints. Uses camelCase serde (like Shield), cursor-based pagination, ProblemDetails+ErrorDetails error handling |
 
 ## Security
@@ -115,15 +115,15 @@ Significant architectural and design decisions made during development. API-spec
 | 2026-05-07 | `pull-zone create` ArgGroup for origin | Exactly-one-of `--origin-url` / `--storage-zone-id` enforced at clap parse time, no runtime API 400 (iter-19) |
 | 2026-05-07 | Build provenance in `--version` | `build.rs` embeds short git SHA + bunny-spec mtime; long-version output for bug reports (iter-19) |
 | 2026-05-07 | Single `e2e` test binary per crate | Cargo treats every top-level `.rs` under `tests/` as its own binary, each re-linking the crate-under-test from scratch. Collapsing into `tests/e2e/mod.rs` declared via `[[test]] name = "e2e"` cuts the linker pass to once per crate. Add new test files as `mod` declarations inside `tests/e2e/mod.rs` — never as new top-level files (iter-22) |
-| 2026-05-09 | `bunny-api-` crate prefix kept (not `hoppy-` prefix) | Internal crates are split by **bunny.net API surface they wrap** (compute, containers, core, database, recording, shield, storage, stream), not by hoppy's own internal architecture. The `bunny-api-` prefix advertises what the crate is — a thin Rust client for one bunny.net surface — and lets each crate be reused outside hoppy if ever needed. Sibling project hyalo uses `hyalo-<domain>` because every crate is hyalo-internal; that doesn't apply here (iter-23) |
+| 2026-05-09 | `bunny-net-api-` crate prefix kept (not `hoppy-` prefix) | Internal crates are split by **bunny.net API surface they wrap** (compute, containers, core, database, recording, shield, storage, stream), not by hoppy's own internal architecture. The `bunny-net-api-` prefix advertises what the crate is — a thin Rust client for one bunny.net surface — and lets each crate be reused outside hoppy if ever needed. Sibling project hyalo uses `hyalo-<domain>` because every crate is hyalo-internal; that doesn't apply here (iter-23) |
 | 2026-05-09 | CLI verb conventions | **Top-level resources** use `create`/`delete`. **Items inside a parent collection** use `add`/`remove`. All collections expose `list` (and `get` where applicable). Mutation is always `update` — never `edit`/`set`/`modify`. Destructive ops accept `-y`/`--yes`; where `--dry-run` makes sense it's surfaced. Examples: `pull-zone create`, `dns zone create`, `dns record add`, `pull-zone hostname add`, `script variable add`. Documented exceptions: `storage ls`/`rm` (POSIX shorthand for filesystem-like ops), `shield waf add-rule`/`delete-rule` (matches flat API shape) (iter-23) |
 | 2026-05-09 | Pedantic clippy deferred, not skipped | Hyalo enables `clippy::pedantic = warn` with a documented allow-list. Hoppy doesn't yet — turning it on at iter-23 would flood the build. The path: enable it in a follow-up iteration, fix or explicitly allow each surfaced lint with a one-line justification. Don't blanket-allow. Workspace lints currently set `unsafe_code = "forbid"` because no unsafe exists in tree (iter-23) |
 | 2026-05-09 | Workspace dependency hoisting + `resolver = "3"` | All shared external deps live in `[workspace.dependencies]`; per-crate `Cargo.toml` files declare `clap.workspace = true` style. Cuts version drift and centralises bumps. `resolver = "3"` is the edition-2024 default; `[profile.release]` with `lto`, `codegen-units = 1`, `panic = "abort"`, `strip` matches hyalo and produces a smaller release binary at the cost of longer release builds (iter-23) |
-| 2026-05-09 | Embedded syslog receiver crate named `bunny-syslog-receiver` (not `bunny-api-syslog`) | The `bunny-api-*` prefix is reserved for crates wrapping bunny.net REST surfaces. This crate is a transport library (RFC 5424 TCP listener used by `hoppy container logs`), hence the different prefix (iter-24) |
+| 2026-05-09 | Embedded syslog receiver crate named `bunny-syslog-receiver` (not `bunny-net-api-syslog`) | The `bunny-net-api-*` prefix is reserved for crates wrapping bunny.net REST surfaces. This crate is a transport library (RFC 5424 TCP listener used by `hoppy container logs`), hence the different prefix (iter-24) |
 | 2026-05-09 | Expose full Optimizer surface in iter-26 in one shot | All 24 Optimizer fields live on a single `PullZoneModel`; partial coverage (e.g. only master switch + quality) would be more confusing than no coverage, forcing operators to fall back to raw `curl` for missing flags. The fields are all mechanical (same struct, same update endpoint) so doing them in one iteration costs little extra (iter-26) |
 | 2026-05-10 | Storage local-file flag: `--file` everywhere | Both `storage upload` and `storage download` use `--file` for the local path (input on upload, output destination on download — stdout if omitted). Renamed `download --output` → `--file`. The earlier asymmetry (`upload --file` / `download --output`) forced operators to memorise per-direction flags. Pairs with the `--remote-path` standardisation across all storage subcommands (`ls` was `--path`) (iter-28) |
 
 ## Related
 - [[development-roadmap]] — iteration history
-- [[api/bunny-api-client-patterns]] — established API client patterns
+- [[api/bunny-net-api-client-patterns]] — established API client patterns
 - [[iterations/iteration-1-code-review]] — code review that drove several decisions
