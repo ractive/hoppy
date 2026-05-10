@@ -56,10 +56,10 @@ Archives include the binary, shell completions, man page, and LICENSE.
 
 ```bash
 # Debian / Ubuntu
-sudo dpkg -i hoppy_0.1.1_amd64.deb
+sudo dpkg -i hoppy_0.2.0_amd64.deb
 
 # Fedora / RHEL
-sudo rpm -i hoppy-0.1.1-1.x86_64.rpm
+sudo rpm -i hoppy-0.2.0-1.x86_64.rpm
 ```
 
 ### From source
