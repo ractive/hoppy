@@ -95,6 +95,10 @@ The five real bugs ship in iter-27 — see
 - [ ] No remaining "(0 = …, 1 = …)" help text.
 - [ ] Date flags accept date-only input across the CLI.
 - [ ] All `delete` commands print a confirmation line in text mode.
+- [ ] `dns zone dnssec status` text view shows DS record, digest, key tag,
+      algorithm when DNSSEC is enabled.
+- [ ] `stream library statistics` shows `N/A` for the `-1` sentinel in
+      text/table mode, retains `-1` in JSON.
 - [ ] Playbook reads correctly end-to-end against the current CLI.
 - [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings
       && cargo test --workspace --quiet` clean.

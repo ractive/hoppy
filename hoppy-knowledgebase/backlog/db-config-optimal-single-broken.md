@@ -29,4 +29,4 @@ top-level help, so this might be in the same bucket. Decide whether to:
 1. Hide it behind the same gate as `db v2`, or
 2. Fix the call signature.
 
-Either way, drop the user a clearer error than the deserialise complaint.
+Either way, drop the user a clearer error than the deserialize complaint.
