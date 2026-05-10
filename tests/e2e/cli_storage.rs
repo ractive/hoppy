@@ -252,8 +252,14 @@ fn live_storage_file_ops() {
         assert!(upload.success, "upload failed: {}", upload.stderr);
 
         // 4. List — verify hello.txt appears
-        let list =
-            support::hoppy_live_json(&["storage", "ls", "--zone", &zone_name, "--remote-path", "test"]);
+        let list = support::hoppy_live_json(&[
+            "storage",
+            "ls",
+            "--zone",
+            &zone_name,
+            "--remote-path",
+            "test",
+        ]);
         assert!(list.success, "ls failed: {}", list.stderr);
         let found = list.stdout.contains("hello.txt");
         assert!(found, "hello.txt not found in ls output");
