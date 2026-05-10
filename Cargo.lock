@@ -185,7 +185,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d20789868f4b01b2f2caec9f5c4e0213b41e3e5702a50157d699ae31ced2fcb"
 
 [[package]]
-name = "bunny-api"
+name = "bunny-net-api"
 version = "0.3.0"
 dependencies = [
  "anyhow",
@@ -703,7 +703,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
- "bunny-api",
+ "bunny-net-api",
  "bunny-syslog-receiver",
  "clap",
  "clap_complete",

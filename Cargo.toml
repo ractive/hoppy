@@ -13,7 +13,7 @@ homepage = "https://github.com/ractive/hoppy"
 [workspace.dependencies]
 # Internal crates — path + version for crates.io publish compatibility.
 # version must match [workspace.package].version exactly.
-bunny-api = { path = "crates/bunny-api", version = "0.3.0" }
+bunny-net-api = { path = "crates/bunny-net-api", version = "0.3.0" }
 bunny-syslog-receiver = { path = "crates/bunny-syslog-receiver", version = "0.3.0" }
 hoppy-cli = { path = "crates/hoppy-cli", version = "0.3.0" }
 

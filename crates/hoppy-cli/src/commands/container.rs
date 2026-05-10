@@ -7,7 +7,7 @@ use crate::cli::{
 use crate::output;
 use crate::redact::{self, RedactConfig};
 use anyhow::{Context, Result, bail};
-use bunny_api::containers::{
+use bunny_net_api::containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
     AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions, ContainerImage,
     ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest, ContainersClient,
@@ -48,8 +48,8 @@ struct AppRow {
     status: String,
 }
 
-impl From<&bunny_api::containers::AppListItem> for AppRow {
-    fn from(a: &bunny_api::containers::AppListItem) -> Self {
+impl From<&bunny_net_api::containers::AppListItem> for AppRow {
+    fn from(a: &bunny_net_api::containers::AppListItem) -> Self {
         Self {
             id: a.id.clone(),
             name: a.name.clone(),
@@ -74,8 +74,8 @@ struct AppDetail {
     max: i32,
 }
 
-impl From<&bunny_api::containers::Application> for AppDetail {
-    fn from(a: &bunny_api::containers::Application) -> Self {
+impl From<&bunny_net_api::containers::Application> for AppDetail {
+    fn from(a: &bunny_net_api::containers::Application) -> Self {
         let (min, max) = a
             .auto_scaling
             .as_ref()
@@ -108,8 +108,8 @@ struct AppDetailWithIds {
     endpoint_id: String,
 }
 
-impl From<&bunny_api::containers::Application> for AppDetailWithIds {
-    fn from(a: &bunny_api::containers::Application) -> Self {
+impl From<&bunny_net_api::containers::Application> for AppDetailWithIds {
+    fn from(a: &bunny_net_api::containers::Application) -> Self {
         let template_ids = if a.container_templates.is_empty() {
             "-".to_owned()
         } else {
@@ -150,8 +150,8 @@ struct ContainerTemplateRow {
     image_tag: String,
 }
 
-impl From<&bunny_api::containers::ContainerTemplate> for ContainerTemplateRow {
-    fn from(t: &bunny_api::containers::ContainerTemplate) -> Self {
+impl From<&bunny_net_api::containers::ContainerTemplate> for ContainerTemplateRow {
+    fn from(t: &bunny_net_api::containers::ContainerTemplate) -> Self {
         Self {
             id: t.id.clone(),
             name: t.name.clone(),
@@ -179,8 +179,8 @@ struct EndpointRow {
     is_ssl_enabled: bool,
 }
 
-impl From<&bunny_api::containers::EndpointListItem> for EndpointRow {
-    fn from(e: &bunny_api::containers::EndpointListItem) -> Self {
+impl From<&bunny_net_api::containers::EndpointListItem> for EndpointRow {
+    fn from(e: &bunny_net_api::containers::EndpointListItem) -> Self {
         Self {
             id: e.id.clone(),
             display_name: e.display_name.clone(),
@@ -209,8 +209,8 @@ struct VolumeRow {
     attached_instances_count: i32,
 }
 
-impl From<&bunny_api::containers::VolumeInList> for VolumeRow {
-    fn from(v: &bunny_api::containers::VolumeInList) -> Self {
+impl From<&bunny_net_api::containers::VolumeInList> for VolumeRow {
+    fn from(v: &bunny_net_api::containers::VolumeInList) -> Self {
         Self {
             id: v.id.clone(),
             name: v.name.clone(),
@@ -237,8 +237,8 @@ struct RegistryRow {
     created_at: String,
 }
 
-impl From<&bunny_api::containers::ContainerRegistry> for RegistryRow {
-    fn from(r: &bunny_api::containers::ContainerRegistry) -> Self {
+impl From<&bunny_net_api::containers::ContainerRegistry> for RegistryRow {
+    fn from(r: &bunny_net_api::containers::ContainerRegistry) -> Self {
         Self {
             id: r
                 .id
@@ -269,8 +269,8 @@ struct RegionRow {
     has_capacity: bool,
 }
 
-impl From<&bunny_api::containers::Region> for RegionRow {
-    fn from(r: &bunny_api::containers::Region) -> Self {
+impl From<&bunny_net_api::containers::Region> for RegionRow {
+    fn from(r: &bunny_net_api::containers::Region) -> Self {
         Self {
             id: r.id.clone(),
             name: r.name.clone(),
@@ -297,8 +297,8 @@ struct UserLimitsRow {
     max_number_of_volumes_per_application: i32,
 }
 
-impl From<&bunny_api::containers::UserLimits> for UserLimitsRow {
-    fn from(l: &bunny_api::containers::UserLimits) -> Self {
+impl From<&bunny_net_api::containers::UserLimits> for UserLimitsRow {
+    fn from(l: &bunny_net_api::containers::UserLimits) -> Self {
         Self {
             max_number_of_applications: l.max_number_of_applications,
             existing_number_of_applications: l.existing_number_of_applications,
@@ -328,8 +328,8 @@ struct LogForwardingRow {
     enabled: bool,
 }
 
-impl From<&bunny_api::containers::LogForwardingConfiguration> for LogForwardingRow {
-    fn from(l: &bunny_api::containers::LogForwardingConfiguration) -> Self {
+impl From<&bunny_net_api::containers::LogForwardingConfiguration> for LogForwardingRow {
+    fn from(l: &bunny_net_api::containers::LogForwardingConfiguration) -> Self {
         Self {
             id: l.id.clone(),
             app: l.app.clone(),
@@ -716,7 +716,7 @@ async fn handle_app(
             }
             let container_templates = match (image_name, image_namespace, image_tag, registry_id) {
                 (Some(img), Some(ns), Some(tag), Some(reg)) => {
-                    use bunny_api::containers::{ContainerRequest, ImagePullPolicy};
+                    use bunny_net_api::containers::{ContainerRequest, ImagePullPolicy};
                     Some(vec![ContainerRequest {
                         id: None,
                         name: img.clone(),
@@ -1429,7 +1429,7 @@ async fn handle_template_env(
 }
 
 fn report_env_result(
-    tmpl: &bunny_api::containers::ContainerTemplate,
+    tmpl: &bunny_net_api::containers::ContainerTemplate,
     format: OutputFormat,
     redact: &RedactConfig,
 ) -> Result<()> {

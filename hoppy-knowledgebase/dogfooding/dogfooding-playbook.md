@@ -3,7 +3,7 @@ title: Dogfooding Playbook — safe real-API testing
 type: docs
 date: 2026-05-09
 status: active
-tags: [dogfooding, qa, bunny-api, safety]
+tags: [dogfooding, qa, bunny-net-api, safety]
 ---
 
 # Dogfooding playbook
