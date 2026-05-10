@@ -2133,14 +2133,12 @@ async fn handle_logs(
     record: Option<&str>,
 ) -> Result<()> {
     // --- 1. Validate format ---------------------------------------------------
-    // Reject --format table: tail output is a live stream, not tabular data.
+    // Tail output is a live stream, not tabular data. The global `--format`
+    // flag defaults to `table`, so silently fall back to `text` for that case
+    // rather than failing every default invocation.
     let logs_format = match format {
-        OutputFormat::Text => LogsFormat::Text,
+        OutputFormat::Text | OutputFormat::Table => LogsFormat::Text,
         OutputFormat::Json => LogsFormat::Json,
-        OutputFormat::Table => bail!(
-            "`hoppy container logs` does not support --format table; \
-             tail output is not tabular. Use --format text (default) or --format json."
-        ),
     };
 
     // --- 2. Build client and verify app exists --------------------------------

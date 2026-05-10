@@ -28,7 +28,7 @@ the `OutputFormat` enum elsewhere. clap stores both under the same id but
 the runtime tries to downcast through one type and the value was inserted
 as the other → panic on every parse.
 
-The shield `event-logs`/stream/db commands that override `--format` semantics
+The sibling `event-logs`/stream/db commands that override `--format` semantics
 do so without colliding because they avoid the global flag; the `Logs`
 variant inherits the global and re-declares it.
 

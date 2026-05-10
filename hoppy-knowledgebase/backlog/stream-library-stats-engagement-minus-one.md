@@ -17,8 +17,10 @@ Engagement Score    -1
 ```
 
 `-1` is bunny.net's "no data" sentinel. Hoppy's text formatter passes it
-through. Replace with `N/A` (or `0` if the score is genuinely zero when
-nothing has played).
+through. The API sentinel `-1` should *always* map to `N/A` in text/table
+output — including the "empty library" case. Only an actual numeric `0`
+returned by the API should render as `0`; never substitute `0` for the
+sentinel.
 
-Possibly the same in JSON output — there it's arguably fine to keep `-1`
-as it's machine-readable, but the table view shouldn't show it.
+JSON output should keep the raw `-1` (machine-readable), but the table
+view shouldn't show it.

@@ -508,7 +508,18 @@ pub fn parse_shield_error(bytes: &[u8]) -> Option<anyhow::Error> {
         return Some(anyhow::anyhow!(env));
     }
     if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(bytes) {
-        return Some(anyhow::anyhow!(problem));
+        // ProblemDetails has all-optional fields, so it deserialises from any
+        // JSON object. Only treat the body as RFC 7807 when at least one of
+        // the spec's fields is present — otherwise return None and let the
+        // caller fall back to status code + raw body.
+        let has_rfc7807_field = problem.problem_type.is_some()
+            || problem.title.is_some()
+            || problem.status.is_some()
+            || problem.detail.is_some()
+            || problem.instance.is_some();
+        if has_rfc7807_field {
+            return Some(anyhow::anyhow!(problem));
+        }
     }
     None
 }
@@ -2101,11 +2112,11 @@ mod tests {
 
     #[test]
     fn parse_shield_error_does_not_panic_on_unknown_body() {
-        // Envelope requires the "error" key; this body lacks it, so the envelope
-        // parser will fail. ProblemDetails has all-optional fields and will succeed
-        // with defaults — that is acceptable behaviour. Either way, no panic.
+        // Envelope requires the "error" key and ProblemDetails requires at
+        // least one RFC 7807 field; this body has neither, so the parser
+        // returns None and the caller can fall back to status + raw body.
         let body = br#"{"something":"unexpected"}"#;
-        let _ = parse_shield_error(body);
+        assert!(parse_shield_error(body).is_none());
     }
 
     #[test]

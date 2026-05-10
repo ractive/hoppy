@@ -22,4 +22,4 @@ Forces the user to read help, look up the integer, and remember it. Mirror
 the `pull-zone create --zone-tier` pattern: ValueEnum with the wire-level
 ints behind the scenes, named values in the CLI.
 
-This is iteration-7-cleanup (or follow-up) territory.
+This is iter-28 cleanup (or later follow-up) territory.

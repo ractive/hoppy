@@ -29,6 +29,7 @@ Compare with peers:
 - `storage-zone delete --id N --yes` → `Deleted storage zone N`
 - `stream library delete --id N --yes` → `Deleted video library N`
 
-`db delete` should print `Deleted database <id>` (text format) and an empty
-JSON object / `{"deleted": "<id>"}` for `--format json`. Same for groups.
-Iter-20 follow-up.
+`db delete` should print `Deleted database <id>` (text format) and
+`{"deleted": "<id>"}` for `--format json`. `db group delete` should print
+`Deleted database group <id>` (text format) and `{"deleted": "<id>"}` for
+`--format json`. Iter-20 follow-up.
