@@ -8,18 +8,27 @@ Hoppy is an async Rust CLI application for managing bunny.net cloud services (CD
 
 ```
 hoppy/
-├── src/                    # Main CLI binary
-│   ├── main.rs             # Entry point (#[tokio::main])
-│   ├── cli.rs              # Clap derive structs (commands, flags, enums)
-│   ├── auth.rs             # Env var reading (BUNNY_API_KEY, etc.)
-│   ├── output.rs           # Output formatting (JSON, table, text)
-│   └── commands/           # One handler per service
-├── crates/                 # Hand-written API client crates
-│   ├── bunny-api-core/     # Pull zones, storage zones, DNS, video libraries
-│   ├── bunny-api-shield/   # WAF, rate limiting, access lists, bot detection
-│   ├── bunny-api-storage/  # Edge storage file operations (binary support)
-│   ├── bunny-api-stream/   # Video library & video management (binary upload)
-│   └── bunny-api-compute/  # Edge scripting (stub, not yet used)
+├── crates/
+│   ├── hoppy-cli/          # CLI binary (package: hoppy-cli, binary: hoppy)
+│   │   ├── src/
+│   │   │   ├── main.rs     # Entry point (#[tokio::main])
+│   │   │   ├── cli.rs      # Clap derive structs (commands, flags, enums)
+│   │   │   ├── auth.rs     # Env var reading (BUNNY_API_KEY, etc.)
+│   │   │   ├── output.rs   # Output formatting (JSON, table, text)
+│   │   │   └── commands/   # One handler per service
+│   │   └── tests/e2e/      # End-to-end CLI tests (wiremock + insta)
+│   ├── bunny-api/          # Hand-written bunny.net API clients (one crate, feature-gated modules)
+│   │   └── src/
+│   │       ├── lib.rs       # Feature-gated module declarations
+│   │       ├── core/        # Pull zones, storage zones, DNS, video libraries
+│   │       ├── shield/      # WAF, rate limiting, access lists, bot detection
+│   │       ├── storage/     # Edge storage file operations (binary support)
+│   │       ├── stream/      # Video library & video management (binary upload)
+│   │       ├── compute/     # Edge scripting
+│   │       ├── containers/  # Magic containers
+│   │       ├── database/    # libSQL managed databases
+│   │       └── recording/   # HTTP response recording helper (dev/test)
+│   └── bunny-syslog-receiver/  # Standalone embedded syslog receiver
 ├── hoppy-knowledgebase/    # Design docs and research (Obsidian-compatible)
 └── .github/workflows/      # CI: multi-platform build, clippy, rustfmt
 ```
@@ -49,7 +58,8 @@ CI runs these across Linux (gnu), macOS (x86_64 + aarch64), and Windows (msvc).
 ## Key Design Decisions
 
 - **Hand-written API clients** (not code-generated). Progenitor codegen was evaluated and rejected because it cannot handle `application/octet-stream` binary bodies. Manual clients give tighter control over binary upload APIs and type refinements.
-- **Crate naming:** `bunny-api-*` (not `hoppy-api-*`).
+- **Single `bunny-api` crate** with services as feature-gated modules (`bunny_api::core`, `bunny_api::stream`, etc.). The former per-service `bunny-api-*` crates were merged in iter-32.
+- **CLI package is `hoppy-cli`**, binary is `hoppy`. Install: `cargo install hoppy-cli`.
 - **Three output formats** for every list operation: JSON, table, text (TSV).
 - **Destructive operations** (delete) require user confirmation unless `--yes` is passed.
 

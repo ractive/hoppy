@@ -7,7 +7,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-hoppy.workspace = true
+hoppy-cli.workspace = true
 clap_mangen.workspace = true
 clap.workspace = true
 anyhow.workspace = true
