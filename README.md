@@ -42,6 +42,8 @@ scoop install hoppy
 cargo install hoppy
 ```
 
+> **Intel Mac users:** Homebrew bottles are only provided for Apple Silicon. Use `cargo install` above.
+
 ### Direct download
 
 Download the latest binary from [GitHub Releases](https://github.com/ractive/hoppy/releases/latest).
