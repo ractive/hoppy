@@ -9,10 +9,11 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # PR signal is a single host-native build. The full 5-target matrix
-  # runs in release.yml on tag pushes — keeping it off PRs cuts CI time,
-  # avoids the macos-13 / aarch64-linux flakiness, and the platform-
-  # specific regressions only surface at release time anyway.
+  # PR signal is a single host-native build. The full multi-target
+  # matrix runs in release.yml when a GitHub Release is published —
+  # keeping it off PRs cuts CI time, avoids the aarch64-linux
+  # cross-build flakiness, and platform-specific regressions surface
+  # at release time anyway.
   build:
     runs-on: ubuntu-latest
 
