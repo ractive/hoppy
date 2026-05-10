@@ -1,5 +1,24 @@
 use assert_cmd::Command;
 
+/// Snapshot helper for CLI text output.
+///
+/// Applies a normalising filter that strips the platform-specific `.exe`
+/// suffix clap renders for `argv[0]` on Windows, so snapshots captured on
+/// Unix-likes still match on `*-pc-windows-msvc` runners.
+///
+/// Use this for any snapshot whose body can contain the binary name
+/// (e.g. `--help` output, error messages echoing `Usage: hoppy ...`).
+#[macro_export]
+macro_rules! assert_cli_snapshot {
+    ($value:expr) => {{
+        insta::with_settings!({filters => vec![
+            (r"\bhoppy\.exe\b", "hoppy"),
+        ]}, {
+            insta::assert_snapshot!($value);
+        });
+    }};
+}
+
 /// Build a hoppy Command with all BUNNY_* env vars cleared.
 pub fn hoppy_cmd() -> Command {
     let mut cmd = Command::cargo_bin("hoppy").expect("binary not found");

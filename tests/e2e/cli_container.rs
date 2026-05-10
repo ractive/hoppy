@@ -2206,5 +2206,5 @@ fn container_logs_help() {
         .unwrap();
     // --help exits with 0
     assert!(output.status.success(), "status: {}", output.status);
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    crate::assert_cli_snapshot!(String::from_utf8_lossy(&output.stdout));
 }
