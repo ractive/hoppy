@@ -652,8 +652,11 @@ async fn handle_config(
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
         DbConfigAction::OptimalSingle => {
-            let resp = client.get_optimal_single().await?;
-            println!("{}", serde_json::to_string_pretty(&resp)?);
+            anyhow::bail!(
+                "`db config optimal-single` is broken upstream (bunny.net returns HTTP 400 \
+                 — missing field `cdn_server_token`). The subcommand is hidden until upstream \
+                 fixes the route."
+            );
         }
     }
     Ok(())

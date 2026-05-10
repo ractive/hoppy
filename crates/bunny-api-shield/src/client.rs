@@ -30,7 +30,7 @@ use crate::types::{
     CustomAccessListResponse, CustomWafRule, GetApiGuardianResponse, GetCustomWafRulesResponse,
     GetRateLimitRulesResponse, GetShieldZonePullzoneMappingResponse, GetShieldZoneResponse,
     GetShieldZonesResponse, GetTriggeredRulesResponse, GetWafEngineConfigResponse,
-    GetWafEnumsResponse, GetWafRulesSegmentedByPlanResponse, ProblemDetails, RateLimitRule,
+    GetWafEnumsResponse, GetWafRulesSegmentedByPlanResponse, RateLimitRule,
     ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse, ShieldMetricsResponse,
     ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
     ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse, ShieldZoneResponse,
@@ -41,7 +41,7 @@ use crate::types::{
     UpdateReviewTriggeredRuleRequest, UpdateReviewTriggeredRuleResponse, UpdateShieldZoneRequest,
     UpdateUploadScanningConfigurationRequest, UpdateUploadScanningConfigurationResponse,
     UploadOpenApiSpecificationRequest, UploadOpenApiSpecificationResponse,
-    UploadScanningConfigurationResponse, WafLoggingResponse, WafProfileMinimal,
+    UploadScanningConfigurationResponse, WafLoggingResponse, WafProfileMinimal, parse_shield_error,
 };
 
 const BASE_URL: &str = "https://api.bunny.net";
@@ -49,8 +49,8 @@ const BASE_URL: &str = "https://api.bunny.net";
 /// Client for the bunny.net Shield (WAF/Security) API.
 ///
 /// All methods are `async` and return `anyhow::Result<T>`. HTTP errors are
-/// surfaced either as [`ProblemDetails`] (when the server returns a
-/// problem+json body) or as a plain anyhow error with the status code.
+/// surfaced as a structured error (nested envelope or RFC 7807 problem details)
+/// when the body is parseable, otherwise as a plain anyhow error with the status code.
 pub struct ShieldClient {
     client: Client,
     api_key: String,
@@ -162,9 +162,9 @@ impl ShieldClient {
             return serde_json::from_slice(&bytes).context("failed to decode success response");
         }
 
-        // Try to extract RFC 7807 problem details from the error body.
-        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
-            bail!(problem);
+        // Try to extract a structured error from the body (nested envelope or RFC 7807).
+        if let Some(err) = parse_shield_error(&bytes) {
+            return Err(err);
         }
 
         bail!("Shield API returned status {status}");
@@ -175,8 +175,8 @@ impl ShieldClient {
         if status.is_success() || status == StatusCode::NO_CONTENT {
             return Ok(());
         }
-        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
-            bail!(problem);
+        if let Some(err) = parse_shield_error(&bytes) {
+            return Err(err);
         }
         bail!("Shield API returned status {status}");
     }
@@ -1003,8 +1003,8 @@ impl ShieldClient {
             }
             return serde_json::from_slice(&bytes).context("failed to decode promo state");
         }
-        if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(&bytes) {
-            anyhow::bail!(problem);
+        if let Some(err) = parse_shield_error(&bytes) {
+            return Err(err);
         }
         anyhow::bail!("Shield API returned status {status}");
     }
