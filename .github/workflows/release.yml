@@ -21,7 +21,7 @@ jobs:
       - name: Verify tag matches Cargo.toml version
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          CARGO_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "hoppy") | .version')
+          CARGO_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "hoppy-cli") | .version')
           TAG_VERSION="${TAG#v}"
           echo "Git tag version:   $TAG_VERSION"
           echo "Cargo.toml version: $CARGO_VERSION"
@@ -99,7 +99,7 @@ jobs:
         if: matrix.runnable != false
         shell: bash
         run: |
-          cargo run --release --target ${{ matrix.target }} -p hoppy -- --help | \
+          cargo run --release --target ${{ matrix.target }} -p hoppy-cli -- --help | \
             grep -E "pull-zone|storage|dns|compute|container|stream|shield"
         env:
           BUNNY_API_KEY: placeholder
@@ -221,13 +221,13 @@ jobs:
           tool: cargo-deb,cargo-generate-rpm
 
       - name: Build deb package
-        run: cargo deb --no-build --no-strip
+        run: cargo deb -p hoppy-cli --no-build --no-strip
         # cargo-deb picks up the binary from target/release/ and assets from
-        # the paths listed in [package.metadata.deb]
+        # the paths listed in [package.metadata.deb] in crates/hoppy-cli/Cargo.toml
 
       - name: Build rpm package
-        run: cargo generate-rpm
-        # cargo-generate-rpm reads [package.metadata.generate-rpm] from Cargo.toml
+        run: cargo generate-rpm -p hoppy-cli
+        # cargo-generate-rpm reads [package.metadata.generate-rpm] from crates/hoppy-cli/Cargo.toml
 
       - name: Rename packages with version
         run: |
@@ -291,21 +291,8 @@ jobs:
             exit 1
           fi
 
-      # Publish leaf dependency first — all bunny-api-* crates depend on this
-      - name: Publish bunny-api-recording to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          output=$(cargo publish --package bunny-api-recording --locked 2>&1) && { echo "$output"; exit 0; }
-          if echo "$output" | grep -q 'already uploaded'; then
-            echo "bunny-api-recording already published, skipping."
-          else
-            echo "$output" >&2
-            exit 1
-          fi
-
-      # Publish bunny-api-core next (depends on bunny-api-recording)
-      - name: Publish bunny-api-core to crates.io
+      # Publish bunny-api first — all other crates depend on it
+      - name: Publish bunny-api to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
         run: |
@@ -313,15 +300,15 @@ jobs:
           max_attempts=10
           delay=15
           for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api-core (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api-core --locked 2>&1); then
+            echo "Publishing bunny-api (attempt $attempt/$max_attempts)..."
+            if output=$(cargo publish --package bunny-api --locked 2>&1); then
               echo "$output"
-              echo "bunny-api-core published successfully."
+              echo "bunny-api published successfully."
               exit 0
             fi
             echo "$output"
             if echo "$output" | grep -q 'already uploaded'; then
-              echo "bunny-api-core already published, skipping."
+              echo "bunny-api already published, skipping."
               exit 0
             fi
             if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
@@ -338,140 +325,7 @@ jobs:
             fi
           done
 
-      # Publish mid-tier crates sequentially (all depend on bunny-api-recording; none depend on each other, but jobs run serially within this step list)
-      - name: Publish bunny-api-compute to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api-compute (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api-compute --locked 2>&1); then
-              echo "$output"; echo "bunny-api-compute published."; exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then echo "Already published."; exit 0; fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              [ "$attempt" -eq "$max_attempts" ] && { echo "ERROR: giving up" >&2; exit 1; }
-              echo "Waiting ${delay}s..."; sleep "$delay"; delay=$((delay * 2))
-            else
-              echo "ERROR: non-index error" >&2; exit 1
-            fi
-          done
-
-      - name: Publish bunny-api-containers to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api-containers (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api-containers --locked 2>&1); then
-              echo "$output"; echo "bunny-api-containers published."; exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then echo "Already published."; exit 0; fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              [ "$attempt" -eq "$max_attempts" ] && { echo "ERROR: giving up" >&2; exit 1; }
-              echo "Waiting ${delay}s..."; sleep "$delay"; delay=$((delay * 2))
-            else
-              echo "ERROR: non-index error" >&2; exit 1
-            fi
-          done
-
-      - name: Publish bunny-api-database to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api-database (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api-database --locked 2>&1); then
-              echo "$output"; echo "bunny-api-database published."; exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then echo "Already published."; exit 0; fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              [ "$attempt" -eq "$max_attempts" ] && { echo "ERROR: giving up" >&2; exit 1; }
-              echo "Waiting ${delay}s..."; sleep "$delay"; delay=$((delay * 2))
-            else
-              echo "ERROR: non-index error" >&2; exit 1
-            fi
-          done
-
-      - name: Publish bunny-api-shield to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api-shield (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api-shield --locked 2>&1); then
-              echo "$output"; echo "bunny-api-shield published."; exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then echo "Already published."; exit 0; fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              [ "$attempt" -eq "$max_attempts" ] && { echo "ERROR: giving up" >&2; exit 1; }
-              echo "Waiting ${delay}s..."; sleep "$delay"; delay=$((delay * 2))
-            else
-              echo "ERROR: non-index error" >&2; exit 1
-            fi
-          done
-
-      - name: Publish bunny-api-storage to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api-storage (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api-storage --locked 2>&1); then
-              echo "$output"; echo "bunny-api-storage published."; exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then echo "Already published."; exit 0; fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              [ "$attempt" -eq "$max_attempts" ] && { echo "ERROR: giving up" >&2; exit 1; }
-              echo "Waiting ${delay}s..."; sleep "$delay"; delay=$((delay * 2))
-            else
-              echo "ERROR: non-index error" >&2; exit 1
-            fi
-          done
-
-      - name: Publish bunny-api-stream to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-api-stream (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-api-stream --locked 2>&1); then
-              echo "$output"; echo "bunny-api-stream published."; exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then echo "Already published."; exit 0; fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              [ "$attempt" -eq "$max_attempts" ] && { echo "ERROR: giving up" >&2; exit 1; }
-              echo "Waiting ${delay}s..."; sleep "$delay"; delay=$((delay * 2))
-            else
-              echo "ERROR: non-index error" >&2; exit 1
-            fi
-          done
-
-      # bunny-syslog-receiver has no bunny-api-* deps; published after mid-tier crates in this sequential job
+      # bunny-syslog-receiver has no bunny-api deps; publish after bunny-api in this sequential job
       - name: Publish bunny-syslog-receiver to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
@@ -494,8 +348,9 @@ jobs:
             fi
           done
 
-      # hoppy depends on all of the above — publish last
-      - name: Publish hoppy to crates.io
+      # hoppy-cli depends on bunny-api and bunny-syslog-receiver — publish last
+      # Install with: cargo install hoppy-cli  (binary name: hoppy)
+      - name: Publish hoppy-cli to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
         run: |
@@ -503,15 +358,15 @@ jobs:
           max_attempts=10
           delay=15
           for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing hoppy (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package hoppy --locked 2>&1); then
+            echo "Publishing hoppy-cli (attempt $attempt/$max_attempts)..."
+            if output=$(cargo publish --package hoppy-cli --locked 2>&1); then
               echo "$output"
-              echo "hoppy published successfully."
+              echo "hoppy-cli published successfully."
               exit 0
             fi
             echo "$output"
             if echo "$output" | grep -q 'already uploaded'; then
-              echo "hoppy already published, skipping."
+              echo "hoppy-cli already published, skipping."
               exit 0
             fi
             if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then

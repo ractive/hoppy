@@ -39,8 +39,10 @@ scoop install hoppy
 ### cargo install
 
 ```bash
-cargo install hoppy
+cargo install hoppy-cli
 ```
+
+> The package name on crates.io is `hoppy-cli`; the installed binary is named `hoppy`.
 
 > **Intel Mac users:** Homebrew bottles are only provided for Apple Silicon. Use `cargo install` above.
 
