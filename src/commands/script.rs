@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::cli::{
     OutputFormat, ScriptAction, ScriptCodeAction, ScriptReleaseAction, ScriptSecretAction,
-    ScriptVariableAction,
+    ScriptTypeArg, ScriptVariableAction,
 };
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Result, bail};
@@ -33,10 +33,12 @@ fn script_type_str(t: ScriptType) -> &'static str {
     }
 }
 
-fn u8_to_script_type(n: u8) -> Result<ScriptType> {
-    serde_json::from_value(serde_json::json!(n)).map_err(|_| {
-        anyhow::anyhow!("invalid script-type {n}: must be 0 (Dns), 1 (Cdn), or 2 (Middleware)")
-    })
+fn arg_to_script_type(a: ScriptTypeArg) -> ScriptType {
+    match a {
+        ScriptTypeArg::Dns => ScriptType::Dns,
+        ScriptTypeArg::Cdn => ScriptType::Cdn,
+        ScriptTypeArg::Middleware => ScriptType::Middleware,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -395,7 +397,7 @@ async fn handle_get(
 #[allow(clippy::too_many_arguments)]
 async fn handle_create(
     name: &str,
-    script_type: u8,
+    script_type: ScriptTypeArg,
     code: Option<&str>,
     create_linked_pull_zone: bool,
     linked_pull_zone_name: Option<&str>,
@@ -407,7 +409,7 @@ async fn handle_create(
     let body = CreateEdgeScript {
         name: Some(name.to_owned()),
         code: code.map(str::to_owned),
-        script_type: u8_to_script_type(script_type)?,
+        script_type: arg_to_script_type(script_type),
         create_linked_pull_zone,
         linked_pull_zone_name: linked_pull_zone_name.map(str::to_owned),
         integration: None,
@@ -428,7 +430,7 @@ async fn handle_create(
 async fn handle_update(
     id: i64,
     name: Option<&str>,
-    script_type: Option<u8>,
+    script_type: Option<ScriptTypeArg>,
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
@@ -440,7 +442,7 @@ async fn handle_update(
     let body = UpdateEdgeScript {
         id,
         name: name.map(str::to_owned),
-        script_type: script_type.map(u8_to_script_type).transpose()?,
+        script_type: script_type.map(arg_to_script_type),
     };
     let script = c.update_script(id, &body).await?;
     if let OutputFormat::Json = format {
@@ -802,9 +804,11 @@ async fn handle_statistics(
     debug: bool,
     record: Option<&str>,
 ) -> Result<()> {
+    let date_from = crate::date::normalise_datetime_opt(date_from)?;
+    let date_to = crate::date::normalise_datetime_opt(date_to)?;
     let c = client(debug, record)?;
     let stats = c
-        .get_script_statistics(id, date_from, date_to, hourly)
+        .get_script_statistics(id, date_from.as_deref(), date_to.as_deref(), hourly)
         .await?;
     if let OutputFormat::Json = format {
         println!(

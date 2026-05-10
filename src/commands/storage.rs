@@ -49,9 +49,13 @@ pub async fn handle(
     record: Option<&str>,
 ) -> Result<()> {
     match action {
-        StorageAction::Ls { zone, path, region } => {
+        StorageAction::Ls {
+            zone,
+            remote_path,
+            region,
+        } => {
             let client = build_storage_client(zone, region, debug, record).await?;
-            let path = path.trim_matches('/');
+            let path = remote_path.trim_matches('/');
             let objects = client.list_files(zone, path).await?;
             if let OutputFormat::Json = format {
                 let json =
@@ -108,7 +112,7 @@ pub async fn handle(
         StorageAction::Download {
             zone,
             remote_path,
-            output,
+            file,
             region,
         } => {
             let client = build_storage_client(zone, region, debug, record).await?;
@@ -118,7 +122,7 @@ pub async fn handle(
 
             let bytes = client.download_file(zone, dir, name).await?;
 
-            match output {
+            match file {
                 Some(path) => {
                     fs::write(path, &bytes)
                         .await

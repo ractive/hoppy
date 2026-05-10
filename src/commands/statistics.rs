@@ -1,5 +1,6 @@
 use crate::auth;
 use crate::cli::OutputFormat;
+use crate::date;
 use anyhow::{Context, Result};
 
 #[derive(serde::Serialize, tabled::Tabled)]
@@ -19,9 +20,11 @@ pub async fn handle(
     pull_zone: Option<i64>,
     hourly: bool,
 ) -> Result<()> {
+    let date_from = date::normalise_datetime_opt(date_from)?;
+    let date_to = date::normalise_datetime_opt(date_to)?;
     let client = auth::core_client(debug, record)?;
     let stats = client
-        .get_statistics(date_from, date_to, pull_zone, hourly)
+        .get_statistics(date_from.as_deref(), date_to.as_deref(), pull_zone, hourly)
         .await?;
 
     if let OutputFormat::Json = format {

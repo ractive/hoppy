@@ -487,14 +487,52 @@ async fn handle_dnssec(
         DnsDnssecAction::Status { id } => {
             let zone = client.get_dns_zone(*id).await?;
             if let OutputFormat::Json = format {
-                let row = serde_json::json!({
-                    "Id": zone.id,
-                    "Domain": zone.domain,
-                    "DnsSecEnabled": zone.dns_sec_enabled,
-                });
-                let json =
-                    serde_json::to_string_pretty(&row).context("failed to serialize to JSON")?;
-                println!("{json}");
+                // Enrich with DS record details when DNSSEC is enabled.
+                // enable_dns_zone_dnssec is idempotent — calling it on an
+                // already-enabled zone returns the DS record without changing
+                // anything.
+                if zone.dns_sec_enabled {
+                    let ds = client.enable_dns_zone_dnssec(*id).await?;
+                    let row = serde_json::json!({
+                        "Id": zone.id,
+                        "Domain": zone.domain,
+                        "DnsSecEnabled": zone.dns_sec_enabled,
+                        "DsRecord": ds.ds_record,
+                        "Digest": ds.digest,
+                        "DigestType": ds.digest_type,
+                        "Algorithm": ds.algorithm,
+                        "KeyTag": ds.key_tag,
+                        "Flags": ds.flags,
+                        "DsConfigured": ds.ds_configured,
+                    });
+                    let json = serde_json::to_string_pretty(&row)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                } else {
+                    let row = serde_json::json!({
+                        "Id": zone.id,
+                        "Domain": zone.domain,
+                        "DnsSecEnabled": zone.dns_sec_enabled,
+                    });
+                    let json = serde_json::to_string_pretty(&row)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                }
+            } else if zone.dns_sec_enabled {
+                // Fetch DS record details (idempotent enable call).
+                let ds = client.enable_dns_zone_dnssec(*id).await?;
+                let row = DnssecRow::from(&ds);
+                // Show zone-level fields as a header, then the DS record row.
+                eprintln!(
+                    "Zone ID: {}  Domain: {}  DNSSEC: enabled",
+                    zone.id, zone.domain
+                );
+                output::print_single(&row, format);
+                if let Some(rec) = &ds.ds_record {
+                    eprintln!();
+                    eprintln!("DS record (copy this to your domain registrar):");
+                    eprintln!("  {rec}");
+                }
             } else {
                 let row = DnssecStatusRow {
                     id: zone.id,
