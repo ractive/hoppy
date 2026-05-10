@@ -108,6 +108,45 @@ impl From<OptimizerWatermarkPositionArg> for OptimizerWatermarkPosition {
     }
 }
 
+/// Edge script type (`ScriptType` in the Compute API).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum ScriptTypeArg {
+    /// DNS-layer script (value 0).
+    Dns,
+    /// CDN script (value 1).
+    Cdn,
+    /// Middleware script (value 2).
+    Middleware,
+}
+
+impl From<ScriptTypeArg> for u8 {
+    fn from(a: ScriptTypeArg) -> Self {
+        match a {
+            ScriptTypeArg::Dns => 0,
+            ScriptTypeArg::Cdn => 1,
+            ScriptTypeArg::Middleware => 2,
+        }
+    }
+}
+
+/// Storage zone tier (`ZoneTier` in the Core API).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum StorageZoneTierArg {
+    /// Standard tier (value 0).
+    Standard,
+    /// Edge tier (value 1).
+    Edge,
+}
+
+impl From<StorageZoneTierArg> for i64 {
+    fn from(a: StorageZoneTierArg) -> Self {
+        match a {
+            StorageZoneTierArg::Standard => 0,
+            StorageZoneTierArg::Edge => 1,
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Manage CDN pull zones
@@ -698,9 +737,9 @@ pub enum StorageZoneAction {
         /// Replication regions (comma-separated or repeated flags)
         #[arg(long, value_delimiter = ',')]
         replication_regions: Vec<String>,
-        /// Zone tier (0 = Standard, 1 = Edge)
-        #[arg(long)]
-        zone_tier: Option<i64>,
+        /// Storage zone tier
+        #[arg(long, value_enum)]
+        zone_tier: Option<StorageZoneTierArg>,
     },
     /// Update a storage zone
     Update {
@@ -756,9 +795,9 @@ pub enum StorageAction {
         /// Remote path (e.g. images/photo.jpg)
         #[arg(long)]
         remote_path: String,
-        /// Local path to write the file (defaults to stdout)
+        /// Local file path to write the downloaded file (defaults to stdout if omitted)
         #[arg(long)]
-        output: Option<String>,
+        file: Option<String>,
         /// Storage region hostname prefix (e.g. storage, la, sg, syd)
         #[arg(long, default_value = "storage")]
         region: String,
@@ -770,7 +809,7 @@ pub enum StorageAction {
         zone: String,
         /// Remote directory path (empty for root)
         #[arg(long, default_value = "")]
-        path: String,
+        remote_path: String,
         /// Storage region hostname prefix (e.g. storage, la, sg, syd)
         #[arg(long, default_value = "storage")]
         region: String,
@@ -1108,7 +1147,7 @@ pub enum StreamLibraryAction {
     /// Get statistics for a video library
     Statistics {
         #[arg(long)]
-        library_id: i64,
+        id: i64,
         #[arg(long)]
         date_from: Option<String>,
         #[arg(long)]
@@ -1456,7 +1495,7 @@ pub enum ShieldAction {
     EventLogs {
         #[arg(long)]
         shield_zone_id: i64,
-        /// Date of logs in MM-dd-yyyy format
+        /// Date of logs: ISO 8601 (YYYY-MM-DD) or legacy US format (MM-dd-yyyy)
         #[arg(long)]
         date: String,
         /// Continuation token for the next page (omit for the first page)
@@ -1885,9 +1924,9 @@ pub enum ScriptAction {
     Create {
         #[arg(long)]
         name: String,
-        /// Script type (0 = Dns, 1 = Cdn, 2 = Middleware)
-        #[arg(long)]
-        script_type: u8,
+        /// Script type
+        #[arg(long, value_enum)]
+        script_type: ScriptTypeArg,
         /// Initial source code
         #[arg(long)]
         code: Option<String>,
@@ -1905,9 +1944,9 @@ pub enum ScriptAction {
         /// New name for the script
         #[arg(long)]
         name: Option<String>,
-        /// Script type (0 = Dns, 1 = Cdn, 2 = Middleware)
-        #[arg(long)]
-        script_type: Option<u8>,
+        /// Script type
+        #[arg(long, value_enum)]
+        script_type: Option<ScriptTypeArg>,
     },
     /// Delete an edge script
     Delete {
@@ -2938,10 +2977,10 @@ Hoppy validates locally before the API call."
     Statistics {
         #[arg(long)]
         id: String,
-        /// Start of the time window (RFC 3339)
+        /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
-        /// End of the time window (RFC 3339)
+        /// End of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         to: String,
     },
@@ -2949,8 +2988,10 @@ Hoppy validates locally before the API call."
     Usage {
         #[arg(long)]
         id: String,
+        /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
+        /// End of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         to: String,
     },
@@ -3063,8 +3104,10 @@ pub enum DbGroupAction {
     Stats {
         #[arg(long)]
         id: String,
+        /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
+        /// End of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         to: String,
     },
@@ -3072,8 +3115,10 @@ pub enum DbGroupAction {
     Usage {
         #[arg(long)]
         id: String,
+        /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
+        /// End of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         to: String,
     },

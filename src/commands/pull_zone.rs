@@ -3,6 +3,7 @@ use crate::cli::{
     EdgeRuleAction, OutputFormat, PullZoneAction, PullZoneHostnameAction, PullZoneIpAction,
     PullZoneReferrerAction,
 };
+use crate::date;
 use crate::output::{self, PaginatedListJson};
 use anyhow::{Context, Result, bail};
 use bunny_api_core::CoreClient;
@@ -295,8 +296,10 @@ pub async fn handle(
             date_to,
             hourly,
         } => {
-            let df = date_from.as_deref();
-            let dt = date_to.as_deref();
+            let df = date::normalise_datetime_opt(date_from.as_deref())?;
+            let dt = date::normalise_datetime_opt(date_to.as_deref())?;
+            let df = df.as_deref();
+            let dt = dt.as_deref();
             match r#type.as_str() {
                 "optimizer" => {
                     let stats = client

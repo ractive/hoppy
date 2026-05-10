@@ -1,6 +1,7 @@
 mod auth;
 mod cli;
 mod commands;
+mod date;
 mod output;
 mod progress;
 mod redact;

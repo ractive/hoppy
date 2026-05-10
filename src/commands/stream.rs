@@ -3,6 +3,7 @@ use crate::cli::{
     OutputFormat, StreamAction, StreamCaptionAction, StreamCollectionAction, StreamLibraryAction,
     StreamResolutionsAction, StreamVideoAction,
 };
+use crate::date;
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
 use anyhow::{Context as _, Result, bail};
@@ -268,16 +269,18 @@ async fn handle_library(
             eprintln!("Deleted video library {id}");
         }
         StreamLibraryAction::Statistics {
-            library_id,
+            id,
             date_from,
             date_to,
             hourly,
             video_guid,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
+            let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
+            let stream = resolve_stream_client(*id, debug, record).await?;
             let stats = stream
                 .get_library_statistics(
-                    *library_id,
+                    *id,
                     date_from.as_deref(),
                     date_to.as_deref(),
                     *hourly,
@@ -296,9 +299,15 @@ async fn handle_library(
                     #[tabled(rename = "Value")]
                     value: String,
                 }
+                // API returns -1 as a sentinel meaning "no data available".
+                let engagement_display = if stats.engagement_score == -1 {
+                    "N/A".to_owned()
+                } else {
+                    stats.engagement_score.to_string()
+                };
                 let rows = vec![Row {
-                    metric: "Engagement Score".to_string(),
-                    value: stats.engagement_score.to_string(),
+                    metric: "Engagement Score".to_owned(),
+                    value: engagement_display,
                 }];
                 output::print_data(&rows, format);
             }
