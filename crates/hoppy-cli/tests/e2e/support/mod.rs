@@ -78,6 +78,9 @@ pub fn fixture(relative_path: &str) -> String {
 
 #[cfg(feature = "live-api")]
 pub fn hoppy_live_cmd() -> Command {
+    // `assert_cmd::Command` inherits the parent env by default, so
+    // `HOPPY_RECORD_DIR` (when set on the test invocation) reaches the
+    // spawned `hoppy` and the fixture-refresh sweep works out of the box.
     let cmd = Command::cargo_bin("hoppy").expect("binary not found");
     assert!(
         std::env::var("BUNNY_API_KEY").is_ok(),

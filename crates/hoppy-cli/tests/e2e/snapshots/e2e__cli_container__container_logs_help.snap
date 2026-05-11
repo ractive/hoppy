@@ -1,5 +1,5 @@
 ---
-source: tests/e2e/cli_container.rs
+source: crates/hoppy-cli/tests/e2e/cli_container.rs
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 Stream live syslog output from a Magic Containers application.
@@ -71,7 +71,7 @@ Options:
           Bore relay server host.  Defaults to bore.pub.  Use this to point at a self-hosted bore server
 
       --record <DIR>
-          Record API responses to files in the given directory
+          Record API responses as JSON fixtures under `<DIR>/<domain>/` (one subdirectory per service: core, compute, containers, database, shield, storage, stream). Writes are idempotent — unchanged files are left alone. May also be set via `HOPPY_RECORD_DIR=<DIR>`
 
   -h, --help
           Print help (see a summary with '-h')
