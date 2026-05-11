@@ -273,6 +273,7 @@ impl StorageClient {
         }
         maybe_record_response(
             self.record_dir.as_deref(),
+            "storage",
             &self.last_request,
             status.is_success(),
             &bytes,
