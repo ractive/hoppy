@@ -48,7 +48,10 @@ pub struct Cli {
     #[arg(long = "reveal-env", value_name = "KEY", global = true)]
     pub reveal_env: Vec<String>,
 
-    /// Record API responses to files in the given directory
+    /// Record API responses as JSON fixtures under `<DIR>/<domain>/` (one
+    /// subdirectory per service: core, compute, containers, database,
+    /// shield, storage, stream). Writes are idempotent — unchanged files
+    /// are left alone. May also be set via `HOPPY_RECORD_DIR=<DIR>`.
     #[arg(long, value_name = "DIR", global = true)]
     pub record: Option<String>,
 

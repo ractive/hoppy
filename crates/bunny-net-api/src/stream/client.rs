@@ -127,6 +127,7 @@ impl StreamClient {
         }
         maybe_record_response(
             self.record_dir.as_deref(),
+            "stream",
             &self.last_request,
             status.is_success(),
             &bytes,

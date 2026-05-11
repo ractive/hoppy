@@ -6,6 +6,24 @@ use bunny_net_api::database::DatabaseClient;
 use bunny_net_api::shield::ShieldClient;
 use std::env;
 
+/// Resolve the effective record directory.
+///
+/// Returns the explicit `--record <DIR>` flag value if set, else the
+/// `HOPPY_RECORD_DIR` environment variable when non-empty, else `None`.
+/// Lets the `live-api` E2E suite refresh fixtures without threading the
+/// flag through every test command.
+pub fn get_record_dir(explicit: Option<&str>) -> Option<String> {
+    if let Some(dir) = explicit
+        && !dir.is_empty()
+    {
+        return Some(dir.to_string());
+    }
+    match env::var("HOPPY_RECORD_DIR") {
+        Ok(dir) if !dir.is_empty() => Some(dir),
+        _ => None,
+    }
+}
+
 /// Read the bunny.net API key from the BUNNY_API_KEY environment variable.
 pub fn get_api_key() -> Result<String> {
     match env::var("BUNNY_API_KEY") {
@@ -58,7 +76,7 @@ pub fn database_client(debug: bool, record: Option<&str>) -> Result<DatabaseClie
         DatabaseClient::new(api_key)
     }
     .with_debug(debug);
-    if let Some(dir) = record {
+    if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }
     Ok(client)
@@ -86,7 +104,7 @@ pub fn core_client(debug: bool, record: Option<&str>) -> Result<CoreClient> {
         CoreClient::new(api_key)
     }
     .with_debug(debug);
-    if let Some(dir) = record {
+    if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }
     Ok(client)
@@ -101,7 +119,7 @@ pub fn shield_client(debug: bool, record: Option<&str>) -> Result<ShieldClient> 
         ShieldClient::new(api_key)
     }
     .with_debug(debug);
-    if let Some(dir) = record {
+    if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }
     Ok(client)
@@ -116,7 +134,7 @@ pub fn compute_client(debug: bool, record: Option<&str>) -> Result<ComputeClient
         ComputeClient::new(api_key)
     }
     .with_debug(debug);
-    if let Some(dir) = record {
+    if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }
     Ok(client)
@@ -131,7 +149,7 @@ pub fn containers_client(debug: bool, record: Option<&str>) -> Result<Containers
         ContainersClient::new(api_key)
     }
     .with_debug(debug);
-    if let Some(dir) = record {
+    if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }
     Ok(client)

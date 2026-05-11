@@ -72,5 +72,7 @@ Do *not* merge with `--squash`.
 ## Integration Tests
 Integration tests live in `tests/e2e/` per crate, declared via `[[test]] name = "e2e" path = "tests/e2e/mod.rs"` in `Cargo.toml`. Add new test files as `mod` declarations in `tests/e2e/mod.rs`, not as new top-level files under `tests/` — top-level files become separate binaries and each one re-links the crate from scratch.
 
+To refresh the on-disk JSON fixtures from the real API, run the live suite with `HOPPY_RECORD_DIR=fixtures/` (equivalent to passing `--record fixtures/` to every command). Recording writes under `fixtures/<domain>/` per service and is idempotent — unchanged files are left alone. Use `--test-threads=1` so two tests don't race on the same fixture filename: `HOPPY_RECORD_DIR=$(pwd)/fixtures cargo test --workspace --features live-api -- --test-threads=1`.
+
 ## Dogfooding
 After (or before) an iteration, build hoppy with `cargo build --release` and use `target/release/hoppy` against a real bunny.net account to dogfood your changes. File friction points as backlog items in `hoppy-knowledgebase/backlog/`. Follow [[dogfooding/dogfooding-playbook]] — never run destructive commands without the safe-prefix + cleanup script. The `live-api` Cargo feature gates the real-API E2E tests (`cargo test --workspace --features live-api --quiet`).

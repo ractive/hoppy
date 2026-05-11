@@ -58,6 +58,26 @@ Why: the cleanup script greps for `hoppy-test-` and refuses to touch anything th
 
 If a `live-api` test fails halfway and leaks a resource, the cleanup script (next section) is your fallback.
 
+### Refreshing fixtures
+
+Set `HOPPY_RECORD_DIR=<repo>/fixtures` and re-run the live suite to overwrite the on-disk JSON fixtures with fresh API responses:
+
+```sh
+HOPPY_RECORD_DIR="$(pwd)/fixtures" BUNNY_API_KEY=<live> \
+    cargo test --workspace --features live-api -- --test-threads=1
+```
+
+- Per-domain layout: each client writes under `fixtures/<domain>/` (`core`, `compute`, `containers`, `database`, `shield`, `storage`, `stream`). The env var is equivalent to passing `--record <DIR>` on every command.
+- `--test-threads=1` is required so two tests don't race on the same fixture filename (e.g. both hitting `GET /pullzone`).
+- Writes are idempotent: identical bytes are skipped silently. Real overwrites print `record: updated <domain>/<file>` to stderr, so `git status` after a sweep highlights only fixtures that drifted.
+
+**Redaction checklist** (manual, this round):
+
+1. After the sweep, run `git status` / `git diff -- fixtures/` and spot-check 3–5 changes.
+2. Look for account-specific leakage in the diffs: account IDs in URLs, geo `LastUpdated` timestamps, per-account hostnames, tokens. If you find one, redact by hand or file a backlog item to encode it in a redaction map.
+3. Re-run `cargo test --workspace --quiet` (no `--features live-api`, no env var) to prove the offline wiremock suite still passes against the refreshed fixtures.
+4. Commit the diff together with the iteration change that drove it — fixture freshness is a code-review concern, not a silent maintenance task.
+
 ## Cleanup script
 
 `hoppy-knowledgebase/dogfooding/cleanup.sh` is **currently a skeleton**. Each surface block prints the manual `hoppy <noun> list` command you should run; no automated deletion has been implemented yet, and `--yes` deliberately refuses to proceed until the real delete paths exist. Until then, treat this section as a checklist for manual cleanup:
