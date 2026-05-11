@@ -22,9 +22,9 @@ pub fn capture_request(last_request: &Mutex<Option<(String, String)>>, method: &
 /// - The body does not start with `{` or `[` (not JSON)
 ///
 /// Writes are idempotent: if the target file already exists with identical
-/// bytes, no write occurs. On a real overwrite, a single `record: updated
-/// <domain>/<file>` line is printed to stderr. Write errors are reported to
-/// stderr (best-effort).
+/// bytes, no write occurs. On any write (creation or content change), a
+/// single `record: updated <domain>/<file>` line is printed to stderr.
+/// Write errors are reported to stderr (best-effort).
 pub fn maybe_record_response(
     record_dir: Option<&Path>,
     domain: &str,

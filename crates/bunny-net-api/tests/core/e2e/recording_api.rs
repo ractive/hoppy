@@ -27,7 +27,7 @@ async fn with_record_writes_under_domain_subdir_and_is_idempotent() {
     );
 
     let mtime1 = std::fs::metadata(&recorded).unwrap().modified().unwrap();
-    std::thread::sleep(std::time::Duration::from_millis(25));
+    tokio::time::sleep(std::time::Duration::from_millis(25)).await;
 
     // Second identical call must not rewrite the file.
     client.get_billing().await.unwrap();
