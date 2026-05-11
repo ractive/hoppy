@@ -233,7 +233,7 @@ async fn build_storage_client(
         StorageClient::new(region, access_key)?
     };
     client = client.with_debug(debug);
-    if let Some(dir) = record {
+    if let Some(dir) = auth::get_record_dir(record) {
         client = client.with_record(dir);
     }
     Ok(client)

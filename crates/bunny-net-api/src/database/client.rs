@@ -110,6 +110,7 @@ impl DatabaseClient {
         }
         maybe_record_response(
             self.record_dir.as_deref(),
+            "database",
             &self.last_request,
             status.is_success(),
             &bytes,
