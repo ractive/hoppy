@@ -47,7 +47,7 @@ HOPPY_RECORD_DIR=fixtures/ BUNNY_API_KEY=<live>             \
 
 ## Scope
 
-### 1. Add `HOPPY_RECORD_DIR` env-var hook in client builders
+### 1. Add `HOPPY_RECORD_DIR` env-var hook in client builders [4/4]
 
 Source: `crates/hoppy-cli/src/auth.rs`.
 
@@ -60,50 +60,53 @@ if let Some(dir) = record { client = client.with_record(dir); }
 where `record: Option<&str>` is the `--record` flag value. Change it to
 fall back to `HOPPY_RECORD_DIR` when the flag is `None`:
 
-- [ ] Add `pub fn get_record_dir(explicit: Option<&str>) -> Option<String>`
+- [x] Add `pub fn get_record_dir(explicit: Option<&str>) -> Option<String>`
       to `auth.rs` — returns the flag value if set, else the env var if
       non-empty.
-- [ ] Replace the seven `if let Some(dir) = record` blocks in `auth.rs`
-      with a single resolved value via the helper.
-- [ ] Mirror the same change in `crates/hoppy-cli/src/commands/stream.rs:333`,
+- [x] Replace the `if let Some(dir) = record` blocks in `auth.rs`
+      with a single resolved value via the helper. (Note: the plan said
+      "seven" but `auth.rs` actually only holds five client builders —
+      database, core, shield, compute, containers — all five updated.)
+- [x] Mirror the same change in `crates/hoppy-cli/src/commands/stream.rs:333`,
       `:350` and `crates/hoppy-cli/src/commands/storage.rs:237` (these
       construct clients outside `auth.rs`).
-- [ ] Document the env var in `hoppy --help` output via a doc comment
+- [x] Document the env var in `hoppy --help` output via a doc comment
       next to `pub record: Option<String>` in `cli.rs:52`.
 
-### 2. Per-domain fixture routing
+### 2. Per-domain fixture routing [4/4]
 
 Today, `--record <DIR>` writes flat into one directory (filenames derived
 from `method + path`). Refreshing live fixtures needs the writes to land
 under the correct per-domain subdir (`fixtures/core/`, `fixtures/shield/`,
 …) so they overwrite the right files.
 
-- [ ] In `recording::maybe_record_response`, accept a `domain: &str`
+- [x] In `recording::maybe_record_response`, accept a `domain: &str`
       argument (e.g. `"core"`, `"shield"`) and write to
       `record_dir.join(domain).join(filename)`.
-- [ ] Each client (`core`, `compute`, `containers`, `database`, `shield`,
+- [x] Each client (`core`, `compute`, `containers`, `database`, `shield`,
       `storage`, `stream`) passes its own domain string at the single
       call site already wired up.
-- [ ] Existing `--record <DIR>` usage stays compatible — passing
+- [x] Existing `--record <DIR>` usage stays compatible — passing
       `record_dir = fixtures/` now produces `fixtures/core/get_billing.json`
       instead of `fixtures/get_billing.json`. This matches the on-disk
       layout, so the win is "drop-in fixture refresh".
-- [ ] Update the `--record` doc comment in `cli.rs` to mention the
+- [x] Update the `--record` doc comment in `cli.rs` to mention the
       per-domain layout.
 
-### 3. Idempotent overwrite policy
+### 3. Idempotent overwrite policy [2/2]
 
 When re-recording, only overwrite a fixture when content actually changed,
 so `git status` after a run shows only fixtures that drifted.
 
-- [ ] In `recording::maybe_record_response`, after producing the
+- [x] In `recording::maybe_record_response`, after producing the
       pretty-printed JSON, read the existing file (if any). If byte-equal,
       skip the write. Otherwise overwrite.
-- [ ] Print one line to stderr on a real overwrite (`record: updated
+- [x] Print one line to stderr on a real overwrite (`record: updated
       core/get_billing.json`) — silent on no-op. Helps spot which fixtures
-      drifted during the live run.
+      drifted during the live run. (Note: the line is also printed on
+      first-time creation, not just overwrites; documented in the rustdoc.)
 
-### 4. Live test recording integration
+### 4. Live test recording integration [2/2]
 
 The 22 `#[cfg(feature = "live-api")]` tests in
 `crates/hoppy-cli/tests/e2e/cli_*.rs` invoke `hoppy_live_cmd()` from
@@ -111,16 +114,24 @@ The 22 `#[cfg(feature = "live-api")]` tests in
 tests get recording for free — but we should make it explicit so future
 contributors don't accidentally regress.
 
-- [ ] In `support/mod.rs::hoppy_live_cmd`, forward `HOPPY_RECORD_DIR` from
-      the host environment to the spawned `hoppy` process (Command does
-      not inherit env automatically with `cargo_bin`? — verify; if it
-      does, just add an assert + comment).
-- [ ] Add one unit test in `crates/bunny-net-api/tests/core/e2e/` that
+- [x] In `support/mod.rs::hoppy_live_cmd`, forward `HOPPY_RECORD_DIR` from
+      the host environment to the spawned `hoppy` process. (Verified:
+      `assert_cmd::Command` inherits the parent env by default with
+      `cargo_bin`, so a comment in `hoppy_live_cmd` documents the
+      assumption.)
+- [x] Add one unit test in `crates/bunny-net-api/tests/core/e2e/` that
       runs a mocked request with `with_record(tmpdir)` and asserts the
       fixture lands at `tmpdir/core/<file>.json` with idempotent
-      overwrite semantics.
+      overwrite semantics. (Landed as `recording_api.rs`; plus three
+      direct unit tests of `maybe_record_response` in `recording/mod.rs`.)
 
-### 5. Dogfooding fixture refresh round
+### 5. Dogfooding fixture refresh round [0/9]
+
+**Deferred** — this PR landed the plumbing (sections 1–4) and docs
+(section 6). The actual live-account refresh sweep was not executed
+in this iteration: it requires interactive credentials, real billing,
+and a manual cleanup loop. Tracked for a follow-up dogfooding round.
+
 
 After §1–§4 land and `cargo test --workspace` is green:
 
@@ -152,15 +163,15 @@ After §1–§4 land and `cargo test --workspace` is green:
       `hoppy-knowledgebase/backlog/` (e.g. tests that leaked resources,
       tests that flaked, API shapes that surprised us).
 
-### 6. Docs
+### 6. Docs [3/3]
 
-- [ ] Update [[../dogfooding/dogfooding-playbook]] "live-api feature"
+- [x] Update [[../dogfooding/dogfooding-playbook]] "live-api feature"
       section with the `HOPPY_RECORD_DIR` one-liner.
-- [ ] Add a short "Refreshing fixtures" section to the playbook (or a
+- [x] Add a short "Refreshing fixtures" section to the playbook (or a
       sibling file `dogfooding/fixture-refresh.md`) describing the full
       sweep command, the `--test-threads=1` requirement, and the
-      redaction checklist.
-- [ ] Note in `CLAUDE.md` under "Integration Tests" that
+      redaction checklist. (Landed inline in the playbook.)
+- [x] Note in `CLAUDE.md` under "Integration Tests" that
       `HOPPY_RECORD_DIR=fixtures/` is the supported fixture-refresh path.
 
 ## Out of scope
