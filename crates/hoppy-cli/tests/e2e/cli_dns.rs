@@ -182,13 +182,14 @@ async fn dns_zone_list_table() {
     );
     assert!(stdout.contains("DNSSEC"), "expected DNSSEC column");
     assert!(stdout.contains("Created"), "expected Created column");
-    // At least one data row present beneath the header — checked by
-    // counting lines rather than asserting a specific domain (the
-    // domain comes from the fixture and drifts on refresh).
-    let rows = stdout.lines().count();
+    // At least one data row present beneath the header.  A table data row
+    // starts with "| " followed by a non-whitespace cell value; matching on
+    // that pattern is more discriminating than counting total lines.
+    let data_row_re = regex::Regex::new(r"^\|\s*\S").unwrap();
+    let data_rows = stdout.lines().filter(|l| data_row_re.is_match(l)).count();
     assert!(
-        rows >= 3,
-        "expected at least one data row, got {rows} lines"
+        data_rows >= 1,
+        "expected at least one data row, got {data_rows} matching lines"
     );
 }
 

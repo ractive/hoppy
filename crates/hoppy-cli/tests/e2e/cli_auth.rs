@@ -66,6 +66,12 @@ async fn auth_check_table() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     // Column headers and fixed fields present
     assert!(stdout.contains("API Key"), "expected API Key row");
+    // "valid" must appear without "invalid" — naive contains("valid") is true
+    // even when the text is "invalid".
+    assert!(
+        !stdout.contains("invalid"),
+        "expected API Key to be valid, got invalid"
+    );
     assert!(stdout.contains("valid"), "expected API Key to be valid");
     assert!(stdout.contains("Balance"), "expected Balance row");
     assert!(
