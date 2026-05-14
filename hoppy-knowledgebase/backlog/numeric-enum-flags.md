@@ -2,7 +2,7 @@
 title: several flags expose raw numeric enum values
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: medium
 origin: dogfooding-2026-05-10
 ---

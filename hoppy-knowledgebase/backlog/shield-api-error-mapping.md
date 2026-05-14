@@ -1,8 +1,8 @@
 ---
-title: shield error responses surface as "Shield API error 0: unknown"
+title: "shield error responses surface as \"Shield API error 0: unknown\""
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: high
 origin: dogfooding-2026-05-10
 ---

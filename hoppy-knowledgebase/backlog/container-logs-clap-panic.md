@@ -2,7 +2,7 @@
 title: container logs panics with clap downcast mismatch
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: critical
 origin: dogfooding-2026-05-10
 ---

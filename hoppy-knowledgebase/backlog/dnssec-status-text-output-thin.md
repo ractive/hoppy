@@ -2,7 +2,7 @@
 title: dns zone dnssec status text output omits the DS record
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: low
 origin: dogfooding-2026-05-10
 ---

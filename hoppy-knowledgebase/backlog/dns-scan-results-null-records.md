@@ -1,8 +1,8 @@
 ---
-title: dns zone scan results panics on `Records: null` (in-progress scan)
+title: "dns zone scan results panics on `Records: null` (in-progress scan)"
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: high
 origin: dogfooding-2026-05-10
 ---

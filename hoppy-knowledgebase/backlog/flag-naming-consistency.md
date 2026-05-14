@@ -2,7 +2,7 @@
 title: inconsistent flag names across nouns (storage, stream, db)
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: medium
 origin: dogfooding-2026-05-10
 ---
