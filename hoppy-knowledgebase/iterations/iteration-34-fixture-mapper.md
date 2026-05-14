@@ -7,7 +7,7 @@ tags:
   - testing
   - fixtures
   - tooling
-status: in-progress
+status: completed
 branch: iter-34/fixture-mapper
 ---
 
@@ -89,7 +89,28 @@ git surfaces should be a real API drift.
       dry-run output for surprises (collisions, unmappables).
 - [x] `--apply`, then `cargo test --workspace --quiet` to prove the
       offline suite still passes against the refreshed fixtures.
-- [x] Commit the resulting drift in the same PR.
+- [ ] ~~Commit the resulting drift in the same PR.~~ Not done — see
+      Outcome below.
+
+## Outcome (2026-05-14)
+
+- Tool works end-to-end. Live sweep: 255/256 (only the known
+  [[../backlog/live-stream-collection-401]] flake). Mapper dry-run:
+  202 fixture↔mock mappings scanned, 205 recordings produced,
+  **14 drifted, 3 identical, 0 collisions, 188 unmapped**.
+- The "unmapped" set is mostly Magic Containers and shield surfaces that
+  don't have wiremock coverage yet — expected.
+- `--apply` overwrote the 14 drifted fixtures cleanly. Then offline
+  `cargo test --workspace --quiet` failed: **7 tests** in
+  `bunny-net-api/tests/core/e2e/{billing,pullzone,dns,statistics}_api.rs`
+  panic because they assert on hand-authored values
+  (`balance == 42.50`, `id == 1001`) that the live recordings don't
+  reproduce.
+- Drift was reverted with `git checkout -- fixtures/`. New backlog item
+  filed: [[../backlog/fixture-tests-assert-on-hardcoded-values]].
+- Iter-34 ships the tool + playbook update. The "commit the drift"
+  step is blocked on rewriting those 7 tests to assert on shape rather
+  than values — out of scope here.
 
 ## Out of scope
 
