@@ -60,23 +60,60 @@ If a `live-api` test fails halfway and leaks a resource, the cleanup script (nex
 
 ### Refreshing fixtures
 
-Set `HOPPY_RECORD_DIR=<repo>/fixtures` and re-run the live suite to overwrite the on-disk JSON fixtures with fresh API responses:
+**Two-step process** — record into a scratch directory first, then map the recordings
+back to the hand-authored descriptive fixtures with `fixture-refresh`.
+
+**Step 1 — record fresh responses into a scratch directory:**
 
 ```sh
-HOPPY_RECORD_DIR="$(pwd)/fixtures" BUNNY_API_KEY=<live> \
+SCRATCH="$(pwd)/fixtures-recorded"
+HOPPY_RECORD_DIR="$SCRATCH" BUNNY_API_KEY=<live> \
     cargo test --workspace --features live-api -- --test-threads=1
 ```
 
-- Per-domain layout: each client writes under `fixtures/<domain>/` (`core`, `compute`, `containers`, `database`, `shield`, `storage`, `stream`). The env var is equivalent to passing `--record <DIR>` on every command.
-- `--test-threads=1` is required so two tests don't race on the same fixture filename (e.g. both hitting `GET /pullzone`).
-- Writes are idempotent: identical bytes are skipped silently. Real overwrites print `record: updated <domain>/<file>` to stderr, so `git status` after a sweep highlights only fixtures that drifted.
+- Recording writes under `$SCRATCH/<domain>/` using auto-derived filenames like
+  `GET_billing.json`, `PUT_dnszone_50001.json`.
+- `--test-threads=1` is required so two tests don't race on the same filename.
+- Recording is idempotent: identical bytes are skipped silently.
 
-**Redaction checklist** (manual, this round):
+**Step 2 — preview drift, then apply:**
 
-1. After the sweep, run `git status` / `git diff -- fixtures/` and spot-check 3–5 changes.
-2. Look for account-specific leakage in the diffs: account IDs in URLs, geo `LastUpdated` timestamps, per-account hostnames, tokens. If you find one, redact by hand or file a backlog item to encode it in a redaction map.
-3. Re-run `cargo test --workspace --quiet` (no `--features live-api`, no env var) to prove the offline wiremock suite still passes against the refreshed fixtures.
-4. Commit the diff together with the iteration change that drove it — fixture freshness is a code-review concern, not a silent maintenance task.
+```sh
+# Dry-run: see what would change
+cargo run --bin fixture-refresh -- --recorded fixtures-recorded
+
+# Apply: overwrite descriptive fixtures that drifted
+cargo run --bin fixture-refresh -- --recorded fixtures-recorded --apply
+```
+
+The tool scans `crates/**/tests/**/*.rs` to build a mapping of
+`fixtures/<domain>/<name>.json → (HTTP method, path)`, then matches each
+recording file by method + path-shape (numeric IDs in the recording match any
+numeric ID in the fixture path). Output:
+
+- `drift: <fixture> (Δ N bytes)` — content changed
+- `collision: <recording> → [cand1, cand2]` — ambiguous; resolve manually
+- `unmapped: <recording>` — no descriptive fixture references this endpoint
+
+**Step 3 — verify:**
+
+1. Run `git diff -- fixtures/` and spot-check changed fixtures.
+2. Look for account-specific leakage: account IDs, `LastUpdated` timestamps,
+   per-account hostnames, tokens. Redact by hand or file a backlog item.
+3. Re-run `cargo test --workspace --quiet` to confirm the offline suite still passes.
+4. Commit the drift together with the iteration change that drove it.
+5. Clean up the scratch directory: `rm -rf fixtures-recorded`
+
+**Notes on collisions and unmapped recordings:**
+
+- *Collisions* occur when multiple descriptive fixtures share the same (method, path)
+  (e.g. `pullzone_get.json`, `pullzone_get_with_edgerules.json` both served from
+  `GET /pullzone/<id>`). Resolve by inspecting which fixture is closer to the live
+  response and copying manually.
+- *Unmapped recordings* are API calls hit by the live suite with no corresponding
+  descriptive fixture — either a new endpoint added since the last refresh, or a
+  path pattern the tool can't invert (e.g. unusual segment shapes). File a backlog
+  item and add the fixture manually.
 
 ## Cleanup script
 

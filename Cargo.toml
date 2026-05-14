@@ -38,7 +38,10 @@ tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 urlencoding = "2"
+walkdir = "2"
 wiremock = "0.6"
+syn = { version = "2", features = ["full", "extra-traits", "visit"] }
+regex = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

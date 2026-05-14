@@ -712,13 +712,16 @@ dependencies = [
  "indicatif",
  "insta",
  "predicates",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
+ "syn",
  "tabled",
  "tempfile",
  "tokio",
  "tokio-util",
+ "walkdir",
  "wiremock",
 ]
 
