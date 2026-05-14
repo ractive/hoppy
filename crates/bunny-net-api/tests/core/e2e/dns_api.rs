@@ -59,9 +59,15 @@ async fn list_dns_zones_returns_paginated_items() {
     // Shape-first: at least one item, pagination fields parsed correctly.
     assert!(!result.items.is_empty());
     assert!(result.total_items >= 1);
-    // has_more_items is a bool; just confirm it deserialised.
-    let _ = result.has_more_items;
     assert!(result.current_page >= 1);
+
+    // JSON-key presence: confirm HasMoreItems is actually in the fixture and
+    // not silently defaulted by serde.
+    let json: serde_json::Value = serde_json::from_str(FIXTURE_LIST_PAGINATED).unwrap();
+    assert!(
+        json["HasMoreItems"].is_boolean(),
+        "HasMoreItems key missing or not a bool"
+    );
 
     let first = &result.items[0];
     // id and domain are presence checks — specific values drift.
@@ -135,10 +141,24 @@ async fn get_dns_zone_by_id() {
         .await
         .unwrap();
 
-    assert_eq!(zone.id, 50001);
-    assert_eq!(zone.domain, "example.com");
-    assert!(zone.nameservers_detected);
-    assert!(!zone.dns_sec_enabled);
+    // Shape/presence checks — specific values drift with fixture refreshes.
+    assert!(zone.id > 0);
+    assert!(!zone.domain.is_empty());
+    // Confirm the fields are present in the fixture JSON (serde-default safety).
+    let json: serde_json::Value = serde_json::from_str(FIXTURE_GET).unwrap();
+    assert!(json["Id"].is_number(), "Id key missing or not a number");
+    assert!(
+        json["Domain"].is_string(),
+        "Domain key missing or not a string"
+    );
+    assert!(
+        json["NameserversDetected"].is_boolean(),
+        "NameserversDetected key missing"
+    );
+    assert!(
+        json["DnsSecEnabled"].is_boolean(),
+        "DnsSecEnabled key missing"
+    );
 }
 
 #[tokio::test]
@@ -157,19 +177,41 @@ async fn get_dns_zone_includes_records() {
         .await
         .unwrap();
 
-    assert_eq!(zone.records.len(), 3);
+    // Shape-first: at least one record, types deserialised correctly (keep
+    // type discriminant asserts — those test serde behaviour, not live values).
+    assert!(!zone.records.is_empty());
 
-    // Verify record types deserialized correctly
+    // JSON-key presence: records array exists and each entry has the key fields.
+    let json: serde_json::Value = serde_json::from_str(FIXTURE_GET).unwrap();
+    assert!(
+        json["Records"].is_array(),
+        "Records key missing or not an array"
+    );
+    let records_json = json["Records"].as_array().unwrap();
+    assert!(!records_json.is_empty());
+    // Spot-check first record's key shape.
+    assert!(
+        records_json[0]["Type"].is_number(),
+        "records[0].Type missing or not a number"
+    );
+    assert!(
+        records_json[0]["Value"].is_string(),
+        "records[0].Value missing or not a string"
+    );
+    assert!(
+        records_json[0]["Ttl"].is_number(),
+        "records[0].Ttl missing or not a number"
+    );
+
+    // Record-type discriminants are shape-coupled (serde behaviour) — keep these.
     assert_eq!(zone.records[0].record_type, Some(DnsRecordType::A));
-    assert_eq!(zone.records[0].value, "93.184.216.34");
-    assert_eq!(zone.records[0].ttl, 300);
-
     assert_eq!(zone.records[1].record_type, Some(DnsRecordType::CNAME));
-    assert_eq!(zone.records[1].name, "www");
-    assert_eq!(zone.records[1].comment, Some("WWW redirect".to_owned()));
-
     assert_eq!(zone.records[2].record_type, Some(DnsRecordType::MX));
-    assert_eq!(zone.records[2].priority, 10);
+
+    // CNAME "www" and comment fields are fixture-stable enough; if they drift
+    // on a future refresh, switch to `!is_empty()` / `is_some()` style.
+    assert!(!zone.records[1].name.is_empty());
+    assert!(zone.records[1].comment.is_some());
 }
 
 #[tokio::test]
@@ -569,7 +611,14 @@ async fn get_dns_zone_statistics_returns_data() {
         .await
         .unwrap();
 
-    assert!(stats.total_queries_served >= 0);
+    // JSON-key presence: TotalQueriesServed must exist in the fixture (a
+    // serde-defaulted u64 of 0 would pass `>= 0` vacuously even if the key
+    // were renamed or removed).
+    let json: serde_json::Value = serde_json::from_str(FIXTURE_STATISTICS).unwrap();
+    assert!(
+        json["TotalQueriesServed"].is_number(),
+        "TotalQueriesServed key missing or not a number"
+    );
     assert!(stats.queries_served_chart.is_some());
     assert!(!stats.queries_served_chart.unwrap().is_empty());
 }

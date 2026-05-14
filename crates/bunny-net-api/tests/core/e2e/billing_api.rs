@@ -30,15 +30,30 @@ async fn get_billing_returns_balance_and_charges() {
     assert!(billing.balance >= 0.0);
     assert!(billing.this_month_charges.is_finite());
     assert!(billing.this_month_charges >= 0.0);
-    // billing_enabled and automatic_recharge_enabled are bool flags — just
-    // assert they deserialised (non-panicking access is the test).
-    let _ = billing.billing_enabled;
-    let _ = billing.automatic_recharge_enabled;
+
+    // JSON-key presence: confirm the fields exist in the raw response so a
+    // renamed key doesn't silently pass via serde's #[serde(default)] = 0.0.
+    let json: serde_json::Value = serde_json::from_str(FIXTURE_GET).unwrap();
+    assert!(
+        json["Balance"].is_number(),
+        "Balance key missing or not a number"
+    );
+    assert!(
+        json["ThisMonthCharges"].is_number(),
+        "ThisMonthCharges key missing or not a number"
+    );
+    assert!(
+        json["BillingEnabled"].is_boolean(),
+        "BillingEnabled key missing or not a bool"
+    );
+    assert!(
+        json["AutomaticRechargeEnabled"].is_boolean(),
+        "AutomaticRechargeEnabled key missing or not a bool"
+    );
+
     // Card type and identifier are optional strings; presence is enough.
     assert!(billing.automatic_payment_card_type.is_some());
     assert!(billing.automatic_payment_identifier.is_some());
-    // monthly_bandwidth_used is a u64; zero is valid in a refreshed fixture.
-    let _ = billing.monthly_bandwidth_used;
 }
 
 #[tokio::test]

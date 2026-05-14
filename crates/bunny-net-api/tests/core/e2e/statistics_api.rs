@@ -28,10 +28,27 @@ async fn get_account_statistics_returns_data() {
         .await
         .unwrap();
 
-    // Shape-first: values parsed to correct types and are non-negative.
-    assert!(stats.total_bandwidth_used >= 0);
-    assert!(stats.total_requests_served >= 0);
-    assert!(stats.average_origin_response_time >= 0);
+    // JSON-key presence: confirm the integral fields are actually in the
+    // fixture so a renamed/missing key doesn't pass vacuously via serde
+    // default (unsigned types default to 0 which always satisfies `>= 0`).
+    let json: serde_json::Value = serde_json::from_str(FIXTURE_ACCOUNT_STATS).unwrap();
+    assert!(
+        json["TotalBandwidthUsed"].is_number(),
+        "TotalBandwidthUsed key missing or not a number"
+    );
+    assert!(
+        json["TotalRequestsServed"].is_number(),
+        "TotalRequestsServed key missing or not a number"
+    );
+    assert!(
+        json["AverageOriginResponseTime"].is_number(),
+        "AverageOriginResponseTime key missing or not a number"
+    );
+    assert!(
+        json["CacheHitRate"].is_number(),
+        "CacheHitRate key missing or not a number"
+    );
+
     assert!(stats.cache_hit_rate.is_finite());
     assert!(stats.cache_hit_rate >= 0.0);
     assert!(stats.bandwidth_used_chart.is_some());

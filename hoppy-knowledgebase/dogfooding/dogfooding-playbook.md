@@ -98,6 +98,27 @@ Offline tests that assert on hand-authored fixture values will break every time 
 
 `insta` snapshot tests that embed full fixture output are implicitly value-coupled. Replace `insta::assert_snapshot!` calls with structural checks (valid JSON, expected field keys, non-empty collections) when the snapshot includes live-drifting fields.
 
+### Serde-default gap — why `>= 0` isn't enough
+
+Many model structs use `#[serde(default)]`. This means a renamed or removed JSON key silently deserialises to `0` / `false` / `""` instead of failing. A loosened assert like `assert!(billing.balance >= 0.0)` passes even when the `Balance` key was renamed to `Bal` in a new API version — the field is just 0.0.
+
+Fix: after deserialising, also parse the **raw fixture body** as `serde_json::Value` and assert that the expected keys exist with the right JSON type:
+
+```rust
+let json: serde_json::Value = serde_json::from_str(FIXTURE_GET).unwrap();
+assert!(json["Balance"].is_number(),  "Balance key missing or not a number");
+assert!(json["BillingEnabled"].is_boolean(), "BillingEnabled key missing");
+assert!(json["Items"].is_array(),     "Items key missing or not an array");
+```
+
+Apply this pattern when:
+
+- The field type is numeric (integer or float) with `#[serde(default)]` — `>= 0` is vacuously true on a missing key.
+- The field is a bool with `#[serde(default)]` — `let _ = field;` verifies nothing.
+- The collection has `#[serde(default)]` — an empty-vec default passes `is_empty()` checks silently.
+
+You do **not** need this for partial-response tests that intentionally exercise serde defaults (e.g. `get_billing_partial_response_uses_defaults`) — those tests are the default behaviour under test.
+
 ## Cleanup script
 
 `hoppy-knowledgebase/dogfooding/cleanup.sh` is **currently a skeleton**. Each surface block prints the manual `hoppy <noun> list` command you should run; no automated deletion has been implemented yet, and `--yes` deliberately refuses to proceed until the real delete paths exist. Until then, treat this section as a checklist for manual cleanup:
