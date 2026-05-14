@@ -6,7 +6,7 @@ tags:
   - iteration
   - testing
   - fixtures
-status: in-progress
+status: completed
 branch: iter-37/cli-snapshot-filters
 ---
 
@@ -89,7 +89,7 @@ The 10 tests (from iter-36 §6 validation):
 
 ### 6. End-to-end dogfooding
 
-- [ ] Once §1–§5 land: run a fresh live sweep, `fixture-refresh
+- [x] Once §1–§5 land: run a fresh live sweep, `fixture-refresh
       --apply`, and `cargo test --workspace --quiet`. If green, commit
       the resulting fixture drift — closing iter-34's deferred §5 goal.
 
