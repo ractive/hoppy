@@ -1,27 +1,27 @@
 {
-    "id": "l3faCv1fWRHAYNU-I7t6",
-    "name": "nginx",
-    "packageId": "d2c1b95e-65e7-42a3-adb3-d27d9d1a4f72",
-    "image": "library/nginx:alpine",
-    "imageName": "nginx",
-    "imageNamespace": "library",
-    "imageTag": "alpine",
-    "imageRegistryId": "1155",
-    "imageDigest": "",
-    "imagePullPolicy": "ifNotPresent",
-    "entryPoint": {
-        "command": "",
-        "commandArray": [],
-        "arguments": "",
-        "argumentsArray": [],
-        "workingDirectory": ""
-    },
-    "probes": {
-        "startup": null,
-        "readiness": null,
-        "liveness": null
-    },
-    "environmentVariables": [],
-    "endpoints": [],
-    "volumeMounts": []
+  "id": "l3faCv1fWRHAYNU-I7t6",
+  "name": "nginx",
+  "packageId": "d2c1b95e-65e7-42a3-adb3-d27d9d1a4f72",
+  "image": "library/nginx:alpine",
+  "imageName": "nginx",
+  "imageNamespace": "library",
+  "imageTag": "alpine",
+  "imageRegistryId": "1155",
+  "imageDigest": "",
+  "imagePullPolicy": "ifNotPresent",
+  "entryPoint": {
+    "command": "",
+    "commandArray": [],
+    "arguments": "",
+    "argumentsArray": [],
+    "workingDirectory": ""
+  },
+  "probes": {
+    "startup": null,
+    "readiness": null,
+    "liveness": null
+  },
+  "environmentVariables": [],
+  "endpoints": [],
+  "volumeMounts": []
 }

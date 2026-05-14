@@ -1,14 +1,14 @@
 {
-  "Id": 1001,
-  "Name": "test-zone-19",
-  "OriginUrl": "https://origin.example.com",
+  "Id": 5857627,
+  "Name": "hoppy-test-1778789929216-8",
+  "OriginUrl": "https://new.example.com",
   "Enabled": true,
   "Suspended": false,
   "Hostnames": [
     {
-      "Id": 2001,
-      "Value": "test-20.b-cdn.net",
-      "ForceSSL": true,
+      "Id": 9658484,
+      "Value": "hoppy-test-1778789929216-8.b-cdn.net",
+      "ForceSSL": false,
       "IsSystemHostname": true,
       "IsManagedHostname": true,
       "HasCertificate": true,
@@ -18,7 +18,7 @@
       "CertificateProvisionType": 0
     }
   ],
-  "StorageZoneId": 3001,
+  "StorageZoneId": 0,
   "EdgeScriptId": -1,
   "EdgeScriptExecutionPhase": 0,
   "MiddlewareScriptId": null,
@@ -33,14 +33,14 @@
   "EnableGeoZoneSA": true,
   "EnableGeoZoneAF": true,
   "ZoneSecurityEnabled": false,
-  "ZoneSecurityKey": "redacted-security-key",
+  "ZoneSecurityKey": "REDACTED-SECURITY-KEY",
   "ZoneSecurityIncludeHashRemoteIP": false,
   "IgnoreQueryStrings": true,
   "MonthlyBandwidthLimit": 0,
-  "MonthlyBandwidthUsed": 4400843,
-  "MonthlyCharges": 4.699383e-05,
+  "MonthlyBandwidthUsed": 0,
+  "MonthlyCharges": 0.0,
   "AddHostHeader": false,
-  "OriginHostHeader": "origin.example.com",
+  "OriginHostHeader": "",
   "Type": 0,
   "AccessControlOriginHeaderExtensions": [
     "eot",
@@ -65,7 +65,7 @@
   "BudgetRedirectedCountries": [],
   "BlockedCountries": [],
   "EnableOriginShield": false,
-  "CacheControlMaxAgeOverride": 2592000,
+  "CacheControlMaxAgeOverride": -1,
   "CacheControlPublicMaxAgeOverride": -1,
   "BurstSize": 0,
   "RequestLimit": 0,
@@ -78,7 +78,7 @@
   "OptimizerPricing": 9.5,
   "AddCanonicalHeader": false,
   "EnableLogging": true,
-  "EnableCacheSlice": true,
+  "EnableCacheSlice": false,
   "EnableSmartCache": false,
   "EdgeRules": [],
   "EnableWebPVary": false,
@@ -89,7 +89,7 @@
   "EnableCookieVary": false,
   "CookieVaryParameters": [],
   "EnableHostnameVary": false,
-  "CnameDomain": "test.b-cdn.net",
+  "CnameDomain": "b-cdn.net",
   "AWSSigningEnabled": false,
   "AWSSigningKey": null,
   "AWSSigningSecret": null,
@@ -164,22 +164,22 @@
   "LogForwardingFormat": 1,
   "ShieldDDosProtectionType": 1,
   "ShieldDDosProtectionEnabled": false,
-  "OriginType": 2,
+  "OriginType": 0,
   "EnableRequestCoalescing": false,
   "RequestCoalescingTimeout": 30,
-  "OriginLinkValue": "test.example.com",
+  "OriginLinkValue": "https://new.example.com",
   "DisableLetsEncrypt": false,
   "EnableBunnyImageAi": false,
   "BunnyAiImageBlueprints": [
     {
-      "Name": "test-zone-21",
+      "Name": "demo-pixel-avatar",
       "Properties": {
         "PrePrompt": "cute pixel art of a",
         "PostPrompt": "with a colorful solid background"
       }
     },
     {
-      "Name": "test-zone-22",
+      "Name": "demo-cyberpunk-avatar",
       "Properties": {
         "PrePrompt": "cyberpunk avatar",
         "PostPrompt": "cyber tech with colorful background pastel colors, digital art"
@@ -204,8 +204,8 @@
   "StickySessionType": 0,
   "StickySessionCookieName": null,
   "StickySessionClientHeaders": null,
-  "UserId": "00000000-0000-0000-0000-000000000001",
-  "CacheVersion": 54374850,
+  "UserId": "00000000-0000-0000-0000-000000000000",
+  "CacheVersion": 55448865,
   "OptimizerEnableUpscaling": false,
   "EnableWebSockets": true,
   "MaxWebSocketConnections": 500,

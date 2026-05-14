@@ -1,1 +1,4 @@
-{"HttpCode":200,"Message":"File deleted successfully."}
+{
+  "HttpCode": 200,
+  "Message": "File deleted successfully."
+}

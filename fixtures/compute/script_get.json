@@ -1,32 +1,26 @@
 {
-  "Id": 1001,
-  "Name": "my-cdn-script",
-  "LastModified": "2024-01-15T10:00:00Z",
+  "Id": 74588,
+  "Name": "hpscv-1778789949924-11",
+  "LastModified": "2026-05-14T20:19:10",
   "ScriptType": 1,
-  "CurrentReleaseId": 501,
+  "CurrentReleaseId": -1,
   "EdgeScriptVariables": [
     {
-      "Id": 201,
-      "Name": "API_URL",
-      "Required": true,
-      "DefaultValue": "https://api.example.com"
+      "Id": 17821,
+      "Name": "TEST_VAR",
+      "Required": false,
+      "DefaultValue": "hello"
     }
   ],
   "Deleted": false,
-  "LinkedPullZones": [
-    {
-      "Id": 9001,
-      "PullZoneName": "my-pull-zone",
-      "DefaultHostname": "my-pull-zone.b-cdn.net"
-    }
-  ],
+  "LinkedPullZones": [],
   "Integration": null,
-  "DefaultHostname": "my-cdn-script.b-cdn.net",
-  "SystemHostname": "sys-my-cdn-script.b-cdn.net",
-  "DeploymentKey": "deploy-key-abc123",
+  "DefaultHostname": null,
+  "SystemHostname": null,
+  "DeploymentKey": "f122e10e-5141-4e1f-88c70445d4de-d19b-47e9",
   "RepositoryId": null,
   "IntegrationId": null,
-  "MonthlyCost": 0.0,
-  "MonthlyRequestCount": 12500,
-  "MonthlyCpuTime": 3200
+  "MonthlyCost": 0,
+  "MonthlyRequestCount": 0,
+  "MonthlyCpuTime": 0
 }

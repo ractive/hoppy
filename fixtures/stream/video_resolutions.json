@@ -5,12 +5,27 @@
   "data": {
     "videoId": "aaaabbbb-1111-2222-3333-ccccddddeeee",
     "videoLibraryId": 10001,
-    "availableResolutions": ["1080p", "720p", "480p", "360p", "240p"],
-    "configuredResolutions": ["720p", "480p"],
+    "availableResolutions": [
+      "1080p",
+      "720p",
+      "480p",
+      "360p",
+      "240p"
+    ],
+    "configuredResolutions": [
+      "720p",
+      "480p"
+    ],
     "playlistResolutions": [],
     "storageResolutions": [
-      {"resolution": "720p", "path": "/720p/playlist.m3u8"},
-      {"resolution": "480p", "path": "/480p/playlist.m3u8"}
+      {
+        "resolution": "720p",
+        "path": "/720p/playlist.m3u8"
+      },
+      {
+        "resolution": "480p",
+        "path": "/480p/playlist.m3u8"
+      }
     ],
     "mp4Resolutions": [],
     "storageObjects": [],

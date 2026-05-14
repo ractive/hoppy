@@ -1,14 +1,14 @@
 [
-    {
-        "id": "nginx",
-        "namespace": "dhi"
-    },
-    {
-        "id": "nginx",
-        "namespace": "library"
-    },
-    {
-        "id": "nginx-ingress",
-        "namespace": "nginx"
-    }
+  {
+    "id": "nginx",
+    "namespace": "dhi"
+  },
+  {
+    "id": "nginx",
+    "namespace": "library"
+  },
+  {
+    "id": "nginx-ingress",
+    "namespace": "nginx"
+  }
 ]

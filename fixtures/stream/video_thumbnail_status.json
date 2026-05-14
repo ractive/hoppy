@@ -1,1 +1,5 @@
-{"Success": true, "Message": "Thumbnail set", "StatusCode": 200}
+{
+  "Success": true,
+  "Message": "Thumbnail set",
+  "StatusCode": 200
+}

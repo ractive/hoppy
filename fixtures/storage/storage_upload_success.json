@@ -1,1 +1,4 @@
-{"HttpCode":201,"Message":"File uploaded."}
+{
+  "HttpCode": 201,
+  "Message": "File uploaded."
+}

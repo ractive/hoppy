@@ -1,11 +1,11 @@
 [
-    {
-        "name": "latest"
-    },
-    {
-        "name": "alpine"
-    },
-    {
-        "name": "stable"
-    }
+  {
+    "name": "latest"
+  },
+  {
+    "name": "alpine"
+  },
+  {
+    "name": "stable"
+  }
 ]

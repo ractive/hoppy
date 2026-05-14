@@ -30,7 +30,10 @@
       "PullZoneId": 5002,
       "StorageZoneId": 7002,
       "EnabledResolutions": "720p,1080p",
-      "ReplicationRegions": ["DE", "NY"],
+      "ReplicationRegions": [
+        "DE",
+        "NY"
+      ],
       "AllowDirectPlay": false,
       "EnableMP4Fallback": true
     }

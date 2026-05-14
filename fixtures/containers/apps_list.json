@@ -1,30 +1,30 @@
 {
-    "items": [
-        {
-            "id": "HbqFNk0KZjzYOcp",
-            "name": "stova-api",
-            "description": "default_HbqFNk0KZjzYOcp(00000000-0000-0000-0000-000000000000)",
-            "displayEndpoint": {
-                "id": "HbqFNk0KZjzYOcp-api.stova.ch-r22IVwGhGz",
-                "address": "api.stova.ch",
-                "type": "cdn"
-            },
-            "status": "active"
-        },
-        {
-            "id": "cm7XE04UfPYTKxu",
-            "name": "stova-web",
-            "description": "default_cm7XE04UfPYTKxu(00000000-0000-0000-0000-000000000000)",
-            "displayEndpoint": {
-                "id": "cm7XE04UfPYTKxu-stova.ch-mHmPap9ptA",
-                "address": "mc-i83yurpmxq.b-cdn.net",
-                "type": "cdn"
-            },
-            "status": "active"
-        }
-    ],
-    "meta": {
-        "totalItems": 2
+  "items": [
+    {
+      "id": "HbqFNk0KZjzYOcp",
+      "name": "stova-api",
+      "description": "default_HbqFNk0KZjzYOcp(00000000-0000-0000-0000-000000000000)",
+      "displayEndpoint": {
+        "id": "HbqFNk0KZjzYOcp-api.stova.ch-r22IVwGhGz",
+        "address": "api.stova.ch",
+        "type": "cdn"
+      },
+      "status": "active"
     },
-    "cursor": null
+    {
+      "id": "cm7XE04UfPYTKxu",
+      "name": "stova-web",
+      "description": "default_cm7XE04UfPYTKxu(00000000-0000-0000-0000-000000000000)",
+      "displayEndpoint": {
+        "id": "cm7XE04UfPYTKxu-stova.ch-mHmPap9ptA",
+        "address": "mc-i83yurpmxq.b-cdn.net",
+        "type": "cdn"
+      },
+      "status": "active"
+    }
+  ],
+  "meta": {
+    "totalItems": 2
+  },
+  "cursor": null
 }

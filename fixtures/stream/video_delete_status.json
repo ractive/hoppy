@@ -1,1 +1,5 @@
-{"Success": true, "Message": "OK", "StatusCode": 200}
+{
+  "Success": true,
+  "Message": "OK",
+  "StatusCode": 200
+}
