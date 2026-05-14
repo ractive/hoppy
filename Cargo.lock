@@ -712,7 +712,6 @@ dependencies = [
  "indicatif",
  "insta",
  "predicates",
- "regex",
  "reqwest",
  "serde",
  "serde_json",

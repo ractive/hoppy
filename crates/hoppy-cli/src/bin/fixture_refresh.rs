@@ -175,9 +175,12 @@ fn collect_recordings(recorded_dir: &Path) -> Result<Vec<Recording>> {
         .min_depth(2)
         .max_depth(2)
         .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
     {
+        let entry = entry
+            .with_context(|| format!("walking recorded directory {}", recorded_dir.display()))?;
+        if !entry.file_type().is_file() {
+            continue;
+        }
         let path = entry.path();
         let Some(filename) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
@@ -193,6 +196,11 @@ fn collect_recordings(recorded_dir: &Path) -> Result<Vec<Recording>> {
             continue;
         };
         // filename: <METHOD>_<segments...>.json
+        // The recorder encodes path slashes as underscores, so we reverse that
+        // here. Note: literal underscores in path segments are ambiguous with
+        // encoded slashes. In practice, bunny.net API paths use hyphens and
+        // digits only — no literal underscores — so the simple inverse is
+        // correct for this codebase.
         let stem = filename.trim_end_matches(".json");
         let Some(underscore_pos) = stem.find('_') else {
             continue;
@@ -202,7 +210,7 @@ fn collect_recordings(recorded_dir: &Path) -> Result<Vec<Recording>> {
         let path_str = if segments_part == "root" {
             "/".to_string()
         } else {
-            format!("/{}", segments_part)
+            format!("/{}", segments_part.replace('_', "/"))
         };
         let rel = format!("{}/{}", domain, filename);
         out.push(Recording {
@@ -782,7 +790,7 @@ mod matcher {
                         recording_rel: rec.rel.clone(),
                     },
                     1 => RecordingMatch::Mapped {
-                        fixture_rel: deduped.into_iter().next().unwrap(),
+                        fixture_rel: deduped.remove(0),
                         recording_abs: rec.abs.clone(),
                     },
                     _ => RecordingMatch::Collision {
@@ -825,15 +833,14 @@ mod matcher {
                 continue;
             }
             let matches = rec_segs.iter().zip(fix_segs.iter()).all(|(r, f)| {
-                // Numeric recording segment → matches any fixture segment
-                if is_numeric(r) {
+                // Numeric wildcard: if both sides are numeric they are considered
+                // equivalent regardless of the concrete value (e.g. the fixture
+                // was written with id 1001, recording used 9999 — same shape).
+                // Requiring BOTH sides to be numeric prevents a recording segment
+                // like "9999" from matching a fixture segment like "default".
+                if is_numeric(r) && is_numeric(f) {
                     return true;
                 }
-                // Underscore-to-slash ambiguity: the recording encodes path slashes
-                // as underscores, so a recording path like /dnszone_50001 might
-                // correspond to fixture path /dnszone/50001. However the recording
-                // module does it correctly: it builds the filename by replacing '/'
-                // with '_', so we reconstruct the path by looking at segments only.
                 r == f
             });
             if matches {
@@ -980,5 +987,70 @@ mod matcher {
             let results = match_recordings(&entries, &recordings);
             assert!(matches!(&results[0], RecordingMatch::Unmapped { .. }));
         }
+
+        #[test]
+        fn numeric_recording_does_not_match_non_numeric_fixture_segment() {
+            // Guard against one-sided wildcard: a recording with id 9999 must NOT
+            // match a fixture whose corresponding segment is a non-numeric word like
+            // "default", even though 9999 is numeric.
+            let dir = tempdir().unwrap();
+            let rec_path = dir.path().join("GET_pullzone_9999.json");
+            std::fs::write(&rec_path, b"{}").unwrap();
+
+            let entries = vec![entry(
+                "core/pullzone_get_default.json",
+                "GET",
+                "/pullzone/default",
+            )];
+            let recordings = vec![recording("core", "GET", "/pullzone/9999", rec_path)];
+
+            let results = match_recordings(&entries, &recordings);
+            assert!(
+                matches!(&results[0], RecordingMatch::Unmapped { .. }),
+                "numeric recording segment should not match non-numeric fixture segment; got: {:?}",
+                results[0]
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests for collect_recordings (top-level — exercises the encode/decode pair)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod collect_recordings_tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn decodes_underscores_to_slashes_in_path() {
+        // Recorder writes "GET_dnszone_50001.json" for path /dnszone/50001.
+        // collect_recordings must decode underscores back to slashes so that
+        // normalise_segments can split on '/' and produce ["dnszone","50001"].
+        let dir = tempdir().unwrap();
+        let domain_dir = dir.path().join("core");
+        std::fs::create_dir_all(&domain_dir).unwrap();
+        std::fs::write(domain_dir.join("GET_dnszone_50001.json"), b"{}").unwrap();
+
+        let recordings = collect_recordings(dir.path()).expect("collect_recordings failed");
+        assert_eq!(recordings.len(), 1);
+        assert_eq!(recordings[0].method, "GET");
+        assert_eq!(
+            recordings[0].path, "/dnszone/50001",
+            "path should decode underscores to slashes"
+        );
+    }
+
+    #[test]
+    fn root_sentinel_decodes_to_slash() {
+        let dir = tempdir().unwrap();
+        let domain_dir = dir.path().join("core");
+        std::fs::create_dir_all(&domain_dir).unwrap();
+        std::fs::write(domain_dir.join("GET_root.json"), b"{}").unwrap();
+
+        let recordings = collect_recordings(dir.path()).expect("collect_recordings failed");
+        assert_eq!(recordings.len(), 1);
+        assert_eq!(recordings[0].path, "/");
     }
 }

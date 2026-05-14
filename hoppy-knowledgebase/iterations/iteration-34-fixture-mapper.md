@@ -58,7 +58,8 @@ git surfaces should be a real API drift.
 - [x] Given the table from §1 and a directory of recorded
       `<METHOD>_<path-segments>.json` files, match recordings to
       descriptive names by templating the path back from segments
-      (numeric segments → `\d+`, UUID-shaped → `[uuid]`).
+      (numeric segments → matched as numeric wildcard; UUID matching is
+      deferred as a future enhancement).
 - [x] When multiple existing fixtures share a (method, path) — paginated
       vs first-page, success vs 404 — refuse to overwrite and report the
       collision so a human can resolve it.
@@ -140,7 +141,8 @@ git surfaces should be a real API drift.
 - Running `fixture-refresh --recorded <dir>` twice in a row produces no
   diff on the second run.
 - At least one dogfooded refresh round completed; resulting drift
-  reviewed and committed in the same PR.
+  reviewed. Drift commit deferred to iter-37 — blocked on rewriting
+  7 tests that assert on hard-coded API values (see Outcome).
 - Playbook updated with the new flow.
 
 ## Related
