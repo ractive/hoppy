@@ -7,7 +7,7 @@ tags:
   - testing
   - fixtures
   - tooling
-status: planned
+status: in-progress
 branch: iter-34/fixture-mapper
 ---
 
@@ -43,41 +43,41 @@ git surfaces should be a real API drift.
 
 ### 1. Static analysis of wiremock fixture references
 
-- [ ] Scan all `crates/**/tests/**/*.rs` for `include_str!("…/<domain>/<name>.json")`
+- [x] Scan all `crates/**/tests/**/*.rs` for `include_str!("…/<domain>/<name>.json")`
       and walk the surrounding scope to find the paired `method(...)` and
       `path(...)` / `path_regex(...)` calls.
-- [ ] Produce a JSON-serialisable table:
+- [x] Produce a JSON-serialisable table:
       `descriptive_name → { method, path_template }` keyed by domain.
-- [ ] Handle the common shapes: `Mock::given(method("GET")).and(path("/billing"))`,
+- [x] Handle the common shapes: `Mock::given(method("GET")).and(path("/billing"))`,
       `path_regex(r"^/dnszone/\d+$")`, etc.
-- [ ] Skip fixtures referenced from non-test code (the framework's own
+- [x] Skip fixtures referenced from non-test code (the framework's own
       sample data, doc tests).
 
 ### 2. Recording → existing fixture matcher
 
-- [ ] Given the table from §1 and a directory of recorded
+- [x] Given the table from §1 and a directory of recorded
       `<METHOD>_<path-segments>.json` files, match recordings to
       descriptive names by templating the path back from segments
       (numeric segments → `\d+`, UUID-shaped → `[uuid]`).
-- [ ] When multiple existing fixtures share a (method, path) — paginated
+- [x] When multiple existing fixtures share a (method, path) — paginated
       vs first-page, success vs 404 — refuse to overwrite and report the
       collision so a human can resolve it.
 
 ### 3. Diff and apply
 
-- [ ] For each mapped (descriptive_name → recording) pair, byte-compare.
+- [x] For each mapped (descriptive_name → recording) pair, byte-compare.
       Identical → skip silently. Different → record as "drift".
-- [ ] `--dry-run` mode (default) prints a summary table:
+- [x] `--dry-run` mode (default) prints a summary table:
       `<domain>/<name>.json — drift (N bytes)` or `unmappable: <recording>`.
-- [ ] `--apply` overwrites the descriptive-name fixtures. Untouched on
+- [x] `--apply` overwrites the descriptive-name fixtures. Untouched on
       collisions / unmappables.
 
 ### 4. Surface as a tool
 
-- [ ] New binary in `crates/hoppy-cli/src/bin/fixture_refresh.rs` (so it
+- [x] New binary in `crates/hoppy-cli/src/bin/fixture_refresh.rs` (so it
       lives inside the existing crate, not a separate package).
-- [ ] CI does NOT run this; it's a manual dogfooding tool.
-- [ ] Document in `dogfooding/dogfooding-playbook.md` "Refreshing fixtures"
+- [x] CI does NOT run this; it's a manual dogfooding tool.
+- [x] Document in `dogfooding/dogfooding-playbook.md` "Refreshing fixtures"
       section: replace the bare `HOPPY_RECORD_DIR=fixtures/` recipe with
       "record into a scratch dir, then run `fixture-refresh --apply`".
 
