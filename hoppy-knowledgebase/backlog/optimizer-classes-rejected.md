@@ -2,7 +2,7 @@
 title: pull-zone update --optimizer-classes always rejected as model.invalid
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: medium
 origin: dogfooding-2026-05-10
 ---

@@ -2,7 +2,7 @@
 title: db delete / db group delete print empty tables instead of confirmation
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: medium
 origin: dogfooding-2026-05-10
 ---

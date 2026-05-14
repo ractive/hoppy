@@ -2,7 +2,7 @@
 title: dogfooding playbook references `hoppy auth login` but only `auth check` exists
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: high
 origin: dogfooding-2026-05-10
 ---

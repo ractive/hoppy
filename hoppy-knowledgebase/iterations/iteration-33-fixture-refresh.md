@@ -9,7 +9,7 @@ tags:
   - fixtures
   - dogfooding
   - live-api
-status: in-progress
+status: completed
 branch: iter-33/fixture-refresh
 ---
 
@@ -135,31 +135,31 @@ and a manual cleanup loop. Tracked for a follow-up dogfooding round.
 
 After §1–§4 land and `cargo test --workspace` is green:
 
-- [ ] Build release: `cargo build --release`.
-- [ ] Pre-flight: `hoppy auth check` against the dedicated test account
+- [x] Build release: `cargo build --release`.
+- [x] Pre-flight: `hoppy auth check` against the dedicated test account
       (see [[../dogfooding/dogfooding-playbook]]). Confirm
       `BUNNY_API_KEY` is the test-account key, not production.
-- [ ] Manual cleanup pass: run
+- [x] Manual cleanup pass: run
       `hoppy-knowledgebase/dogfooding/cleanup.sh` (currently a skeleton —
       do the manual list/grep/delete per surface) so no `hoppy-test-`
       prefixed leftovers exist from prior rounds.
-- [ ] Run the recording sweep:
+- [x] Run the recording sweep:
       `HOPPY_RECORD_DIR=$(pwd)/fixtures BUNNY_API_KEY=... cargo test --workspace --features live-api -- --test-threads=1`.
       `--test-threads=1` prevents two tests from racing on the same
       fixture filename (e.g. both hitting `GET /pullzone`).
-- [ ] Inspect `git status` — every changed file under `fixtures/` is a
+- [x] Inspect `git status` — every changed file under `fixtures/` is a
       real drift. Spot-check 3-5 of them: does the diff look like a
       genuine API shape change, or an account-specific value leaking in?
-- [ ] Redact account-specific values (account IDs in URLs, geo
+- [x] Redact account-specific values (account IDs in URLs, geo
       `LastUpdated` timestamps, etc.) where they leak. If a value is
       structural (always present, but per-account), file a backlog item
       to add it to a redaction list rather than hand-editing every run.
-- [ ] Re-run default `cargo test --workspace --quiet` (no live, no
+- [x] Re-run default `cargo test --workspace --quiet` (no live, no
       record). All wiremock tests still green against the refreshed
       fixtures — proves the refresh didn't break the offline suite.
-- [ ] Manual cleanup pass again — confirm no `hoppy-test-` resources
+- [x] Manual cleanup pass again — confirm no `hoppy-test-` resources
       remain in the dashboard.
-- [ ] File any friction as backlog items under
+- [x] File any friction as backlog items under
       `hoppy-knowledgebase/backlog/` (e.g. tests that leaked resources,
       tests that flaked, API shapes that surprised us).
 

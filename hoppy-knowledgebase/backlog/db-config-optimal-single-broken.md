@@ -2,7 +2,7 @@
 title: db config optimal-single returns "missing field cdn_server_token"
 type: backlog
 date: 2026-05-10
-status: planned
+status: completed
 priority: low
 origin: dogfooding-2026-05-10
 ---
