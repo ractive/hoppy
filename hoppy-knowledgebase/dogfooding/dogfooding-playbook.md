@@ -78,6 +78,26 @@ HOPPY_RECORD_DIR="$(pwd)/fixtures" BUNNY_API_KEY=<live> \
 3. Re-run `cargo test --workspace --quiet` (no `--features live-api`, no env var) to prove the offline wiremock suite still passes against the refreshed fixtures.
 4. Commit the diff together with the iteration change that drove it — fixture freshness is a code-review concern, not a silent maintenance task.
 
+### Shape-first asserts in wiremock tests
+
+Offline tests that assert on hand-authored fixture values will break every time a fixture refresh changes those values. Write **shape-first asserts** instead:
+
+| Instead of… | Write… |
+|---|---|
+| `assert_eq!(billing.balance, 42.50)` | `assert!(billing.balance.is_finite()); assert!(billing.balance >= 0.0)` |
+| `assert_eq!(zone.id, 1001)` | `assert!(zone.id > 0)` |
+| `assert_eq!(result.items.len(), 2)` | `assert!(!result.items.is_empty())` |
+| `assert_eq!(stats.total_bandwidth_used, 5368709120)` | `assert!(stats.total_bandwidth_used >= 0)` |
+| `assert_eq!(chart.len(), 3)` | `assert!(!chart.is_empty())` |
+
+**Three categories** — only the first changes:
+
+- **Value-coupled** (rewrite): `assert_eq!` on a number or string that came directly from the fixture and could change on the next live sweep. Rewrite as an invariant (finite, non-negative, non-empty) or a presence check.
+- **Shape-coupled** (keep): tests that verify serde behaviour — e.g. `assert!(billing.automatic_payment_card_type.is_none())` in a partial-response test. These are intentionally testing defaults and should not be loosened.
+- **Wire-format** (keep): assertions on the *request* body or query string the client sent. These test what hoppy sends, not what the server returned, and do not depend on fixture values.
+
+`insta` snapshot tests that embed full fixture output are implicitly value-coupled. Replace `insta::assert_snapshot!` calls with structural checks (valid JSON, expected field keys, non-empty collections) when the snapshot includes live-drifting fields.
+
 ## Cleanup script
 
 `hoppy-knowledgebase/dogfooding/cleanup.sh` is **currently a skeleton**. Each surface block prints the manual `hoppy <noun> list` command you should run; no automated deletion has been implemented yet, and `--yes` deliberately refuses to proceed until the real delete paths exist. Until then, treat this section as a checklist for manual cleanup:
