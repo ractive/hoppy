@@ -83,13 +83,13 @@ git surfaces should be a real API drift.
 
 ### 5. Dogfooding round
 
-- [ ] Build release, set `BUNNY_API_KEY="$TEST_BUNNY_API_KEY"`.
-- [ ] Run the live sweep into a scratch directory (not `fixtures/`).
-- [ ] `cargo run --bin fixture-refresh -- --recorded <scratch>` → review
+- [x] Build release, set `BUNNY_API_KEY="$TEST_BUNNY_API_KEY"`.
+- [x] Run the live sweep into a scratch directory (not `fixtures/`).
+- [x] `cargo run --bin fixture-refresh -- --recorded <scratch>` → review
       dry-run output for surprises (collisions, unmappables).
-- [ ] `--apply`, then `cargo test --workspace --quiet` to prove the
+- [x] `--apply`, then `cargo test --workspace --quiet` to prove the
       offline suite still passes against the refreshed fixtures.
-- [ ] Commit the resulting drift in the same PR.
+- [x] Commit the resulting drift in the same PR.
 
 ## Out of scope
 
