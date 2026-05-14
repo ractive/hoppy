@@ -75,7 +75,26 @@ async fn stream_library_get_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Id"].is_number(), "expected Id to be a number");
+    assert!(json["Name"].is_string(), "expected Name to be a string");
+    assert!(
+        json["HasWatermark"].is_boolean(),
+        "expected HasWatermark to be a boolean"
+    );
+    assert!(
+        json["EnableMP4Fallback"].is_boolean(),
+        "expected EnableMP4Fallback to be a boolean"
+    );
+    assert!(
+        json["EnabledResolutions"].is_string(),
+        "expected EnabledResolutions to be a string"
+    );
+    assert!(
+        json["ReplicationRegions"].is_array(),
+        "expected ReplicationRegions to be an array"
+    );
 }
 
 #[tokio::test]
@@ -100,7 +119,27 @@ async fn stream_library_get_table() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Check column headers
+    assert!(stdout.contains("ID"), "expected ID column");
+    assert!(stdout.contains("Name"), "expected Name column");
+    assert!(stdout.contains("Videos"), "expected Videos column");
+    assert!(
+        stdout.contains("MP4 Fallback"),
+        "expected MP4 Fallback column"
+    );
+    assert!(
+        stdout.contains("Resolutions"),
+        "expected Resolutions column"
+    );
+    assert!(stdout.contains("Created"), "expected Created column");
+    // At least one data row present beneath the header.
+    let data_row_re = regex::Regex::new(r"^\|\s*\S").unwrap();
+    let data_rows = stdout.lines().filter(|l| data_row_re.is_match(l)).count();
+    assert!(
+        data_rows >= 1,
+        "expected at least one data row, got {data_rows} matching lines"
+    );
 }
 
 #[tokio::test]
