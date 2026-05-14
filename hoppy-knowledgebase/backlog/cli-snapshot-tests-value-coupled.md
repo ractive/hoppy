@@ -2,7 +2,7 @@
 title: CLI e2e snapshot tests are value-coupled to fixture values
 date: 2026-05-14
 type: backlog
-status: open
+status: completed
 priority: medium
 origin: iter-36
 ---

@@ -132,7 +132,23 @@ async fn dns_zone_list_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Items"].is_array(), "expected Items array");
+    let items = json["Items"].as_array().unwrap();
+    assert!(!items.is_empty(), "expected at least one DNS zone");
+    assert!(
+        items[0]["Id"].is_number(),
+        "expected zone Id to be a number"
+    );
+    assert!(
+        items[0]["Domain"].is_string(),
+        "expected Domain to be a string"
+    );
+    assert!(
+        json["TotalItems"].is_number(),
+        "expected TotalItems to be a number"
+    );
 }
 
 #[tokio::test]
@@ -155,7 +171,22 @@ async fn dns_zone_list_table() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Check column headers
+    assert!(stdout.contains("ID"), "expected ID column");
+    assert!(stdout.contains("Domain"), "expected Domain column");
+    assert!(stdout.contains("Records"), "expected Records column");
+    assert!(
+        stdout.contains("NS Detected"),
+        "expected NS Detected column"
+    );
+    assert!(stdout.contains("DNSSEC"), "expected DNSSEC column");
+    assert!(stdout.contains("Created"), "expected Created column");
+    // At least one domain row present
+    assert!(
+        stdout.contains("example.com"),
+        "expected example.com domain in table"
+    );
 }
 
 #[tokio::test]
@@ -232,7 +263,14 @@ async fn dns_zone_create_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Id"].is_number(), "expected Id to be a number");
+    assert!(json["Domain"].is_string(), "expected Domain to be a string");
+    assert!(
+        json["DnsSecEnabled"].is_boolean(),
+        "expected DnsSecEnabled to be a boolean"
+    );
 }
 
 #[tokio::test]

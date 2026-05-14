@@ -119,6 +119,36 @@ Apply this pattern when:
 
 You do **not** need this for partial-response tests that intentionally exercise serde defaults (e.g. `get_billing_partial_response_uses_defaults`) — those tests are the default behaviour under test.
 
+### Drift-tolerant CLI e2e snapshots and `stdout.contains` checks
+
+The same drift-coupling problem occurs in CLI e2e tests (`crates/hoppy-cli/tests/e2e/`). After a fixture refresh, tests that snapshot the full CLI stdout or call `stdout.contains("150000")` will fail because the values came from the fixture and may now be different.
+
+**Two layers to fix:**
+
+1. **`insta::assert_snapshot!` on full CLI stdout** — prefer converting to structural asserts rather than adding `insta::with_settings!(filters => …)`, because `tabled` table column widths are dynamic (sized to the longest value). A filter replaces the value but the surrounding whitespace padding still changes, so the snapshot still fails. Structural asserts are robust:
+   ```rust
+   // Instead of snapshotting the table, check headers and key invariants:
+   assert!(stdout.contains("Total Bandwidth Used"), "expected bandwidth column");
+   assert!(Regex::new(r"Cache Hit Rate\s*\|\s*\d+\.\d+%").unwrap().is_match(&stdout));
+   ```
+   Keep `insta` snapshots only for output whose structure genuinely can't be tested any other way.
+
+2. **`stdout.contains("specific_value")`** — replace with a regex that matches the column header or field name followed by any numeric/string value:
+   ```rust
+   // Instead of:
+   assert!(stdout.contains("150000"));
+   // Write:
+   assert!(Regex::new(r"Total Requests Served\s*\|\s*\d").unwrap().is_match(&stdout));
+   ```
+
+3. **`assert_eq!(json["field"], specific_value)`** — replace with a type check and optional invariant:
+   ```rust
+   assert!(json["TotalBandwidthUsed"].is_number());
+   assert!(json["TotalBandwidthUsed"].as_i64().unwrap_or(-1) >= 0);
+   ```
+
+**When to keep a snapshot**: snapshots remain useful for testing that a subcommand's `--help` text or error output has the right shape (not value-coupled). The `assert_cli_snapshot!` macro in `tests/e2e/support/mod.rs` handles Windows `.exe` suffix normalisation.
+
 ## Cleanup script
 
 `hoppy-knowledgebase/dogfooding/cleanup.sh` is **currently a skeleton**. Each surface block prints the manual `hoppy <noun> list` command you should run; no automated deletion has been implemented yet, and `--yes` deliberately refuses to proceed until the real delete paths exist. Until then, treat this section as a checklist for manual cleanup:
