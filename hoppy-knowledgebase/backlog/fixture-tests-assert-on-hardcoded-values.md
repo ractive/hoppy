@@ -1,8 +1,8 @@
 ---
-title: "wiremock tests assert on hand-authored fixture values, breaking live-refresh"
+title: wiremock tests assert on hand-authored fixture values, breaking live-refresh
 type: backlog
 date: 2026-05-14
-status: planned
+status: completed
 priority: high
 origin: dogfooding-2026-05-14 (iter-34 §5 dogfooding round)
 ---
