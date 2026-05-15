@@ -134,8 +134,10 @@ async fn stream_library_get_table() {
     );
     assert!(stdout.contains("Created"), "expected Created column");
     // At least one data row present beneath the header.
-    let data_row_re = regex::Regex::new(r"^\|\s*\S").unwrap();
-    let data_rows = stdout.lines().filter(|l| data_row_re.is_match(l)).count();
+    let data_rows = stdout
+        .lines()
+        .filter(|l| support::DATA_ROW_RE.is_match(l))
+        .count();
     assert!(
         data_rows >= 1,
         "expected at least one data row, got {data_rows} matching lines"

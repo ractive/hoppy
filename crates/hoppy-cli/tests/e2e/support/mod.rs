@@ -1,4 +1,16 @@
+use std::sync::LazyLock;
+
 use assert_cmd::Command;
+use regex::Regex;
+
+/// Shared regex for matching a table data row in CLI table-format output.
+///
+/// `tabled` separates rows with `|`; a data row starts with `|` followed by
+/// whitespace and then a non-whitespace cell value. Used by every test that
+/// asserts on the presence of at least one data row beneath the table header.
+#[allow(dead_code)]
+pub static DATA_ROW_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\|\s*\S").expect("DATA_ROW_RE compiles"));
 
 /// Snapshot helper for CLI text output.
 ///

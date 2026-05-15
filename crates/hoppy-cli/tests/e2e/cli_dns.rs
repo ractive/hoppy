@@ -185,8 +185,10 @@ async fn dns_zone_list_table() {
     // At least one data row present beneath the header.  A table data row
     // starts with "| " followed by a non-whitespace cell value; matching on
     // that pattern is more discriminating than counting total lines.
-    let data_row_re = regex::Regex::new(r"^\|\s*\S").unwrap();
-    let data_rows = stdout.lines().filter(|l| data_row_re.is_match(l)).count();
+    let data_rows = stdout
+        .lines()
+        .filter(|l| support::DATA_ROW_RE.is_match(l))
+        .count();
     assert!(
         data_rows >= 1,
         "expected at least one data row, got {data_rows} matching lines"
@@ -263,8 +265,10 @@ async fn dns_zone_get_table() {
     assert!(stdout.contains("DNSSEC"), "expected DNSSEC column");
     assert!(stdout.contains("Created"), "expected Created column");
     // At least one data row present beneath the header.
-    let data_row_re = regex::Regex::new(r"^\|\s*\S").unwrap();
-    let data_rows = stdout.lines().filter(|l| data_row_re.is_match(l)).count();
+    let data_rows = stdout
+        .lines()
+        .filter(|l| support::DATA_ROW_RE.is_match(l))
+        .count();
     assert!(
         data_rows >= 1,
         "expected at least one data row, got {data_rows} matching lines"
