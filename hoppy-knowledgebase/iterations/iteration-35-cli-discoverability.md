@@ -1,5 +1,5 @@
 ---
-title: Iter-34 — CLI discoverability (drill-down hints + lean README)
+title: Iter-35 — CLI discoverability (drill-down hints + lean README)
 type: iteration
 date: 2026-05-14
 tags:
@@ -8,10 +8,10 @@ tags:
   - ux
   - docs
 status: planned
-branch: iter-34/cli-discoverability
+branch: iter-35/cli-discoverability
 ---
 
-# Iter-34 — CLI discoverability
+# Iter-35 — CLI discoverability
 
 After the iter-27/28 dogfooding round, the remaining open backlog items are
 both about helping users (and LLMs) find the next useful command. Bundling
