@@ -315,15 +315,15 @@ mod analyzer {
     fn collect_test_files(workspace_root: &Path) -> Result<Vec<PathBuf>> {
         let mut files = Vec::new();
         let crates_dir = workspace_root.join("crates");
-        for entry in WalkDir::new(&crates_dir)
-            .into_iter()
-            .filter_entry(|e| {
-                let name = e.file_name().to_string_lossy();
-                name != "target" && name != ".git"
-            })
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-        {
+        for entry in WalkDir::new(&crates_dir).into_iter().filter_entry(|e| {
+            let name = e.file_name().to_string_lossy();
+            name != "target" && name != ".git"
+        }) {
+            let entry = entry
+                .with_context(|| format!("walking test sources under {}", crates_dir.display()))?;
+            if !entry.file_type().is_file() {
+                continue;
+            }
             let path = entry.path();
             let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
                 continue;
