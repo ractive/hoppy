@@ -126,10 +126,16 @@ async fn get_video_library_by_id() {
 
     assert!(lib.id > 0);
     assert!(!lib.name.is_empty());
-    // video_count is u64; presence is enough — count comes from the fixture.
-    let _ = lib.video_count;
-    let _ = lib.has_watermark;
     assert!(!lib.api_key.is_empty());
+
+    // serde-default coverage: confirm fixture keys exist so a renamed JSON
+    // key (which would silently default video_count=0 / has_watermark=false)
+    // is caught.
+    let raw: serde_json::Value = serde_json::from_str(FIXTURE_GET).expect("fixture parses");
+    assert!(raw["Id"].is_number());
+    assert!(raw["Name"].is_string());
+    assert!(raw["VideoCount"].is_number(), "VideoCount key missing");
+    assert!(raw["HasWatermark"].is_boolean(), "HasWatermark key missing");
 }
 
 // ---------------------------------------------------------------------------

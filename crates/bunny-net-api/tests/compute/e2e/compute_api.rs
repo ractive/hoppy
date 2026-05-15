@@ -116,8 +116,6 @@ async fn get_script_returns_details() {
     assert!(script.id > 0);
     assert!(!script.name.as_deref().unwrap_or("").is_empty());
     assert_eq!(script.script_type, ScriptType::Cdn);
-    // current_release_id may be -1 (no release yet) or a real ID — just check it deserializes
-    let _ = script.current_release_id;
     assert!(script.edge_script_variables.is_some());
     let vars = script.edge_script_variables.unwrap();
     assert!(!vars.is_empty());
@@ -128,6 +126,10 @@ async fn get_script_returns_details() {
     assert!(raw["Id"].is_number());
     assert!(raw["Name"].is_string());
     assert!(raw["EdgeScriptVariables"].is_array());
+    assert!(
+        raw["CurrentReleaseId"].is_number(),
+        "CurrentReleaseId key missing — guards renamed-key regressions"
+    );
 }
 
 #[tokio::test]
@@ -637,6 +639,13 @@ async fn upsert_secret_with_200_returns_body() {
         .unwrap();
     assert!(secret.id > 0);
     assert!(!secret.name.as_deref().unwrap_or("").is_empty());
+
+    // serde-default coverage: shared fixture with add_secret_returns_secret —
+    // mirror the same key-presence guard so renamed keys aren't silently
+    // defaulted here either.
+    let raw: serde_json::Value = serde_json::from_str(FIXTURE_SECRET_ADD).expect("fixture parses");
+    assert!(raw["Id"].is_number());
+    assert!(raw["Name"].is_string());
 }
 
 #[tokio::test]

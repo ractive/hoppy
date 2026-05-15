@@ -73,10 +73,19 @@ async fn list_dns_zones_returns_paginated_items() {
     // id and domain are presence checks — specific values drift.
     assert!(first.id > 0);
     assert!(!first.domain.is_empty());
-    // records count comes from the fixture; just assert the field parsed.
-    let _ = first.records.len();
-    // nameservers_detected is a bool flag.
-    let _ = first.nameservers_detected;
+
+    // serde-default coverage on first item: fixture keys must be present so
+    // a renamed JSON key (which would silently default to empty vec / false)
+    // is caught.
+    let first_json = &json["Items"][0];
+    assert!(
+        first_json["Records"].is_array(),
+        "Items[0].Records key missing or not an array"
+    );
+    assert!(
+        first_json["NameserversDetected"].is_boolean(),
+        "Items[0].NameserversDetected key missing or not a bool"
+    );
 }
 
 #[tokio::test]
