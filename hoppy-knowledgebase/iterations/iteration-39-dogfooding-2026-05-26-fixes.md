@@ -8,7 +8,7 @@ tags:
   - cli
   - pull-zone
   - debug
-status: in-progress
+status: completed
 branch: iter-39/dogfooding-2026-05-26-fixes
 ---
 
