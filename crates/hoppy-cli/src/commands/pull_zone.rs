@@ -60,7 +60,7 @@ impl From<&PullZone> for PullZoneRow {
 ///   `protocol`) is `Some`, AND
 /// - `log_forwarding_enabled` is NOT `Some(true)` (i.e. the caller is not
 ///   atomically enabling + configuring in the same call).
-pub fn lf_precheck_required(
+fn lf_precheck_required(
     hostname: &Option<String>,
     port: &Option<u16>,
     token: &Option<String>,

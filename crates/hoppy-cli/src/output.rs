@@ -1,5 +1,5 @@
 use crate::cli::OutputFormat;
-use crate::redact::{RedactConfig, redact_secrets_in_json};
+use crate::redact::{RedactConfig, redact_env_in_json, redact_secrets_in_json};
 use serde::Serialize;
 use tabled::Tabled;
 
@@ -91,6 +91,7 @@ pub fn print_single_vertical<T: Serialize>(
 ) {
     let mut value = serde_json::to_value(item).expect("failed to serialize for vertical output");
     redact_secrets_in_json(&mut value, redact_cfg);
+    redact_env_in_json(&mut value, redact_cfg);
 
     if let OutputFormat::Json = format {
         let json = serde_json::to_string_pretty(&value).expect("failed to serialize to JSON");

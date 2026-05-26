@@ -1669,6 +1669,18 @@ async fn pull_zone_update_lf_hostname_disabled_zone_errors() {
         stderr.contains("--log-forwarding-enabled true"),
         "expected hint, got: {stderr}"
     );
+
+    // Verify the precheck short-circuited: no POST /pullzone/1001 was sent.
+    let posts = server
+        .received_requests()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|r| {
+            r.method.as_str().eq_ignore_ascii_case("POST") && r.url.path() == "/pullzone/1001"
+        })
+        .count();
+    assert_eq!(posts, 0, "expected no POST /pullzone/1001, got {posts}");
 }
 
 /// When --log-forwarding-enabled true is passed along with hostname, the precheck

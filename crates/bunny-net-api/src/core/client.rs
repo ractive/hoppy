@@ -1044,11 +1044,13 @@ pub fn format_debug_body(bytes: &[u8], reveal: bool) -> String {
     }
     let text = String::from_utf8_lossy(bytes);
     if bytes.len() > DEBUG_BODY_TRUNCATE {
-        format!(
-            "{}… ({} bytes total)",
-            &text[..DEBUG_BODY_TRUNCATE],
-            bytes.len()
-        )
+        // Truncate on a UTF-8 char boundary (raw byte slice would panic on
+        // multi-byte chars or lossy replacement chars straddling the cut).
+        let mut end = DEBUG_BODY_TRUNCATE.min(text.len());
+        while end > 0 && !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}… ({} bytes total)", &text[..end], bytes.len())
     } else {
         text.into_owned()
     }
