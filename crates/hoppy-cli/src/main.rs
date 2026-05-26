@@ -17,6 +17,12 @@ async fn main() {
     let record = cli.record.as_deref();
     let redact_cfg = RedactConfig::new(cli.reveal, cli.reveal_env.clone());
 
+    // Hints are off when --no-hints or --quiet is set, or whenever output is
+    // machine readable (`--format json`) so paired stdout/stderr stays clean.
+    let hints_enabled =
+        !cli.no_hints && !cli.quiet && !matches!(cli.format, cli::OutputFormat::Json);
+    output::hints::set_enabled(hints_enabled);
+
     let result = match &cli.command {
         Commands::Auth { action } => {
             commands::auth::handle(action, cli.format, cli.debug, cli.yes, record).await

@@ -91,3 +91,47 @@ pub fn print_error(message: &str, format: OutputFormat) {
         }
     }
 }
+
+/// Drill-down hint helpers. Commands invoke [`hints::tip`] after their primary
+/// output to suggest one or two natural follow-up commands on stderr.
+///
+/// Hints are globally toggled by `main()` based on `--no-hints` and the
+/// chosen output format (json output suppresses hints so machine-readable
+/// stdout stays paired with quiet stderr).
+pub mod hints {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    static ENABLED: AtomicBool = AtomicBool::new(false);
+
+    /// Globally enable/disable hint emission. Called once from `main`.
+    pub fn set_enabled(enabled: bool) {
+        ENABLED.store(enabled, Ordering::Relaxed);
+    }
+
+    /// Return whether hints are currently enabled.
+    pub fn is_enabled() -> bool {
+        ENABLED.load(Ordering::Relaxed)
+    }
+
+    /// Print a single follow-up suggestion to stderr if hints are enabled.
+    pub fn tip(next: &str) {
+        if is_enabled() {
+            eprintln!("tip: {next}");
+        }
+    }
+
+    /// Print a set of related follow-up suggestions on consecutive lines.
+    /// First line is prefixed with `tip:`, the rest with `  or:`.
+    pub fn tips(nexts: &[&str]) {
+        if !is_enabled() || nexts.is_empty() {
+            return;
+        }
+        let mut iter = nexts.iter();
+        if let Some(first) = iter.next() {
+            eprintln!("tip: {first}");
+        }
+        for n in iter {
+            eprintln!("  or: {n}");
+        }
+    }
+}

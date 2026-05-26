@@ -1,44 +1,95 @@
-//! Embed build provenance (git SHA + bunny API spec date) into the binary so
-//! `hoppy --version` is reproducibility-friendly. See iter-19 for context.
+//! Embed build provenance (short git SHA + commit date) into the binary so
+//! `hoppy -V` is reproducibility-friendly. Inputs are best-effort:
 //!
-//! Inputs are best-effort: if `git` is unavailable or the working tree isn't a
-//! git checkout (e.g. `cargo install` from crates.io), the SHA falls back to
-//! `unknown` rather than failing the build.
+//! * `CARGO_HOPPY_FORCE_NO_GIT=1` forces empty values (used in repro tests).
+//! * `GIT_COMMIT` / `GIT_COMMIT_DATE` override the values when set (used by
+//!   CI / tarball builds that don't ship a `.git` tree).
+//! * Otherwise we shell out to `git`. Missing-git or missing-checkout fall
+//!   back to empty strings rather than failing the build.
+//!
+//! When the working tree has uncommitted changes the SHA is suffixed with
+//! `+dirty` so dogfooders can spot ad-hoc builds.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
+const ENV_FORCE_NO_GIT: &str = "CARGO_HOPPY_FORCE_NO_GIT";
+const ENV_GIT_COMMIT: &str = "GIT_COMMIT";
+const ENV_GIT_COMMIT_DATE: &str = "GIT_COMMIT_DATE";
+
 fn main() {
-    let sha = git_sha().unwrap_or_else(|| "unknown".to_owned());
-    println!("cargo:rustc-env=HOPPY_BUILD_SHA={sha}");
+    println!("cargo:rerun-if-env-changed={ENV_FORCE_NO_GIT}");
+    println!("cargo:rerun-if-env-changed={ENV_GIT_COMMIT}");
+    println!("cargo:rerun-if-env-changed={ENV_GIT_COMMIT_DATE}");
 
-    // specs/ lives at the workspace root, two levels up from this crate
-    // (crates/hoppy-cli/). Build from CARGO_MANIFEST_DIR so the lookup
-    // works regardless of the cwd that drove cargo.
-    let specs_dir = workspace_specs_dir();
-    let spec_date = newest_spec_mtime(&specs_dir).unwrap_or_else(|| "unknown".to_owned());
-    println!("cargo:rustc-env=HOPPY_BUNNY_API_SPEC_DATE={spec_date}");
+    let force_no_git = std::env::var_os(ENV_FORCE_NO_GIT).is_some_and(|v| v == "1");
 
-    // Re-run when HEAD moves (only emit when the file actually exists, so
-    // crates.io / tarball builds don't trip "missing rerun-if-changed input").
-    if Path::new(".git/HEAD").exists() {
-        println!("cargo:rerun-if-changed=.git/HEAD");
+    let (sha, date) = if force_no_git {
+        (String::new(), String::new())
+    } else {
+        let sha = std::env::var(ENV_GIT_COMMIT)
+            .ok()
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                let raw = git_short_sha()?;
+                if git_is_dirty() {
+                    Some(format!("{raw}+dirty"))
+                } else {
+                    Some(raw)
+                }
+            })
+            .unwrap_or_default();
+
+        let date = std::env::var(ENV_GIT_COMMIT_DATE)
+            .ok()
+            .filter(|s| !s.is_empty())
+            .or_else(git_commit_date)
+            .unwrap_or_default();
+
+        (sha, date)
+    };
+
+    println!("cargo:rustc-env=HOPPY_BUILD_VERSION_SHA={sha}");
+    println!("cargo:rustc-env=HOPPY_BUILD_DATE={date}");
+
+    // Rerun when HEAD or any ref moves. `git rev-parse --git-dir` handles
+    // worktrees (where .git is a file pointing into the parent's gitdir).
+    if let Some(git_dir) = git_dir() {
+        let head = git_dir.join("HEAD");
+        let refs = git_dir.join("refs");
+        if head.exists() {
+            println!("cargo:rerun-if-changed={}", head.display());
+        }
+        if refs.is_dir() {
+            println!("cargo:rerun-if-changed={}", refs.display());
+        }
     }
-    if specs_dir.is_dir() {
-        println!("cargo:rerun-if-changed={}", specs_dir.display());
-    }
+    // Also rerun when files in this package change so `+dirty` stays
+    // accurate when the working tree flips between clean/dirty without
+    // touching HEAD or refs.
+    println!("cargo:rerun-if-changed=src");
 }
 
-fn workspace_specs_dir() -> PathBuf {
-    let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
-    manifest_dir.join("..").join("..").join("specs")
-}
-
-fn git_sha() -> Option<String> {
+fn git_dir() -> Option<PathBuf> {
     let output = Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
+        .args(["rev-parse", "--git-dir"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let s = String::from_utf8(output.stdout).ok()?;
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(trimmed))
+    }
+}
+
+fn git_short_sha() -> Option<String> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--short=12", "HEAD"])
         .output()
         .ok()?;
     if !output.status.success() {
@@ -53,38 +104,26 @@ fn git_sha() -> Option<String> {
     }
 }
 
-fn newest_spec_mtime(specs: &Path) -> Option<String> {
-    if !specs.is_dir() {
+fn git_commit_date() -> Option<String> {
+    let output = Command::new("git")
+        .args(["show", "-s", "--format=%cs", "HEAD"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
         return None;
     }
-    let mut newest: Option<std::time::SystemTime> = None;
-    for entry in std::fs::read_dir(specs).ok()?.flatten() {
-        let Ok(meta) = entry.metadata() else { continue };
-        if let Ok(modified) = meta.modified() {
-            newest = Some(newest.map_or(modified, |n| n.max(modified)));
-        }
+    let s = String::from_utf8(output.stdout).ok()?;
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_owned())
     }
-    let modified = newest?;
-    let secs = modified
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()?
-        .as_secs() as i64;
-    // Format as YYYY-MM-DD without pulling in a date crate.
-    Some(format_yyyymmdd(secs))
 }
 
-fn format_yyyymmdd(secs: i64) -> String {
-    // Civil-from-days algorithm (Howard Hinnant, public domain).
-    let days = secs.div_euclid(86_400);
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = (z - era * 146_097) as u32;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = (yoe as i64) + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    format!("{y:04}-{m:02}-{d:02}")
+fn git_is_dirty() -> bool {
+    let Ok(output) = Command::new("git").args(["status", "--porcelain"]).output() else {
+        return false;
+    };
+    output.status.success() && !output.stdout.is_empty()
 }

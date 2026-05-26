@@ -103,5 +103,6 @@ async fn handle_check(format: OutputFormat, debug: bool, record: Option<&str>) -
         }
     }
 
+    output::hints::tip("hoppy pull-zone list");
     Ok(())
 }
