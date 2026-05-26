@@ -41,64 +41,6 @@ impl From<&StorageZone> for StorageZoneRow {
     }
 }
 
-/// Detailed single-item view for get/create output.
-#[derive(serde::Serialize, tabled::Tabled)]
-struct StorageZoneDetail {
-    #[tabled(rename = "ID")]
-    id: i64,
-    #[tabled(rename = "Name")]
-    name: String,
-    #[tabled(rename = "Region")]
-    region: String,
-    #[tabled(rename = "Hostname")]
-    storage_hostname: String,
-    #[tabled(rename = "Storage Used")]
-    storage_used: i64,
-    #[tabled(rename = "Files Stored")]
-    files_stored: i64,
-    #[tabled(rename = "Zone Tier")]
-    zone_tier: i64,
-    #[tabled(rename = "Replication Regions")]
-    replication_regions: String,
-    #[tabled(rename = "Rewrite 404→200")]
-    rewrite_404_to_200: bool,
-    #[tabled(rename = "Custom 404 Path")]
-    custom_404_file_path: String,
-    #[tabled(rename = "Date Modified")]
-    date_modified: String,
-    #[tabled(rename = "Deleted")]
-    deleted: bool,
-}
-
-impl From<&StorageZone> for StorageZoneDetail {
-    fn from(sz: &StorageZone) -> Self {
-        let replication_regions = if sz.replication_regions.is_empty() {
-            "-".to_owned()
-        } else {
-            sz.replication_regions.join(", ")
-        };
-        Self {
-            id: sz.id,
-            name: sz.name.clone(),
-            region: sz.region.clone(),
-            storage_hostname: sz.storage_hostname.clone(),
-            storage_used: sz.storage_used,
-            files_stored: sz.files_stored,
-            zone_tier: sz.zone_tier,
-            replication_regions,
-            rewrite_404_to_200: sz.rewrite_404_to_200,
-            custom_404_file_path: sz
-                .custom_404_file_path
-                .as_deref()
-                .filter(|s| !s.is_empty())
-                .unwrap_or("-")
-                .to_owned(),
-            date_modified: sz.date_modified.clone(),
-            deleted: sz.deleted,
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
@@ -111,7 +53,7 @@ pub async fn handle(
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client_with_reveal(debug, record, redact_cfg.reveal_all)?;
 
     match action {
         StorageZoneAction::List {
@@ -248,18 +190,10 @@ pub async fn handle(
     Ok(())
 }
 
-/// Output a single StorageZone: full JSON for JSON format, detail struct otherwise.
+/// Output a single StorageZone as a vertical Field/Value table (or JSON).
 ///
 /// Password / ReadOnlyPassword fields are redacted by default; the caller
 /// passes `--reveal` to bypass.
 fn print_storage_zone(sz: &StorageZone, format: OutputFormat, redact_cfg: &RedactConfig) {
-    if let OutputFormat::Json = format {
-        let mut value = serde_json::to_value(sz).expect("failed to serialize StorageZone to JSON");
-        redact_secrets_in_json(&mut value, redact_cfg);
-        let json = serde_json::to_string_pretty(&value).expect("failed to serialize to JSON");
-        println!("{json}");
-    } else {
-        let detail = StorageZoneDetail::from(sz);
-        output::print_single(&detail, format);
-    }
+    output::print_single_vertical(sz, format, redact_cfg);
 }

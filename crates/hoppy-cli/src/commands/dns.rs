@@ -44,53 +44,6 @@ impl From<&DnsZone> for DnsZoneRow {
     }
 }
 
-#[derive(serde::Serialize, tabled::Tabled)]
-struct DnsZoneDetail {
-    #[tabled(rename = "ID")]
-    id: i64,
-    #[tabled(rename = "Domain")]
-    domain: String,
-    #[tabled(rename = "Records")]
-    record_count: usize,
-    #[tabled(rename = "NS Detected")]
-    nameservers_detected: bool,
-    #[tabled(rename = "Custom NS")]
-    custom_nameservers_enabled: bool,
-    #[tabled(rename = "Nameserver 1")]
-    nameserver1: String,
-    #[tabled(rename = "Nameserver 2")]
-    nameserver2: String,
-    #[tabled(rename = "SOA Email")]
-    soa_email: String,
-    #[tabled(rename = "Logging")]
-    logging_enabled: bool,
-    #[tabled(rename = "DNSSEC")]
-    dns_sec_enabled: bool,
-    #[tabled(rename = "Created")]
-    date_created: String,
-    #[tabled(rename = "Modified")]
-    date_modified: String,
-}
-
-impl From<&DnsZone> for DnsZoneDetail {
-    fn from(z: &DnsZone) -> Self {
-        Self {
-            id: z.id,
-            domain: z.domain.clone(),
-            record_count: z.records.len(),
-            nameservers_detected: z.nameservers_detected,
-            custom_nameservers_enabled: z.custom_nameservers_enabled,
-            nameserver1: z.nameserver1.as_deref().unwrap_or("-").to_owned(),
-            nameserver2: z.nameserver2.as_deref().unwrap_or("-").to_owned(),
-            soa_email: z.soa_email.as_deref().unwrap_or("-").to_owned(),
-            logging_enabled: z.logging_enabled,
-            dns_sec_enabled: z.dns_sec_enabled,
-            date_created: z.date_created.clone(),
-            date_modified: z.date_modified.clone(),
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Display structs — DNS Records
 // ---------------------------------------------------------------------------
@@ -742,11 +695,6 @@ async fn handle_record(
 }
 
 fn print_dns_zone(zone: &DnsZone, format: OutputFormat) {
-    if let OutputFormat::Json = format {
-        let json = serde_json::to_string_pretty(zone).expect("failed to serialize to JSON");
-        println!("{json}");
-    } else {
-        let detail = DnsZoneDetail::from(zone);
-        output::print_single(&detail, format);
-    }
+    let redact_cfg = crate::redact::RedactConfig::default();
+    output::print_single_vertical(zone, format, &redact_cfg);
 }

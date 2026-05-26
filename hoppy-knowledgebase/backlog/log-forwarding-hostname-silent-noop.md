@@ -2,7 +2,7 @@
 title: "pull-zone update: --log-forwarding-hostname silently no-ops when LogForwardingEnabled=false"
 type: backlog
 date: 2026-05-26
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-26 (post-iter-38)
 ---
@@ -49,3 +49,7 @@ The bunny.net API ignores log-forwarding sub-fields when the master
 
 Whether the API behaviour is documented or considered a bug upstream.
 We just need the CLI to not silently swallow user intent.
+
+## Resolution
+
+Fixed in [[../iterations/iteration-39-dogfooding-2026-05-26-fixes]].

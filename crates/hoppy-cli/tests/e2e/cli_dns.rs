@@ -254,24 +254,14 @@ async fn dns_zone_get_table() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    // Check column headers
-    assert!(stdout.contains("ID"), "expected ID column");
-    assert!(stdout.contains("Domain"), "expected Domain column");
-    assert!(stdout.contains("Records"), "expected Records column");
+    // Vertical layout: Field/Value columns with zone properties as rows
+    assert!(stdout.contains("Field"), "expected Field column");
+    assert!(stdout.contains("Value"), "expected Value column");
+    assert!(stdout.contains("Id"), "expected Id row");
+    assert!(stdout.contains("Domain"), "expected Domain row");
     assert!(
-        stdout.contains("NS Detected"),
-        "expected NS Detected column"
-    );
-    assert!(stdout.contains("DNSSEC"), "expected DNSSEC column");
-    assert!(stdout.contains("Created"), "expected Created column");
-    // At least one data row present beneath the header.
-    let data_rows = stdout
-        .lines()
-        .filter(|l| support::DATA_ROW_RE.is_match(l))
-        .count();
-    assert!(
-        data_rows >= 1,
-        "expected at least one data row, got {data_rows} matching lines"
+        stdout.contains("DnsSecEnabled"),
+        "expected DnsSecEnabled row"
     );
 }
 

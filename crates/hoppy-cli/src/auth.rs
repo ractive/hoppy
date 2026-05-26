@@ -97,13 +97,23 @@ pub fn get_storage_key() -> Option<String> {
 
 /// Build a `CoreClient` with optional base URL override.
 pub fn core_client(debug: bool, record: Option<&str>) -> Result<CoreClient> {
+    core_client_with_reveal(debug, record, false)
+}
+
+/// Build a `CoreClient` with optional base URL override and reveal-secrets flag.
+pub fn core_client_with_reveal(
+    debug: bool,
+    record: Option<&str>,
+    reveal_secrets: bool,
+) -> Result<CoreClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_api_url() {
         CoreClient::with_base_url(api_key, url)
     } else {
         CoreClient::new(api_key)
     }
-    .with_debug(debug);
+    .with_debug(debug)
+    .with_debug_reveal_secrets(reveal_secrets);
     if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }

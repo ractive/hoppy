@@ -2,7 +2,7 @@
 title: "`pull-zone get` table is 11 columns wide — unreadable on narrow terminals"
 type: backlog
 date: 2026-05-26
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-26 (post-iter-38)
 ---
@@ -34,3 +34,7 @@ On a typical 120-column terminal, this wraps unreadably. Single-resource
 
 The same fix likely applies to other single-resource gets that currently
 use the horizontal layout.
+
+## Resolution
+
+Fixed in [[../iterations/iteration-39-dogfooding-2026-05-26-fixes]].
