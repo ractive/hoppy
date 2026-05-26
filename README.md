@@ -12,7 +12,7 @@ export BUNNY_API_KEY=your-api-key
 hoppy pull-zone list
 ```
 
-Every command suggests a sensible next step on stderr (turn off with
+Many commands suggest a sensible next step on stderr (turn off with
 `--no-hints`), so you can drill in without leaving the terminal.
 
 ## Install

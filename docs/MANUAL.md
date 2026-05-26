@@ -2,13 +2,11 @@
 
 The README is intentionally lean. This page collects the exhaustive surface:
 every service area with worked example invocations, global flags,
-environment variables, and testing setup. Use [`hoppy <command> --help`][cli]
-for authoritative per-command help — anything here is example-shaped.
+environment variables, and testing setup. Use `hoppy <command> --help` for
+authoritative per-command help — anything here is example-shaped.
 
 For a one-line tree of every subcommand, see
 [`hoppy-knowledgebase/cli/command-tree.md`](../hoppy-knowledgebase/cli/command-tree.md).
-
-[cli]: ../README.md
 
 ## Features at a glance
 
@@ -287,7 +285,7 @@ $ hoppy -V
 hoppy 0.3.0 (abc123def456 2026-05-26)
 ```
 
-When the working tree had uncommitted changes at build time the SHA is
+When the working tree had uncommitted changes at build time, the SHA is
 suffixed `+dirty`. Tarball / packaged builds without `.git` fall back to
 just `hoppy 0.3.0`; CI can override either field via the `GIT_COMMIT` and
 `GIT_COMMIT_DATE` build-time env vars, or force the no-git path with

@@ -7,7 +7,7 @@ tags:
   - cli
   - ux
   - docs
-status: in-progress
+status: completed
 branch: iter-35/cli-discoverability
 ---
 

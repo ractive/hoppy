@@ -2,9 +2,11 @@ use bunny_net_api::core::types::OptimizerWatermarkPosition;
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
-/// Build the `-V` / `--version` string from compile-time provenance.
-/// With SHA + date populated: `"hoppy 0.3.0 (abc123def456 2026-05-26)"`.
-/// With both empty (e.g. `CARGO_HOPPY_FORCE_NO_GIT=1`): bare `CARGO_PKG_VERSION`.
+/// Build the `-V` / `--version` string from compile-time provenance. clap
+/// prepends the binary name when printing, so the user sees e.g.
+/// `hoppy 0.3.0 (abc123def456 2026-05-26)`. With SHA + date populated this
+/// returns `"0.3.0 (abc123def456 2026-05-26)"`; with both empty
+/// (e.g. `CARGO_HOPPY_FORCE_NO_GIT=1`) it returns bare `CARGO_PKG_VERSION`.
 pub fn build_version_string() -> String {
     format_version(
         env!("CARGO_PKG_VERSION"),

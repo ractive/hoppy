@@ -64,6 +64,10 @@ fn main() {
             println!("cargo:rerun-if-changed={}", refs.display());
         }
     }
+    // Also rerun when files in this package change so `+dirty` stays
+    // accurate when the working tree flips between clean/dirty without
+    // touching HEAD or refs.
+    println!("cargo:rerun-if-changed=src");
 }
 
 fn git_dir() -> Option<PathBuf> {
