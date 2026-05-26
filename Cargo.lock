@@ -716,10 +716,12 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "syn",
  "tabled",
  "tempfile",
  "tokio",
  "tokio-util",
+ "walkdir",
  "wiremock",
 ]
 

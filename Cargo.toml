@@ -39,7 +39,14 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 urlencoding = "2"
 regex = "1"
+walkdir = "2"
 wiremock = "0.6"
+# `syn` and `walkdir` are only used by the `fixture-refresh` dev binary in
+# `crates/hoppy-cli/src/bin/fixture_refresh.rs`. They are listed here as
+# workspace deps for consistency but no other workspace crate should
+# `.workspace = true` them without good reason — `syn = "full"` is a heavy
+# compile-time dependency.
+syn = { version = "2", features = ["full", "extra-traits", "visit"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

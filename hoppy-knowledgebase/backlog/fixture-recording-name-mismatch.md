@@ -1,8 +1,8 @@
 ---
-title: "recording filenames don't map to hand-authored wiremock fixtures"
+title: recording filenames don't map to hand-authored wiremock fixtures
 type: backlog
 date: 2026-05-14
-status: planned
+status: completed
 priority: high
 origin: dogfooding-2026-05-14 (iter-33 §5 dogfooding round)
 ---
