@@ -2,7 +2,7 @@
 title: Add drill-down hints to CLI output (hyalo iter-107 pattern)
 type: backlog
 date: 2026-05-09
-status: planned
+status: resolved
 priority: medium
 origin: iter-23 inspiration scan of ../hyalo git log
 ---

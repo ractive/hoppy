@@ -2,22 +2,37 @@ use bunny_net_api::core::types::OptimizerWatermarkPosition;
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
-/// Long-form `--version` string: includes the build SHA and the bunny API
-/// spec date the client crates were generated against. Useful for bug reports.
-const LONG_VERSION: &str = concat!(
-    env!("CARGO_PKG_VERSION"),
-    " (sha=",
-    env!("HOPPY_BUILD_SHA"),
-    ", bunny-net-api-spec=",
-    env!("HOPPY_BUNNY_API_SPEC_DATE"),
-    ")"
-);
+/// Build the `-V` / `--version` string from compile-time provenance.
+/// With SHA + date populated: `"hoppy 0.3.0 (abc123def456 2026-05-26)"`.
+/// With both empty (e.g. `CARGO_HOPPY_FORCE_NO_GIT=1`): bare `CARGO_PKG_VERSION`.
+pub fn build_version_string() -> String {
+    format_version(
+        env!("CARGO_PKG_VERSION"),
+        env!("HOPPY_BUILD_VERSION_SHA"),
+        env!("HOPPY_BUILD_DATE"),
+    )
+}
+
+fn format_version(pkg: &str, sha: &str, date: &str) -> String {
+    if sha.is_empty() {
+        pkg.to_owned()
+    } else if date.is_empty() {
+        format!("{pkg} ({sha})")
+    } else {
+        format!("{pkg} ({sha} {date})")
+    }
+}
+
+fn version_str() -> &'static str {
+    use std::sync::OnceLock;
+    static V: OnceLock<String> = OnceLock::new();
+    V.get_or_init(build_version_string).as_str()
+}
 
 #[derive(Parser)]
 #[command(
     name = "hoppy",
-    version = env!("CARGO_PKG_VERSION"),
-    long_version = LONG_VERSION,
+    version = version_str(),
     about = "CLI for bunny.net services",
     long_about = "A CLI tool for managing bunny.net cloud and edge services.\n\nSet the BUNNY_API_KEY environment variable to authenticate."
 )]
@@ -47,6 +62,11 @@ pub struct Cli {
     /// Useful when you want one variable but not all secrets.
     #[arg(long = "reveal-env", value_name = "KEY", global = true)]
     pub reveal_env: Vec<String>,
+
+    /// Suppress drill-down hints (next-step suggestions) on stderr.
+    /// `--format json` implies this so machine output stays clean.
+    #[arg(long, global = true)]
+    pub no_hints: bool,
 
     /// Record API responses as JSON fixtures under `<DIR>/<domain>/` (one
     /// subdirectory per service: core, compute, containers, database,
@@ -3233,6 +3253,37 @@ mod cli_parse_tests {
     fn container_logs_parses_without_panic() {
         let result = Cli::try_parse_from(["hoppy", "container", "logs", "--app-id", "test-app-id"]);
         assert!(result.is_ok(), "CLI parse failed: {:?}", result.err());
+    }
+
+    #[test]
+    fn version_string_full() {
+        assert_eq!(
+            super::format_version("0.3.0", "abc123def456", "2026-05-26"),
+            "0.3.0 (abc123def456 2026-05-26)"
+        );
+    }
+
+    #[test]
+    fn version_string_bare_when_no_sha() {
+        // Mirrors `CARGO_HOPPY_FORCE_NO_GIT=1`: build script emits empty
+        // values, so `-V` falls back to the bare CARGO_PKG_VERSION.
+        assert_eq!(super::format_version("0.3.0", "", ""), "0.3.0");
+        assert_eq!(super::format_version("0.3.0", "", "2026-05-26"), "0.3.0");
+    }
+
+    #[test]
+    fn version_string_dirty_suffix_preserved() {
+        assert_eq!(
+            super::format_version("0.3.0", "abc123def456+dirty", "2026-05-26"),
+            "0.3.0 (abc123def456+dirty 2026-05-26)"
+        );
+    }
+
+    #[test]
+    fn no_hints_flag_parses() {
+        let result = Cli::try_parse_from(["hoppy", "--no-hints", "pull-zone", "list"]);
+        assert!(result.is_ok(), "CLI parse failed: {:?}", result.err());
+        assert!(result.unwrap().no_hints);
     }
 
     #[test]

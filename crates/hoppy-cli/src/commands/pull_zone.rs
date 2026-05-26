@@ -138,6 +138,13 @@ pub async fn handle(
             } else {
                 let rows: Vec<PullZoneRow> = result.items.iter().map(PullZoneRow::from).collect();
                 output::print_data(&rows, format);
+                if let Some(first) = result.items.first() {
+                    let id = first.id;
+                    output::hints::tips(&[
+                        &format!("hoppy pull-zone get --id {id}"),
+                        &format!("hoppy pull-zone statistics --id {id}"),
+                    ]);
+                }
             }
         }
         PullZoneAction::Get { id } => {
@@ -158,7 +165,12 @@ pub async fn handle(
             };
             body = body.zone_type(PullZoneType::from(*zone_tier));
             let pz = client.create_pull_zone(&body).await?;
+            let new_id = pz.id;
             print_pull_zone(&pz, format);
+            output::hints::tips(&[
+                &format!("hoppy pull-zone hostname add --id {new_id} --hostname <fqdn>"),
+                &format!("hoppy pull-zone edge-rule add --id {new_id} ..."),
+            ]);
         }
         PullZoneAction::Update {
             id,

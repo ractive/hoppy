@@ -2,7 +2,7 @@
 title: Restructure README as lean landing page
 type: backlog
 date: 2026-05-09
-status: planned
+status: resolved
 priority: low
 origin: iter-23 inspiration scan of ../hyalo git log
 ---

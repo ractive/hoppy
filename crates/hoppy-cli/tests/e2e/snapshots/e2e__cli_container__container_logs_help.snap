@@ -70,6 +70,9 @@ Options:
       --bore-server <BORE_SERVER>
           Bore relay server host.  Defaults to bore.pub.  Use this to point at a self-hosted bore server
 
+      --no-hints
+          Suppress drill-down hints (next-step suggestions) on stderr. `--format json` implies this so machine output stays clean
+
       --record <DIR>
           Record API responses as JSON fixtures under `<DIR>/<domain>/` (one subdirectory per service: core, compute, containers, database, shield, storage, stream). Writes are idempotent — unchanged files are left alone. May also be set via `HOPPY_RECORD_DIR=<DIR>`
 

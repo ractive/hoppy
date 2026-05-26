@@ -797,6 +797,14 @@ async fn handle_app(
                     output::print_single(&row, format);
                 }
             }
+            output::hints::tips(&[
+                &format!(
+                    "hoppy container template add --app-id {} --image-name <img> \
+                     --image-namespace <ns> --image-tag <tag> --registry-id <reg>",
+                    resp.id
+                ),
+                &format!("hoppy container endpoint add --app-id {} ...", resp.id),
+            ]);
         }
         ContainerAppAction::Update {
             id,
