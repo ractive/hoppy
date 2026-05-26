@@ -69,7 +69,22 @@ async fn script_get_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Id"].is_number(), "expected Id to be a number");
+    assert!(json["Name"].is_string(), "expected Name to be a string");
+    assert!(
+        json["ScriptType"].is_number(),
+        "expected ScriptType to be a number"
+    );
+    assert!(
+        json["EdgeScriptVariables"].is_array(),
+        "expected EdgeScriptVariables to be an array"
+    );
+    assert!(
+        json["Deleted"].is_boolean(),
+        "expected Deleted to be a boolean"
+    );
 }
 
 #[tokio::test]
@@ -92,7 +107,28 @@ async fn script_get_table() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Check column headers
+    assert!(stdout.contains("ID"), "expected ID column");
+    assert!(stdout.contains("Name"), "expected Name column");
+    assert!(stdout.contains("Type"), "expected Type column");
+    assert!(
+        stdout.contains("Last Modified"),
+        "expected Last Modified column"
+    );
+    assert!(
+        stdout.contains("Monthly Cost"),
+        "expected Monthly Cost column"
+    );
+    // At least one data row present beneath the header.
+    let data_rows = stdout
+        .lines()
+        .filter(|l| support::DATA_ROW_RE.is_match(l))
+        .count();
+    assert!(
+        data_rows >= 1,
+        "expected at least one data row, got {data_rows} matching lines"
+    );
 }
 
 #[tokio::test]
@@ -365,7 +401,26 @@ async fn script_variable_list_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(
+        json.is_array(),
+        "expected top-level JSON array of variables"
+    );
+    let vars = json.as_array().unwrap();
+    assert!(!vars.is_empty(), "expected at least one variable");
+    assert!(
+        vars[0]["Id"].is_number(),
+        "expected variable Id to be a number"
+    );
+    assert!(
+        vars[0]["Name"].is_string(),
+        "expected variable Name to be a string"
+    );
+    assert!(
+        vars[0]["Required"].is_boolean(),
+        "expected variable Required to be a boolean"
+    );
 }
 
 #[tokio::test]
@@ -488,7 +543,19 @@ async fn script_secret_list_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json.is_array(), "expected top-level JSON array of secrets");
+    let secrets = json.as_array().unwrap();
+    assert!(!secrets.is_empty(), "expected at least one secret");
+    assert!(
+        secrets[0]["Id"].is_number(),
+        "expected secret Id to be a number"
+    );
+    assert!(
+        secrets[0]["Name"].is_string(),
+        "expected secret Name to be a string"
+    );
 }
 
 #[tokio::test]
@@ -523,7 +590,14 @@ async fn script_secret_add_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Id"].is_number(), "expected Id to be a number");
+    assert!(json["Name"].is_string(), "expected Name to be a string");
+    assert!(
+        json["LastModified"].is_string(),
+        "expected LastModified to be a string"
+    );
 }
 
 #[tokio::test]

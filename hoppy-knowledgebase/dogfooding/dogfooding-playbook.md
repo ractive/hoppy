@@ -78,6 +78,77 @@ HOPPY_RECORD_DIR="$(pwd)/fixtures" BUNNY_API_KEY=<live> \
 3. Re-run `cargo test --workspace --quiet` (no `--features live-api`, no env var) to prove the offline wiremock suite still passes against the refreshed fixtures.
 4. Commit the diff together with the iteration change that drove it — fixture freshness is a code-review concern, not a silent maintenance task.
 
+### Shape-first asserts in wiremock tests
+
+Offline tests that assert on hand-authored fixture values will break every time a fixture refresh changes those values. Write **shape-first asserts** instead:
+
+| Instead of… | Write… |
+|---|---|
+| `assert_eq!(billing.balance, 42.50)` | `assert!(billing.balance.is_finite()); assert!(billing.balance >= 0.0)` |
+| `assert_eq!(zone.id, 1001)` | `assert!(zone.id > 0)` |
+| `assert_eq!(result.items.len(), 2)` | `assert!(!result.items.is_empty())` |
+| `assert_eq!(stats.total_bandwidth_used, 5368709120)` | `assert!(stats.total_bandwidth_used >= 0)` |
+| `assert_eq!(chart.len(), 3)` | `assert!(!chart.is_empty())` |
+
+**Three categories** — only the first changes:
+
+- **Value-coupled** (rewrite): `assert_eq!` on a number or string that came directly from the fixture and could change on the next live sweep. Rewrite as an invariant (finite, non-negative, non-empty) or a presence check.
+- **Shape-coupled** (keep): tests that verify serde behaviour — e.g. `assert!(billing.automatic_payment_card_type.is_none())` in a partial-response test. These are intentionally testing defaults and should not be loosened.
+- **Wire-format** (keep): assertions on the *request* body or query string the client sent. These test what hoppy sends, not what the server returned, and do not depend on fixture values.
+
+`insta` snapshot tests that embed full fixture output are implicitly value-coupled. Replace `insta::assert_snapshot!` calls with structural checks (valid JSON, expected field keys, non-empty collections) when the snapshot includes live-drifting fields.
+
+### Serde-default gap — why `>= 0` isn't enough
+
+Many model structs use `#[serde(default)]`. This means a renamed or removed JSON key silently deserialises to `0` / `false` / `""` instead of failing. A loosened assert like `assert!(billing.balance >= 0.0)` passes even when the `Balance` key was renamed to `Bal` in a new API version — the field is just 0.0.
+
+Fix: after deserialising, also parse the **raw fixture body** as `serde_json::Value` and assert that the expected keys exist with the right JSON type:
+
+```rust
+let json: serde_json::Value = serde_json::from_str(FIXTURE_GET).unwrap();
+assert!(json["Balance"].is_number(),  "Balance key missing or not a number");
+assert!(json["BillingEnabled"].is_boolean(), "BillingEnabled key missing");
+assert!(json["Items"].is_array(),     "Items key missing or not an array");
+```
+
+Apply this pattern when:
+
+- The field type is numeric (integer or float) with `#[serde(default)]` — `>= 0` is vacuously true on a missing key.
+- The field is a bool with `#[serde(default)]` — `let _ = field;` verifies nothing.
+- The collection has `#[serde(default)]` — an empty-vec default passes `is_empty()` checks silently.
+
+You do **not** need this for partial-response tests that intentionally exercise serde defaults (e.g. `get_billing_partial_response_uses_defaults`) — those tests are the default behaviour under test.
+
+### Drift-tolerant CLI e2e snapshots and `stdout.contains` checks
+
+The same drift-coupling problem occurs in CLI e2e tests (`crates/hoppy-cli/tests/e2e/`). After a fixture refresh, tests that snapshot the full CLI stdout or call `stdout.contains("150000")` will fail because the values came from the fixture and may now be different.
+
+**Three layers to fix:**
+
+1. **`insta::assert_snapshot!` on full CLI stdout** — prefer converting to structural asserts rather than adding `insta::with_settings!(filters => …)`, because `tabled` table column widths are dynamic (sized to the longest value). A filter replaces the value but the surrounding whitespace padding still changes, so the snapshot still fails. Structural asserts are robust:
+   ```rust
+   // Instead of snapshotting the table, check headers and key invariants:
+   assert!(stdout.contains("Total Bandwidth Used"), "expected bandwidth column");
+   assert!(Regex::new(r"Cache Hit Rate\s*\|\s*\d+\.\d+%").unwrap().is_match(&stdout));
+   ```
+   Keep `insta` snapshots only for output whose structure genuinely can't be tested any other way.
+
+2. **`stdout.contains("specific_value")`** — replace with a regex that matches the column header or field name followed by any numeric/string value:
+   ```rust
+   // Instead of:
+   assert!(stdout.contains("150000"));
+   // Write:
+   assert!(Regex::new(r"Total Requests Served\s*\|\s*\d+").unwrap().is_match(&stdout));
+   ```
+
+3. **`assert_eq!(json["field"], specific_value)`** — replace with a type check and optional invariant:
+   ```rust
+   assert!(json["TotalBandwidthUsed"].is_number());
+   assert!(json["TotalBandwidthUsed"].as_i64().unwrap_or(-1) >= 0);
+   ```
+
+**When to keep a snapshot**: snapshots remain useful for testing that a subcommand's `--help` text or error output has the right shape (not value-coupled). The `assert_cli_snapshot!` macro in `tests/e2e/support/mod.rs` handles Windows `.exe` suffix normalisation.
+
 ## Cleanup script
 
 `hoppy-knowledgebase/dogfooding/cleanup.sh` is **currently a skeleton**. Each surface block prints the manual `hoppy <noun> list` command you should run; no automated deletion has been implemented yet, and `--yes` deliberately refuses to proceed until the real delete paths exist. Until then, treat this section as a checklist for manual cleanup:

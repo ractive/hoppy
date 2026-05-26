@@ -1,1 +1,4 @@
-{"name":"my-vol","size":10.0}
+{
+  "name": "my-vol",
+  "size": 10.0
+}

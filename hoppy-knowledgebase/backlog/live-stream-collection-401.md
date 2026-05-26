@@ -1,5 +1,5 @@
 ---
-title: "live_stream_collection_lifecycle returns 401 on collection create"
+title: "stream API: live tests fail with 401 on collection create + library statistics"
 type: backlog
 date: 2026-05-14
 status: planned

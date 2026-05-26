@@ -1,4 +1,17 @@
+use std::sync::LazyLock;
+
 use assert_cmd::Command;
+use regex::Regex;
+
+/// Shared regex for matching a non-header table data row in CLI table-format output.
+///
+/// `tabled` separates rows with `|`. The header row contains alphabetic column
+/// names (e.g. `| ID | Domain |`); data rows in these tests always begin with
+/// a numeric ID or other digit-led cell. Matching `|` + optional whitespace +
+/// a digit excludes the header so `data_rows >= 1` means at least one real
+/// data row beneath the header.
+pub static DATA_ROW_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\|\s*\d").expect("DATA_ROW_RE compiles"));
 
 /// Snapshot helper for CLI text output.
 ///

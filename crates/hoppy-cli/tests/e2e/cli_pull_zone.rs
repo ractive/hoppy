@@ -69,7 +69,22 @@ async fn pull_zone_get_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Id"].is_number(), "expected Id to be a number");
+    assert!(json["Name"].is_string(), "expected Name to be a string");
+    assert!(
+        json["OriginUrl"].is_string(),
+        "expected OriginUrl to be a string"
+    );
+    assert!(
+        json["Enabled"].is_boolean(),
+        "expected Enabled to be a boolean"
+    );
+    assert!(
+        json["Hostnames"].is_array(),
+        "expected Hostnames to be an array"
+    );
 }
 
 #[tokio::test]
@@ -92,7 +107,19 @@ async fn pull_zone_get_table() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Check column headers
+    assert!(stdout.contains("ID"), "expected ID column");
+    assert!(stdout.contains("Name"), "expected Name column");
+    assert!(stdout.contains("Origin URL"), "expected Origin URL column");
+    assert!(stdout.contains("CNAME"), "expected CNAME column");
+    assert!(stdout.contains("Enabled"), "expected Enabled column");
+    assert!(stdout.contains("Suspended"), "expected Suspended column");
+    assert!(
+        stdout.contains("Bandwidth Used"),
+        "expected Bandwidth Used column"
+    );
+    assert!(stdout.contains("Hostnames"), "expected Hostnames column");
 }
 
 #[tokio::test]
@@ -124,7 +151,22 @@ async fn pull_zone_create_json() {
         .unwrap();
 
     assert!(output.status.success());
-    insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Id"].is_number(), "expected Id to be a number");
+    assert!(json["Name"].is_string(), "expected Name to be a string");
+    assert!(
+        json["OriginUrl"].is_string(),
+        "expected OriginUrl to be a string"
+    );
+    assert!(
+        json["Enabled"].is_boolean(),
+        "expected Enabled to be a boolean"
+    );
+    assert!(
+        json["Hostnames"].is_array(),
+        "expected Hostnames to be an array"
+    );
 }
 
 #[tokio::test]

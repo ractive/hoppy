@@ -1,29 +1,29 @@
 {
-    "items": [
-        {
-            "id": "DE",
-            "name": "DE",
-            "group": "EU",
-            "hasAnycastSupport": true,
-            "hasCapacity": true
-        },
-        {
-            "id": "AMS",
-            "name": "AMS",
-            "group": "EU",
-            "hasAnycastSupport": true,
-            "hasCapacity": true
-        },
-        {
-            "id": "HK",
-            "name": "HK",
-            "group": "APAC",
-            "hasAnycastSupport": false,
-            "hasCapacity": true
-        }
-    ],
-    "meta": {
-        "totalItems": 41
+  "items": [
+    {
+      "id": "DE",
+      "name": "DE",
+      "group": "EU",
+      "hasAnycastSupport": true,
+      "hasCapacity": true
     },
-    "cursor": "eyJBUElWZXJzaW9uIjoibWV0YS5ibnkubmV0L3YxIn0"
+    {
+      "id": "AMS",
+      "name": "AMS",
+      "group": "EU",
+      "hasAnycastSupport": true,
+      "hasCapacity": true
+    },
+    {
+      "id": "HK",
+      "name": "HK",
+      "group": "APAC",
+      "hasAnycastSupport": false,
+      "hasCapacity": true
+    }
+  ],
+  "meta": {
+    "totalItems": 41
+  },
+  "cursor": "eyJBUElWZXJzaW9uIjoibWV0YS5ibnkubmV0L3YxIn0"
 }

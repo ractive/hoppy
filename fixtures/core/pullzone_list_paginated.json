@@ -265,7 +265,7 @@
       "IgnoreQueryStrings": true,
       "MonthlyBandwidthLimit": 0,
       "MonthlyBandwidthUsed": 4400843,
-      "MonthlyCharges": 4.699383e-05,
+      "MonthlyCharges": 0.00004699383,
       "AddHostHeader": false,
       "OriginHostHeader": "origin.example.com",
       "Type": 0,

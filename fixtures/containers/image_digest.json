@@ -1,6 +1,6 @@
 {
-    "imageNamespace": "library",
-    "image": "nginx",
-    "tag": "alpine",
-    "digest": "sha256:08fe94b0d1e72fc687840f5696f6e107a85c327b1bcb8a7acc22f8c100227c67"
+  "imageNamespace": "library",
+  "image": "nginx",
+  "tag": "alpine",
+  "digest": "sha256:08fe94b0d1e72fc687840f5696f6e107a85c327b1bcb8a7acc22f8c100227c67"
 }

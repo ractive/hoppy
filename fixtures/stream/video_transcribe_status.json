@@ -1,1 +1,5 @@
-{"Success": true, "Message": "Transcription was queued", "StatusCode": 200}
+{
+  "Success": true,
+  "Message": "Transcription was queued",
+  "StatusCode": 200
+}

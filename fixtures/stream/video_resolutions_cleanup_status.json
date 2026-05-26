@@ -1,1 +1,5 @@
-{"Success": true, "Message": "Resolutions cleaned", "StatusCode": 200}
+{
+  "Success": true,
+  "Message": "Resolutions cleaned",
+  "StatusCode": 200
+}
