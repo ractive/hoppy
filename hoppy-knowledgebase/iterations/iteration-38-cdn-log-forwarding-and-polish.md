@@ -59,7 +59,7 @@ After this iteration:
 
 ## Scope
 
-### 1. CDN log-forwarding flags on `pull-zone update` [0/7]
+### 1. CDN log-forwarding flags on `pull-zone update` [7/7]
 
 Source: `crates/hoppy-cli/src/commands/pull_zone.rs` for the CLI surface,
 `crates/bunny-net-api/src/core/types.rs` for the `PullZoneUpdateRequest`
@@ -82,7 +82,7 @@ All seven must round-trip via the same `pull-zone get` (proves the
 update landed). Add one wiremock test per flag and one shape-first
 serde-default test for the response.
 
-### 2. Verify `pull-zone get` already surfaces these fields [0/2]
+### 2. Verify `pull-zone get` already surfaces these fields [2/2]
 
 - [x] Run `pull-zone get --format json` against a real pull zone with
       log forwarding enabled (via dashboard or via §1 above) and
@@ -92,7 +92,7 @@ serde-default test for the response.
       specifically — it's a credential to a *third-party* syslog
       endpoint, so the redaction-by-default discipline applies).
 
-### 3. Storage-zone create JSON password [0/2]
+### 3. Storage-zone create JSON password [2/2]
 
 See [[../backlog/sz-create-json-password-string-literal]].
 
@@ -106,7 +106,7 @@ See [[../backlog/sz-create-json-password-string-literal]].
       --reveal`) so scripts can capture it on first creation without
       a follow-up call.
 
-### 4. `container log-forwarding` CLI consistency [0/3]
+### 4. `container log-forwarding` CLI consistency [3/3]
 
 See [[../backlog/log-forwarding-create-empty-400]] §"Smaller related
 issues".
@@ -123,7 +123,7 @@ issues".
       final delete (it should be, since the create-then-delete is
       always racing tear-down).
 
-### 5. Document `container logs` as known-broken [0/2]
+### 5. Document `container logs` as known-broken [2/2]
 
 See [[../backlog/log-forwarding-create-empty-400]] for the upstream
 investigation.
@@ -136,7 +136,7 @@ investigation.
 - [x] Same warning in `hoppy-knowledgebase/dogfooding/dogfooding-playbook.md`
       under any section that references `container logs`.
 
-### 6. Verification [0/3]
+### 6. Verification [3/3]
 
 - [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings`
       clean.
