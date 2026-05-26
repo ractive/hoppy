@@ -9,7 +9,7 @@ tags:
   - cli
   - dx
   - cleanup
-status: planned
+status: completed
 branch: iter-38/cdn-log-forwarding-and-polish
 ---
 
@@ -67,16 +67,16 @@ struct (or whatever it is named today — verify).
 
 Per `specs/core-platform.json` `PullZoneUpdateRequest`:
 
-- [ ] Add `--log-forwarding-enabled <bool>` flag.
-- [ ] Add `--log-forwarding-hostname <host>` flag.
-- [ ] Add `--log-forwarding-port <u16>` flag (validate range).
-- [ ] Add `--log-forwarding-token <token>` flag (treat as secret —
+- [x] Add `--log-forwarding-enabled <bool>` flag.
+- [x] Add `--log-forwarding-hostname <host>` flag.
+- [x] Add `--log-forwarding-port <u16>` flag (validate range).
+- [x] Add `--log-forwarding-token <token>` flag (treat as secret —
       respect `--reveal` semantics; do not echo in confirmation
       output unless `--reveal` is set).
-- [ ] Add `--log-forwarding-protocol <udp|tcp>` flag, mapped to the
+- [x] Add `--log-forwarding-protocol <udp|tcp>` flag, mapped to the
       spec's `PullZoneLogForwarderProtocolType` enum.
-- [ ] Add `--logging-save-to-storage <bool>` flag.
-- [ ] Add `--logging-storage-zone-id <id>` flag.
+- [x] Add `--logging-save-to-storage <bool>` flag.
+- [x] Add `--logging-storage-zone-id <id>` flag.
 
 All seven must round-trip via the same `pull-zone get` (proves the
 update landed). Add one wiremock test per flag and one shape-first
@@ -84,10 +84,10 @@ serde-default test for the response.
 
 ### 2. Verify `pull-zone get` already surfaces these fields [0/2]
 
-- [ ] Run `pull-zone get --format json` against a real pull zone with
+- [x] Run `pull-zone get --format json` against a real pull zone with
       log forwarding enabled (via dashboard or via §1 above) and
       confirm the seven fields appear in the JSON output.
-- [ ] If any field is filtered/redacted by the current `PullZone`
+- [x] If any field is filtered/redacted by the current `PullZone`
       type, un-filter (or add `--reveal` handling for the token
       specifically — it's a credential to a *third-party* syslog
       endpoint, so the redaction-by-default discipline applies).
@@ -96,12 +96,12 @@ serde-default test for the response.
 
 See [[../backlog/sz-create-json-password-string-literal]].
 
-- [ ] Identify where `Password: "string"` is coming from. Hypothesis:
+- [x] Identify where `Password: "string"` is coming from. Hypothesis:
       the create response struct has a `#[serde(default)]` field that
       falls back to the literal `"string"` from an OpenAPI placeholder,
       or hoppy is overwriting the value with the spec placeholder
       somewhere. Trace and fix.
-- [ ] After the fix: `storage-zone create --format json` returns the
+- [x] After the fix: `storage-zone create --format json` returns the
       real password (unredacted on create — consistent with `get
       --reveal`) so scripts can capture it on first creation without
       a follow-up call.
@@ -111,15 +111,15 @@ See [[../backlog/sz-create-json-password-string-literal]].
 See [[../backlog/log-forwarding-create-empty-400]] §"Smaller related
 issues".
 
-- [ ] `container log-forwarding delete` accepts `--id <id>` as an
+- [x] `container log-forwarding delete` accepts `--id <id>` as an
       alias for `--app-id` (since LF configs are 1:1 with apps, the
       two are interchangeable from the user's POV).
-- [ ] `container log-forwarding get` for an app with no config:
+- [x] `container log-forwarding get` for an app with no config:
       return 200 + `null` (or an explicit `not_configured: true`
       flag) instead of bubbling the upstream 404. The current 404
       forces every shell pipeline to check exit codes instead of
       reading JSON.
-- [ ] Verify `container logs` cleanup path is 404-tolerant on the
+- [x] Verify `container logs` cleanup path is 404-tolerant on the
       final delete (it should be, since the create-then-delete is
       always racing tear-down).
 
@@ -128,20 +128,20 @@ issues".
 See [[../backlog/log-forwarding-create-empty-400]] for the upstream
 investigation.
 
-- [ ] Add a `> [!warning]` block at the top of the
+- [x] Add a `> [!warning]` block at the top of the
       `container logs --help` long description: "as of 2026-05-15
       this command may fail at the log-forwarding-create step with
       an empty-body 400 from the bunny.net API. Tracking in
       backlog/log-forwarding-create-empty-400.md."
-- [ ] Same warning in `hoppy-knowledgebase/dogfooding/dogfooding-playbook.md`
+- [x] Same warning in `hoppy-knowledgebase/dogfooding/dogfooding-playbook.md`
       under any section that references `container logs`.
 
 ### 6. Verification [0/3]
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings`
       clean.
-- [ ] `cargo test --workspace --quiet` clean.
-- [ ] Live dogfood: enable CDN log forwarding on a `hoppy-test-` pull
+- [x] `cargo test --workspace --quiet` clean.
+- [x] Live dogfood: enable CDN log forwarding on a `hoppy-test-` pull
       zone, point it at a netcat listener on a public VPS or
       `--logging-save-to-storage` to a `hoppy-test-` storage zone,
       and confirm an end-to-end log line lands within Bunny's
@@ -212,9 +212,9 @@ investigation.
 
 ## Tasks
 
-- [ ] Add CDN log-forwarding flags to `pull-zone update` (§1).
-- [ ] Verify and adjust `pull-zone get` JSON output (§2).
-- [ ] Fix `storage-zone create --format json` password (§3).
-- [ ] Polish `container log-forwarding` CLI consistency (§4).
-- [ ] Document `container logs` as known-broken (§5).
-- [ ] Run quality gates and live dogfood verification (§6).
+- [x] Add CDN log-forwarding flags to `pull-zone update` (§1).
+- [x] Verify and adjust `pull-zone get` JSON output (§2).
+- [x] Fix `storage-zone create --format json` password (§3).
+- [x] Polish `container log-forwarding` CLI consistency (§4).
+- [x] Document `container logs` as known-broken (§5).
+- [x] Run quality gates and live dogfood verification (§6).

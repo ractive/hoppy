@@ -158,8 +158,14 @@ pub async fn handle(
             if let Some(tier) = zone_tier {
                 body = body.zone_tier(i64::from(*tier));
             }
-            let sz = client.create_storage_zone(&body).await?;
-            print_storage_zone(&sz, format, redact_cfg);
+            let created = client.create_storage_zone(&body).await?;
+            // The create response returns a literal "string" placeholder for Password/
+            // ReadOnlyPassword. Fetch the zone immediately to get the real credentials.
+            let sz = client.get_storage_zone(created.id).await?;
+            // On create, reveal the password so scripts can capture it — the user
+            // explicitly requested this zone and needs the credential right now.
+            let reveal_cfg = RedactConfig::new(true, vec![]);
+            print_storage_zone(&sz, format, &reveal_cfg);
         }
         StorageZoneAction::Update {
             id,

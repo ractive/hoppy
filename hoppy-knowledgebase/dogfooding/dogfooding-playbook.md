@@ -220,6 +220,12 @@ origin: dogfooding-2026-05-09
 
 This is how iterations get fed. The dogfooding session is where the next iteration's plan is born.
 
+## Known broken commands
+
+These commands are documented as broken as of their listed date. Avoid running them in production or dogfooding sessions until fixed.
+
+- `hoppy container logs` — As of 2026-05-15, may fail at the log-forwarding-create step with an empty-body 400 from the bunny.net API. See [[../backlog/log-forwarding-create-empty-400]].
+
 ## Related
 
 - [[../decision-log]] — convention rules

@@ -178,6 +178,19 @@ async fn storage_zone_create_json() {
         .expect(1)
         .mount(&server)
         .await;
+    // After create, the CLI immediately fetches the zone (GET /storagezone/{id})
+    // to obtain the real Password (the create response has a placeholder).
+    // The create fixture has Id=9099, so the GET will be for /storagezone/9099.
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9099"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_create.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
 
     let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
         .args([

@@ -1,4 +1,4 @@
-use bunny_net_api::core::types::OptimizerWatermarkPosition;
+use bunny_net_api::core::types::{OptimizerWatermarkPosition, PullZoneLogForwarderProtocolType};
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
@@ -129,6 +129,30 @@ impl From<OptimizerWatermarkPositionArg> for OptimizerWatermarkPosition {
             OptimizerWatermarkPositionArg::BottomLeft => Self::BottomLeft,
             OptimizerWatermarkPositionArg::BottomRight => Self::BottomRight,
             OptimizerWatermarkPositionArg::Center => Self::Center,
+        }
+    }
+}
+
+/// Protocol for CDN log forwarding to a remote syslog endpoint.
+#[derive(Copy, Clone, ValueEnum)]
+pub enum PullZoneLogForwardingProtocolArg {
+    /// UDP transport (value 0).
+    Udp,
+    /// TCP transport (value 1).
+    Tcp,
+    /// TLS-encrypted TCP (value 2).
+    TcpEncrypted,
+    /// Datadog HTTP ingestion (value 3).
+    Datadog,
+}
+
+impl From<PullZoneLogForwardingProtocolArg> for PullZoneLogForwarderProtocolType {
+    fn from(a: PullZoneLogForwardingProtocolArg) -> Self {
+        match a {
+            PullZoneLogForwardingProtocolArg::Udp => Self::Udp,
+            PullZoneLogForwardingProtocolArg::Tcp => Self::Tcp,
+            PullZoneLogForwardingProtocolArg::TcpEncrypted => Self::TcpEncrypted,
+            PullZoneLogForwardingProtocolArg::Datadog => Self::DataDog,
         }
     }
 }
@@ -392,6 +416,30 @@ pub enum PullZoneAction {
         enable_geo_zone_sa: Option<bool>,
         #[arg(long)]
         enable_geo_zone_af: Option<bool>,
+
+        // ── Log forwarding ───────────────────────────────────────────────────
+        /// Enable or disable CDN log forwarding to a remote syslog endpoint.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Log forwarding")]
+        log_forwarding_enabled: Option<bool>,
+        /// Syslog endpoint hostname.
+        #[arg(long, value_name = "HOST", help_heading = "Log forwarding")]
+        log_forwarding_hostname: Option<String>,
+        /// Syslog endpoint port (1–65535).
+        #[arg(long, value_name = "PORT", value_parser = clap::value_parser!(u16).range(1..), help_heading = "Log forwarding")]
+        log_forwarding_port: Option<u16>,
+        /// Authentication token for the syslog endpoint. Treated as a secret —
+        /// redacted in JSON output unless `--reveal` is set.
+        #[arg(long, value_name = "TOKEN", help_heading = "Log forwarding")]
+        log_forwarding_token: Option<String>,
+        /// Transport protocol: udp, tcp, tcp-encrypted, datadog.
+        #[arg(long, value_name = "PROTO", help_heading = "Log forwarding")]
+        log_forwarding_protocol: Option<PullZoneLogForwardingProtocolArg>,
+        /// Save permanent CDN logs to a storage zone (set --logging-storage-zone-id).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Log forwarding")]
+        logging_save_to_storage: Option<bool>,
+        /// Storage zone ID that receives permanent logs.
+        #[arg(long, value_name = "ID", help_heading = "Log forwarding")]
+        logging_storage_zone_id: Option<i64>,
 
         // ── Optimizer ────────────────────────────────────────────────────────
         /// Enable or disable the Bunny Optimizer for this Pull Zone.
@@ -2237,6 +2285,10 @@ pub enum ContainerAction {
     /// ============
     /// hoppy binds a local TCP syslog listener, exposes it via a tunnel so
     /// that Bunny's log-forwarding service can reach it, creates a temporary
+    /// NOTE: As of 2026-05-15 this command may fail at the log-forwarding-create
+    /// step with an empty-body 400 from the bunny.net API. Tracking in
+    /// backlog/log-forwarding-create-empty-400.md.
+    ///
     /// log-forwarding configuration for your application, then streams the
     /// incoming syslog messages to your terminal. On Ctrl-C (or any error)
     /// the forwarding configuration is deleted and the tunnel is torn down.
@@ -2904,7 +2956,8 @@ pub enum ContainerLogForwardingAction {
     },
     /// Delete a log forwarding configuration
     Delete {
-        #[arg(long)]
+        /// Application ID (alias: --id)
+        #[arg(long, alias = "id")]
         app_id: String,
     },
 }

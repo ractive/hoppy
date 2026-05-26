@@ -2007,18 +2007,33 @@ async fn handle_log_forwarding(
                 output::print_data(&rows, format);
             }
         }
-        ContainerLogForwardingAction::Get { app_id } => {
-            let config = c.get_log_forwarding(app_id).await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&config).context("failed to serialize to JSON")?
-                );
-            } else {
-                let row = LogForwardingRow::from(&config);
-                output::print_single(&row, format);
+        ContainerLogForwardingAction::Get { app_id } => match c.get_log_forwarding(app_id).await {
+            Ok(config) => {
+                if let OutputFormat::Json = format {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&config)
+                            .context("failed to serialize to JSON")?
+                    );
+                } else {
+                    let row = LogForwardingRow::from(&config);
+                    output::print_single(&row, format);
+                }
             }
-        }
+            Err(e) => {
+                let msg = format!("{e}");
+                let msg_detail = format!("{e:#}");
+                if msg.contains("404") || msg_detail.to_lowercase().contains("not found") {
+                    if let OutputFormat::Json = format {
+                        println!("null");
+                    } else {
+                        eprintln!("No log forwarding configuration for app {app_id}");
+                    }
+                } else {
+                    return Err(e);
+                }
+            }
+        },
         ContainerLogForwardingAction::Create {
             app_id,
             forwarding_type,
@@ -2329,7 +2344,9 @@ async fn handle_logs(
     // --- 12. Cleanup ----------------------------------------------------------
     cancel.cancel();
 
-    // Delete the forwarding config we created.
+    // Delete the forwarding config we created. This is best-effort cleanup —
+    // errors (including 404 if the config was already deleted) are logged as
+    // warnings rather than propagating, so teardown always completes cleanly.
     if let Some(ref cfg) = created_config {
         if let Err(e) = c.delete_log_forwarding(&cfg.app).await {
             eprintln!(

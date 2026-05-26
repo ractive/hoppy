@@ -38,8 +38,8 @@ pub use types::{
     DnsRecordType, DnsScanJobStatus, DnsSecDsRecord, DnsZone, DnsZoneStatistics, EdgeRule,
     EdgeRuleActionType, EdgeRuleExtraAction, EdgeRuleTrigger, HostnameInfo, MatchingType,
     OptimizerStatistics, OptimizerWatermarkPosition, OriginShieldQueueStatistics, OriginType,
-    PaginatedList, PullZone, PullZoneType, PurgeCache, SafeHopStatistics, StorageZone,
-    StorageZoneStatistics, TriggerDnsRecordScan, TriggerType, UpdateDnsRecord, UpdateDnsZone,
-    UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
-    VideoLibraryTranscribingStatistics,
+    PaginatedList, PullZone, PullZoneLogForwarderProtocolType, PullZoneType, PurgeCache,
+    SafeHopStatistics, StorageZone, StorageZoneStatistics, TriggerDnsRecordScan, TriggerType,
+    UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary,
+    VideoLibrary, VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics,
 };

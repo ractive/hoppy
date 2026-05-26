@@ -28,7 +28,8 @@ async fn main() {
             commands::auth::handle(action, cli.format, cli.debug, cli.yes, record).await
         }
         Commands::PullZone { action } => {
-            commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes, record).await
+            commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
+                .await
         }
         Commands::StorageZone { action } => {
             commands::storage_zone::handle(
