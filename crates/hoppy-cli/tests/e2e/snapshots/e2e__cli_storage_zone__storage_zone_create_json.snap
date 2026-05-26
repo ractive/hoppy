@@ -1,12 +1,12 @@
 ---
-source: tests/e2e/cli_storage_zone.rs
+source: crates/hoppy-cli/tests/e2e/cli_storage_zone.rs
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 {
   "Id": 9099,
   "UserId": "00000000-0000-0000-0000-000000000001",
   "Name": "hoppy-test-zone",
-  "Password": "<set, length=25>",
+  "Password": "redacted-storage-password",
   "DateModified": "2026-03-18T02:12:58.4797282Z",
   "Deleted": false,
   "StorageUsed": 0,
@@ -14,7 +14,7 @@ expression: "String::from_utf8_lossy(&output.stdout)"
   "Region": "DE",
   "ReplicationRegions": [],
   "PullZones": null,
-  "ReadOnlyPassword": "<set, length=26>",
+  "ReadOnlyPassword": "redacted-readonly-password",
   "Rewrite404To200": false,
   "Custom404FilePath": null,
   "StorageHostname": "storage.bunnycdn.com",

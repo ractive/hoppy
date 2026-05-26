@@ -329,6 +329,51 @@ impl std::str::FromStr for OptimizerWatermarkPosition {
     }
 }
 
+/// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
+///
+/// Bunny.net may add new protocols in future API versions. The
+/// `log_forwarding_protocol` field on [`PullZone`] is deserialised via
+/// [`super::serde_helpers::deserialize_repr_option`] so unknown values become
+/// `None` instead of failing the whole response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum PullZoneLogForwarderProtocolType {
+    Udp = 0,
+    Tcp = 1,
+    TcpEncrypted = 2,
+    DataDog = 3,
+}
+
+impl std::fmt::Display for PullZoneLogForwarderProtocolType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Udp => "udp",
+            Self::Tcp => "tcp",
+            Self::TcpEncrypted => "tcp-encrypted",
+            Self::DataDog => "datadog",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for PullZoneLogForwarderProtocolType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "udp" | "UDP" => Ok(Self::Udp),
+            "tcp" | "TCP" => Ok(Self::Tcp),
+            "tcp-encrypted" | "TCPEncrypted" => Ok(Self::TcpEncrypted),
+            "datadog" | "DataDog" => Ok(Self::DataDog),
+            _ => Err(format!(
+                "unknown log forwarding protocol: {s:?}; \
+                 expected one of: udp, tcp, tcp-encrypted, datadog \
+                 (or PascalCase: UDP, TCP, TCPEncrypted, DataDog)"
+            )),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Response models
 // ---------------------------------------------------------------------------
@@ -537,6 +582,22 @@ pub struct PullZone {
     #[serde(default)]
     pub optimizer_pricing: Option<f64>,
 
+    // Log forwarding
+    #[serde(default)]
+    pub log_forwarding_enabled: Option<bool>,
+    #[serde(default)]
+    pub log_forwarding_hostname: Option<String>,
+    #[serde(default)]
+    pub log_forwarding_port: Option<i32>,
+    #[serde(default)]
+    pub log_forwarding_token: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub log_forwarding_protocol: Option<PullZoneLogForwarderProtocolType>,
+    #[serde(default)]
+    pub logging_save_to_storage: Option<bool>,
+    #[serde(default)]
+    pub logging_storage_zone_id: Option<i64>,
+
     // Edge rules
     #[serde(default)]
     pub edge_rules: Vec<EdgeRule>,
@@ -702,6 +763,23 @@ pub struct UpdatePullZone {
     pub enable_geo_zone_sa: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enable_geo_zone_af: Option<bool>,
+
+    // Log forwarding
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_forwarding_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_forwarding_hostname: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_forwarding_port: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_forwarding_token: Option<String>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_forwarding_protocol: Option<PullZoneLogForwarderProtocolType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logging_save_to_storage: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logging_storage_zone_id: Option<i64>,
 
     // Optimizer — master switches
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -947,6 +1025,48 @@ impl UpdatePullZone {
     #[must_use]
     pub fn optimizer_tunnel_enabled(mut self, v: bool) -> Self {
         self.optimizer_tunnel_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn log_forwarding_enabled(mut self, v: bool) -> Self {
+        self.log_forwarding_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn log_forwarding_hostname(mut self, v: impl Into<String>) -> Self {
+        self.log_forwarding_hostname = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn log_forwarding_port(mut self, v: i32) -> Self {
+        self.log_forwarding_port = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn log_forwarding_token(mut self, v: impl Into<String>) -> Self {
+        self.log_forwarding_token = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn log_forwarding_protocol(mut self, v: PullZoneLogForwarderProtocolType) -> Self {
+        self.log_forwarding_protocol = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn logging_save_to_storage(mut self, v: bool) -> Self {
+        self.logging_save_to_storage = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn logging_storage_zone_id(mut self, v: i64) -> Self {
+        self.logging_storage_zone_id = Some(v);
         self
     }
 }

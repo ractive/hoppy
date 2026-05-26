@@ -1,6 +1,7 @@
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, MatchingType,
-    OptimizerWatermarkPosition, OriginType, TriggerType, UpdatePullZone,
+    OptimizerWatermarkPosition, OriginType, PullZoneLogForwarderProtocolType, TriggerType,
+    UpdatePullZone,
 };
 use bunny_net_api::core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
@@ -938,4 +939,240 @@ async fn get_pull_zone_with_optimizer_round_trips_all_fields() {
         serde_json::json!(true)
     );
     assert_eq!(json_val["OptimizerWatermarkPosition"], serde_json::json!(4));
+}
+
+// ---------------------------------------------------------------------------
+// Log forwarding — update serialisation tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn update_pull_zone_with_log_forwarding_enabled_sends_field() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LogForwardingEnabled": true });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().log_forwarding_enabled(true);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn update_pull_zone_with_log_forwarding_hostname_sends_field() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LogForwardingHostname": "logs.example.com" });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().log_forwarding_hostname("logs.example.com");
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn update_pull_zone_with_log_forwarding_port_sends_field() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LogForwardingPort": 514 });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().log_forwarding_port(514);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn update_pull_zone_with_log_forwarding_token_sends_field() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LogForwardingToken": "my-secret-token" });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().log_forwarding_token("my-secret-token");
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// The log forwarding protocol enum must serialise as its integer discriminant.
+/// `Tcp` is 1 on the wire.
+#[tokio::test]
+async fn update_pull_zone_with_log_forwarding_protocol_serializes_as_int() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LogForwardingProtocol": 1 });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().log_forwarding_protocol(PullZoneLogForwarderProtocolType::Tcp);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn update_pull_zone_with_logging_save_to_storage_sends_field() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LoggingSaveToStorage": true });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().logging_save_to_storage(true);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn update_pull_zone_with_logging_storage_zone_id_sends_field() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LoggingStorageZoneId": 42 });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().logging_storage_zone_id(42);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// All seven log-forwarding fields must deserialise correctly from a fixture
+/// that includes them. Uses an inline minimal PullZone JSON.
+#[tokio::test]
+async fn get_pull_zone_with_log_forwarding_fields_round_trips() {
+    let server = MockServer::start().await;
+
+    // Minimal PullZone fixture with all log-forwarding fields populated.
+    // `LogForwardingProtocol: 1` corresponds to `Tcp`.
+    let fixture = serde_json::json!({
+        "Id": 9001,
+        "Name": "lf-test",
+        "OriginUrl": "https://origin.example.com",
+        "Enabled": true,
+        "Suspended": false,
+        "Hostnames": [],
+        "StorageZoneId": 0,
+        "AllowedReferrers": [],
+        "BlockedReferrers": [],
+        "BlockedIps": [],
+        "EnableGeoZoneUS": true,
+        "EnableGeoZoneEU": true,
+        "EnableGeoZoneASIA": true,
+        "EnableGeoZoneSA": true,
+        "EnableGeoZoneAF": true,
+        "ZoneSecurityEnabled": false,
+        "MonthlyBandwidthUsed": 0,
+        "MonthlyBandwidthLimit": 0,
+        "CnameDomain": "b-cdn.net",
+        "Type": 0,
+        "EdgeRules": [],
+        "LogForwardingEnabled": true,
+        "LogForwardingHostname": "logs.example.com",
+        "LogForwardingPort": 514,
+        "LogForwardingToken": "secret-token",
+        "LogForwardingProtocol": 1,
+        "LoggingSaveToStorage": true,
+        "LoggingStorageZoneId": 99
+    })
+    .to_string();
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(fixture.as_str(), "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(9001)
+        .await
+        .unwrap();
+
+    assert_eq!(zone.id, 9001);
+    assert_eq!(zone.log_forwarding_enabled, Some(true));
+    assert_eq!(
+        zone.log_forwarding_hostname.as_deref(),
+        Some("logs.example.com")
+    );
+    assert_eq!(zone.log_forwarding_port, Some(514));
+    assert_eq!(zone.log_forwarding_token.as_deref(), Some("secret-token"));
+    assert_eq!(
+        zone.log_forwarding_protocol,
+        Some(PullZoneLogForwarderProtocolType::Tcp)
+    );
+    assert_eq!(zone.logging_save_to_storage, Some(true));
+    assert_eq!(zone.logging_storage_zone_id, Some(99));
 }

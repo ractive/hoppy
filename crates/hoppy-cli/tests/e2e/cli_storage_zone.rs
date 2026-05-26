@@ -168,10 +168,47 @@ async fn storage_zone_get_table() {
 #[tokio::test]
 async fn storage_zone_create_json() {
     let server = MockServer::start().await;
+    // The real API returns the literal string "string" as a placeholder for
+    // Password / ReadOnlyPassword on the POST response. Mock that here so the
+    // test fails if the CLI surfaces the POST credentials instead of the GET.
+    let post_body = r#"{
+        "Id": 9099,
+        "UserId": "00000000-0000-0000-0000-000000000001",
+        "Name": "hoppy-test-zone",
+        "Password": "string",
+        "DateModified": "2026-03-18T02:12:58.4797282Z",
+        "Deleted": false,
+        "StorageUsed": 0,
+        "FilesStored": 0,
+        "Region": "DE",
+        "ReplicationRegions": [],
+        "PullZones": null,
+        "ReadOnlyPassword": "string",
+        "Rewrite404To200": false,
+        "Custom404FilePath": null,
+        "StorageHostname": "storage.bunnycdn.com",
+        "ZoneTier": 0,
+        "ReplicationChangeInProgress": false,
+        "PriceOverride": 0.0,
+        "Discount": 0,
+        "StorageZoneType": 0
+    }"#;
     Mock::given(method("POST"))
         .and(path("/storagezone"))
         .and(header("AccessKey", "test-api-key"))
-        .respond_with(ResponseTemplate::new(201).set_body_raw(
+        .respond_with(
+            ResponseTemplate::new(201).set_body_raw(post_body.as_bytes(), "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    // After create, the CLI immediately fetches the zone (GET /storagezone/{id})
+    // to obtain the real Password (the create response has a placeholder).
+    // The create fixture has Id=9099, so the GET will be for /storagezone/9099.
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9099"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
             support::fixture("core/storagezone_create.json"),
             "application/json",
         ))

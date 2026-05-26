@@ -11,10 +11,10 @@ use bunny_net_api::containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
     AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions, ContainerImage,
     ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest, ContainersClient,
-    EndpointListItem, EndpointRequest, GetContainerConfigSuggestionsRequest,
+    EndpointListItem, EndpointRequest, ErrorDetails, GetContainerConfigSuggestionsRequest,
     GetContainerImageDigestRequest, Granularity, ImageTagInfo, ListContainerImageTagsRequest,
     LogForwardingConfiguration, LogForwardingRequest, LogForwardingType, PatchApplicationRequest,
-    PatchContainerRequest, PatchVolumeRequest, RegionSettings, RegistryCredentials,
+    PatchContainerRequest, PatchVolumeRequest, ProblemDetails, RegionSettings, RegistryCredentials,
     SearchPublicContainerImagesRequest, SyslogFormat, UpdateRegionSettingsRequest,
 };
 use bunny_syslog_receiver::{
@@ -509,6 +509,25 @@ fn parse_env_pairs(pairs: &[String]) -> Result<HashMap<String, String>> {
         map.insert(k.to_owned(), v.to_owned());
     }
     Ok(map)
+}
+
+/// Walk the error chain looking for a structured 404 from the containers client.
+/// Falls back to checking the rendered message if no typed error matches.
+fn is_not_found_error(e: &anyhow::Error) -> bool {
+    for cause in e.chain() {
+        if let Some(err) = cause.downcast_ref::<ErrorDetails>()
+            && err.status == Some(404)
+        {
+            return true;
+        }
+        if let Some(p) = cause.downcast_ref::<ProblemDetails>()
+            && p.status == Some(404)
+        {
+            return true;
+        }
+    }
+    let msg = format!("{e:#}");
+    msg.contains("HTTP 404") || msg.to_lowercase().contains("not found")
 }
 
 fn is_confirmed(input: &str) -> bool {
@@ -2007,18 +2026,31 @@ async fn handle_log_forwarding(
                 output::print_data(&rows, format);
             }
         }
-        ContainerLogForwardingAction::Get { app_id } => {
-            let config = c.get_log_forwarding(app_id).await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&config).context("failed to serialize to JSON")?
-                );
-            } else {
-                let row = LogForwardingRow::from(&config);
-                output::print_single(&row, format);
+        ContainerLogForwardingAction::Get { app_id } => match c.get_log_forwarding(app_id).await {
+            Ok(config) => {
+                if let OutputFormat::Json = format {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&config)
+                            .context("failed to serialize to JSON")?
+                    );
+                } else {
+                    let row = LogForwardingRow::from(&config);
+                    output::print_single(&row, format);
+                }
             }
-        }
+            Err(e) => {
+                if is_not_found_error(&e) {
+                    if let OutputFormat::Json = format {
+                        println!("null");
+                    } else {
+                        eprintln!("No log forwarding configuration for app {app_id}");
+                    }
+                } else {
+                    return Err(e);
+                }
+            }
+        },
         ContainerLogForwardingAction::Create {
             app_id,
             forwarding_type,
@@ -2329,7 +2361,9 @@ async fn handle_logs(
     // --- 12. Cleanup ----------------------------------------------------------
     cancel.cancel();
 
-    // Delete the forwarding config we created.
+    // Delete the forwarding config we created. This is best-effort cleanup —
+    // errors (including 404 if the config was already deleted) are logged as
+    // warnings rather than propagating, so teardown always completes cleanly.
     if let Some(ref cfg) = created_config {
         if let Err(e) = c.delete_log_forwarding(&cfg.app).await {
             eprintln!(

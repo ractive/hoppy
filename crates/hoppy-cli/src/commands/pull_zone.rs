@@ -5,12 +5,13 @@ use crate::cli::{
 };
 use crate::date;
 use crate::output::{self, PaginatedListJson};
+use crate::redact::{RedactConfig, redact_secrets_in_json};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
-    MatchingType, OptimizerWatermarkPosition, PullZone, PullZoneType, PurgeCache, TriggerType,
-    UpdatePullZone,
+    MatchingType, OptimizerWatermarkPosition, PullZone, PullZoneLogForwarderProtocolType,
+    PullZoneType, PurgeCache, TriggerType, UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
 
@@ -113,6 +114,7 @@ pub async fn handle(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    redact_cfg: &RedactConfig,
 ) -> Result<()> {
     let client = auth::core_client(debug, record)?;
 
@@ -149,7 +151,7 @@ pub async fn handle(
         }
         PullZoneAction::Get { id } => {
             let pz = client.get_pull_zone(*id).await?;
-            print_pull_zone(&pz, format);
+            print_pull_zone(&pz, format, redact_cfg);
         }
         PullZoneAction::Create {
             name,
@@ -166,7 +168,7 @@ pub async fn handle(
             body = body.zone_type(PullZoneType::from(*zone_tier));
             let pz = client.create_pull_zone(&body).await?;
             let new_id = pz.id;
-            print_pull_zone(&pz, format);
+            print_pull_zone(&pz, format, redact_cfg);
             output::hints::tips(&[
                 &format!("hoppy pull-zone hostname add --id {new_id} --hostname <fqdn>"),
                 &format!("hoppy pull-zone edge-rule add --id {new_id} ..."),
@@ -184,6 +186,13 @@ pub async fn handle(
             enable_geo_zone_asia,
             enable_geo_zone_sa,
             enable_geo_zone_af,
+            log_forwarding_enabled,
+            log_forwarding_hostname,
+            log_forwarding_port,
+            log_forwarding_token,
+            log_forwarding_protocol,
+            logging_save_to_storage,
+            logging_storage_zone_id,
             optimizer_enabled,
             optimizer_automatic_optimization,
             optimizer_desktop_max_width,
@@ -229,6 +238,28 @@ pub async fn handle(
             body.enable_geo_zone_asia = *enable_geo_zone_asia;
             body.enable_geo_zone_sa = *enable_geo_zone_sa;
             body.enable_geo_zone_af = *enable_geo_zone_af;
+            // Log forwarding fields
+            if let Some(v) = log_forwarding_enabled {
+                body = body.log_forwarding_enabled(*v);
+            }
+            if let Some(v) = log_forwarding_hostname {
+                body = body.log_forwarding_hostname(v.as_str());
+            }
+            if let Some(v) = log_forwarding_port {
+                body = body.log_forwarding_port(i32::from(*v));
+            }
+            if let Some(v) = log_forwarding_token {
+                body = body.log_forwarding_token(v.as_str());
+            }
+            if let Some(p) = log_forwarding_protocol {
+                body = body.log_forwarding_protocol(PullZoneLogForwarderProtocolType::from(*p));
+            }
+            if let Some(v) = logging_save_to_storage {
+                body = body.logging_save_to_storage(*v);
+            }
+            if let Some(v) = logging_storage_zone_id {
+                body = body.logging_storage_zone_id(*v);
+            }
             // Optimizer fields
             body.optimizer_enabled = *optimizer_enabled;
             body.optimizer_automatic_optimization_enabled = *optimizer_automatic_optimization;
@@ -264,7 +295,7 @@ pub async fn handle(
             body.optimizer_prerender_html = *optimizer_prerender_html;
             body.optimizer_tunnel_enabled = *optimizer_tunnel;
             let pz = client.update_pull_zone(*id, &body).await?;
-            print_pull_zone(&pz, format);
+            print_pull_zone(&pz, format, redact_cfg);
         }
         PullZoneAction::Delete { id } => {
             if !yes {
@@ -552,9 +583,15 @@ async fn handle_ip(
 }
 
 /// Output a single PullZone: full JSON for JSON format, detail struct otherwise.
-fn print_pull_zone(pz: &PullZone, format: OutputFormat) {
+/// When JSON, redacts secret-bearing fields (e.g. `LogForwardingToken`) unless
+/// `redact_cfg` has `reveal_all` set.
+fn print_pull_zone(pz: &PullZone, format: OutputFormat, redact_cfg: &RedactConfig) {
     if let OutputFormat::Json = format {
-        let json = serde_json::to_string_pretty(pz).expect("failed to serialize to JSON");
+        let mut value =
+            serde_json::to_value(pz).expect("failed to serialize pull zone to JSON value");
+        redact_secrets_in_json(&mut value, redact_cfg);
+        let json =
+            serde_json::to_string_pretty(&value).expect("failed to serialize pull zone to JSON");
         println!("{json}");
     } else {
         let detail = PullZoneDetail::from(pz);

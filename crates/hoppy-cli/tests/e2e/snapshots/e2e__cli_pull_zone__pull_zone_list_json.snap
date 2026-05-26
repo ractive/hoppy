@@ -1,5 +1,5 @@
 ---
-source: tests/e2e/cli_pull_zone.rs
+source: crates/hoppy-cli/tests/e2e/cli_pull_zone.rs
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 {
@@ -64,6 +64,13 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "OptimizerPrerenderHtml": false,
       "OptimizerTunnelEnabled": false,
       "OptimizerPricing": 9.5,
+      "LogForwardingEnabled": false,
+      "LogForwardingHostname": null,
+      "LogForwardingPort": 0,
+      "LogForwardingToken": null,
+      "LogForwardingProtocol": 0,
+      "LoggingSaveToStorage": false,
+      "LoggingStorageZoneId": 0,
       "EdgeRules": [],
       "AllowedReferrers": [],
       "BlockedReferrers": [],
@@ -122,6 +129,13 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "OptimizerPrerenderHtml": false,
       "OptimizerTunnelEnabled": false,
       "OptimizerPricing": 9.5,
+      "LogForwardingEnabled": false,
+      "LogForwardingHostname": null,
+      "LogForwardingPort": 0,
+      "LogForwardingToken": null,
+      "LogForwardingProtocol": 0,
+      "LoggingSaveToStorage": false,
+      "LoggingStorageZoneId": 0,
       "EdgeRules": [],
       "AllowedReferrers": [],
       "BlockedReferrers": [],
