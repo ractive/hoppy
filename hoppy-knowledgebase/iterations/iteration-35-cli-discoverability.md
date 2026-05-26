@@ -41,7 +41,35 @@ Borrow the hyalo iter-107 pattern. After each command, print a short
       beyond its own diagnostics.
 - [ ] Unit test: `--format json` invocation produces no hint output.
 
-### 2. Lean README
+### 2. Git-sha + date in `hoppy -V`
+
+Reference: ff-rdp commit `4c01f0d` (build.rs at `crates/ff-rdp-cli/build.rs`,
+`build_version_string()` in `crates/ff-rdp-cli/src/cli/args.rs`).
+
+Embed the build's short git SHA and commit date into the binary so
+`hoppy -V` prints e.g. `hoppy 0.3.0 (abc123def456 2026-05-26)` instead of
+just `hoppy 0.3.0`. Helps dogfooding triage: "which build am I on?".
+
+- [ ] Add `crates/hoppy-cli/build.rs` that shells out to git for short SHA
+      (`git rev-parse --short=12 HEAD`) and commit date
+      (`git show -s --format=%cs HEAD`), emits via `cargo:rustc-env=` as
+      `HOPPY_BUILD_VERSION_SHA` and `HOPPY_BUILD_DATE`. Suffix `+dirty`
+      when `git status --porcelain` is non-empty.
+- [ ] CI/tarball escape hatches: respect `GIT_COMMIT` / `GIT_COMMIT_DATE`
+      env vars if set; emit empty strings on no-git or when
+      `CARGO_HOPPY_FORCE_NO_GIT=1`.
+- [ ] `cargo:rerun-if-changed` for `<git-dir>/HEAD` and `<git-dir>/refs/`
+      (derive via `git rev-parse --git-dir` to support worktrees);
+      `cargo:rerun-if-env-changed` for the three env vars above.
+- [ ] Add a `build_version_string()` helper in the CLI args module that
+      formats `"{PKG} ({SHA} {DATE})"` when SHA is non-empty, else just
+      `PKG`. Wire into `#[command(version = ...)]` on the clap parser.
+- [ ] Unit test: with `CARGO_HOPPY_FORCE_NO_GIT=1`, `hoppy -V` prints the
+      bare `CARGO_PKG_VERSION`.
+- [ ] Unit test (or integration): with git available, the version output
+      matches `^hoppy \d+\.\d+\.\d+ \([0-9a-f]{12}(\+dirty)? \d{4}-\d{2}-\d{2}\)$`.
+
+### 3. Lean README
 Source: [[../backlog/lean-readme]]
 
 Restructure the top-level `README.md` as a landing page. Move exhaustive
