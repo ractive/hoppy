@@ -1,4 +1,5 @@
 use crate::cli::OutputFormat;
+use crate::redact::{RedactConfig, redact_env_in_json, redact_secrets_in_json};
 use serde::Serialize;
 use tabled::Tabled;
 
@@ -71,6 +72,82 @@ fn format_text_value(v: &serde_json::Value) -> String {
     match v {
         serde_json::Value::String(s) => s.clone(),
         serde_json::Value::Null => String::new(),
+        other => other.to_string(),
+    }
+}
+
+/// Print a single item as a vertical Field/Value table.
+///
+/// For `Table`/`Text` formats: serialises to JSON, walks the top-level keys
+/// in order, and renders a 2-column table with columns `Field` / `Value`.
+/// Strings are printed as-is; null → `-`; arrays joined with `, `;
+/// objects rendered as compact JSON; primitives via `to_string`.
+///
+/// For `Json`: behaves like `print_single` but applies redaction first.
+pub fn print_single_vertical<T: Serialize>(
+    item: &T,
+    format: OutputFormat,
+    redact_cfg: &RedactConfig,
+) {
+    let mut value = serde_json::to_value(item).expect("failed to serialize for vertical output");
+    redact_secrets_in_json(&mut value, redact_cfg);
+    redact_env_in_json(&mut value, redact_cfg);
+
+    if let OutputFormat::Json = format {
+        let json = serde_json::to_string_pretty(&value).expect("failed to serialize to JSON");
+        println!("{json}");
+        return;
+    }
+
+    #[derive(Serialize, Tabled)]
+    struct FieldRow {
+        #[tabled(rename = "Field")]
+        field: String,
+        #[tabled(rename = "Value")]
+        value: String,
+    }
+
+    if let Some(obj) = value.as_object() {
+        let rows: Vec<FieldRow> = obj
+            .iter()
+            .map(|(k, v)| FieldRow {
+                field: k.clone(),
+                value: format_vertical_value(v),
+            })
+            .collect();
+
+        match format {
+            OutputFormat::Table => {
+                if rows.is_empty() {
+                    eprintln!("No data.");
+                } else {
+                    let table = tabled::Table::new(&rows).to_string();
+                    println!("{table}");
+                }
+            }
+            OutputFormat::Text => {
+                for row in &rows {
+                    println!("{}\t{}", row.field, row.value);
+                }
+            }
+            OutputFormat::Json => unreachable!(),
+        }
+    }
+}
+
+fn format_vertical_value(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::Null => "-".to_owned(),
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Array(arr) => arr
+            .iter()
+            .map(|item| match item {
+                serde_json::Value::String(s) => s.clone(),
+                other => other.to_string(),
+            })
+            .collect::<Vec<_>>()
+            .join(", "),
+        serde_json::Value::Object(_) => v.to_string(),
         other => other.to_string(),
     }
 }

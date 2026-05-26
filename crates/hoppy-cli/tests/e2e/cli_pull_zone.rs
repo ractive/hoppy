@@ -108,18 +108,13 @@ async fn pull_zone_get_table() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    // Check column headers
-    assert!(stdout.contains("ID"), "expected ID column");
-    assert!(stdout.contains("Name"), "expected Name column");
-    assert!(stdout.contains("Origin URL"), "expected Origin URL column");
-    assert!(stdout.contains("CNAME"), "expected CNAME column");
-    assert!(stdout.contains("Enabled"), "expected Enabled column");
-    assert!(stdout.contains("Suspended"), "expected Suspended column");
-    assert!(
-        stdout.contains("Bandwidth Used"),
-        "expected Bandwidth Used column"
-    );
-    assert!(stdout.contains("Hostnames"), "expected Hostnames column");
+    // Vertical layout: Field/Value columns with zone properties as rows
+    assert!(stdout.contains("Field"), "expected Field column");
+    assert!(stdout.contains("Value"), "expected Value column");
+    assert!(stdout.contains("Id"), "expected Id row");
+    assert!(stdout.contains("Name"), "expected Name row");
+    assert!(stdout.contains("OriginUrl"), "expected OriginUrl row");
+    assert!(stdout.contains("Enabled"), "expected Enabled row");
 }
 
 #[tokio::test]
@@ -1620,6 +1615,109 @@ async fn pull_zone_update_optimizer_settings() {
     assert!(
         output.status.success(),
         "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Log-forwarding precheck E2E tests
+// ---------------------------------------------------------------------------
+
+/// When LogForwardingEnabled=false and the user passes --log-forwarding-hostname
+/// without --log-forwarding-enabled true, the CLI must:
+///  1. GET /pullzone/{id} to check current state.
+///  2. Exit non-zero with an error and hint on stderr.
+///  3. NOT send the POST /pullzone/{id} update request.
+#[tokio::test]
+async fn pull_zone_update_lf_hostname_disabled_zone_errors() {
+    let server = MockServer::start().await;
+
+    // GET /pullzone/1001 — zone has LogForwardingEnabled=false
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "pull-zone",
+            "update",
+            "--id",
+            "1001",
+            "--log-forwarding-hostname",
+            "foo.example.com",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        !output.status.success(),
+        "expected non-zero exit, got success"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("log-forwarding fields cannot be updated while disabled"),
+        "expected error message, got: {stderr}"
+    );
+    assert!(
+        stderr.contains("--log-forwarding-enabled true"),
+        "expected hint, got: {stderr}"
+    );
+
+    // Verify the precheck short-circuited: no POST /pullzone/1001 was sent.
+    let posts = server
+        .received_requests()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|r| {
+            r.method.as_str().eq_ignore_ascii_case("POST") && r.url.path() == "/pullzone/1001"
+        })
+        .count();
+    assert_eq!(posts, 0, "expected no POST /pullzone/1001, got {posts}");
+}
+
+/// When --log-forwarding-enabled true is passed along with hostname, the precheck
+/// is skipped and the update proceeds.
+#[tokio::test]
+async fn pull_zone_update_lf_hostname_with_enable_skips_precheck() {
+    let server = MockServer::start().await;
+
+    // No GET mock — precheck should be skipped.
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "pull-zone",
+            "update",
+            "--id",
+            "1001",
+            "--log-forwarding-enabled",
+            "true",
+            "--log-forwarding-hostname",
+            "foo.example.com",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "expected success, stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }

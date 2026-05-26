@@ -1,8 +1,8 @@
 ---
-title: "--debug shows request URL + response body but not the request body"
+title: --debug shows request URL + response body but not the request body
 type: backlog
 date: 2026-05-26
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-26 (post-iter-38)
 ---
@@ -24,3 +24,7 @@ from `--debug` whether the CLI sent the hostname or not.
 
 Add `>>>` lines for the request body (with secret redaction matching the
 existing `--reveal` semantics).
+
+## Resolution
+
+Fixed in [[../iterations/iteration-39-dogfooding-2026-05-26-fixes]].

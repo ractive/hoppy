@@ -629,27 +629,13 @@ async fn handle_zone(
         }
         ShieldZoneAction::Get { shield_zone_id } => {
             let zone = client.get_shield_zone(*shield_zone_id).await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&zone).expect("failed to serialize to JSON")
-                );
-            } else {
-                let row = ShieldZoneRow::from(&zone);
-                output::print_single(&row, format);
-            }
+            let redact_cfg = crate::redact::RedactConfig::default();
+            output::print_single_vertical(&zone, format, &redact_cfg);
         }
         ShieldZoneAction::GetByPullzone { pull_zone_id } => {
             let zone = client.get_shield_zone_by_pull_zone(*pull_zone_id).await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&zone).expect("failed to serialize to JSON")
-                );
-            } else {
-                let row = ShieldZoneRow::from(&zone);
-                output::print_single(&row, format);
-            }
+            let redact_cfg = crate::redact::RedactConfig::default();
+            output::print_single_vertical(&zone, format, &redact_cfg);
         }
         ShieldZoneAction::Create { pull_zone_id } => {
             let zone = client.create_shield_zone(*pull_zone_id).await?;

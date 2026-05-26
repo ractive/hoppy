@@ -8,7 +8,7 @@ tags:
   - cli
   - pull-zone
   - debug
-status: planned
+status: completed
 branch: iter-39/dogfooding-2026-05-26-fixes
 ---
 
@@ -31,9 +31,9 @@ silently ignores `LogForwardingHostname` (and likely `Port` / `Protocol`
 / `Token`) updates — returns 200 OK with the field unchanged. The CLI
 forwards the response unchanged, so the user thinks the update landed.
 
-- [ ] Reproduce against a live zone with `LogForwardingEnabled=false` —
+- [x] Reproduce against a live zone with `LogForwardingEnabled=false` —
       confirm the exact set of sub-fields the API silently drops.
-- [ ] In `crates/hoppy-cli/src/commands/pull_zone.rs` (update path),
+- [x] In `crates/hoppy-cli/src/commands/pull_zone.rs` (update path),
       detect the case before the request: if any of
       `--log-forwarding-{hostname,port,protocol,token}` are passed AND
       `--log-forwarding-enabled` is **not** being set to `true` AND the
@@ -41,12 +41,12 @@ forwards the response unchanged, so the user thinks the update landed.
       error and a hint:
       `error: log-forwarding fields cannot be updated while disabled
        hint: pass --log-forwarding-enabled true to enable and update in one call`
-- [ ] Alternative (or additional) safety net: post-validate the response
+- [x] Alternative (or additional) safety net: post-validate the response
       and warn on stderr when any passed log-forwarding field is not
       reflected in the response body.
-- [ ] e2e test: update with hostname-only on a disabled-LFE fixture
+- [x] e2e test: update with hostname-only on a disabled-LFE fixture
       should error out (or warn) — not return success.
-- [ ] Update [[../dogfooding/dogfooding-playbook]] if a new pattern
+- [x] Update [[../dogfooding/dogfooding-playbook]] if a new pattern
       emerges from the fix.
 
 ### 2. `pull-zone get` table is too wide
@@ -56,19 +56,19 @@ Source: [[../backlog/pull-zone-get-table-too-wide]]
 unreadably on a 120-col terminal. Single-resource gets should pivot to a
 vertical `Field / Value` table like `hoppy auth check`.
 
-- [ ] In `crates/hoppy-cli/src/commands/pull_zone.rs`, replace the
+- [x] In `crates/hoppy-cli/src/commands/pull_zone.rs`, replace the
       horizontal `tabled` render in the `get` handler with a
       `Field / Value` table. Keep the list handler's wide layout.
-- [ ] Decide which fields appear at top (Id, Name, Origin URL, Enabled,
+- [x] Decide which fields appear at top (Id, Name, Origin URL, Enabled,
       Suspended, Bandwidth Used / Limit, Hostnames, …) — match the JSON
       key order or curate a sensible head-of-list.
-- [ ] Audit other single-resource gets that may have the same shape:
+- [x] Audit other single-resource gets that may have the same shape:
       `storage-zone get`, `stream library get`, `container app get`,
       `dns zone get`, `shield zone get`. Pivot any that are >~6 columns
       wide.
-- [ ] Refresh affected e2e snapshot tests (the new shape will redraw).
+- [x] Refresh affected e2e snapshot tests (the new shape will redraw).
       Keep them drift-tolerant per the iter-37 playbook.
-- [ ] Dogfooding pass: re-run the five get commands and confirm output
+- [x] Dogfooding pass: re-run the five get commands and confirm output
       fits on a standard terminal.
 
 ### 3. `--debug` shows response but not request body
@@ -79,16 +79,16 @@ The request body — the most useful piece for diagnosing "why didn't my
 update stick?" — is missing. The log-forwarding bug above would have
 been faster to localise (CLI bug vs API bug) with the body visible.
 
-- [ ] In the HTTP client (probably `crates/bunny-net-api/src/.../client.rs`
+- [x] In the HTTP client (probably `crates/bunny-net-api/src/.../client.rs`
       where `--debug` logging is wired in), add a `>>> <body>` line for
       requests with bodies (POST/PUT/PATCH/DELETE).
-- [ ] Apply the existing secret-redaction logic (the same one that
+- [x] Apply the existing secret-redaction logic (the same one that
       redacts `LogForwardingToken` in responses) to the request body so
       `--debug` doesn't leak secrets in terminal output. Honour `--reveal`.
-- [ ] If the body is JSON, pretty-print it with the same compact-multi-line
+- [x] If the body is JSON, pretty-print it with the same compact-multi-line
       style as response output. If it's a stream/large, truncate with a
       `… (N bytes total)` tail.
-- [ ] Unit test: a debug-logged request with a `LogForwardingToken` is
+- [x] Unit test: a debug-logged request with a `LogForwardingToken` is
       printed as `"<set, length=N>"`; with `--reveal`, the real value
       appears.
 
@@ -102,15 +102,15 @@ been faster to localise (CLI bug vs API bug) with the body visible.
 
 ## Acceptance
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean.
-- [ ] Dogfooding repro of all three bugs against the live test account
+- [x] Dogfooding repro of all three bugs against the live test account
       shows the fixed behaviour:
       - hostname-only update on disabled-LFE zone errors (or warns).
       - `pull-zone get` fits on one screen.
       - `--debug` shows request body, with `LogForwardingToken` redacted
         unless `--reveal`.
-- [ ] All three backlog items closed (`status=resolved`) with a link to
+- [x] All three backlog items closed (`status=resolved`) with a link to
       this iteration.
 
 ## Related

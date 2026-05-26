@@ -5,7 +5,7 @@ use crate::cli::{
 };
 use crate::date;
 use crate::output::{self, PaginatedListJson};
-use crate::redact::{RedactConfig, redact_secrets_in_json};
+use crate::redact::RedactConfig;
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
@@ -49,59 +49,27 @@ impl From<&PullZone> for PullZoneRow {
     }
 }
 
-/// Detailed single-item view for get/create/update output.
-#[derive(serde::Serialize, tabled::Tabled)]
-struct PullZoneDetail {
-    #[tabled(rename = "ID")]
-    id: i64,
-    #[tabled(rename = "Name")]
-    name: String,
-    #[tabled(rename = "Origin URL")]
-    origin_url: String,
-    #[tabled(rename = "CNAME")]
-    cname_domain: String,
-    #[tabled(rename = "Type")]
-    zone_type: String,
-    #[tabled(rename = "Enabled")]
-    enabled: bool,
-    #[tabled(rename = "Suspended")]
-    suspended: bool,
-    #[tabled(rename = "Bandwidth Used")]
-    monthly_bandwidth_used: i64,
-    #[tabled(rename = "Bandwidth Limit")]
-    monthly_bandwidth_limit: i64,
-    #[tabled(rename = "Hostnames")]
-    hostnames: String,
-}
+// ---------------------------------------------------------------------------
+// Log-forwarding precheck helper
+// ---------------------------------------------------------------------------
 
-impl From<&PullZone> for PullZoneDetail {
-    fn from(pz: &PullZone) -> Self {
-        let zone_type = pz
-            .zone_type
-            .map(|t| t.to_string())
-            .unwrap_or_else(|| "-".to_owned());
-        let hostnames = if pz.hostnames.is_empty() {
-            "-".to_owned()
-        } else {
-            pz.hostnames
-                .iter()
-                .map(|h| h.value.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        };
-        Self {
-            id: pz.id,
-            name: pz.name.clone(),
-            origin_url: pz.origin_url.clone(),
-            cname_domain: pz.cname_domain.clone(),
-            zone_type,
-            enabled: pz.enabled,
-            suspended: pz.suspended,
-            monthly_bandwidth_used: pz.monthly_bandwidth_used,
-            monthly_bandwidth_limit: pz.monthly_bandwidth_limit,
-            hostnames,
-        }
-    }
+/// Returns `true` when a GET precheck is required before sending the update.
+///
+/// A precheck is needed when:
+/// - at least one log-forwarding sub-field (`hostname`, `port`, `token`,
+///   `protocol`) is `Some`, AND
+/// - `log_forwarding_enabled` is NOT `Some(true)` (i.e. the caller is not
+///   atomically enabling + configuring in the same call).
+fn lf_precheck_required(
+    hostname: &Option<String>,
+    port: &Option<u16>,
+    token: &Option<String>,
+    protocol: &Option<crate::cli::PullZoneLogForwardingProtocolArg>,
+    enabled: &Option<bool>,
+) -> bool {
+    let has_sub_field =
+        hostname.is_some() || port.is_some() || token.is_some() || protocol.is_some();
+    has_sub_field && enabled != &Some(true)
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +84,7 @@ pub async fn handle(
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client_with_reveal(debug, record, redact_cfg.reveal_all)?;
 
     match action {
         PullZoneAction::List {
@@ -217,6 +185,25 @@ pub async fn handle(
             optimizer_prerender_html,
             optimizer_tunnel,
         } => {
+            // Guard: if any log-forwarding sub-field is being set without also
+            // enabling log forwarding in this same call, verify the zone has
+            // log_forwarding_enabled=true; if not, bail with a clear message.
+            if lf_precheck_required(
+                log_forwarding_hostname,
+                log_forwarding_port,
+                log_forwarding_token,
+                log_forwarding_protocol,
+                log_forwarding_enabled,
+            ) {
+                let current = client.get_pull_zone(*id).await?;
+                if !current.log_forwarding_enabled.unwrap_or(false) {
+                    bail!(
+                        "log-forwarding fields cannot be updated while disabled\n\
+                         hint: pass --log-forwarding-enabled true to enable and update in one call"
+                    );
+                }
+            }
+
             let mut body = UpdatePullZone::new();
             if let Some(url) = origin_url {
                 body = body.origin_url(url);
@@ -582,21 +569,11 @@ async fn handle_ip(
     Ok(())
 }
 
-/// Output a single PullZone: full JSON for JSON format, detail struct otherwise.
-/// When JSON, redacts secret-bearing fields (e.g. `LogForwardingToken`) unless
+/// Output a single PullZone as a vertical Field/Value table (or JSON).
+/// Redacts secret-bearing fields (e.g. `LogForwardingToken`) unless
 /// `redact_cfg` has `reveal_all` set.
 fn print_pull_zone(pz: &PullZone, format: OutputFormat, redact_cfg: &RedactConfig) {
-    if let OutputFormat::Json = format {
-        let mut value =
-            serde_json::to_value(pz).expect("failed to serialize pull zone to JSON value");
-        redact_secrets_in_json(&mut value, redact_cfg);
-        let json =
-            serde_json::to_string_pretty(&value).expect("failed to serialize pull zone to JSON");
-        println!("{json}");
-    } else {
-        let detail = PullZoneDetail::from(pz);
-        output::print_single(&detail, format);
-    }
+    output::print_single_vertical(pz, format, redact_cfg);
 }
 
 // ---------------------------------------------------------------------------
@@ -781,4 +758,79 @@ async fn handle_edge_rule(
         }
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lf_precheck_hostname_only_no_enabled_requires_check() {
+        assert!(lf_precheck_required(
+            &Some("logs.example.com".to_owned()),
+            &None,
+            &None,
+            &None,
+            &None,
+        ));
+    }
+
+    #[test]
+    fn lf_precheck_hostname_with_enabled_true_skips_check() {
+        assert!(!lf_precheck_required(
+            &Some("logs.example.com".to_owned()),
+            &None,
+            &None,
+            &None,
+            &Some(true),
+        ));
+    }
+
+    #[test]
+    fn lf_precheck_hostname_with_enabled_false_requires_check() {
+        assert!(lf_precheck_required(
+            &Some("logs.example.com".to_owned()),
+            &None,
+            &None,
+            &None,
+            &Some(false),
+        ));
+    }
+
+    #[test]
+    fn lf_precheck_no_sub_fields_no_check() {
+        assert!(!lf_precheck_required(&None, &None, &None, &None, &None));
+    }
+
+    #[test]
+    fn lf_precheck_port_only_requires_check() {
+        assert!(lf_precheck_required(&None, &Some(514), &None, &None, &None));
+    }
+
+    #[test]
+    fn lf_precheck_token_only_requires_check() {
+        assert!(lf_precheck_required(
+            &None,
+            &None,
+            &Some("tok".to_owned()),
+            &None,
+            &None,
+        ));
+    }
+
+    #[test]
+    fn lf_precheck_protocol_only_requires_check() {
+        use crate::cli::PullZoneLogForwardingProtocolArg;
+        assert!(lf_precheck_required(
+            &None,
+            &None,
+            &None,
+            &Some(PullZoneLogForwardingProtocolArg::Udp),
+            &None,
+        ));
+    }
 }

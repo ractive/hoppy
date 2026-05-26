@@ -58,40 +58,6 @@ impl From<&bunny_net_api::containers::AppListItem> for AppRow {
     }
 }
 
-#[derive(serde::Serialize, tabled::Tabled)]
-struct AppDetail {
-    #[tabled(rename = "ID")]
-    id: String,
-    #[tabled(rename = "Name")]
-    name: String,
-    #[tabled(rename = "Status")]
-    status: String,
-    #[tabled(rename = "Runtime")]
-    runtime_type: String,
-    #[tabled(rename = "Min Instances")]
-    min: i32,
-    #[tabled(rename = "Max Instances")]
-    max: i32,
-}
-
-impl From<&bunny_net_api::containers::Application> for AppDetail {
-    fn from(a: &bunny_net_api::containers::Application) -> Self {
-        let (min, max) = a
-            .auto_scaling
-            .as_ref()
-            .map(|s| (s.min, s.max))
-            .unwrap_or((0, 0));
-        Self {
-            id: a.id.clone(),
-            name: a.name.clone(),
-            status: format!("{:?}", a.status),
-            runtime_type: format!("{:?}", a.runtime_type),
-            min,
-            max,
-        }
-    }
-}
-
 /// Wider table row used after `app create` so operators (and LLMs) can chain
 /// the template id and display-endpoint id without a follow-up `app get`.
 #[derive(serde::Serialize, tabled::Tabled)]
@@ -706,8 +672,7 @@ async fn handle_app(
             if let OutputFormat::Json = format {
                 print_json_with_redaction(&app, redact)?;
             } else {
-                let row = AppDetail::from(&app);
-                output::print_single(&row, format);
+                output::print_single_vertical(&app, format, redact);
             }
         }
         ContainerAppAction::Create {
