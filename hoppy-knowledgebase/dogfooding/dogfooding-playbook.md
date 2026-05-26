@@ -123,7 +123,7 @@ You do **not** need this for partial-response tests that intentionally exercise 
 
 The same drift-coupling problem occurs in CLI e2e tests (`crates/hoppy-cli/tests/e2e/`). After a fixture refresh, tests that snapshot the full CLI stdout or call `stdout.contains("150000")` will fail because the values came from the fixture and may now be different.
 
-**Two layers to fix:**
+**Three layers to fix:**
 
 1. **`insta::assert_snapshot!` on full CLI stdout** — prefer converting to structural asserts rather than adding `insta::with_settings!(filters => …)`, because `tabled` table column widths are dynamic (sized to the longest value). A filter replaces the value but the surrounding whitespace padding still changes, so the snapshot still fails. Structural asserts are robust:
    ```rust
@@ -138,7 +138,7 @@ The same drift-coupling problem occurs in CLI e2e tests (`crates/hoppy-cli/tests
    // Instead of:
    assert!(stdout.contains("150000"));
    // Write:
-   assert!(Regex::new(r"Total Requests Served\s*\|\s*\d").unwrap().is_match(&stdout));
+   assert!(Regex::new(r"Total Requests Served\s*\|\s*\d+").unwrap().is_match(&stdout));
    ```
 
 3. **`assert_eq!(json["field"], specific_value)`** — replace with a type check and optional invariant:

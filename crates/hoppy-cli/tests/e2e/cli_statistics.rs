@@ -7,7 +7,7 @@ use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 static RE_TOTAL_REQUESTS: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"Total Requests Served\s*\|\s*\d").unwrap());
+    LazyLock::new(|| Regex::new(r"Total Requests Served\s*\|\s*\d+").unwrap());
 static RE_CACHE_HIT_RATE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"Cache Hit Rate\s*\|\s*\d+\.\d+%").unwrap());
 

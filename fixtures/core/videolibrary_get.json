@@ -8,9 +8,7 @@
   "StorageUsage": 0,
   "DateCreated": "2026-05-14T20:20:27",
   "DateModified": "2026-05-14T20:20:27",
-  "ReplicationRegions": [
-    ""
-  ],
+  "ReplicationRegions": [],
   "ApiKey": "REDACTED-STREAM-API-KEY",
   "ReadOnlyApiKey": "REDACTED-STREAM-READONLY-KEY",
   "HasWatermark": false,
