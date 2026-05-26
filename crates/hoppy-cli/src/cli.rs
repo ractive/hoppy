@@ -2281,14 +2281,14 @@ pub enum ContainerAction {
 
     /// Stream live syslog output from a Magic Containers application.
     ///
-    /// How it works
-    /// ============
-    /// hoppy binds a local TCP syslog listener, exposes it via a tunnel so
-    /// that Bunny's log-forwarding service can reach it, creates a temporary
     /// NOTE: As of 2026-05-15 this command may fail at the log-forwarding-create
     /// step with an empty-body 400 from the bunny.net API. Tracking in
     /// backlog/log-forwarding-create-empty-400.md.
     ///
+    /// How it works
+    /// ============
+    /// hoppy binds a local TCP syslog listener, exposes it via a tunnel so
+    /// that Bunny's log-forwarding service can reach it, creates a temporary
     /// log-forwarding configuration for your application, then streams the
     /// incoming syslog messages to your terminal. On Ctrl-C (or any error)
     /// the forwarding configuration is deleted and the tunnel is torn down.

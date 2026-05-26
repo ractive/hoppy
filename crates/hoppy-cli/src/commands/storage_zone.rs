@@ -161,7 +161,13 @@ pub async fn handle(
             let created = client.create_storage_zone(&body).await?;
             // The create response returns a literal "string" placeholder for Password/
             // ReadOnlyPassword. Fetch the zone immediately to get the real credentials.
-            let sz = client.get_storage_zone(created.id).await?;
+            let sz = client.get_storage_zone(created.id).await.with_context(|| {
+                format!(
+                    "storage zone {} was created but credential fetch failed — \
+                     run `hoppy storage-zone get --id {}` to retrieve them",
+                    created.id, created.id
+                )
+            })?;
             // On create, reveal the password so scripts can capture it — the user
             // explicitly requested this zone and needs the credential right now.
             let reveal_cfg = RedactConfig::new(true, vec![]);

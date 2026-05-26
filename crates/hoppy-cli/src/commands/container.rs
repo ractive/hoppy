@@ -11,10 +11,10 @@ use bunny_net_api::containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
     AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions, ContainerImage,
     ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest, ContainersClient,
-    EndpointListItem, EndpointRequest, GetContainerConfigSuggestionsRequest,
+    EndpointListItem, EndpointRequest, ErrorDetails, GetContainerConfigSuggestionsRequest,
     GetContainerImageDigestRequest, Granularity, ImageTagInfo, ListContainerImageTagsRequest,
     LogForwardingConfiguration, LogForwardingRequest, LogForwardingType, PatchApplicationRequest,
-    PatchContainerRequest, PatchVolumeRequest, RegionSettings, RegistryCredentials,
+    PatchContainerRequest, PatchVolumeRequest, ProblemDetails, RegionSettings, RegistryCredentials,
     SearchPublicContainerImagesRequest, SyslogFormat, UpdateRegionSettingsRequest,
 };
 use bunny_syslog_receiver::{
@@ -509,6 +509,25 @@ fn parse_env_pairs(pairs: &[String]) -> Result<HashMap<String, String>> {
         map.insert(k.to_owned(), v.to_owned());
     }
     Ok(map)
+}
+
+/// Walk the error chain looking for a structured 404 from the containers client.
+/// Falls back to checking the rendered message if no typed error matches.
+fn is_not_found_error(e: &anyhow::Error) -> bool {
+    for cause in e.chain() {
+        if let Some(err) = cause.downcast_ref::<ErrorDetails>()
+            && err.status == Some(404)
+        {
+            return true;
+        }
+        if let Some(p) = cause.downcast_ref::<ProblemDetails>()
+            && p.status == Some(404)
+        {
+            return true;
+        }
+    }
+    let msg = format!("{e:#}");
+    msg.contains("HTTP 404") || msg.to_lowercase().contains("not found")
 }
 
 fn is_confirmed(input: &str) -> bool {
@@ -2021,9 +2040,7 @@ async fn handle_log_forwarding(
                 }
             }
             Err(e) => {
-                let msg = format!("{e}");
-                let msg_detail = format!("{e:#}");
-                if msg.contains("404") || msg_detail.to_lowercase().contains("not found") {
+                if is_not_found_error(&e) {
                     if let OutputFormat::Json = format {
                         println!("null");
                     } else {
