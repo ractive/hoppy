@@ -195,5 +195,6 @@ pub async fn handle(
 /// Password / ReadOnlyPassword fields are redacted by default; the caller
 /// passes `--reveal` to bypass.
 fn print_storage_zone(sz: &StorageZone, format: OutputFormat, redact_cfg: &RedactConfig) {
-    output::print_single_vertical(sz, format, redact_cfg);
+    let cmd = format!("storage-zone get --id {}", sz.id);
+    output::print_single_vertical_with_cmd(sz, format, redact_cfg, Some(&cmd));
 }

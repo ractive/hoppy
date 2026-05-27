@@ -1,10 +1,13 @@
 ---
-title: "single-resource `get` tables still overflow when a field value is JSON-stringified"
+title: >-
+  single-resource `get` tables still overflow when a field value is
+  JSON-stringified
 type: backlog
 date: 2026-05-27
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-27 (post-iter-39)
+resolved-in: iter-40
 ---
 
 # Embedded JSON values still blow out `get` table width

@@ -80,14 +80,21 @@ fn format_text_value(v: &serde_json::Value) -> String {
 ///
 /// For `Table`/`Text` formats: serialises to JSON, walks the top-level keys
 /// in order, and renders a 2-column table with columns `Field` / `Value`.
-/// Strings are printed as-is; null → `-`; arrays joined with `, `;
-/// objects rendered as compact JSON; primitives via `to_string`.
+/// Strings are printed as-is; null → `-`; primitive arrays joined with `, `;
+/// nested arrays/objects collapsed to `<N items>` / `<object: K fields>` so
+/// they don't blow out the Value column on terminals. After the table, a
+/// stderr hint suggests the JSON view for inspecting the collapsed fields.
 ///
 /// For `Json`: behaves like `print_single` but applies redaction first.
-pub fn print_single_vertical<T: Serialize>(
+/// `cmd` is the command suffix used in the follow-up hint that nudges
+/// users at the JSON view of collapsed fields. Pass something like
+/// `"container app get --id 123"`; the helper builds the full
+/// `hoppy --format json … | jq .<field>` hint. Pass `None` to disable.
+pub fn print_single_vertical_with_cmd<T: Serialize>(
     item: &T,
     format: OutputFormat,
     redact_cfg: &RedactConfig,
+    cmd: Option<&str>,
 ) {
     let mut value = serde_json::to_value(item).expect("failed to serialize for vertical output");
     redact_secrets_in_json(&mut value, redact_cfg);
@@ -108,11 +115,18 @@ pub fn print_single_vertical<T: Serialize>(
     }
 
     if let Some(obj) = value.as_object() {
+        let mut nested_fields: Vec<String> = Vec::new();
         let rows: Vec<FieldRow> = obj
             .iter()
-            .map(|(k, v)| FieldRow {
-                field: k.clone(),
-                value: format_vertical_value(v),
+            .map(|(k, v)| {
+                let (rendered, nested) = format_vertical_value(v);
+                if nested {
+                    nested_fields.push(k.clone());
+                }
+                FieldRow {
+                    field: k.clone(),
+                    value: rendered,
+                }
             })
             .collect();
 
@@ -132,24 +146,63 @@ pub fn print_single_vertical<T: Serialize>(
             }
             OutputFormat::Json => unreachable!(),
         }
+
+        if !nested_fields.is_empty() && matches!(format, OutputFormat::Table | OutputFormat::Text) {
+            // Pick the first nested field for the jq example.
+            let example = &nested_fields[0];
+            let cmd = cmd.unwrap_or("<command>");
+            hints::tip(&format!(
+                "view nested fields as JSON: hoppy --format json {cmd} | jq .{example}"
+            ));
+        }
     }
 }
 
-fn format_vertical_value(v: &serde_json::Value) -> String {
+/// Render a JSON value for the Value column of the vertical table.
+///
+/// Returns `(rendered_string, is_nested)` — `is_nested` is true when the
+/// value was an array of non-primitive items or an object, signalling
+/// that the cell is a `<…>` placeholder rather than the real data.
+fn format_vertical_value(v: &serde_json::Value) -> (String, bool) {
     match v {
-        serde_json::Value::Null => "-".to_owned(),
-        serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Array(arr) => arr
-            .iter()
-            .map(|item| match item {
-                serde_json::Value::String(s) => s.clone(),
-                other => other.to_string(),
-            })
-            .collect::<Vec<_>>()
-            .join(", "),
-        serde_json::Value::Object(_) => v.to_string(),
-        other => other.to_string(),
+        serde_json::Value::Null => ("-".to_owned(), false),
+        serde_json::Value::String(s) => (s.clone(), false),
+        serde_json::Value::Array(arr) => {
+            if arr.is_empty() {
+                ("<empty list>".to_owned(), false)
+            } else if arr.iter().all(is_primitive) {
+                let joined = arr
+                    .iter()
+                    .map(|item| match item {
+                        serde_json::Value::String(s) => s.clone(),
+                        other => other.to_string(),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                (joined, false)
+            } else {
+                (format!("<{} items>", arr.len()), true)
+            }
+        }
+        serde_json::Value::Object(obj) => {
+            if obj.is_empty() {
+                ("<empty object>".to_owned(), false)
+            } else {
+                (format!("<object: {} fields>", obj.len()), true)
+            }
+        }
+        other => (other.to_string(), false),
     }
+}
+
+fn is_primitive(v: &serde_json::Value) -> bool {
+    matches!(
+        v,
+        serde_json::Value::Null
+            | serde_json::Value::Bool(_)
+            | serde_json::Value::Number(_)
+            | serde_json::Value::String(_)
+    )
 }
 
 /// Print an error in the appropriate format.

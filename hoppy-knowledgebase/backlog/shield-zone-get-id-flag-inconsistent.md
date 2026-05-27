@@ -2,9 +2,10 @@
 title: "`shield zone get` uses `--shield-zone-id` instead of `--id` like every other surface"
 type: backlog
 date: 2026-05-27
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-27 (post-iter-39)
+resolved-in: iter-40
 ---
 
 # `shield zone get` flag name diverges from convention

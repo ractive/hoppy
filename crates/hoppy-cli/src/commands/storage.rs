@@ -102,11 +102,12 @@ pub async fn handle(
 
             progress::finish_with_message(pb.as_ref(), format!("Uploaded {file}"));
 
+            let display_path = remote_path.trim_start_matches('/');
             if quiet {
                 // nothing
             } else if pb.is_none() {
                 // Not a TTY — emit a plain message to stderr.
-                eprintln!("Uploaded {file} → {zone}/{remote_path}");
+                eprintln!("Uploaded {file} → {zone}/{display_path}");
             }
         }
         StorageAction::Download {
@@ -117,8 +118,9 @@ pub async fn handle(
         } => {
             let client = build_storage_client(zone, region, debug, record).await?;
             let (dir, name) = split_remote_path(remote_path)?;
+            let display_path = remote_path.trim_start_matches('/');
 
-            let pb = progress::spinner(format!("Downloading {zone}/{remote_path}..."), quiet);
+            let pb = progress::spinner(format!("Downloading {zone}/{display_path}..."), quiet);
 
             let bytes = client.download_file(zone, dir, name).await?;
 
@@ -129,7 +131,7 @@ pub async fn handle(
                         .with_context(|| format!("writing output file: {path}"))?;
                     progress::finish_with_message(
                         pb.as_ref(),
-                        format!("Downloaded {zone}/{remote_path} ({} bytes)", bytes.len()),
+                        format!("Downloaded {zone}/{display_path} ({} bytes)", bytes.len()),
                     );
                     if pb.is_none() && !quiet {
                         eprintln!("Saved to {path} ({} bytes)", bytes.len());
@@ -141,7 +143,7 @@ pub async fn handle(
                         .context("writing to stdout")?;
                     progress::finish_with_message(
                         pb.as_ref(),
-                        format!("Downloaded {zone}/{remote_path} ({} bytes)", bytes.len()),
+                        format!("Downloaded {zone}/{display_path} ({} bytes)", bytes.len()),
                     );
                 }
             }
@@ -151,8 +153,9 @@ pub async fn handle(
             remote_path,
             region,
         } => {
+            let display_path = remote_path.trim_start_matches('/');
             if !yes {
-                eprint!("Delete {zone}/{remote_path}? [y/N] ");
+                eprint!("Delete {zone}/{display_path}? [y/N] ");
                 io::stderr().flush()?;
                 let mut line = String::new();
                 io::stdin().lock().read_line(&mut line)?;
@@ -165,7 +168,7 @@ pub async fn handle(
             let client = build_storage_client(zone, region, debug, record).await?;
             let (dir, name) = split_remote_path(remote_path)?;
             client.delete_file(zone, dir, name).await?;
-            eprintln!("Deleted {zone}/{remote_path}");
+            eprintln!("Deleted {zone}/{display_path}");
         }
     }
 
