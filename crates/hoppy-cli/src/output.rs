@@ -186,7 +186,7 @@ fn format_vertical_value(v: &serde_json::Value) -> (String, bool) {
         }
         serde_json::Value::Object(obj) => {
             if obj.is_empty() {
-                ("<empty object>".to_owned(), true)
+                ("<empty object>".to_owned(), false)
             } else {
                 (format!("<object: {} fields>", obj.len()), true)
             }
