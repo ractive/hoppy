@@ -1629,7 +1629,7 @@ pub enum ShieldZoneAction {
     List,
     /// Get a Shield Zone by ID
     Get {
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get a Shield Zone by Pull Zone ID
@@ -1644,7 +1644,7 @@ pub enum ShieldZoneAction {
     },
     /// Update a Shield Zone's configuration
     Update {
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Enable or disable WAF
         #[arg(long)]

@@ -573,7 +573,8 @@ async fn handle_ip(
 /// Redacts secret-bearing fields (e.g. `LogForwardingToken`) unless
 /// `redact_cfg` has `reveal_all` set.
 fn print_pull_zone(pz: &PullZone, format: OutputFormat, redact_cfg: &RedactConfig) {
-    output::print_single_vertical(pz, format, redact_cfg);
+    let cmd = format!("pull-zone get --id {}", pz.id);
+    output::print_single_vertical_with_cmd(pz, format, redact_cfg, Some(&cmd));
 }
 
 // ---------------------------------------------------------------------------

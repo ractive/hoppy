@@ -672,7 +672,8 @@ async fn handle_app(
             if let OutputFormat::Json = format {
                 print_json_with_redaction(&app, redact)?;
             } else {
-                output::print_single_vertical(&app, format, redact);
+                let cmd = format!("container app get --id {id}");
+                output::print_single_vertical_with_cmd(&app, format, redact, Some(&cmd));
             }
         }
         ContainerAppAction::Create {

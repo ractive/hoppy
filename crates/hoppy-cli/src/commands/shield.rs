@@ -630,12 +630,14 @@ async fn handle_zone(
         ShieldZoneAction::Get { shield_zone_id } => {
             let zone = client.get_shield_zone(*shield_zone_id).await?;
             let redact_cfg = crate::redact::RedactConfig::default();
-            output::print_single_vertical(&zone, format, &redact_cfg);
+            let cmd = format!("shield zone get --id {shield_zone_id}");
+            output::print_single_vertical_with_cmd(&zone, format, &redact_cfg, Some(&cmd));
         }
         ShieldZoneAction::GetByPullzone { pull_zone_id } => {
             let zone = client.get_shield_zone_by_pull_zone(*pull_zone_id).await?;
             let redact_cfg = crate::redact::RedactConfig::default();
-            output::print_single_vertical(&zone, format, &redact_cfg);
+            let cmd = format!("shield zone get-by-pullzone --pull-zone-id {pull_zone_id}");
+            output::print_single_vertical_with_cmd(&zone, format, &redact_cfg, Some(&cmd));
         }
         ShieldZoneAction::Create { pull_zone_id } => {
             let zone = client.create_shield_zone(*pull_zone_id).await?;

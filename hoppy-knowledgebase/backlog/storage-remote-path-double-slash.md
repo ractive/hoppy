@@ -1,10 +1,13 @@
 ---
-title: "storage upload/rm display path with `zone//file` when --remote-path has a leading slash"
+title: >-
+  storage upload/rm display path with `zone//file` when --remote-path has a
+  leading slash
 type: backlog
 date: 2026-05-27
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-27 (post-iter-39)
+resolved-in: iter-40
 ---
 
 # Double-slash in storage display paths

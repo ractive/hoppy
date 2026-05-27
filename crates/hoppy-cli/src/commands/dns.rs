@@ -696,5 +696,6 @@ async fn handle_record(
 
 fn print_dns_zone(zone: &DnsZone, format: OutputFormat) {
     let redact_cfg = crate::redact::RedactConfig::default();
-    output::print_single_vertical(zone, format, &redact_cfg);
+    let cmd = format!("dns zone get --id {}", zone.id);
+    output::print_single_vertical_with_cmd(zone, format, &redact_cfg, Some(&cmd));
 }

@@ -8,7 +8,7 @@ tags:
   - cli
   - get-tables
   - storage
-status: planned
+status: completed
 branch: iter-40/dogfooding-2026-05-27-fixes
 ---
 
@@ -42,26 +42,26 @@ column:
 922 chars is catastrophic on any terminal; 176 wraps unreadably on the
 common 120-col case.
 
-- [ ] In the shared Field/Value renderer (likely
+- [x] In the shared Field/Value renderer (likely
       `crates/hoppy-cli/src/output/` or per-command in
       `crates/hoppy-cli/src/commands/`), detect when a value is a JSON
       array or object after serialisation and replace it with a summary
       in **table mode** only (JSON mode is untouched).
-- [ ] Summary shape: `<3 hostnames>` / `<object: 7 fields>` /
+- [x] Summary shape: `<3 hostnames>` / `<object: 7 fields>` /
       `<empty list>` — leading `<` and trailing `>` so the user can
       tell at a glance it's a placeholder, not data.
-- [ ] After the summary cell, append a stderr hint pointing the user at
+- [x] After the summary cell, append a stderr hint pointing the user at
       the JSON view:
       `tip: hoppy --format json container app get --id <id> | jq .repositorySettings`
       (one hint per get, with the most useful field named — or a single
       generic hint if there are multiple nested fields).
-- [ ] Audit pass on every `get` to find anywhere else nested JSON leaks
+- [x] Audit pass on every `get` to find anywhere else nested JSON leaks
       into a table cell: `pull-zone`, `storage-zone`, `container app`,
       `container endpoint`, `stream library`, `stream video`,
       `dns zone`, `shield zone`, `script`, `database`.
-- [ ] e2e snapshot updates for the new "summary cell" shape. Keep
+- [x] e2e snapshot updates for the new "summary cell" shape. Keep
       drift-tolerant per the iter-37 playbook.
-- [ ] Dogfooding pass: re-run all five worst-offender gets and confirm
+- [x] Dogfooding pass: re-run all five worst-offender gets and confirm
       output now fits a 120-col terminal.
 
 ### 2. `shield zone get` uses `--shield-zone-id` instead of `--id`
@@ -72,14 +72,14 @@ Every other `get` command takes `--id`. `shield zone get` requires
 typo, so this isn't a hard blocker — just unnecessary muscle-memory
 friction.
 
-- [ ] Rename the argument to `--id` in `crates/hoppy-cli/src/cli/shield.rs`
+- [x] Rename the argument to `--id` in `crates/hoppy-cli/src/cli/shield.rs`
       (or wherever the subcommand is defined). Keep `--shield-zone-id`
       as a clap alias for one or two releases.
-- [ ] Audit other resource-id args for the same shape:
+- [x] Audit other resource-id args for the same shape:
       `grep -rn '#\[arg(long' crates/hoppy-cli/src/cli/ | grep -E '\-\-\w+\-id'`
       and rename + alias each one that has a non-`--id` form on a
       single-resource get/update/delete.
-- [ ] e2e snapshot updates for changed `--help` text.
+- [x] e2e snapshot updates for changed `--help` text.
 
 ### 3. Storage display paths show `zone//path` when --remote-path has leading slash
 Source: [[../backlog/storage-remote-path-double-slash]]
@@ -89,11 +89,11 @@ prints `Uploaded local → Z//foo.txt`. The double slash is just a string
 join issue (`Z + "/" + "/foo.txt"`); the API resolves both forms the
 same, so functionality is unaffected.
 
-- [ ] In `crates/hoppy-cli/src/commands/storage.rs` (or wherever the
+- [x] In `crates/hoppy-cli/src/commands/storage.rs` (or wherever the
       upload/rm/download success messages are built), trim leading `/`
       from `remote_path` before joining: `remote_path.trim_start_matches('/')`.
-- [ ] Apply to all three commands: `upload`, `rm`, `download`.
-- [ ] e2e snapshot updates for the changed display strings.
+- [x] Apply to all three commands: `upload`, `rm`, `download`.
+- [x] e2e snapshot updates for the changed display strings.
 
 ## Out of scope
 
@@ -106,9 +106,9 @@ same, so functionality is unaffected.
 
 ## Acceptance
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean.
-- [ ] Dogfooding repro of all three issues against the live test account
+- [x] Dogfooding repro of all three issues against the live test account
       shows the fixed behaviour:
       - `container app get` fits comfortably on a 120-col terminal;
         `repositorySettings` rendered as `<object: N fields>` with a
@@ -117,7 +117,7 @@ same, so functionality is unaffected.
         argument").
       - `hoppy storage upload --remote-path /foo.txt …` prints
         `zone/foo.txt`, not `zone//foo.txt`.
-- [ ] All three backlog items closed (`status=resolved`) with a link to
+- [x] All three backlog items closed (`status=resolved`) with a link to
       this iteration.
 
 ## Related
