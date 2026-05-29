@@ -48,7 +48,7 @@ impl From<&DnsZone> for DnsZoneRow {
 // Display structs — DNS Records
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize, tabled::Tabled)]
+#[derive(Clone, serde::Serialize, tabled::Tabled)]
 struct DnsRecordRow {
     #[tabled(rename = "ID")]
     id: i64,
@@ -76,7 +76,6 @@ impl From<&DnsRecord> for DnsRecordRow {
             Some(DnsRecordType::MX | DnsRecordType::SRV) => r.priority.to_string(),
             _ => String::new(),
         };
-        let (value, _) = truncate_for_table(&r.value, TABLE_CELL_MAX);
         Self {
             id: r.id,
             record_type,
@@ -85,7 +84,7 @@ impl From<&DnsRecord> for DnsRecordRow {
             } else {
                 r.name.clone()
             },
-            value,
+            value: r.value.clone(),
             priority,
             ttl: r.ttl,
             disabled: r.disabled,
@@ -590,16 +589,23 @@ async fn handle_record(
                     .expect("failed to serialize to JSON");
                 println!("{json}");
             } else {
-                let any_truncated = zone
-                    .records
-                    .iter()
-                    .any(|r| r.value.chars().count() > TABLE_CELL_MAX);
                 let rows: Vec<DnsRecordRow> = zone.records.iter().map(DnsRecordRow::from).collect();
-                output::print_data(&rows, format);
-                if any_truncated {
-                    output::hints::tip(
-                        "some Value fields were truncated — use --format json for full values",
-                    );
+                if let OutputFormat::Table = format {
+                    let mut truncated_rows = rows.clone();
+                    let mut any_truncated = false;
+                    for row in &mut truncated_rows {
+                        let (v, t) = truncate_for_table(&row.value, TABLE_CELL_MAX);
+                        row.value = v;
+                        any_truncated |= t;
+                    }
+                    output::print_data(&truncated_rows, format);
+                    if any_truncated {
+                        output::hints::tip(
+                            "some Value fields were truncated — use --format json for full values",
+                        );
+                    }
+                } else {
+                    output::print_data(&rows, format);
                 }
             }
         }

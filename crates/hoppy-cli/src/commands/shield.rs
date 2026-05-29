@@ -102,7 +102,7 @@ impl From<&CustomWafRule> for WafRuleRow {
 // Display rows — WAF profiles
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize, tabled::Tabled)]
+#[derive(Clone, serde::Serialize, tabled::Tabled)]
 struct WafProfileRow {
     #[tabled(rename = "ID")]
     id: i32,
@@ -118,14 +118,12 @@ struct WafProfileRow {
 
 impl From<&WafProfileMinimal> for WafProfileRow {
     fn from(p: &WafProfileMinimal) -> Self {
-        let raw_desc = p.description.as_deref().unwrap_or("-");
-        let (description, _) = truncate_for_table(raw_desc, TABLE_CELL_MAX);
         Self {
             id: p.id,
             name: p.name.as_deref().unwrap_or("-").to_owned(),
             profile_category: p.profile_category.as_deref().unwrap_or("-").to_owned(),
             is_premium: p.is_premium,
-            description,
+            description: p.description.as_deref().unwrap_or("-").to_owned(),
         }
     }
 }
@@ -134,7 +132,7 @@ impl From<&WafProfileMinimal> for WafProfileRow {
 // Display rows — Rate limit rules
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize, tabled::Tabled)]
+#[derive(Clone, serde::Serialize, tabled::Tabled)]
 struct RateLimitRuleRow {
     #[tabled(rename = "ID")]
     id: i64,
@@ -150,12 +148,10 @@ struct RateLimitRuleRow {
 
 impl From<&RateLimitRule> for RateLimitRuleRow {
     fn from(r: &RateLimitRule) -> Self {
-        let raw_name = r.rule_name.as_deref().unwrap_or("-");
-        let (rule_name, _) = truncate_for_table(raw_name, TABLE_CELL_MAX);
         Self {
             id: r.id,
             shield_zone_id: r.shield_zone_id,
-            rule_name,
+            rule_name: r.rule_name.as_deref().unwrap_or("-").to_owned(),
             request_count: r
                 .rule_configuration
                 .as_ref()
@@ -733,15 +729,23 @@ async fn handle_waf(
                     serde_json::to_string_pretty(&profiles).expect("failed to serialize to JSON")
                 );
             } else {
-                let any_truncated = profiles.iter().any(|p| {
-                    p.description.as_deref().unwrap_or("").chars().count() > TABLE_CELL_MAX
-                });
                 let rows: Vec<WafProfileRow> = profiles.iter().map(WafProfileRow::from).collect();
-                output::print_data(&rows, format);
-                if any_truncated {
-                    output::hints::tip(
-                        "some Description values were truncated — use --format json for full values",
-                    );
+                if let OutputFormat::Table = format {
+                    let mut truncated_rows = rows.clone();
+                    let mut any_truncated = false;
+                    for row in &mut truncated_rows {
+                        let (v, t) = truncate_for_table(&row.description, TABLE_CELL_MAX);
+                        row.description = v;
+                        any_truncated |= t;
+                    }
+                    output::print_data(&truncated_rows, format);
+                    if any_truncated {
+                        output::hints::tip(
+                            "some Description values were truncated — use --format json for full values",
+                        );
+                    }
+                } else {
+                    output::print_data(&rows, format);
                 }
             }
         }
@@ -936,15 +940,23 @@ async fn handle_rate_limit(
     match action {
         ShieldRateLimitAction::List { shield_zone_id } => {
             let rules = client.list_rate_limit_rules(*shield_zone_id).await?;
-            let any_truncated = rules
-                .iter()
-                .any(|r| r.rule_name.as_deref().unwrap_or("").chars().count() > TABLE_CELL_MAX);
             let rows: Vec<RateLimitRuleRow> = rules.iter().map(RateLimitRuleRow::from).collect();
-            output::print_data(&rows, format);
-            if any_truncated {
-                output::hints::tip(
-                    "some Name values were truncated — use --format json for full values",
-                );
+            if let OutputFormat::Table = format {
+                let mut truncated_rows = rows.clone();
+                let mut any_truncated = false;
+                for row in &mut truncated_rows {
+                    let (v, t) = truncate_for_table(&row.rule_name, TABLE_CELL_MAX);
+                    row.rule_name = v;
+                    any_truncated |= t;
+                }
+                output::print_data(&truncated_rows, format);
+                if any_truncated {
+                    output::hints::tip(
+                        "some Name values were truncated — use --format json for full values",
+                    );
+                }
+            } else {
+                output::print_data(&rows, format);
             }
         }
         ShieldRateLimitAction::Get { id } => {

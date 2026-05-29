@@ -211,16 +211,20 @@ fn format_vertical_value(v: &serde_json::Value) -> (String, bool) {
 /// Values longer than this are truncated with a trailing `…`.
 pub const TABLE_CELL_MAX: usize = 60;
 
-/// Truncate a string to at most `max` Unicode scalar values, appending `…`
-/// if the string was shortened.  Returns `(rendered, was_truncated)`.
+/// Truncate a string so the rendered width is at most `max` Unicode scalar
+/// values, appending `…` (counted in `max`) when shortened. Returns
+/// `(rendered, was_truncated)`.
 ///
 /// Truncation is always on character boundaries — never mid-codepoint.
+/// Requires `max >= 1` so there is room for the ellipsis.
 pub fn truncate_for_table(s: &str, max: usize) -> (String, bool) {
+    debug_assert!(max >= 1, "truncate_for_table requires max >= 1");
     let char_count = s.chars().count();
     if char_count <= max {
         (s.to_owned(), false)
     } else {
-        let truncated: String = s.chars().take(max).collect();
+        let keep = max.saturating_sub(1);
+        let truncated: String = s.chars().take(keep).collect();
         (format!("{truncated}…"), true)
     }
 }
@@ -378,8 +382,8 @@ mod tests {
         let s = "a".repeat(70);
         let (out, truncated) = truncate_for_table(&s, TABLE_CELL_MAX);
         assert!(truncated);
-        // 60 'a's + '…'
-        assert_eq!(out.chars().count(), 61);
+        // Rendered width must not exceed max: 59 'a's + '…' = 60 chars.
+        assert_eq!(out.chars().count(), TABLE_CELL_MAX);
         assert!(out.ends_with('…'));
     }
 
@@ -389,8 +393,8 @@ mod tests {
         let s = "😀".repeat(70);
         let (out, truncated) = truncate_for_table(&s, TABLE_CELL_MAX);
         assert!(truncated);
-        // 60 emoji + '…' — 61 chars, but many more bytes
-        assert_eq!(out.chars().count(), 61);
+        // 59 emoji + '…' = 60 chars (in scalar values), but many more bytes.
+        assert_eq!(out.chars().count(), TABLE_CELL_MAX);
         assert!(out.ends_with('…'));
     }
 }
