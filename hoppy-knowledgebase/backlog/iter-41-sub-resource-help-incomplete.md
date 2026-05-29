@@ -2,9 +2,10 @@
 title: "iter-41 #3: sub-resource `--id` help-text audit incomplete (only `edge-rule list` was fixed)"
 type: backlog
 date: 2026-05-29
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-29 (post-iter-41)
+resolved-by: "[[iterations/iteration-42-dogfooding-2026-05-29-fixes]]"
 ---
 
 # iter-41 #3 missed three of the four examples in its own plan

@@ -1,6 +1,5 @@
 ---
 source: crates/hoppy-cli/tests/e2e/cli_container.rs
-assertion_line: 2209
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 Stream live syslog output from a Magic Containers application.
@@ -17,23 +16,23 @@ Tunnel options ============== • bore (default)   — shells out to the `bore` 
 
 • --tunnel-host <host:port> You have already opened a tunnel (e.g. `ssh -R 5514:localhost:5514 user@vps.example.com`) and want hoppy to register that public address with Bunny.  Pass the public endpoint as host:port.
 
-Examples ======== # Default — bore tunnel through bore.pub hoppy container logs --app-id my-app-id
+Examples ======== # Default — bore tunnel through bore.pub hoppy container logs --id my-app-id
 
-# No tunnel — use your own ingress hoppy container logs --app-id my-app-id --tunnel none
+# No tunnel — use your own ingress hoppy container logs --id my-app-id --tunnel none
 
-# Pre-established SSH tunnel ssh -R 5514:localhost:5514 user@vps.example.com & hoppy container logs --app-id my-app-id --tunnel-host vps.example.com:5514
+# Pre-established SSH tunnel ssh -R 5514:localhost:5514 user@vps.example.com & hoppy container logs --id my-app-id --tunnel-host vps.example.com:5514
 
-Usage: hoppy container logs [OPTIONS] --app-id <APP_ID>
+Usage: hoppy container logs [OPTIONS] --id <ID>
 
 Options:
-      --app-id <APP_ID>
-          Application ID to stream logs from
-
       --format <FORMAT>
           Output format
           
           [default: table]
           [possible values: json, table, text]
+
+      --id <ID>
+          Container app ID to stream logs from
 
       --debug
           Enable debug output (shows HTTP requests)

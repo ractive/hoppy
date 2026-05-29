@@ -1,10 +1,13 @@
 ---
-title: "sub-resource commands use three different arg names for parent ID (`--id`, `--app-id`, `--zone-id`)"
+title: >-
+  sub-resource commands use three different arg names for parent ID (`--id`,
+  `--app-id`, `--zone-id`)
 type: backlog
 date: 2026-05-29
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-29 (post-iter-41)
+resolved-by: "[[iterations/iteration-42-dogfooding-2026-05-29-fixes]]"
 ---
 
 # Parent-resource arg naming diverges across surfaces
