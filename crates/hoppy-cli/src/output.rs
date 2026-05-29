@@ -181,17 +181,51 @@ fn format_vertical_value(v: &serde_json::Value) -> (String, bool) {
                     .join(", ");
                 (joined, false)
             } else {
-                (format!("<{} items>", arr.len()), true)
+                let n = arr.len();
+                let label = if n == 1 {
+                    "<1 item>".to_owned()
+                } else {
+                    format!("<{n} items>")
+                };
+                (label, true)
             }
         }
         serde_json::Value::Object(obj) => {
             if obj.is_empty() {
                 ("<empty object>".to_owned(), false)
             } else {
-                (format!("<object: {} fields>", obj.len()), true)
+                let n = obj.len();
+                let label = if n == 1 {
+                    "<object: 1 field>".to_owned()
+                } else {
+                    format!("<object: {n} fields>")
+                };
+                (label, true)
             }
         }
         other => (other.to_string(), false),
+    }
+}
+
+/// Maximum cell width for text columns in Table mode.
+/// Values longer than this are truncated with a trailing `…`.
+pub const TABLE_CELL_MAX: usize = 60;
+
+/// Truncate a string so the rendered width is at most `max` Unicode scalar
+/// values, appending `…` (counted in `max`) when shortened. Returns
+/// `(rendered, was_truncated)`.
+///
+/// Truncation is always on character boundaries — never mid-codepoint.
+/// Requires `max >= 1` so there is room for the ellipsis.
+pub fn truncate_for_table(s: &str, max: usize) -> (String, bool) {
+    debug_assert!(max >= 1, "truncate_for_table requires max >= 1");
+    let char_count = s.chars().count();
+    if char_count <= max {
+        (s.to_owned(), false)
+    } else {
+        let keep = max.saturating_sub(1);
+        let truncated: String = s.chars().take(keep).collect();
+        (format!("{truncated}…"), true)
     }
 }
 
@@ -263,5 +297,104 @@ pub mod hints {
         for n in iter {
             eprintln!("  or: {n}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    // -----------------------------------------------------------------------
+    // format_vertical_value — plural/singular for items and fields
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn vertical_array_zero_items_is_empty_list() {
+        let v = json!([]);
+        let (rendered, nested) = format_vertical_value(&v);
+        assert_eq!(rendered, "<empty list>");
+        assert!(!nested);
+    }
+
+    #[test]
+    fn vertical_array_one_non_primitive_item_is_singular() {
+        let v = json!([{"a": 1}]);
+        let (rendered, nested) = format_vertical_value(&v);
+        assert_eq!(rendered, "<1 item>");
+        assert!(nested);
+    }
+
+    #[test]
+    fn vertical_array_two_non_primitive_items_is_plural() {
+        let v = json!([{"a": 1}, {"b": 2}]);
+        let (rendered, nested) = format_vertical_value(&v);
+        assert_eq!(rendered, "<2 items>");
+        assert!(nested);
+    }
+
+    #[test]
+    fn vertical_object_zero_fields_is_empty_object() {
+        let v = json!({});
+        let (rendered, nested) = format_vertical_value(&v);
+        assert_eq!(rendered, "<empty object>");
+        assert!(!nested);
+    }
+
+    #[test]
+    fn vertical_object_one_field_is_singular() {
+        let v = json!({"x": 1});
+        let (rendered, nested) = format_vertical_value(&v);
+        assert_eq!(rendered, "<object: 1 field>");
+        assert!(nested);
+    }
+
+    #[test]
+    fn vertical_object_two_fields_is_plural() {
+        let v = json!({"x": 1, "y": 2});
+        let (rendered, nested) = format_vertical_value(&v);
+        assert_eq!(rendered, "<object: 2 fields>");
+        assert!(nested);
+    }
+
+    // -----------------------------------------------------------------------
+    // truncate_for_table
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn truncate_short_string_unchanged() {
+        let s = "hello";
+        let (out, truncated) = truncate_for_table(s, 10);
+        assert_eq!(out, "hello");
+        assert!(!truncated);
+    }
+
+    #[test]
+    fn truncate_exact_length_unchanged() {
+        let s = "abcde";
+        let (out, truncated) = truncate_for_table(s, 5);
+        assert_eq!(out, "abcde");
+        assert!(!truncated);
+    }
+
+    #[test]
+    fn truncate_long_string_adds_ellipsis() {
+        let s = "a".repeat(70);
+        let (out, truncated) = truncate_for_table(&s, TABLE_CELL_MAX);
+        assert!(truncated);
+        // Rendered width must not exceed max: 59 'a's + '…' = 60 chars.
+        assert_eq!(out.chars().count(), TABLE_CELL_MAX);
+        assert!(out.ends_with('…'));
+    }
+
+    #[test]
+    fn truncate_unicode_safe() {
+        // Each emoji is one char (multiple bytes); we must not split mid-codepoint.
+        let s = "😀".repeat(70);
+        let (out, truncated) = truncate_for_table(&s, TABLE_CELL_MAX);
+        assert!(truncated);
+        // 59 emoji + '…' = 60 chars (in scalar values), but many more bytes.
+        assert_eq!(out.chars().count(), TABLE_CELL_MAX);
+        assert!(out.ends_with('…'));
     }
 }

@@ -2,7 +2,7 @@ use crate::auth;
 use crate::cli::{
     DnsAction, DnsDnssecAction, DnsRecordAction, DnsScanAction, DnsZoneAction, OutputFormat,
 };
-use crate::output::{self, PaginatedListJson};
+use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
@@ -48,7 +48,7 @@ impl From<&DnsZone> for DnsZoneRow {
 // Display structs — DNS Records
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize, tabled::Tabled)]
+#[derive(Clone, serde::Serialize, tabled::Tabled)]
 struct DnsRecordRow {
     #[tabled(rename = "ID")]
     id: i64,
@@ -590,7 +590,23 @@ async fn handle_record(
                 println!("{json}");
             } else {
                 let rows: Vec<DnsRecordRow> = zone.records.iter().map(DnsRecordRow::from).collect();
-                output::print_data(&rows, format);
+                if let OutputFormat::Table = format {
+                    let mut truncated_rows = rows.clone();
+                    let mut any_truncated = false;
+                    for row in &mut truncated_rows {
+                        let (v, t) = truncate_for_table(&row.value, TABLE_CELL_MAX);
+                        row.value = v;
+                        any_truncated |= t;
+                    }
+                    output::print_data(&truncated_rows, format);
+                    if any_truncated {
+                        output::hints::tip(
+                            "some Value fields were truncated — use --format json for full values",
+                        );
+                    }
+                } else {
+                    output::print_data(&rows, format);
+                }
             }
         }
         DnsRecordAction::Add {

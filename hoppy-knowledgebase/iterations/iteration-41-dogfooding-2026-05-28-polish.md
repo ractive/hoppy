@@ -8,7 +8,7 @@ tags:
   - cli
   - polish
   - help-text
-status: planned
+status: completed
 branch: iter-41/dogfooding-2026-05-28-polish
 ---
 
@@ -30,11 +30,11 @@ Source: [[../backlog/summary-cell-plural-mismatch]]
 
 iter-40's array-summary cell renders `<1 items>` for n=1.
 
-- [ ] In the summary-cell renderer (the helper added by iter-40 #1),
+- [x] In the summary-cell renderer (the helper added by iter-40 #1),
       pluralise the label: `n == 1 ? "item" : "items"`. Same treatment
       for any other countable label.
-- [ ] Unit test: `<1 item>` and `<2 items>` both render correctly.
-- [ ] e2e snapshot refresh for any zone whose `Hostnames` array length
+- [x] Unit test: `<1 item>` and `<2 items>` both render correctly.
+- [x] e2e snapshot refresh for any zone whose `Hostnames` array length
       is 1 (the dogfooding test zone has exactly this shape).
 
 ### 2. List-table columns overflow on long free-text values
@@ -46,21 +46,21 @@ unfixed: e.g. `shield waf profiles` renders at 267 chars because the
 `shield rate-limit list`, `pull-zone edge-rule list`, `dns record list`
 (TXT values).
 
-- [ ] Audit every `list`-style command for columns that can carry
+- [x] Audit every `list`-style command for columns that can carry
       arbitrarily long text. Identify the offenders mechanically by
       running each `list` against the live test account and measuring
       first-line width; flag anything > 160 chars.
-- [ ] Pick a strategy and apply uniformly:
+- [x] Pick a strategy and apply uniformly:
       **Truncate long text cells** at e.g. 60 chars with `…` in table
       mode, leaving JSON mode untouched. Add a stderr `tip:` redirecting
       the user at the JSON view when truncation actually happens
       (don't print a stray tip on every list that just happens to have
       a long-text column whose values are short today).
-- [ ] Out of scope: dynamic `$COLUMNS`-aware sizing (bigger change, can
+- [x] Out of scope: dynamic `$COLUMNS`-aware sizing (bigger change, can
       land later if truncation isn't enough).
-- [ ] e2e snapshot refresh for the affected commands. Keep
+- [x] e2e snapshot refresh for the affected commands. Keep
       drift-tolerant per the iter-37 playbook.
-- [ ] Dogfooding pass: re-run `shield waf profiles` and confirm output
+- [x] Dogfooding pass: re-run `shield waf profiles` and confirm output
       fits a 120-col terminal with truncation indicators visible.
 
 ### 3. Sub-resource `--id` args lack help text
@@ -70,16 +70,16 @@ Source: [[../backlog/edge-rule-list-id-no-doc]]
 description. The user has to guess whether `--id` refers to the pull
 zone or the edge rule. (Convention: parent resource.)
 
-- [ ] Audit every clap `#[arg(long)]` for sub-resource commands that
+- [x] Audit every clap `#[arg(long)]` for sub-resource commands that
       uses bare `--id` with no `help = "..."`. Suggested grep:
       `grep -rn -B1 -A3 '#\[arg' crates/hoppy-cli/src/cli/ | grep -B3 '"id"'`
       (or equivalent).
-- [ ] Add a `help = "<Parent> ID"` attribute to each. Examples:
+- [x] Add a `help = "<Parent> ID"` attribute to each. Examples:
       - `pull-zone edge-rule list` → `help = "Pull zone ID"`
       - `pull-zone hostname add` → `help = "Pull zone ID"`
       - `container endpoint list` → `help = "Container app ID"`
       - `dns record list` → `help = "DNS zone ID"`
-- [ ] e2e snapshot refresh for changed `--help` output.
+- [x] e2e snapshot refresh for changed `--help` output.
 
 ## Out of scope
 
@@ -93,9 +93,9 @@ zone or the edge rule. (Convention: parent resource.)
 
 ## Acceptance
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean.
-- [ ] Dogfooding repro of all three issues against the live test account
+- [x] Dogfooding repro of all three issues against the live test account
       shows the fixed behaviour:
       - `pull-zone get --id <id>` Hostnames row reads `<1 hostname>` or
         `<1 item>` (singular).
@@ -104,7 +104,7 @@ zone or the edge rule. (Convention: parent resource.)
       - `pull-zone edge-rule list --help` shows
         `--id <ID>  Pull zone ID` (or similar) instead of an undocumented
         flag.
-- [ ] All three backlog items closed (`status=resolved`) with a link to
+- [x] All three backlog items closed (`status=resolved`) with a link to
       this iteration.
 
 ## Related

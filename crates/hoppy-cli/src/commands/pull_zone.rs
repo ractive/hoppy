@@ -582,7 +582,7 @@ fn print_pull_zone(pz: &PullZone, format: OutputFormat, redact_cfg: &RedactConfi
 // ---------------------------------------------------------------------------
 
 /// Compact table row for edge rule list output.
-#[derive(serde::Serialize, tabled::Tabled)]
+#[derive(Clone, serde::Serialize, tabled::Tabled)]
 struct EdgeRuleRow {
     #[tabled(rename = "GUID")]
     guid: String,
@@ -687,7 +687,26 @@ async fn handle_edge_rule(
                 println!("{json}");
             } else {
                 let rows: Vec<EdgeRuleRow> = pz.edge_rules.iter().map(EdgeRuleRow::from).collect();
-                output::print_data(&rows, format);
+                if let OutputFormat::Table = format {
+                    let mut truncated_rows = rows.clone();
+                    let mut any_truncated = false;
+                    for row in &mut truncated_rows {
+                        let (v, t) = crate::output::truncate_for_table(
+                            &row.description,
+                            crate::output::TABLE_CELL_MAX,
+                        );
+                        row.description = v;
+                        any_truncated |= t;
+                    }
+                    output::print_data(&truncated_rows, format);
+                    if any_truncated {
+                        output::hints::tip(
+                            "some Description values were truncated — use --format json for full values",
+                        );
+                    }
+                } else {
+                    output::print_data(&rows, format);
+                }
             }
         }
         EdgeRuleAction::Add {

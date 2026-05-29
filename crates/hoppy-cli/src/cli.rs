@@ -630,11 +630,13 @@ pub enum PullZoneIpAction {
 pub enum EdgeRuleAction {
     /// List edge rules on a pull zone
     List {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
     },
     /// Add an edge rule to a pull zone
     Add {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// Rule description
@@ -658,6 +660,7 @@ pub enum EdgeRuleAction {
     },
     /// Update an existing edge rule
     Update {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// GUID of the edge rule to update
@@ -684,6 +687,7 @@ pub enum EdgeRuleAction {
     },
     /// Delete an edge rule from a pull zone
     Delete {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// GUID of the edge rule to delete
@@ -692,6 +696,7 @@ pub enum EdgeRuleAction {
     },
     /// Enable or disable an edge rule
     Enable {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// GUID of the edge rule
@@ -718,6 +723,7 @@ pub enum PullZoneHostnameAction {
     ///   hoppy pull-zone hostname force-ssl --id 1001 \
     ///     --hostname cdn.example.com --enabled true
     Add {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -725,6 +731,7 @@ pub enum PullZoneHostnameAction {
     },
     /// Remove a custom hostname
     Remove {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -738,6 +745,7 @@ pub enum PullZoneHostnameAction {
     },
     /// Set Force SSL on a hostname
     ForceSsl {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -748,6 +756,7 @@ pub enum PullZoneHostnameAction {
     },
     /// Add a custom SSL certificate (certificate and key must be Base64-encoded PEM)
     AddCert {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -761,6 +770,7 @@ pub enum PullZoneHostnameAction {
     },
     /// Remove the SSL certificate from a hostname
     RemoveCert {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -1238,6 +1248,7 @@ pub enum StreamLibraryAction {
 pub enum StreamVideoAction {
     /// List videos in a library
     List {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
         /// Page number (1-based)
@@ -1258,13 +1269,16 @@ pub enum StreamVideoAction {
     },
     /// Get a specific video
     Get {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
     },
     /// Upload a video file (two-step: create + upload binary)
     Upload {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
         /// Local file path to upload
@@ -1279,8 +1293,10 @@ pub enum StreamVideoAction {
     },
     /// Update video title or collection
     Update {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         /// New title for the video
@@ -1292,6 +1308,7 @@ pub enum StreamVideoAction {
     },
     /// Fetch (ingest) a video from a remote URL
     Fetch {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
         /// Public URL to pull the video from
@@ -1303,8 +1320,10 @@ pub enum StreamVideoAction {
     },
     /// Delete a video
     Delete {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
     },
@@ -1315,8 +1334,10 @@ pub enum StreamVideoAction {
     },
     /// Trigger transcription / translation for a video
     Transcribe {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         /// Force re-transcribe even if captions exist
@@ -1343,15 +1364,19 @@ pub enum StreamVideoAction {
     },
     /// Get the engagement heatmap for a video
     Heatmap {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
     },
     /// Re-encode a video (optionally for a specific codec)
     Reencode {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         /// Optional output codec (x264, vp9, hevc, av1)
@@ -1360,8 +1385,10 @@ pub enum StreamVideoAction {
     },
     /// Repackage a video's HLS/DASH manifests
     Repackage {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         /// Discard previous file versions (default: keep)
@@ -1370,8 +1397,10 @@ pub enum StreamVideoAction {
     },
     /// Trigger smart-generate (AI title/description/chapters/moments)
     SmartGenerate {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         #[arg(long)]
@@ -1387,8 +1416,10 @@ pub enum StreamVideoAction {
     },
     /// Set the thumbnail for a video from a URL
     SetThumbnail {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         #[arg(long)]
@@ -1401,8 +1432,10 @@ pub enum StreamVideoAction {
     },
     /// Show the storage breakdown for a video
     Storage {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
     },
@@ -1412,15 +1445,19 @@ pub enum StreamVideoAction {
 pub enum StreamResolutionsAction {
     /// List configured/available resolutions for a video
     List {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
     },
     /// Cleanup video resolutions/files (destructive — confirmation required unless --yes or --dry-run)
     Cleanup {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         /// Comma-separated list of resolutions to delete (e.g. `720p,480p`)
@@ -1445,8 +1482,10 @@ pub enum StreamResolutionsAction {
 pub enum StreamCaptionAction {
     /// Add a caption track to a video
     Add {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         /// BCP 47 language code (e.g. en, de, fr)
@@ -1458,8 +1497,10 @@ pub enum StreamCaptionAction {
     },
     /// Delete a caption track from a video
     Delete {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Video GUID
         #[arg(long)]
         video_id: String,
         /// BCP 47 language code
@@ -1472,6 +1513,7 @@ pub enum StreamCaptionAction {
 pub enum StreamCollectionAction {
     /// List collections in a library
     List {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
         /// Page number (1-based)
@@ -1489,13 +1531,16 @@ pub enum StreamCollectionAction {
     },
     /// Get a specific collection
     Get {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Collection GUID
         #[arg(long)]
         collection_id: String,
     },
     /// Create a new collection
     Create {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
         #[arg(long)]
@@ -1503,8 +1548,10 @@ pub enum StreamCollectionAction {
     },
     /// Update a collection
     Update {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Collection GUID
         #[arg(long)]
         collection_id: String,
         /// New name for the collection
@@ -1513,8 +1560,10 @@ pub enum StreamCollectionAction {
     },
     /// Delete a collection
     Delete {
+        /// Video library ID
         #[arg(long)]
         library_id: i64,
+        /// Collection GUID
         #[arg(long)]
         collection_id: String,
     },
@@ -1601,13 +1650,16 @@ pub enum ShieldMetricsAction {
     },
     /// Get rate limit metrics for a single rule
     RateLimit {
+        /// Rate limit rule ID
         #[arg(long)]
         id: i64,
     },
     /// Get WAF rule metrics for a specific rule in a Shield Zone
     WafRule {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
+        /// WAF rule ID
         #[arg(long)]
         rule_id: i64,
     },
@@ -1629,6 +1681,7 @@ pub enum ShieldZoneAction {
     List,
     /// Get a Shield Zone by ID
     Get {
+        /// Shield zone ID
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
@@ -1644,6 +1697,7 @@ pub enum ShieldZoneAction {
     },
     /// Update a Shield Zone's configuration
     Update {
+        /// Shield zone ID
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Enable or disable WAF
@@ -1673,16 +1727,19 @@ pub enum ShieldWafAction {
     Profiles,
     /// List custom WAF rules for a Shield Zone
     ListRules {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
     },
     /// Get a custom WAF rule by ID
     GetRule {
+        /// WAF rule ID
         #[arg(long)]
         id: i64,
     },
     /// Add a custom WAF rule
     AddRule {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
         /// Rule name
@@ -1703,6 +1760,7 @@ pub enum ShieldWafAction {
     },
     /// Update a custom WAF rule
     UpdateRule {
+        /// WAF rule ID
         #[arg(long)]
         id: i64,
         /// Rule name
@@ -1711,11 +1769,13 @@ pub enum ShieldWafAction {
     },
     /// Delete a custom WAF rule
     DeleteRule {
+        /// WAF rule ID
         #[arg(long)]
         id: i64,
     },
     /// List triggered WAF rules for a Shield Zone
     TriggeredRules {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
     },
@@ -1821,16 +1881,19 @@ pub enum ShieldUploadScanningAction {
 pub enum ShieldRateLimitAction {
     /// List rate limit rules for a Shield Zone
     List {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
     },
     /// Get a rate limit rule by ID
     Get {
+        /// Rate limit rule ID
         #[arg(long)]
         id: i64,
     },
     /// Create a rate limit rule
     Create {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
         /// Rule name
@@ -1863,6 +1926,7 @@ pub enum ShieldRateLimitAction {
     },
     /// Update a rate limit rule
     Update {
+        /// Rate limit rule ID
         #[arg(long)]
         id: i64,
         /// Rule name
@@ -1871,6 +1935,7 @@ pub enum ShieldRateLimitAction {
     },
     /// Delete a rate limit rule
     Delete {
+        /// Rate limit rule ID
         #[arg(long)]
         id: i64,
     },
@@ -1885,13 +1950,16 @@ pub enum ShieldAccessListAction {
     },
     /// Get a custom access list by ID
     Get {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
+        /// Access list ID
         #[arg(long)]
         id: i64,
     },
     /// Create a custom access list
     Create {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
         /// List name
@@ -1906,8 +1974,10 @@ pub enum ShieldAccessListAction {
     },
     /// Update a custom access list
     Update {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
+        /// Access list ID
         #[arg(long)]
         id: i64,
         /// List name
@@ -1919,13 +1989,16 @@ pub enum ShieldAccessListAction {
     },
     /// Delete a custom access list
     Delete {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
+        /// Access list ID
         #[arg(long)]
         id: i64,
     },
     /// Update access list configuration (enabled/action)
     UpdateConfig {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
         /// Configuration ID

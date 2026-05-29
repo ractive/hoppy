@@ -5,7 +5,7 @@ use crate::cli::{
     ShieldUploadScanningAction, ShieldWafAction, ShieldZoneAction,
 };
 use crate::date;
-use crate::output::{self, PaginatedListJson};
+use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::shield::types::{
     AccessListAction, AccessListDetails, AccessListType, BotDetectionConfigurationState,
@@ -102,7 +102,7 @@ impl From<&CustomWafRule> for WafRuleRow {
 // Display rows — WAF profiles
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize, tabled::Tabled)]
+#[derive(Clone, serde::Serialize, tabled::Tabled)]
 struct WafProfileRow {
     #[tabled(rename = "ID")]
     id: i32,
@@ -132,7 +132,7 @@ impl From<&WafProfileMinimal> for WafProfileRow {
 // Display rows — Rate limit rules
 // ---------------------------------------------------------------------------
 
-#[derive(serde::Serialize, tabled::Tabled)]
+#[derive(Clone, serde::Serialize, tabled::Tabled)]
 struct RateLimitRuleRow {
     #[tabled(rename = "ID")]
     id: i64,
@@ -730,7 +730,23 @@ async fn handle_waf(
                 );
             } else {
                 let rows: Vec<WafProfileRow> = profiles.iter().map(WafProfileRow::from).collect();
-                output::print_data(&rows, format);
+                if let OutputFormat::Table = format {
+                    let mut truncated_rows = rows.clone();
+                    let mut any_truncated = false;
+                    for row in &mut truncated_rows {
+                        let (v, t) = truncate_for_table(&row.description, TABLE_CELL_MAX);
+                        row.description = v;
+                        any_truncated |= t;
+                    }
+                    output::print_data(&truncated_rows, format);
+                    if any_truncated {
+                        output::hints::tip(
+                            "some Description values were truncated — use --format json for full values",
+                        );
+                    }
+                } else {
+                    output::print_data(&rows, format);
+                }
             }
         }
         ShieldWafAction::ListRules { shield_zone_id } => {
@@ -925,7 +941,23 @@ async fn handle_rate_limit(
         ShieldRateLimitAction::List { shield_zone_id } => {
             let rules = client.list_rate_limit_rules(*shield_zone_id).await?;
             let rows: Vec<RateLimitRuleRow> = rules.iter().map(RateLimitRuleRow::from).collect();
-            output::print_data(&rows, format);
+            if let OutputFormat::Table = format {
+                let mut truncated_rows = rows.clone();
+                let mut any_truncated = false;
+                for row in &mut truncated_rows {
+                    let (v, t) = truncate_for_table(&row.rule_name, TABLE_CELL_MAX);
+                    row.rule_name = v;
+                    any_truncated |= t;
+                }
+                output::print_data(&truncated_rows, format);
+                if any_truncated {
+                    output::hints::tip(
+                        "some Name values were truncated — use --format json for full values",
+                    );
+                }
+            } else {
+                output::print_data(&rows, format);
+            }
         }
         ShieldRateLimitAction::Get { id } => {
             let rule = client.get_rate_limit_rule(*id).await?;
