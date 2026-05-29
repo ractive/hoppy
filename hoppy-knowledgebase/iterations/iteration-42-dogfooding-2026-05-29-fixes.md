@@ -8,7 +8,7 @@ tags:
   - cli
   - help-text
   - consistency
-status: planned
+status: in-progress
 branch: iter-42/dogfooding-2026-05-29-fixes
 ---
 
@@ -39,16 +39,16 @@ hoppy container endpoint list --help   → --app-id <APP_ID>    (no help)
 hoppy dns record list --help           → --zone-id <ZONE_ID>  (no help)
 ```
 
-- [ ] Add `help = "Pull zone ID"` to the `--id` arg on every
+- [x] Add `help = "Pull zone ID"` to the `--id` arg on every
       `pull-zone hostname <verb>` subcommand (`add`, `remove`,
       `load-free-cert`, `force-ssl`, `add-cert`, `remove-cert`).
-- [ ] Add `help = "Container app ID"` to the `--app-id` arg on every
+- [x] Add `help = "Container app ID"` to the `--app-id` arg on every
       `container endpoint <verb>` and any other `container <noun> <verb>`
       that takes an `--app-id`.
-- [ ] Add `help = "DNS zone ID"` to the `--zone-id` arg on every
+- [x] Add `help = "DNS zone ID"` to the `--zone-id` arg on every
       `dns record <verb>` and any other `dns <noun> <verb>` that takes
       a `--zone-id`.
-- [ ] Broader sweep: re-run the audit grep iter-41 §3 specified and
+- [x] Broader sweep: re-run the audit grep iter-41 §3 specified and
       flag any other sub-resource args that still lack a `help = "..."`.
       Don't trust the "just these four" scope this time — the iter-41
       miss happened precisely because the audit step was skipped.
@@ -56,7 +56,7 @@ hoppy dns record list --help           → --zone-id <ZONE_ID>  (no help)
       grep -rn -B1 -A3 '#\[arg' crates/hoppy-cli/src/cli/ \
         | grep -B3 '"id"\|"app_id"\|"zone_id"\|"library_id"\|"video_id"\|"record_id"'
       ```
-- [ ] e2e snapshot refresh for changed `--help` output across all
+- [x] e2e snapshot refresh for changed `--help` output across all
       affected subcommands.
 
 ### 2. Unify parent-resource arg name across sub-resource commands
@@ -75,23 +75,23 @@ Pick **Option A from the backlog**: rename to `--id` everywhere, keep
 the old name as a clap alias for back-compat. Matches iter-40 §2's
 top-level `--id` unification.
 
-- [ ] In `crates/hoppy-cli/src/cli/container.rs`, rename the
+- [x] In `crates/hoppy-cli/src/cli/container.rs`, rename the
       `--app-id` arg on `endpoint <verb>` (and any other
       `container <noun> <verb>` that takes it) to `--id`, with
       `alias("app-id")`.
-- [ ] In `crates/hoppy-cli/src/cli/dns.rs`, rename `--zone-id` on
+- [x] In `crates/hoppy-cli/src/cli/dns.rs`, rename `--zone-id` on
       `record <verb>` (and adjacent commands like `dnssec`, `export`,
       `import`) to `--id`, with `alias("zone-id")`.
-- [ ] Audit other surfaces (`stream library`, `stream video`,
+- [x] Audit other surfaces (`stream library`, `stream video`,
       `script`, `database`, `shield waf`) for the same pattern. Apply
       the same rename + alias.
-- [ ] **Don't** rename ambiguity-sensitive cases — if a sub-resource
+- [x] **Don't** rename ambiguity-sensitive cases — if a sub-resource
       command takes both a parent ID AND its own ID (e.g.
       `pull-zone edge-rule update --id <pz> --rule-id <r>`), leave
       both names alone. The rename is for commands where there is no
       ambiguity.
-- [ ] e2e snapshot refresh for changed `--help` output.
-- [ ] Dogfooding pass: re-run the four canonical commands with `--id`
+- [x] e2e snapshot refresh for changed `--help` output.
+- [x] Dogfooding pass: re-run the four canonical commands with `--id`
       and confirm they accept it; also re-run with the old names and
       confirm aliases still work.
 
@@ -105,23 +105,23 @@ camelCase, with non-obvious mappings (`Category` → `profileCategory`,
 column, but a user querying `.Description` against the JSON output
 gets `null` — they need `.description`.
 
-- [ ] **Smallest useful fix**: update the iter-41 truncation tip so it
+- [x] **Smallest useful fix**: update the iter-41 truncation tip so it
       cites the JSON key, not the column label, when the two differ.
       E.g.:
       `tip: some values were truncated — use --format json (key: .description)`
       One-line tweak in the truncation tip helper.
-- [ ] Identify other commands with the same Title↔camel mismatch by
+- [x] Identify other commands with the same Title↔camel mismatch by
       running each `list` and comparing column headers vs JSON keys.
       Limit to commands whose JSON shape is camelCase (containers,
       most shield endpoints).
-- [ ] For those commands, audit whether the table renderer is using a
+- [x] For those commands, audit whether the table renderer is using a
       `humanise(field_name)` helper or hand-written column labels.
       If the former, consider rendering the JSON-key shape verbatim so
       the user only has to learn one name per field.
-- [ ] Out of scope: changing the bunny.net API key shapes themselves
+- [x] Out of scope: changing the bunny.net API key shapes themselves
       (that's upstream).
-- [ ] e2e snapshot refresh if column labels change.
-- [ ] Dogfooding pass: confirm `tip:` cites the right key for
+- [x] e2e snapshot refresh if column labels change.
+- [x] Dogfooding pass: confirm `tip:` cites the right key for
       `shield waf profiles`, and re-run any other affected commands.
 
 ## Out of scope
@@ -133,9 +133,9 @@ gets `null` — they need `.description`.
 
 ## Acceptance
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean.
-- [ ] Dogfooding repro against the live test account shows:
+- [x] Dogfooding repro against the live test account shows:
       - `hoppy pull-zone hostname add --help` lists
         `--id <ID>  Pull zone ID`.
       - `hoppy container endpoint list --id <id>` works AND
@@ -144,7 +144,7 @@ gets `null` — they need `.description`.
         still works.
       - `hoppy shield waf profiles` truncation tip cites `.description`
         (or whatever the camelCase JSON key is), not `Description`.
-- [ ] All three backlog items closed (`status=resolved`) with a link to
+- [x] All three backlog items closed (`status=resolved`) with a link to
       this iteration.
 
 ## Related

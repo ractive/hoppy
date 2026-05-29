@@ -1,10 +1,13 @@
 ---
-title: "table column labels are Title-Case while JSON keys are camelCase — mappings non-obvious (e.g. `Premium` → `isPremium`)"
+title: >-
+  table column labels are Title-Case while JSON keys are camelCase — mappings
+  non-obvious (e.g. `Premium` → `isPremium`)
 type: backlog
 date: 2026-05-29
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-29 (post-iter-41)
+resolved-by: "[[iterations/iteration-42-dogfooding-2026-05-29-fixes]]"
 ---
 
 # Table-label vs JSON-key naming mismatch

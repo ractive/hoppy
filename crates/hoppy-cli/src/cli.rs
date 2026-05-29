@@ -1074,23 +1074,25 @@ pub enum DnsScanAction {
 pub enum DnsRecordAction {
     /// List records in a DNS zone
     List {
-        #[arg(long)]
+        /// DNS zone ID
+        #[arg(long = "id", alias = "zone-id", value_name = "ID")]
         zone_id: i64,
     },
     /// Add a DNS record.
     ///
     /// EXAMPLES:
-    ///   hoppy dns record add --zone-id 50001 --type A    --value 192.0.2.1
-    ///   hoppy dns record add --zone-id 50001 --type CNAME --name www --value example.com
-    ///   hoppy dns record add --zone-id 50001 --type MX    --value mail.example.com --priority 10
-    ///   hoppy dns record add --zone-id 50001 --type CAA   --value letsencrypt.org --tag issue --flags 0
+    ///   hoppy dns record add --id 50001 --type A    --value 192.0.2.1
+    ///   hoppy dns record add --id 50001 --type CNAME --name www --value example.com
+    ///   hoppy dns record add --id 50001 --type MX    --value mail.example.com --priority 10
+    ///   hoppy dns record add --id 50001 --type CAA   --value letsencrypt.org --tag issue --flags 0
     ///
     /// Tip: for Magic-Container-backed Pull Zones, use a `CNAME` record
     /// pointing at the `b-cdn.net` hostname instead of `--type PullZone`
     /// (the latter only accepts standard, non-managed Pull Zone IDs and
     /// will return "pull zone ID is not valid" otherwise).
     Add {
-        #[arg(long)]
+        /// DNS zone ID
+        #[arg(long = "id", alias = "zone-id", value_name = "ID")]
         zone_id: i64,
         /// Record type (case-insensitive). Commonly used: A, AAAA, CNAME,
         /// TXT, MX, SRV, CAA, PTR, NS. Also accepted by the bunny API:
@@ -1129,8 +1131,10 @@ pub enum DnsRecordAction {
     },
     /// Update a DNS record
     Update {
+        /// DNS zone ID
         #[arg(long)]
         zone_id: i64,
+        /// DNS record ID
         #[arg(long)]
         record_id: i64,
         /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA, Redirect, Flatten, PullZone, Script; case-insensitive)
@@ -1157,8 +1161,10 @@ pub enum DnsRecordAction {
     },
     /// Delete a DNS record
     Delete {
+        /// DNS zone ID
         #[arg(long)]
         zone_id: i64,
+        /// DNS record ID
         #[arg(long)]
         record_id: i64,
     },
@@ -1249,7 +1255,7 @@ pub enum StreamVideoAction {
     /// List videos in a library
     List {
         /// Video library ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "library-id", value_name = "ID")]
         library_id: i64,
         /// Page number (1-based)
         #[arg(long)]
@@ -1309,7 +1315,7 @@ pub enum StreamVideoAction {
     /// Fetch (ingest) a video from a remote URL
     Fetch {
         /// Video library ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "library-id", value_name = "ID")]
         library_id: i64,
         /// Public URL to pull the video from
         #[arg(long)]
@@ -1514,7 +1520,7 @@ pub enum StreamCollectionAction {
     /// List collections in a library
     List {
         /// Video library ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "library-id", value_name = "ID")]
         library_id: i64,
         /// Page number (1-based)
         #[arg(long)]
@@ -1541,8 +1547,9 @@ pub enum StreamCollectionAction {
     /// Create a new collection
     Create {
         /// Video library ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "library-id", value_name = "ID")]
         library_id: i64,
+        /// Collection name
         #[arg(long)]
         name: String,
     },
@@ -1615,7 +1622,8 @@ pub enum ShieldAction {
     },
     /// Retrieve event logs for a Shield Zone
     EventLogs {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Date of logs: ISO 8601 (YYYY-MM-DD) or legacy US format (MM-dd-yyyy)
         #[arg(long)]
@@ -1635,17 +1643,20 @@ pub enum ShieldAction {
 pub enum ShieldMetricsAction {
     /// Get metrics overview for a Shield Zone
     Overview {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get detailed metrics for a Shield Zone (time-series breakdown)
     Detailed {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get rate limit metrics for all rules in a Shield Zone
     RateLimits {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get rate limit metrics for a single rule
@@ -1665,12 +1676,14 @@ pub enum ShieldMetricsAction {
     },
     /// Get bot detection metrics for a Shield Zone
     BotDetection {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get upload scanning metrics for a Shield Zone
     UploadScanning {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
 }
@@ -1728,7 +1741,7 @@ pub enum ShieldWafAction {
     /// List custom WAF rules for a Shield Zone
     ListRules {
         /// Shield zone ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get a custom WAF rule by ID
@@ -1740,7 +1753,7 @@ pub enum ShieldWafAction {
     /// Add a custom WAF rule
     AddRule {
         /// Shield zone ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Rule name
         #[arg(long)]
@@ -1776,11 +1789,12 @@ pub enum ShieldWafAction {
     /// List triggered WAF rules for a Shield Zone
     TriggeredRules {
         /// Shield zone ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Review/update action for a triggered WAF rule
     ReviewTriggeredRule {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
         /// Rule ID to review
@@ -1792,6 +1806,7 @@ pub enum ShieldWafAction {
     },
     /// Get an AI recommendation for a triggered WAF rule
     RecommendTriggeredRule {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
         /// Rule ID
@@ -1808,12 +1823,14 @@ pub enum ShieldWafAction {
 pub enum ShieldApiGuardianAction {
     /// Get the API Guardian configuration for a Shield Zone
     Get {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Upload a new OpenAPI specification to API Guardian
     Upload {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Path to the OpenAPI specification file
         #[arg(long)]
@@ -1824,7 +1841,8 @@ pub enum ShieldApiGuardianAction {
     },
     /// Update the API Guardian configuration with an updated OpenAPI spec
     Update {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Path to the OpenAPI specification file
         #[arg(long)]
@@ -1835,8 +1853,10 @@ pub enum ShieldApiGuardianAction {
     },
     /// Update an individual API Guardian endpoint configuration
     UpdateEndpoint {
+        /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
+        /// Endpoint ID
         #[arg(long)]
         endpoint_id: i64,
         /// Enable or disable this endpoint
@@ -1858,12 +1878,14 @@ pub enum ShieldApiGuardianAction {
 pub enum ShieldUploadScanningAction {
     /// Get the upload scanning configuration for a Shield Zone
     Get {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Update the upload scanning configuration for a Shield Zone
     Update {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Enable or disable upload scanning
         #[arg(long)]
@@ -1882,7 +1904,7 @@ pub enum ShieldRateLimitAction {
     /// List rate limit rules for a Shield Zone
     List {
         /// Shield zone ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get a rate limit rule by ID
@@ -1894,7 +1916,7 @@ pub enum ShieldRateLimitAction {
     /// Create a rate limit rule
     Create {
         /// Shield zone ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Rule name
         #[arg(long)]
@@ -1945,7 +1967,8 @@ pub enum ShieldRateLimitAction {
 pub enum ShieldAccessListAction {
     /// Get all access lists (managed + custom) for a Shield Zone
     List {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Get a custom access list by ID
@@ -1960,7 +1983,7 @@ pub enum ShieldAccessListAction {
     /// Create a custom access list
     Create {
         /// Shield zone ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// List name
         #[arg(long)]
@@ -2017,12 +2040,14 @@ pub enum ShieldAccessListAction {
 pub enum ShieldBotDetectionAction {
     /// Get bot detection configuration for a Shield Zone
     Get {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
     /// Update bot detection configuration
     Update {
-        #[arg(long)]
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// Execution mode (0 = Disabled, 1 = Enabled)
         #[arg(long)]
@@ -2389,17 +2414,17 @@ pub enum ContainerAction {
     /// Examples
     /// ========
     ///   # Default — bore tunnel through bore.pub
-    ///   hoppy container logs --app-id my-app-id
+    ///   hoppy container logs --id my-app-id
     ///
     ///   # No tunnel — use your own ingress
-    ///   hoppy container logs --app-id my-app-id --tunnel none
+    ///   hoppy container logs --id my-app-id --tunnel none
     ///
     ///   # Pre-established SSH tunnel
     ///   ssh -R 5514:localhost:5514 user@vps.example.com &
-    ///   hoppy container logs --app-id my-app-id --tunnel-host vps.example.com:5514
+    ///   hoppy container logs --id my-app-id --tunnel-host vps.example.com:5514
     Logs {
-        /// Application ID to stream logs from.
-        #[arg(long)]
+        /// Container app ID to stream logs from.
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
         /// Tunnel provider.  Use "bore" (default) to expose the local
         /// listener via bore.pub, or "none" if you have your own ingress.
@@ -2578,12 +2603,14 @@ pub enum ContainerAppAction {
     },
     /// Get autoscaling settings for an application
     AutoscalingGet {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
     },
     /// Update autoscaling settings for an application
     AutoscalingUpdate {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
         /// Minimum number of instances
         #[arg(long)]
@@ -2594,12 +2621,14 @@ pub enum ContainerAppAction {
     },
     /// Get region settings for an application
     RegionSettingsGet {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
     },
     /// Update region settings for an application
     RegionSettingsUpdate {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
         /// Allowed region IDs (may be repeated)
         #[arg(long = "allowed-region")]
@@ -2617,13 +2646,16 @@ pub enum ContainerAppAction {
 pub enum ContainerTemplateAction {
     /// Get a container template
     Get {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Container template ID
         #[arg(long)]
         container_id: String,
     },
     /// Add a container template to an application
     Add {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
         /// Container name
@@ -2644,8 +2676,10 @@ pub enum ContainerTemplateAction {
     },
     /// Update a container template
     Update {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Container template ID
         #[arg(long)]
         container_id: String,
         /// New name
@@ -2666,8 +2700,10 @@ pub enum ContainerTemplateAction {
     },
     /// Delete a container template
     Delete {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Container template ID
         #[arg(long)]
         container_id: String,
     },
@@ -2694,8 +2730,10 @@ Destructive operations (require explicit intent):
   --clear                                        → wipe every var
 ")]
     Env {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Container template ID
         #[arg(long)]
         container_id: String,
         /// Add or update an env var (KEY=VALUE). Repeatable. Idempotent —
@@ -2730,13 +2768,16 @@ Destructive operations (require explicit intent):
 pub enum ContainerEndpointAction {
     /// List endpoints for an application
     List {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
     },
     /// Add an endpoint to an application
     Add {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Container template ID
         #[arg(long)]
         container_id: String,
         /// Display name for the endpoint
@@ -2757,8 +2798,10 @@ pub enum ContainerEndpointAction {
     },
     /// Update an endpoint
     Update {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Endpoint ID
         #[arg(long)]
         endpoint_id: String,
         /// Display name for the endpoint
@@ -2779,8 +2822,10 @@ pub enum ContainerEndpointAction {
     },
     /// Delete an endpoint
     Delete {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Endpoint ID
         #[arg(long)]
         endpoint_id: String,
     },
@@ -2790,13 +2835,16 @@ pub enum ContainerEndpointAction {
 pub enum ContainerVolumeAction {
     /// List volumes for an application
     List {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
     },
     /// Update a volume
     Update {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Volume ID
         #[arg(long)]
         volume_id: String,
         /// New name
@@ -2808,24 +2856,31 @@ pub enum ContainerVolumeAction {
     },
     /// Detach a volume from all pods
     Detach {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Volume ID
         #[arg(long)]
         volume_id: String,
     },
     /// Delete all instances of a volume
     Delete {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Volume ID
         #[arg(long)]
         volume_id: String,
     },
     /// Delete a single volume instance
     DeleteInstance {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Volume ID
         #[arg(long)]
         volume_id: String,
+        /// Instance ID
         #[arg(long)]
         instance_id: String,
     },
@@ -2965,8 +3020,10 @@ pub enum ContainerNodeAction {
 pub enum ContainerPodAction {
     /// Recreate a pod
     Recreate {
+        /// Container app ID
         #[arg(long)]
         app_id: String,
+        /// Pod ID
         #[arg(long)]
         pod_id: String,
     },
@@ -2978,12 +3035,14 @@ pub enum ContainerLogForwardingAction {
     List,
     /// Get log forwarding configuration for an application
     Get {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
     },
     /// Create a log forwarding configuration
     Create {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
         /// Transport type (SyslogUdp or SyslogTcp)
         #[arg(long)]
@@ -3006,7 +3065,8 @@ pub enum ContainerLogForwardingAction {
     },
     /// Update a log forwarding configuration
     Update {
-        #[arg(long)]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
         /// Transport type (SyslogUdp or SyslogTcp)
         #[arg(long)]
@@ -3029,8 +3089,8 @@ pub enum ContainerLogForwardingAction {
     },
     /// Delete a log forwarding configuration
     Delete {
-        /// Application ID (alias: --id)
-        #[arg(long, alias = "id")]
+        /// Container app ID
+        #[arg(long = "id", alias = "app-id", value_name = "ID")]
         app_id: String,
     },
 }

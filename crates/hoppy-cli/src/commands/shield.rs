@@ -741,7 +741,7 @@ async fn handle_waf(
                     output::print_data(&truncated_rows, format);
                     if any_truncated {
                         output::hints::tip(
-                            "some Description values were truncated — use --format json for full values",
+                            "some values were truncated — use --format json for full values (key: .description)",
                         );
                     }
                 } else {
@@ -952,7 +952,7 @@ async fn handle_rate_limit(
                 output::print_data(&truncated_rows, format);
                 if any_truncated {
                     output::hints::tip(
-                        "some Name values were truncated — use --format json for full values",
+                        "some values were truncated — use --format json for full values (key: .ruleName)",
                     );
                 }
             } else {
