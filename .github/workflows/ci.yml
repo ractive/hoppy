@@ -31,7 +31,7 @@ jobs:
         run: cargo test --workspace
 
       - name: Verify CLI runs
-        run: cargo run -- --help
+        run: cargo run --bin hoppy -- --help
 
   clippy:
     runs-on: ubuntu-latest
