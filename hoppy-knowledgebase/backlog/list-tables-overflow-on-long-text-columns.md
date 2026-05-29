@@ -1,8 +1,10 @@
 ---
-title: "list-table commands overflow on long text columns (e.g. `shield waf profiles` = 267 chars)"
+title: >-
+  list-table commands overflow on long text columns (e.g. `shield waf profiles` =
+  267 chars)
 type: backlog
 date: 2026-05-28
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-28 (post-iter-40)
 ---

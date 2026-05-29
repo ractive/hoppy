@@ -604,9 +604,12 @@ impl From<&EdgeRule> for EdgeRuleRow {
         } else {
             format!("{} trigger(s)", r.triggers.len())
         };
+        let raw_desc = r.description.as_deref().unwrap_or("");
+        let (description, _) =
+            crate::output::truncate_for_table(raw_desc, crate::output::TABLE_CELL_MAX);
         Self {
             guid: r.guid.clone().unwrap_or_default(),
-            description: r.description.clone().unwrap_or_default(),
+            description,
             action,
             triggers: trigger_summary,
             enabled: r.enabled,
@@ -686,8 +689,17 @@ async fn handle_edge_rule(
                     .context("failed to serialize edge rules to JSON")?;
                 println!("{json}");
             } else {
+                let any_truncated = pz.edge_rules.iter().any(|r| {
+                    r.description.as_deref().unwrap_or("").chars().count()
+                        > crate::output::TABLE_CELL_MAX
+                });
                 let rows: Vec<EdgeRuleRow> = pz.edge_rules.iter().map(EdgeRuleRow::from).collect();
                 output::print_data(&rows, format);
+                if any_truncated {
+                    output::hints::tip(
+                        "some Description values were truncated — use --format json for full values",
+                    );
+                }
             }
         }
         EdgeRuleAction::Add {

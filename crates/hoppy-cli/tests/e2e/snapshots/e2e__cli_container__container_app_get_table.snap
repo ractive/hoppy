@@ -15,9 +15,9 @@ expression: "String::from_utf8_lossy(&output.stdout)"
 +--------------------+------------------------+
 | regionSettings     | <object: 4 fields>     |
 +--------------------+------------------------+
-| containerTemplates | <1 items>              |
+| containerTemplates | <1 item>               |
 +--------------------+------------------------+
-| containerInstances | <1 items>              |
+| containerInstances | <1 item>               |
 +--------------------+------------------------+
 | volumes            | <empty list>           |
 +--------------------+------------------------+

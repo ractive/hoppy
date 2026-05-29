@@ -2,7 +2,7 @@
 title: "`pull-zone edge-rule list --id <ID>` and several sub-resource args have no help text"
 type: backlog
 date: 2026-05-28
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-28 (post-iter-40)
 ---

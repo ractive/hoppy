@@ -2,7 +2,7 @@ use crate::auth;
 use crate::cli::{
     DnsAction, DnsDnssecAction, DnsRecordAction, DnsScanAction, DnsZoneAction, OutputFormat,
 };
-use crate::output::{self, PaginatedListJson};
+use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
@@ -76,6 +76,7 @@ impl From<&DnsRecord> for DnsRecordRow {
             Some(DnsRecordType::MX | DnsRecordType::SRV) => r.priority.to_string(),
             _ => String::new(),
         };
+        let (value, _) = truncate_for_table(&r.value, TABLE_CELL_MAX);
         Self {
             id: r.id,
             record_type,
@@ -84,7 +85,7 @@ impl From<&DnsRecord> for DnsRecordRow {
             } else {
                 r.name.clone()
             },
-            value: r.value.clone(),
+            value,
             priority,
             ttl: r.ttl,
             disabled: r.disabled,
@@ -589,8 +590,17 @@ async fn handle_record(
                     .expect("failed to serialize to JSON");
                 println!("{json}");
             } else {
+                let any_truncated = zone
+                    .records
+                    .iter()
+                    .any(|r| r.value.chars().count() > TABLE_CELL_MAX);
                 let rows: Vec<DnsRecordRow> = zone.records.iter().map(DnsRecordRow::from).collect();
                 output::print_data(&rows, format);
+                if any_truncated {
+                    output::hints::tip(
+                        "some Value fields were truncated — use --format json for full values",
+                    );
+                }
             }
         }
         DnsRecordAction::Add {

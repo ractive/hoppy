@@ -2,7 +2,7 @@
 title: "`<1 items>` should be `<1 item>` — singular/plural mismatch in get summary cells"
 type: backlog
 date: 2026-05-28
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-28 (post-iter-40)
 ---
