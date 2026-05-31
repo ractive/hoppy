@@ -69,9 +69,9 @@ See [[../backlog/geo-zone-flags-casing-mismatch]].
 
 ## Acceptance Criteria
 
-- [x] `hoppy pull-zone update --enable-geo-zone-us true && hoppy pull-zone get`
-      shows `EnableGeoZoneUs: true` (or whatever rendered name we
-      choose).
+- [ ] `hoppy pull-zone update --enable-geo-zone-us true && hoppy pull-zone get`
+      shows `EnableGeoZoneUS: true`. *(Deferred to dogfooding pass — code +
+      tests verified; live API check pending.)*
 - [x] New round-trip test passes against a captured fixture.
 - [x] Audit list of renamed fields is documented in the PR body.
 - [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
