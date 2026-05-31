@@ -260,8 +260,10 @@ pub enum Commands {
 
     /// View account-level CDN statistics
     Statistics {
+        /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
         /// Filter by pull zone ID
@@ -309,8 +311,10 @@ pub enum VideoLibraryAction {
     DrmStatistics {
         #[arg(long)]
         id: i64,
+        /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
     },
@@ -318,8 +322,10 @@ pub enum VideoLibraryAction {
     TranscribingStatistics {
         #[arg(long)]
         id: i64,
+        /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
     },
@@ -540,8 +546,10 @@ pub enum PullZoneAction {
         /// Statistics type: optimizer, origin-shield, safehop
         #[arg(long, value_name = "TYPE")]
         r#type: String,
+        /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
         /// Show hourly granularity
@@ -853,8 +861,10 @@ pub enum StorageZoneAction {
         /// Storage zone ID
         #[arg(long)]
         id: i64,
+        /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
     },
@@ -996,8 +1006,10 @@ pub enum DnsZoneAction {
         /// DNS zone ID
         #[arg(long)]
         id: i64,
+        /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
     },
@@ -1257,8 +1269,10 @@ pub enum StreamLibraryAction {
         /// Stream library ID
         #[arg(long)]
         id: i64,
+        /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
         /// Show hourly granularity
