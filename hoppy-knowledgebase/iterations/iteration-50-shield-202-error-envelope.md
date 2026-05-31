@@ -2,8 +2,12 @@
 title: Iter-50 — surface Shield 202 error envelope
 type: iteration
 date: 2026-06-01
-tags: [iteration, shield, error-handling, dx]
-status: planned
+tags:
+  - iteration
+  - shield
+  - error-handling
+  - dx
+status: completed
 branch: iter-50/shield-202-error-envelope
 ---
 
@@ -22,31 +26,31 @@ See [[../backlog/shield-202-error-swallowed]].
 
 ### 1. Diagnose the response shape
 
-- [ ] Capture the real 202 response body (record-mode) from a
+- [x] Capture the real 202 response body (record-mode) from a
       free-tier account against `shield event-logs`. Document the
       envelope in the PR.
-- [ ] Confirm whether it's a single shape or multiple (`Message`
+- [x] Confirm whether it's a single shape or multiple (`Message`
       field, `ErrorKey`, etc.).
 
 ### 2. Fix the Shield client
 
-- [ ] In the shield API call site, treat 202-with-error-envelope as
+- [x] In the shield API call site, treat 202-with-error-envelope as
       an error path, not an empty-result path.
-- [ ] Map the envelope to an `anyhow::Error` (or domain error type
+- [x] Map the envelope to an `anyhow::Error` (or domain error type
       if one exists) that propagates the message text.
-- [ ] CLI surface: print the API message verbatim, exit non-zero.
+- [x] CLI surface: print the API message verbatim, exit non-zero.
 
 ### 3. Audit sibling endpoints
 
-- [ ] Check every other Shield subcommand for the same 202 path
+- [x] Check every other Shield subcommand for the same 202 path
       (logs, stats, anything async-ish).
-- [ ] Apply the same fix where the envelope appears.
+- [x] Apply the same fix where the envelope appears.
 
 ### 4. Tests
 
-- [ ] Unit test: feed a captured 202+error JSON body, assert the
+- [x] Unit test: feed a captured 202+error JSON body, assert the
       client returns an error with the API message in it.
-- [ ] E2E snapshot test for the CLI: stub a 202 response, assert
+- [x] E2E snapshot test for the CLI: stub a 202 response, assert
       stderr contains the upgrade message and exit code is non-zero.
 
 ## Out of scope
@@ -56,10 +60,10 @@ See [[../backlog/shield-202-error-swallowed]].
 
 ## Acceptance Criteria
 
-- [ ] On a free-tier account, `hoppy shield event-logs` prints the
+- [x] On a free-tier account, `hoppy shield event-logs` prints the
       API's upgrade-required message and exits non-zero.
-- [ ] No regression for the happy-path 200 response.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] No regression for the happy-path 200 response.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 

@@ -466,12 +466,15 @@ impl std::error::Error for ProblemDetails {}
 
 /// Inner error object nested under `"error"` in Shield API error responses.
 ///
-/// Real shape: `{"error": {"statusCode": 404, "errorKey": "zone.not_found", "message": "..."}, "data": null}`
+/// Real shape (non-2xx): `{"error": {"statusCode": 404, "errorKey": "zone.not_found", "message": "..."}, "data": null}`
+/// Real shape (202 plan-gate): `{"data": null, "error": {"statusCode": 202, "success": false, "message": "...", "errorKey": "..."}}`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ShieldApiErrorInner {
     #[serde(default)]
     pub status_code: Option<i32>,
+    #[serde(default)]
+    pub success: Option<bool>,
     #[serde(default)]
     pub error_key: Option<String>,
     #[serde(default)]
@@ -522,6 +525,32 @@ pub fn parse_shield_error(bytes: &[u8]) -> Option<anyhow::Error> {
         }
     }
     None
+}
+
+/// Check a 2xx response body for an error envelope where `error.success == false`.
+///
+/// bunny.net Shield returns HTTP 202 with this shape when a feature is gated by
+/// the account's plan tier:
+///
+/// ```json
+/// {"data": null, "error": {"statusCode": 202, "success": false, "message": "...", "errorKey": "..."}}
+/// ```
+///
+/// Returns `Some(err)` when the body contains such an envelope, `None` otherwise
+/// (meaning the caller should proceed to deserialise the body normally).
+pub fn parse_shield_2xx_envelope_error(bytes: &[u8]) -> Option<anyhow::Error> {
+    let env = serde_json::from_slice::<ShieldApiErrorEnvelope>(bytes).ok()?;
+    // Only treat as error when success is explicitly false AND there's a
+    // human-readable signal (message or errorKey). This avoids false positives
+    // from happy-path responses that embed `GenericRequestResponse` (whose
+    // `success: bool` defaults to false via `#[serde(default)]`).
+    if env.error.success == Some(false)
+        && (env.error.message.is_some() || env.error.error_key.is_some())
+    {
+        Some(anyhow::anyhow!(env))
+    } else {
+        None
+    }
 }
 
 /// Generic API operation result embedded in many Shield responses.
@@ -2124,6 +2153,7 @@ mod tests {
         let env = ShieldApiErrorEnvelope {
             error: ShieldApiErrorInner {
                 status_code: Some(404),
+                success: None,
                 error_key: Some("zone.config.not_found".to_owned()),
                 message: Some("No api-guardian config for zone 42".to_owned()),
             },
