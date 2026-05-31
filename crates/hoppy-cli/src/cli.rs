@@ -1,6 +1,6 @@
 use bunny_net_api::core::types::{
     LogAnonymizationType, OptimizerWatermarkPosition, PermaCacheType,
-    PullZoneLogForwarderProtocolType,
+    PullZoneLogForwarderProtocolType, PullZoneTierType, StickySessionType,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
@@ -192,6 +192,42 @@ impl From<PermaCacheTypeArg> for PermaCacheType {
         match a {
             PermaCacheTypeArg::Automatic => Self::Automatic,
             PermaCacheTypeArg::Manual => Self::Manual,
+        }
+    }
+}
+
+/// Sticky session affinity mode for a pull zone.
+#[derive(Copy, Clone, ValueEnum)]
+pub enum StickySessionTypeArg {
+    /// No sticky sessions (value 0).
+    None,
+    /// Sticky sessions via a cookie (value 1).
+    Cookie,
+}
+
+impl From<StickySessionTypeArg> for StickySessionType {
+    fn from(a: StickySessionTypeArg) -> Self {
+        match a {
+            StickySessionTypeArg::None => Self::None,
+            StickySessionTypeArg::Cookie => Self::Cookie,
+        }
+    }
+}
+
+/// Pull Zone billing / network tier (`Type` in the bunny.net API).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum PullZoneTierTypeArg {
+    /// Standard global network (value 0).
+    Standard,
+    /// Volume tier for high-traffic static assets (value 1).
+    Volume,
+}
+
+impl From<PullZoneTierTypeArg> for PullZoneTierType {
+    fn from(a: PullZoneTierTypeArg) -> Self {
+        match a {
+            PullZoneTierTypeArg::Standard => Self::Standard,
+            PullZoneTierTypeArg::Volume => Self::Volume,
         }
     }
 }
@@ -724,6 +760,135 @@ pub enum PullZoneAction {
         /// (only what's explicitly pushed).
         #[arg(long, value_name = "TYPE", help_heading = "Performance / caching")]
         perma_cache_type: Option<PermaCacheTypeArg>,
+
+        // ── Origin host / DNS (iter-46) ──────────────────────────────────────
+        /// Override the `Host` header sent to the origin server.
+        #[arg(long, value_name = "HOST", help_heading = "Origin host / DNS")]
+        origin_host_header: Option<String>,
+        /// Forward the original client `Host` header to the origin.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin host / DNS")]
+        add_host_header: Option<bool>,
+        /// Add a `Link: <url>; rel="canonical"` header to responses.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin host / DNS")]
+        add_canonical_header: Option<bool>,
+        /// DNS origin port override.
+        #[arg(
+            long,
+            value_name = "PORT",
+            value_parser = clap::value_parser!(i32).range(1..=65535),
+            help_heading = "Origin host / DNS"
+        )]
+        dns_origin_port: Option<i32>,
+        /// DNS origin scheme override (e.g. `https`).
+        #[arg(long, value_name = "SCHEME", help_heading = "Origin host / DNS")]
+        dns_origin_scheme: Option<String>,
+        /// Follow HTTP redirects returned by the origin.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin host / DNS")]
+        follow_redirects: Option<bool>,
+
+        // ── Origin timeouts / retries (iter-46) ──────────────────────────────
+        /// Seconds to wait for a TCP connection to the origin (1–60 s).
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i32).range(1..=60),
+            help_heading = "Origin timeouts / retries"
+        )]
+        origin_connect_timeout: Option<i32>,
+        /// Seconds to wait for the origin to send the first response byte (1–120 s).
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i32).range(1..=120),
+            help_heading = "Origin timeouts / retries"
+        )]
+        origin_response_timeout: Option<i32>,
+        /// Number of times to retry a failed origin request (0–5).
+        #[arg(
+            long,
+            value_name = "COUNT",
+            value_parser = clap::value_parser!(i32).range(0..=5),
+            help_heading = "Origin timeouts / retries"
+        )]
+        origin_retries: Option<i32>,
+        /// Retry when the origin returns a 5xx error response.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin timeouts / retries")]
+        origin_retry_5xx_responses: Option<bool>,
+        /// Retry when a connection to the origin times out.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin timeouts / retries")]
+        origin_retry_connection_timeout: Option<bool>,
+        /// Seconds to wait between retry attempts (0–60 s).
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i32).range(0..=60),
+            help_heading = "Origin timeouts / retries"
+        )]
+        origin_retry_delay: Option<i32>,
+        /// Retry when the origin response times out.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin timeouts / retries")]
+        origin_retry_response_timeout: Option<bool>,
+
+        // ── Origin shield (iter-46) ───────────────────────────────────────────
+        /// Enable the origin shield — cache miss requests are funnelled through
+        /// a single shield node to reduce origin load.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin shield")]
+        enable_origin_shield: Option<bool>,
+        /// Limit the number of concurrent requests forwarded to the shield node.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Origin shield")]
+        origin_shield_enable_concurrency_limit: Option<bool>,
+        /// Maximum concurrent requests the shield will forward to the origin.
+        #[arg(long, value_name = "COUNT", help_heading = "Origin shield")]
+        origin_shield_max_concurrent_requests: Option<i32>,
+        /// Maximum number of requests queued at the shield node.
+        #[arg(long, value_name = "COUNT", help_heading = "Origin shield")]
+        origin_shield_max_queued_requests: Option<i32>,
+        /// Seconds a queued shield request waits before being dropped.
+        #[arg(long, value_name = "SECONDS", help_heading = "Origin shield")]
+        origin_shield_queue_max_wait_time: Option<i32>,
+        /// ISO code of the PoP to use as origin shield (e.g. `FR`, `NY`).
+        #[arg(long, value_name = "CODE", help_heading = "Origin shield")]
+        origin_shield_zone_code: Option<String>,
+
+        // ── Routing / sticky sessions (iter-46) ──────────────────────────────
+        /// Coalesce concurrent cache-miss requests for the same URL into a
+        /// single upstream request.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Routing / sticky sessions")]
+        enable_request_coalescing: Option<bool>,
+        /// Seconds to wait for a coalesced request to complete before sending
+        /// a new request to the origin (1–60 s).
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i32).range(1..=60),
+            help_heading = "Routing / sticky sessions"
+        )]
+        request_coalescing_timeout: Option<i32>,
+        /// Comma-separated routing filter names to apply.
+        #[arg(
+            long,
+            value_name = "FILTERS",
+            value_delimiter = ',',
+            help_heading = "Routing / sticky sessions"
+        )]
+        routing_filters: Option<Vec<String>>,
+        /// Sticky session mode: `none` or `cookie`.
+        #[arg(long, value_name = "TYPE", help_heading = "Routing / sticky sessions")]
+        sticky_session_type: Option<StickySessionTypeArg>,
+        /// Name of the cookie used for sticky session affinity.
+        #[arg(long, value_name = "NAME", help_heading = "Routing / sticky sessions")]
+        sticky_session_cookie_name: Option<String>,
+        /// Comma-separated request headers used to identify a sticky session client.
+        #[arg(
+            long,
+            value_name = "HEADERS",
+            value_delimiter = ',',
+            help_heading = "Routing / sticky sessions"
+        )]
+        sticky_session_client_headers: Option<Vec<String>>,
+        /// Pull Zone billing tier: `standard` or `volume`.
+        #[arg(long, value_name = "TIER", help_heading = "Routing / sticky sessions")]
+        pull_zone_tier_type: Option<PullZoneTierTypeArg>,
     },
     /// Delete a pull zone
     Delete {
