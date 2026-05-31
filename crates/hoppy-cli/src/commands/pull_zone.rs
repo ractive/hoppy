@@ -10,7 +10,7 @@ use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
-    LogAnonymizationType, MatchingType, OptimizerWatermarkPosition, PullZone,
+    LogAnonymizationType, MatchingType, OptimizerWatermarkPosition, PermaCacheType, PullZone,
     PullZoneLogForwarderProtocolType, PullZoneType, PurgeCache, TriggerType, UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
@@ -52,6 +52,17 @@ impl From<&PullZone> for PullZoneRow {
 // ---------------------------------------------------------------------------
 // Log-forwarding precheck helper
 // ---------------------------------------------------------------------------
+
+/// Normalize a comma-separated CLI list: trim entries and drop empty ones.
+/// Passing a single empty string (`--foo ""`) yields an empty Vec, which the
+/// API treats as "clear".
+fn normalize_csv_list(vals: &[String]) -> Vec<String> {
+    vals.iter()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
+}
 
 /// Returns `true` when a GET precheck is required before sending the update.
 ///
@@ -198,6 +209,29 @@ pub async fn handle(
             aws_signing_region_name,
             logging_ip_anonymization_enabled,
             log_anonymization_type,
+            enable_webp_vary,
+            enable_avif_vary,
+            enable_cookie_vary,
+            enable_country_code_vary,
+            enable_country_state_code_vary,
+            enable_hostname_vary,
+            enable_mobile_vary,
+            enable_cache_slice,
+            enable_smart_cache,
+            enable_safe_hop,
+            ignore_query_strings,
+            enable_query_string_ordering,
+            query_string_vary_parameters,
+            cookie_vary_parameters,
+            use_stale_while_updating,
+            use_stale_while_offline,
+            use_background_update,
+            cache_control_max_age_override,
+            cache_control_public_max_age_override,
+            cache_control_browser_max_age_override,
+            cache_error_responses,
+            perma_cache_storage_zone_id,
+            perma_cache_type,
         } => {
             // Guard: if any log-forwarding sub-field is being set without also
             // enabling log forwarding in this same call, verify the zone has
@@ -325,6 +359,35 @@ pub async fn handle(
             body.logging_ip_anonymization_enabled = *logging_ip_anonymization_enabled;
             if let Some(t) = log_anonymization_type {
                 body = body.log_anonymization_type(LogAnonymizationType::from(*t));
+            }
+            // Vary headers (iter-45)
+            body.enable_webp_vary = *enable_webp_vary;
+            body.enable_avif_vary = *enable_avif_vary;
+            body.enable_cookie_vary = *enable_cookie_vary;
+            body.enable_country_code_vary = *enable_country_code_vary;
+            body.enable_country_state_code_vary = *enable_country_state_code_vary;
+            body.enable_hostname_vary = *enable_hostname_vary;
+            body.enable_mobile_vary = *enable_mobile_vary;
+            // Performance / caching (iter-45)
+            body.enable_cache_slice = *enable_cache_slice;
+            body.enable_smart_cache = *enable_smart_cache;
+            body.enable_safe_hop = *enable_safe_hop;
+            body.ignore_query_strings = *ignore_query_strings;
+            body.enable_query_string_ordering = *enable_query_string_ordering;
+            body.query_string_vary_parameters = query_string_vary_parameters
+                .as_deref()
+                .map(normalize_csv_list);
+            body.cookie_vary_parameters = cookie_vary_parameters.as_deref().map(normalize_csv_list);
+            body.use_stale_while_updating = *use_stale_while_updating;
+            body.use_stale_while_offline = *use_stale_while_offline;
+            body.use_background_update = *use_background_update;
+            body.cache_control_max_age_override = *cache_control_max_age_override;
+            body.cache_control_public_max_age_override = *cache_control_public_max_age_override;
+            body.cache_control_browser_max_age_override = *cache_control_browser_max_age_override;
+            body.cache_error_responses = *cache_error_responses;
+            body.perma_cache_storage_zone_id = *perma_cache_storage_zone_id;
+            if let Some(t) = perma_cache_type {
+                body = body.perma_cache_type(PermaCacheType::from(*t));
             }
             let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format, redact_cfg);

@@ -1,5 +1,6 @@
 use bunny_net_api::core::types::{
-    LogAnonymizationType, OptimizerWatermarkPosition, PullZoneLogForwarderProtocolType,
+    LogAnonymizationType, OptimizerWatermarkPosition, PermaCacheType,
+    PullZoneLogForwarderProtocolType,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
@@ -173,6 +174,24 @@ impl From<LogAnonymizationTypeArg> for LogAnonymizationType {
         match a {
             LogAnonymizationTypeArg::OneDigit => Self::OneDigit,
             LogAnonymizationTypeArg::Drop => Self::Drop,
+        }
+    }
+}
+
+/// Perma-Cache mode for a pull zone.
+#[derive(Copy, Clone, ValueEnum)]
+pub enum PermaCacheTypeArg {
+    /// Automatically retain content in the linked storage zone (value 0).
+    Automatic,
+    /// Only retain content explicitly pushed to the storage zone (value 1).
+    Manual,
+}
+
+impl From<PermaCacheTypeArg> for PermaCacheType {
+    fn from(a: PermaCacheTypeArg) -> Self {
+        match a {
+            PermaCacheTypeArg::Automatic => Self::Automatic,
+            PermaCacheTypeArg::Manual => Self::Manual,
         }
     }
 }
@@ -600,6 +619,111 @@ pub enum PullZoneAction {
         /// How the last IP octet is anonymised: `one-digit` or `drop`.
         #[arg(long, value_name = "TYPE", help_heading = "Security / compliance")]
         log_anonymization_type: Option<LogAnonymizationTypeArg>,
+
+        // ── Vary headers (iter-45) ───────────────────────────────────────────
+        /// Vary cache entries by client WebP support (serve WebP variants when available).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Vary headers")]
+        enable_webp_vary: Option<bool>,
+        /// Vary cache entries by client AVIF support (serve AVIF variants when available).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Vary headers")]
+        enable_avif_vary: Option<bool>,
+        /// Vary cache entries by the `Cookie` request header (combine with
+        /// `--cookie-vary-parameters` to scope to specific cookies).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Vary headers")]
+        enable_cookie_vary: Option<bool>,
+        /// Vary cache entries by the client's country code (GeoIP).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Vary headers")]
+        enable_country_code_vary: Option<bool>,
+        /// Vary cache entries by the client's country + state/region code.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Vary headers")]
+        enable_country_state_code_vary: Option<bool>,
+        /// Vary cache entries by the requested `Host` header.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Vary headers")]
+        enable_hostname_vary: Option<bool>,
+        /// Vary cache entries by mobile vs desktop user-agent detection.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Vary headers")]
+        enable_mobile_vary: Option<bool>,
+
+        // ── Performance / caching (iter-45) ──────────────────────────────────
+        /// Enable Cache Slice — serve large files in parallel range slices.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        enable_cache_slice: Option<bool>,
+        /// Enable Smart Cache — bunny.net heuristics override cache headers.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        enable_smart_cache: Option<bool>,
+        /// Enable Safe Hop — retry failed origin requests via a healthy region.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        enable_safe_hop: Option<bool>,
+        /// Strip query strings from the cache key (cache as if no query string).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        ignore_query_strings: Option<bool>,
+        /// Sort query string parameters before computing the cache key,
+        /// so `?a=1&b=2` and `?b=2&a=1` share one cache entry.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        enable_query_string_ordering: Option<bool>,
+        /// Comma-separated query string parameters to include in the cache
+        /// key (e.g. `v,locale`). Pass an empty string to clear.
+        #[arg(
+            long,
+            value_name = "PARAMS",
+            value_delimiter = ',',
+            help_heading = "Performance / caching"
+        )]
+        query_string_vary_parameters: Option<Vec<String>>,
+        /// Comma-separated cookies to include in the cache key
+        /// (e.g. `session,locale`). Pass an empty string to clear.
+        #[arg(
+            long,
+            value_name = "COOKIES",
+            value_delimiter = ',',
+            help_heading = "Performance / caching"
+        )]
+        cookie_vary_parameters: Option<Vec<String>>,
+        /// Serve stale content while a fresh copy is fetched in the background.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        use_stale_while_updating: Option<bool>,
+        /// Serve stale content if the origin is unreachable.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        use_stale_while_offline: Option<bool>,
+        /// Refresh cache entries in the background before they expire.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        use_background_update: Option<bool>,
+        /// Override `Cache-Control` max-age (seconds) for edge caching. 0 = disable override.
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i64).range(0..),
+            help_heading = "Performance / caching"
+        )]
+        cache_control_max_age_override: Option<i64>,
+        /// Override `Cache-Control: public` max-age (seconds). 0 = disable override.
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i64).range(0..),
+            help_heading = "Performance / caching"
+        )]
+        cache_control_public_max_age_override: Option<i64>,
+        /// Override `Cache-Control` max-age (seconds) sent to the browser. 0 = disable override.
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i64).range(0..),
+            help_heading = "Performance / caching"
+        )]
+        cache_control_browser_max_age_override: Option<i64>,
+        /// Cache error responses (4xx/5xx) briefly to shield the origin from
+        /// thundering-herd retries.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
+        cache_error_responses: Option<bool>,
+        /// Perma-Cache target storage zone ID — content is permanently
+        /// retained in this storage zone.
+        #[arg(long, value_name = "ID", help_heading = "Performance / caching")]
+        perma_cache_storage_zone_id: Option<i64>,
+        /// Perma-Cache mode: `automatic` (retain everything) or `manual`
+        /// (only what's explicitly pushed).
+        #[arg(long, value_name = "TYPE", help_heading = "Performance / caching")]
+        perma_cache_type: Option<PermaCacheTypeArg>,
     },
     /// Delete a pull zone
     Delete {

@@ -368,6 +368,44 @@ impl std::str::FromStr for LogAnonymizationType {
     }
 }
 
+/// Perma-Cache mode for a Pull Zone — controls whether content is permanently
+/// retained in a linked storage zone.
+///
+/// Spec: `PermaCacheType` — `0 = Automatic`, `1 = Manual`. Serialised as the
+/// integer discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum PermaCacheType {
+    /// Perma-Cache automatically retains content in the linked storage zone.
+    Automatic = 0,
+    /// Perma-Cache only stores content explicitly pushed via the API.
+    Manual = 1,
+}
+
+impl std::fmt::Display for PermaCacheType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Automatic => "automatic",
+            Self::Manual => "manual",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for PermaCacheType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "automatic" | "Automatic" => Ok(Self::Automatic),
+            "manual" | "Manual" => Ok(Self::Manual),
+            _ => Err(format!(
+                "unknown perma-cache type: {s:?}; expected one of: automatic, manual"
+            )),
+        }
+    }
+}
+
 /// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
 ///
 /// Bunny.net may add new protocols in future API versions. The
@@ -682,6 +720,56 @@ pub struct PullZone {
     pub logging_ip_anonymization_enabled: bool,
     #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub log_anonymization_type: Option<LogAnonymizationType>,
+
+    // Vary headers (iter-45)
+    #[serde(rename = "EnableWebPVary", default)]
+    pub enable_webp_vary: bool,
+    #[serde(rename = "EnableAvifVary", default)]
+    pub enable_avif_vary: bool,
+    #[serde(default)]
+    pub enable_cookie_vary: bool,
+    #[serde(default)]
+    pub enable_country_code_vary: bool,
+    #[serde(default)]
+    pub enable_country_state_code_vary: bool,
+    #[serde(default)]
+    pub enable_hostname_vary: bool,
+    #[serde(default)]
+    pub enable_mobile_vary: bool,
+
+    // Performance / caching (iter-45)
+    #[serde(default)]
+    pub enable_cache_slice: bool,
+    #[serde(default)]
+    pub enable_smart_cache: bool,
+    #[serde(default)]
+    pub enable_safe_hop: bool,
+    #[serde(default)]
+    pub ignore_query_strings: bool,
+    #[serde(default)]
+    pub enable_query_string_ordering: bool,
+    #[serde(default)]
+    pub query_string_vary_parameters: Vec<String>,
+    #[serde(default)]
+    pub cookie_vary_parameters: Vec<String>,
+    #[serde(default)]
+    pub use_stale_while_updating: bool,
+    #[serde(default)]
+    pub use_stale_while_offline: bool,
+    #[serde(default)]
+    pub use_background_update: bool,
+    #[serde(default)]
+    pub cache_control_max_age_override: Option<i64>,
+    #[serde(default)]
+    pub cache_control_public_max_age_override: Option<i64>,
+    #[serde(default)]
+    pub cache_control_browser_max_age_override: Option<i64>,
+    #[serde(default)]
+    pub cache_error_responses: bool,
+    #[serde(default)]
+    pub perma_cache_storage_zone_id: Option<i64>,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub perma_cache_type: Option<PermaCacheType>,
 }
 
 /// Generic paginated list response returned by the bunny.net API.
@@ -959,6 +1047,57 @@ pub struct UpdatePullZone {
     /// Serialises as an integer via `Serialize_repr`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_anonymization_type: Option<LogAnonymizationType>,
+
+    // Vary headers (iter-45)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_webp_vary: Option<bool>,
+    #[serde(rename = "EnableAvifVary", skip_serializing_if = "Option::is_none")]
+    pub enable_avif_vary: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_cookie_vary: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_country_code_vary: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_country_state_code_vary: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_hostname_vary: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_mobile_vary: Option<bool>,
+
+    // Performance / caching (iter-45)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_cache_slice: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_smart_cache: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_safe_hop: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ignore_query_strings: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_query_string_ordering: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query_string_vary_parameters: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cookie_vary_parameters: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_stale_while_updating: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_stale_while_offline: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_background_update: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_control_max_age_override: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_control_public_max_age_override: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_control_browser_max_age_override: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_error_responses: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub perma_cache_storage_zone_id: Option<i64>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub perma_cache_type: Option<PermaCacheType>,
 }
 
 impl UpdatePullZone {
@@ -1266,6 +1405,148 @@ impl UpdatePullZone {
     #[must_use]
     pub fn log_anonymization_type(mut self, v: LogAnonymizationType) -> Self {
         self.log_anonymization_type = Some(v);
+        self
+    }
+
+    // ── Vary headers (iter-45) ──────────────────────────────────────────────
+
+    #[must_use]
+    pub fn enable_webp_vary(mut self, v: bool) -> Self {
+        self.enable_webp_vary = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_avif_vary(mut self, v: bool) -> Self {
+        self.enable_avif_vary = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_cookie_vary(mut self, v: bool) -> Self {
+        self.enable_cookie_vary = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_country_code_vary(mut self, v: bool) -> Self {
+        self.enable_country_code_vary = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_country_state_code_vary(mut self, v: bool) -> Self {
+        self.enable_country_state_code_vary = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_hostname_vary(mut self, v: bool) -> Self {
+        self.enable_hostname_vary = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_mobile_vary(mut self, v: bool) -> Self {
+        self.enable_mobile_vary = Some(v);
+        self
+    }
+
+    // ── Performance / caching (iter-45) ─────────────────────────────────────
+
+    #[must_use]
+    pub fn enable_cache_slice(mut self, v: bool) -> Self {
+        self.enable_cache_slice = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_smart_cache(mut self, v: bool) -> Self {
+        self.enable_smart_cache = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_safe_hop(mut self, v: bool) -> Self {
+        self.enable_safe_hop = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn ignore_query_strings(mut self, v: bool) -> Self {
+        self.ignore_query_strings = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_query_string_ordering(mut self, v: bool) -> Self {
+        self.enable_query_string_ordering = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn query_string_vary_parameters(mut self, v: Vec<String>) -> Self {
+        self.query_string_vary_parameters = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn cookie_vary_parameters(mut self, v: Vec<String>) -> Self {
+        self.cookie_vary_parameters = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn use_stale_while_updating(mut self, v: bool) -> Self {
+        self.use_stale_while_updating = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn use_stale_while_offline(mut self, v: bool) -> Self {
+        self.use_stale_while_offline = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn use_background_update(mut self, v: bool) -> Self {
+        self.use_background_update = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn cache_control_max_age_override(mut self, v: i64) -> Self {
+        self.cache_control_max_age_override = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn cache_control_public_max_age_override(mut self, v: i64) -> Self {
+        self.cache_control_public_max_age_override = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn cache_control_browser_max_age_override(mut self, v: i64) -> Self {
+        self.cache_control_browser_max_age_override = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn cache_error_responses(mut self, v: bool) -> Self {
+        self.cache_error_responses = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn perma_cache_storage_zone_id(mut self, v: i64) -> Self {
+        self.perma_cache_storage_zone_id = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn perma_cache_type(mut self, v: PermaCacheType) -> Self {
+        self.perma_cache_type = Some(v);
         self
     }
 }
