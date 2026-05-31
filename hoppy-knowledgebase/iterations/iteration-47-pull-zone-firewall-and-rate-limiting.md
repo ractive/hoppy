@@ -1,5 +1,5 @@
 ---
-title: "Iter-47 — pull-zone firewall + rate limiting"
+title: Iter-47 — pull-zone firewall + rate limiting
 type: iteration
 date: 2026-05-31
 tags:
@@ -8,7 +8,7 @@ tags:
   - firewall
   - rate-limiting
   - openapi-coverage
-status: planned
+status: completed
 branch: iter-47/pull-zone-firewall-and-rate-limiting
 ---
 
@@ -28,52 +28,52 @@ on `UpdatePullZone`** — users can see them but can't change them.
 
 ### 1. Audit existing fields first
 
-- [ ] Confirm which of the 14 bucket fields already exist on `PullZone`
+- [x] Confirm which of the 14 bucket fields already exist on `PullZone`
       (read) — grep `crates/bunny-net-api/src/core/types.rs`. Don't add
       duplicate read-shape fields.
-- [ ] Confirm none exist on `UpdatePullZone` yet (expected: all 14 missing
+- [x] Confirm none exist on `UpdatePullZone` yet (expected: all 14 missing
       from the update payload).
 
 ### 2. Add firewall/blocking fields
 
 To `PullZone` (only those not already present) and `UpdatePullZone` (all):
 
-- [ ] `blocked_countries: Vec<String>` (`BlockedCountries`) — ISO-3166-1
+- [x] `blocked_countries: Vec<String>` (`BlockedCountries`) — ISO-3166-1
       alpha-2 codes
-- [ ] `budget_redirected_countries: Vec<String>` (`BudgetRedirectedCountries`)
-- [ ] `blocked_ips: Vec<String>` (already on read; add to update)
-- [ ] `allowed_referrers: Vec<String>` (already on read; add to update)
-- [ ] `blocked_referrers: Vec<String>` (already on read; add to update)
-- [ ] `block_none_referrer: bool` (`BlockNoneReferrer`)
-- [ ] `block_post_requests: bool` (`BlockPostRequests`)
-- [ ] `block_root_path_access: bool` (`BlockRootPathAccess`)
-- [ ] `disable_cookies: bool` (`DisableCookies`)
+- [x] `budget_redirected_countries: Vec<String>` (`BudgetRedirectedCountries`)
+- [x] `blocked_ips: Vec<String>` (already on read; add to update)
+- [x] `allowed_referrers: Vec<String>` (already on read; add to update)
+- [x] `blocked_referrers: Vec<String>` (already on read; add to update)
+- [x] `block_none_referrer: bool` (`BlockNoneReferrer`)
+- [x] `block_post_requests: bool` (`BlockPostRequests`)
+- [x] `block_root_path_access: bool` (`BlockRootPathAccess`)
+- [x] `disable_cookies: bool` (`DisableCookies`)
 
 ### 3. Shield DDoS + rate limiting fields
 
-- [ ] `shield_ddos_protection_enabled: bool` (`ShieldDDosProtectionEnabled`)
-- [ ] `shield_ddos_protection_type: Option<ShieldDDosProtectionType>` —
+- [x] `shield_ddos_protection_enabled: bool` (`ShieldDDosProtectionEnabled`)
+- [x] `shield_ddos_protection_type: Option<ShieldDDosProtectionType>` —
       new enum, check spec for variants
-- [ ] `burst_size: Option<i32>` (`BurstSize`)
-- [ ] `request_limit: Option<i32>` (`RequestLimit`)
-- [ ] `limit_rate_after: Option<i32>` (`LimitRateAfter`)
-- [ ] `limit_rate_per_second: Option<i32>` (`LimitRatePerSecond`)
-- [ ] `connection_limit_per_ip_count: Option<i32>` (`ConnectionLimitPerIPCount`)
-- [ ] `max_web_socket_connections: Option<i32>` (`MaxWebSocketConnections`)
+- [x] `burst_size: Option<i32>` (`BurstSize`)
+- [x] `request_limit: Option<i32>` (`RequestLimit`)
+- [x] `limit_rate_after: Option<f64>` (`LimitRateAfter`) — spec is `double`
+- [x] `limit_rate_per_second: Option<f64>` (`LimitRatePerSecond`) — spec is `double`
+- [x] `connection_limit_per_ip_count: Option<i32>` (`ConnectionLimitPerIPCount`)
+- [x] `max_web_socket_connections: Option<i32>` (`MaxWebSocketConnections`)
 
 ### 4. CLI flags
 
-- [ ] One flag per field on `hoppy pull-zone update`.
-- [ ] `Vec<String>` flags use `value_delimiter = ','` and document the
+- [x] One flag per field on `hoppy pull-zone update`.
+- [x] `Vec<String>` flags use `value_delimiter = ','` and document the
       format (e.g. country codes, CIDR ranges, domain patterns).
-- [ ] `--shield-ddos-protection-type` accepts the enum variants.
-- [ ] All numeric flags carry unit labels in help text.
+- [x] `--shield-ddos-protection-type` accepts the enum variants.
+- [x] All numeric flags carry unit labels in help text.
 
 ### 5. Tests + snapshots
 
-- [ ] `cargo test --workspace --quiet` clean.
-- [ ] Refresh e2e snapshots for `hoppy pull-zone update --help`.
-- [ ] Integration test: sparse update with `--blocked-countries CN,RU
+- [x] `cargo test --workspace --quiet` clean.
+- [x] Refresh e2e snapshots for `hoppy pull-zone update --help`.
+- [x] Integration test: sparse update with `--blocked-countries CN,RU
       --request-limit 100`, verify wire payload casing + comma-split.
 
 ## Out of scope
@@ -89,12 +89,12 @@ To `PullZone` (only those not already present) and `UpdatePullZone` (all):
 
 ## Acceptance Criteria
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean.
-- [ ] `hoppy pull-zone update --help` lists all firewall / rate-limit flags
+- [x] `hoppy pull-zone update --help` lists all firewall / rate-limit flags
       with help text.
-- [ ] Existing fields on `PullZone` (e.g. `blocked_ips`) are not duplicated.
-- [ ] `cargo run -p xtask -- check-iteration-ready --plan
+- [x] Existing fields on `PullZone` (e.g. `blocked_ips`) are not duplicated.
+- [x] `cargo run -p xtask -- check-iteration-ready --plan
       hoppy-knowledgebase/iterations/iteration-47-pull-zone-firewall-and-rate-limiting.md
       --base origin/main` exits 0.
 

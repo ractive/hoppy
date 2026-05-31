@@ -1721,3 +1721,51 @@ async fn pull_zone_update_lf_hostname_with_enable_skips_precheck() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+#[tokio::test]
+async fn pull_zone_update_firewall_fields() {
+    let server = MockServer::start().await;
+    let expected_body = serde_json::json!({
+        "BlockedCountries": ["CN", "RU"],
+        "RequestLimit": 100,
+        "ShieldDDosProtectionType": 2,
+        "ConnectionLimitPerIPCount": 50,
+    });
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "update",
+            "--id",
+            "1001",
+            "--blocked-countries",
+            "CN,RU",
+            "--request-limit",
+            "100",
+            "--shield-ddos-protection-type",
+            "active-aggressive",
+            "--connection-limit-per-ip-count",
+            "50",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
