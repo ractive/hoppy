@@ -8,7 +8,7 @@ tags:
   - research
   - openapi
   - no-code
-status: planned
+status: completed
 branch: iter-43/openapi-gap-analysis
 ---
 
@@ -65,16 +65,16 @@ comm -13 spec.txt struct.txt    # in struct, missing from spec
 
 The script must:
 
-- [ ] Take `--spec <path>`, `--schema <name>`, `--struct-file <path>`,
+- [x] Take `--spec <path>`, `--schema <name>`, `--struct-file <path>`,
       `--struct-name <name>` flags.
-- [ ] Emit a markdown table (counts + sorted gap lists) to stdout.
-- [ ] Handle the bunny.net spec casing quirks (e.g.
+- [x] Emit a markdown table (counts + sorted gap lists) to stdout.
+- [x] Handle the bunny.net spec casing quirks (e.g.
       `EnableWebPVary` in `PullZoneModel` vs `EnableWebpVary` in
       `PullZoneSettingsModel`) — report case-insensitive matches as a
       "casing mismatch" section, not as separate gaps.
-- [ ] Be invokable from CI eventually (exit code 0 even when gaps
+- [x] Be invokable from CI eventually (exit code 0 even when gaps
       exist; gaps are data, not failures).
-- [ ] Cross-platform-safe (POSIX shell + jq + awk — no GNU-only flags).
+- [x] Cross-platform-safe (POSIX shell + jq + awk — no GNU-only flags).
 
 ### 2. Run the audit on every read-shape struct + write-payload schema
 
@@ -108,7 +108,7 @@ discover it by:
 in the per-resource report and move on. The point of this iteration is
 to surface the data, not paper over uncertainty.
 
-- [ ] Per-resource markdown report at
+- [x] Per-resource markdown report at
       `hoppy-knowledgebase/research/spec-coverage/<resource>.md`,
       following the same template:
       - Schema name + spec path + struct name + struct path.
@@ -118,7 +118,7 @@ to surface the data, not paper over uncertainty.
       - A "casing mismatches" section if any.
       - A "reverse gap" section (in struct, not in spec) if any —
         these are usually stale fields the API stopped sending.
-- [ ] An index file at `hoppy-knowledgebase/research/spec-coverage/README.md`
+- [x] An index file at `hoppy-knowledgebase/research/spec-coverage/README.md`
       summarising:
       - One row per resource: spec fields / struct fields / gap count.
       - The total across all resources (the "size of the systemic
@@ -135,14 +135,14 @@ caching, vary headers, origin/edge, blocking, logging) but extend it to
 toggles. Numbers (e.g. `CacheControlMaxAgeOverride`), strings (e.g.
 `OriginHostHeader`), and enums also need triage.
 
-- [ ] Group each missing field under one of:
+- [x] Group each missing field under one of:
       - **security/compliance** — blocks PCI/SOC2 requirements.
       - **performance** — caching, optimisation, vary.
       - **routing/origin** — edge config, origin selection.
       - **firewall** — blocking, allowlists, security keys.
       - **observability** — logging, statistics.
       - **niche** — fields very few users will ever touch.
-- [ ] Mark a "next iteration scope" recommendation: smallest
+- [x] Mark a "next iteration scope" recommendation: smallest
       surgical PR vs broader bundles.
 
 ## Out of scope
@@ -161,22 +161,22 @@ toggles. Numbers (e.g. `CacheControlMaxAgeOverride`), strings (e.g.
 
 ## Acceptance
 
-- [ ] `hoppy-knowledgebase/scripts/audit-spec-coverage.sh` exists,
+- [x] `hoppy-knowledgebase/scripts/audit-spec-coverage.sh` exists,
       runs against `specs/core-platform.json` + `PullZoneModel` +
       `PullZone`, and reproduces the 33-gap finding from the 2026-05-31
       dogfooding round.
-- [ ] `hoppy-knowledgebase/research/spec-coverage/` has one report per
+- [x] `hoppy-knowledgebase/research/spec-coverage/` has one report per
       resource listed in scope §2.
-- [ ] `hoppy-knowledgebase/research/spec-coverage/README.md` totals
+- [x] `hoppy-knowledgebase/research/spec-coverage/README.md` totals
       the gap counts across all resources — i.e. a single number for
       "how big is the systemic coverage gap."
-- [ ] Pull-zone report has the severity grouping from §3.
-- [ ] No `crates/` files modified. Confirm with
+- [x] Pull-zone report has the severity grouping from §3.
+- [x] No `crates/` files modified. Confirm with
       `git diff origin/main..HEAD -- crates/ | wc -l` returning 0.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean (should be trivially true
       since no code changed).
-- [ ] [[../backlog/pull-zone-update-toggle-coverage-gap]] updated with
+- [x] [[../backlog/pull-zone-update-toggle-coverage-gap]] updated with
       a link to the new pull-zone report.
 
 ## Related
