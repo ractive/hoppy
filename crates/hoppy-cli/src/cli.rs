@@ -1,4 +1,6 @@
-use bunny_net_api::core::types::{OptimizerWatermarkPosition, PullZoneLogForwarderProtocolType};
+use bunny_net_api::core::types::{
+    LogAnonymizationType, OptimizerWatermarkPosition, PullZoneLogForwarderProtocolType,
+};
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
@@ -157,6 +159,24 @@ impl From<PullZoneLogForwardingProtocolArg> for PullZoneLogForwarderProtocolType
     }
 }
 
+/// How the last octet of a logged IP address is anonymised.
+#[derive(Copy, Clone, ValueEnum)]
+pub enum LogAnonymizationTypeArg {
+    /// Replace the last octet with a single digit (value 0).
+    OneDigit,
+    /// Drop the last octet entirely (value 1).
+    Drop,
+}
+
+impl From<LogAnonymizationTypeArg> for LogAnonymizationType {
+    fn from(a: LogAnonymizationTypeArg) -> Self {
+        match a {
+            LogAnonymizationTypeArg::OneDigit => Self::OneDigit,
+            LogAnonymizationTypeArg::Drop => Self::Drop,
+        }
+    }
+}
+
 /// Edge script type (`ScriptType` in the Compute API).
 #[derive(Copy, Clone, ValueEnum)]
 pub enum ScriptTypeArg {
@@ -197,6 +217,7 @@ impl From<StorageZoneTierArg> for i64 {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // clap subcommand enums are boxed by clap internals
 pub enum Commands {
     /// Manage CDN pull zones
     PullZone {
@@ -334,6 +355,7 @@ pub enum VideoLibraryAction {
 // -- Pull Zone --
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // Update has many Option<T> flags; clap handles boxing
 pub enum PullZoneAction {
     /// List all pull zones
     List {
@@ -522,6 +544,62 @@ pub enum PullZoneAction {
         /// Route Optimizer traffic through a dedicated tunnel for origin privacy.
         #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
         optimizer_tunnel: Option<bool>,
+
+        // ── Security / compliance (iter-44) ──────────────────────────────────
+        /// Allow TLS 1.0 to the CDN edge. Disable for PCI/SOC2 compliance.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        enable_tls1: Option<bool>,
+        /// Allow TLS 1.1 to the CDN edge. Disable for PCI/SOC2 compliance.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        enable_tls1_1: Option<bool>,
+        /// Automatically provision an SSL certificate for custom hostnames.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        enable_auto_ssl: Option<bool>,
+        /// Disable Let's Encrypt provisioning (use only your own uploaded certs).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        disable_lets_encrypt: Option<bool>,
+        /// Verify the origin's SSL certificate before serving cached content.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        verify_origin_ssl: Option<bool>,
+        /// Send an `Access-Control-Allow-Origin` (CORS) header on responses.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        enable_access_control_origin_header: Option<bool>,
+        /// Comma-separated file extensions that receive the CORS header
+        /// (e.g. `woff,woff2,ttf`). Pass an empty string to clear.
+        #[arg(
+            long,
+            value_name = "EXTS",
+            value_delimiter = ',',
+            help_heading = "Security / compliance"
+        )]
+        access_control_origin_header_extensions: Option<Vec<String>>,
+        /// Include a hash of the client's remote IP in the Zone Security
+        /// token, binding signed URLs to a single IP.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        zone_security_include_hash_remote_ip: Option<bool>,
+        /// Sign every origin request with AWS Signature V4 (required for
+        /// private S3-compatible origins).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        aws_signing_enabled: Option<bool>,
+        /// AWS Access Key ID for SigV4 origin signing.
+        /// WARNING: passed on the command line appears in shell history;
+        /// prefer an env var or a wrapper script.
+        #[arg(long, value_name = "KEY", help_heading = "Security / compliance")]
+        aws_signing_key: Option<String>,
+        /// AWS Secret Access Key for SigV4 origin signing.
+        /// WARNING: passed on the command line appears in shell history;
+        /// prefer an env var or a wrapper script.
+        #[arg(long, value_name = "SECRET", help_heading = "Security / compliance")]
+        aws_signing_secret: Option<String>,
+        /// AWS region name for SigV4 origin signing (e.g. `us-east-1`).
+        #[arg(long, value_name = "REGION", help_heading = "Security / compliance")]
+        aws_signing_region_name: Option<String>,
+        /// Anonymise client IPs in CDN logs (GDPR-friendly).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Security / compliance")]
+        logging_ip_anonymization_enabled: Option<bool>,
+        /// How the last IP octet is anonymised: `one-digit` or `drop`.
+        #[arg(long, value_name = "TYPE", help_heading = "Security / compliance")]
+        log_anonymization_type: Option<LogAnonymizationTypeArg>,
     },
     /// Delete a pull zone
     Delete {

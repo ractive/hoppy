@@ -10,8 +10,8 @@ use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
-    MatchingType, OptimizerWatermarkPosition, PullZone, PullZoneLogForwarderProtocolType,
-    PullZoneType, PurgeCache, TriggerType, UpdatePullZone,
+    LogAnonymizationType, MatchingType, OptimizerWatermarkPosition, PullZone,
+    PullZoneLogForwarderProtocolType, PullZoneType, PurgeCache, TriggerType, UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
 
@@ -184,6 +184,20 @@ pub async fn handle(
             optimizer_static_html_wp_bypass_cookie,
             optimizer_prerender_html,
             optimizer_tunnel,
+            enable_tls1,
+            enable_tls1_1,
+            enable_auto_ssl,
+            disable_lets_encrypt,
+            verify_origin_ssl,
+            enable_access_control_origin_header,
+            access_control_origin_header_extensions,
+            zone_security_include_hash_remote_ip,
+            aws_signing_enabled,
+            aws_signing_key,
+            aws_signing_secret,
+            aws_signing_region_name,
+            logging_ip_anonymization_enabled,
+            log_anonymization_type,
         } => {
             // Guard: if any log-forwarding sub-field is being set without also
             // enabling log forwarding in this same call, verify the zone has
@@ -281,6 +295,30 @@ pub async fn handle(
             }
             body.optimizer_prerender_html = *optimizer_prerender_html;
             body.optimizer_tunnel_enabled = *optimizer_tunnel;
+            // Security / compliance fields (iter-44)
+            body.enable_tls1 = *enable_tls1;
+            body.enable_tls1_1 = *enable_tls1_1;
+            body.enable_auto_ssl = *enable_auto_ssl;
+            body.disable_lets_encrypt = *disable_lets_encrypt;
+            body.verify_origin_ssl = *verify_origin_ssl;
+            body.enable_access_control_origin_header = *enable_access_control_origin_header;
+            body.access_control_origin_header_extensions =
+                access_control_origin_header_extensions.clone();
+            body.zone_security_include_hash_remote_ip = *zone_security_include_hash_remote_ip;
+            body.aws_signing_enabled = *aws_signing_enabled;
+            if let Some(v) = aws_signing_key {
+                body = body.aws_signing_key(v.as_str());
+            }
+            if let Some(v) = aws_signing_secret {
+                body = body.aws_signing_secret(v.as_str());
+            }
+            if let Some(v) = aws_signing_region_name {
+                body = body.aws_signing_region_name(v.as_str());
+            }
+            body.logging_ip_anonymization_enabled = *logging_ip_anonymization_enabled;
+            if let Some(t) = log_anonymization_type {
+                body = body.log_anonymization_type(LogAnonymizationType::from(*t));
+            }
             let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format, redact_cfg);
         }

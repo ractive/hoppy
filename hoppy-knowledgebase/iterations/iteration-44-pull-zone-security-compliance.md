@@ -1,5 +1,5 @@
 ---
-title: "Iter-44 — pull-zone security/compliance toggles"
+title: Iter-44 — pull-zone security/compliance toggles
 type: iteration
 date: 2026-05-31
 tags:
@@ -7,7 +7,7 @@ tags:
   - pull-zone
   - security
   - openapi-coverage
-status: planned
+status: completed
 branch: iter-44/pull-zone-security-compliance
 ---
 
@@ -33,28 +33,28 @@ Source: `PullZoneModel` properties (specs/core-platform.json).
 Add the following to `PullZone` in `crates/bunny-net-api/src/core/types.rs`,
 matching the spec types and using `#[serde(default)]` for absent fields:
 
-- [ ] `enable_tls1: bool` (`EnableTLS1`)
-- [ ] `enable_tls1_1: bool` (`EnableTLS1_1`)
-- [ ] `enable_auto_ssl: bool` (`EnableAutoSSL`)
-- [ ] `disable_lets_encrypt: bool` (`DisableLetsEncrypt`)
-- [ ] `verify_origin_ssl: bool` (`VerifyOriginSSL`)
-- [ ] `enable_access_control_origin_header: bool` (`EnableAccessControlOriginHeader`)
-- [ ] `access_control_origin_header_extensions: Vec<String>` (`AccessControlOriginHeaderExtensions`)
-- [ ] `zone_security_include_hash_remote_ip: bool` (`ZoneSecurityIncludeHashRemoteIP`)
-- [ ] `aws_signing_enabled: bool` (`AWSSigningEnabled`)
-- [ ] `aws_signing_key: Option<String>` (`AWSSigningKey`) — write-only secret; `#[serde(skip_serializing)]` on read shape if API echoes it
-- [ ] `aws_signing_secret: Option<String>` (`AWSSigningSecret`) — write-only secret
-- [ ] `aws_signing_region_name: Option<String>` (`AWSSigningRegionName`)
-- [ ] `logging_ip_anonymization_enabled: bool` (`LoggingIPAnonymizationEnabled`)
-- [ ] `log_anonymization_type: Option<LogAnonymizationType>` (`LogAnonymizationType`) — new enum; check spec for variant list
+- [x] `enable_tls1: bool` (`EnableTLS1`)
+- [x] `enable_tls1_1: bool` (`EnableTLS1_1`)
+- [x] `enable_auto_ssl: bool` (`EnableAutoSSL`)
+- [x] `disable_lets_encrypt: bool` (`DisableLetsEncrypt`)
+- [x] `verify_origin_ssl: bool` (`VerifyOriginSSL`)
+- [x] `enable_access_control_origin_header: bool` (`EnableAccessControlOriginHeader`)
+- [x] `access_control_origin_header_extensions: Vec<String>` (`AccessControlOriginHeaderExtensions`)
+- [x] `zone_security_include_hash_remote_ip: bool` (`ZoneSecurityIncludeHashRemoteIP`)
+- [x] `aws_signing_enabled: bool` (`AWSSigningEnabled`)
+- [x] `aws_signing_key: Option<String>` (`AWSSigningKey`) — write-only secret; `#[serde(skip_serializing)]` on read shape if API echoes it
+- [x] `aws_signing_secret: Option<String>` (`AWSSigningSecret`) — write-only secret
+- [x] `aws_signing_region_name: Option<String>` (`AWSSigningRegionName`)
+- [x] `logging_ip_anonymization_enabled: bool` (`LoggingIPAnonymizationEnabled`)
+- [x] `log_anonymization_type: Option<LogAnonymizationType>` (`LogAnonymizationType`) — new enum; check spec for variant list
 
 ### 2. Mirror onto `UpdatePullZone` (update payload)
 
 Same 14 fields, all as `Option<T>` (sparse update semantics, matching
 existing `UpdatePullZone` pattern).
 
-- [ ] Add all 14 fields to `UpdatePullZone`.
-- [ ] Confirm serde rename casing matches the API (PascalCase via existing
+- [x] Add all 14 fields to `UpdatePullZone`.
+- [x] Confirm serde rename casing matches the API (PascalCase via existing
       crate-wide `rename_all = "PascalCase"` derive — verify by spot-checking
       one field with `curl` against the live API).
 
@@ -63,23 +63,23 @@ existing `UpdatePullZone` pattern).
 In `crates/hoppy-cli/src/cli.rs` (around line 412, near
 `monthly_bandwidth_limit`):
 
-- [ ] One `Option<bool>` clap arg per boolean toggle, kebab-cased.
-- [ ] `--access-control-origin-header-extensions` accepts comma-separated
+- [x] One `Option<bool>` clap arg per boolean toggle, kebab-cased.
+- [x] `--access-control-origin-header-extensions` accepts comma-separated
       values (use the existing `Vec<String>` pattern from `blocked_ips` /
       `allowed_referrers` if one exists, otherwise `value_delimiter = ','`).
-- [ ] `--aws-signing-key` / `--aws-signing-secret`: mark help text with a
+- [x] `--aws-signing-key` / `--aws-signing-secret`: mark help text with a
       warning that values appear in shell history; recommend `--from-env`
       or `--from-file` if those patterns exist elsewhere in the CLI.
-- [ ] `--log-anonymization-type` as an enum-valued arg.
-- [ ] Every new arg has `help = "..."` (the iter-41 §3 lesson — don't ship
+- [x] `--log-anonymization-type` as an enum-valued arg.
+- [x] Every new arg has `help = "..."` (the iter-41 §3 lesson — don't ship
       undocumented flags).
 
 ### 4. Tests + snapshots
 
-- [ ] Add unit tests for the new enum's serde round-trip.
-- [ ] `cargo test --workspace --quiet` clean.
-- [ ] Refresh e2e snapshots for `hoppy pull-zone update --help`.
-- [ ] Add one integration test that sends a sparse update with two new
+- [x] Add unit tests for the new enum's serde round-trip.
+- [x] `cargo test --workspace --quiet` clean.
+- [x] Refresh e2e snapshots for `hoppy pull-zone update --help`.
+- [x] Add one integration test that sends a sparse update with two new
       fields and verifies the wire payload (use the existing fixture
       machinery — see `tests/e2e/` in `bunny-net-api`).
 
@@ -95,13 +95,13 @@ In `crates/hoppy-cli/src/cli.rs` (around line 412, near
 
 ## Acceptance Criteria
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean.
-- [ ] `hoppy pull-zone update --help` lists all 14 new flags with help text.
-- [ ] Integration test verifies a sparse `UpdatePullZone` with
+- [x] `hoppy pull-zone update --help` lists all 14 new flags with help text.
+- [x] Integration test verifies a sparse `UpdatePullZone` with
       `enable_tls1: Some(false)` serialises to `{"EnableTLS1": false}` only
       (no other fields in the payload).
-- [ ] `cargo run -p xtask -- check-iteration-ready --plan
+- [x] `cargo run -p xtask -- check-iteration-ready --plan
       hoppy-knowledgebase/iterations/iteration-44-pull-zone-security-compliance.md
       --base origin/main` exits 0.
 
