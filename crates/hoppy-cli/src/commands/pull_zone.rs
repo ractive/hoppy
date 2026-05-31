@@ -302,8 +302,15 @@ pub async fn handle(
             body.disable_lets_encrypt = *disable_lets_encrypt;
             body.verify_origin_ssl = *verify_origin_ssl;
             body.enable_access_control_origin_header = *enable_access_control_origin_header;
-            body.access_control_origin_header_extensions =
-                access_control_origin_header_extensions.clone();
+            if let Some(exts) = access_control_origin_header_extensions.as_ref() {
+                let normalized: Vec<String> = exts
+                    .iter()
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(ToOwned::to_owned)
+                    .collect();
+                body.access_control_origin_header_extensions = Some(normalized);
+            }
             body.zone_security_include_hash_remote_ip = *zone_security_include_hash_remote_ip;
             body.aws_signing_enabled = *aws_signing_enabled;
             if let Some(v) = aws_signing_key {
