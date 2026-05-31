@@ -124,3 +124,13 @@ quality-of-life.
   `ASIA` / `EU` / `SA` / `US` (ALLCAPS) appear alongside their
   camelCase twins in the API response; the CLI's `--enable-geo-zone-*`
   flags cover them — they were excluded from the 33 above.
+
+## Related
+
+- [[../research/spec-coverage/pull-zone]] — iter-43 systematic audit
+  of the `PullZoneModel` ⇄ `PullZone` and `PullZoneSettingsModel` ⇄
+  `UpdatePullZone` mappings, with a severity grouping covering all
+  missing fields (not only toggles). Confirms this is a struct-level
+  gap, not a curated CLI subset.
+- [[../research/spec-coverage/README|Spec coverage index]] — totals
+  across every resource hoppy models.
