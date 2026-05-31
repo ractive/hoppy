@@ -2,7 +2,7 @@
 title: `--record` saves live billing/payment PII to fixtures with no redaction warning
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: high
 origin: dogfooding-2026-05-31
 tags:

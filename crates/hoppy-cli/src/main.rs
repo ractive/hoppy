@@ -11,9 +11,31 @@ use clap_complete::generate;
 use cli::{Cli, Commands};
 use redact::RedactConfig;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let cli = Cli::parse();
+
+    // Propagate --no-redact to the recording layer via env var, BEFORE the
+    // Tokio runtime is constructed. The env-var indirection avoids threading
+    // a flag through every domain client builder; `bunny-net-api` reads
+    // HOPPY_NO_REDACT=1 inside `maybe_record_response` before writing
+    // fixtures to disk.
+    //
+    // SAFETY: we are still single-threaded — the Tokio runtime has not been
+    // built yet, so no other thread can be observing the environment.
+    if cli.no_redact {
+        unsafe {
+            std::env::set_var("HOPPY_NO_REDACT", "1");
+        }
+    }
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build tokio runtime");
+    runtime.block_on(run(cli));
+}
+
+async fn run(cli: Cli) {
     let record = cli.record.as_deref();
     let redact_cfg = RedactConfig::new(cli.reveal, cli.reveal_env.clone());
 

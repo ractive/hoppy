@@ -1,0 +1,18 @@
+{
+  "Balance": 42.50,
+  "ThisMonthCharges": 9.99,
+  "BillingRecords": [
+    {
+      "Id": 1001,
+      "Amount": 9.99,
+      "PaymentId": "pm_test_abc123",
+      "InvoiceDownloadUrl": "https://billing.bunny.net/invoice/1001?token=signed_tok_xyz&expires=9999999999",
+      "PayerEmail": "john.doe@example.com",
+      "Description": "CDN charges June 2026",
+      "Timestamp": "2026-06-01T00:00:00Z"
+    }
+  ],
+  "MonthlyChargesStorage": 1.50,
+  "MonthlyChargesBandwidth": 8.49,
+  "ReceivingFunds": false
+}

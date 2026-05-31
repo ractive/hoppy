@@ -1,0 +1,18 @@
+{
+  "Balance": 0,
+  "ThisMonthCharges": 0,
+  "BillingRecords": [
+    {
+      "Id": 1001,
+      "Amount": 9.99,
+      "PaymentId": "<redacted>",
+      "InvoiceDownloadUrl": "<redacted>",
+      "PayerEmail": "<redacted>",
+      "Description": "CDN charges June 2026",
+      "Timestamp": "2026-06-01T00:00:00Z"
+    }
+  ],
+  "MonthlyChargesStorage": 0,
+  "MonthlyChargesBandwidth": 0,
+  "ReceivingFunds": false
+}

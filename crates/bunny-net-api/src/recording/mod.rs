@@ -1,3 +1,5 @@
+pub mod redact;
+
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -58,10 +60,22 @@ pub fn maybe_record_response(
     if let Some(parent) = file_path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    let payload: Vec<u8> = if let Ok(value) = serde_json::from_slice::<serde_json::Value>(bytes)
-        && let Ok(pretty) = serde_json::to_string_pretty(&value)
+    // Redaction is enabled by default. Set HOPPY_NO_REDACT=1 to skip it.
+    // The env-var indirection avoids threading a `redact: bool` flag through
+    // every domain client builder — recording is already an env-var-driven
+    // opt-in, so this matches the existing pattern.
+    let no_redact = std::env::var("HOPPY_NO_REDACT").as_deref() == Ok("1");
+
+    let payload: Vec<u8> = if let Ok(mut value) = serde_json::from_slice::<serde_json::Value>(bytes)
     {
-        format!("{pretty}\n").into_bytes()
+        if !no_redact {
+            redact::redact_in_place(&mut value);
+        }
+        if let Ok(pretty) = serde_json::to_string_pretty(&value) {
+            format!("{pretty}\n").into_bytes()
+        } else {
+            bytes.to_vec()
+        }
     } else {
         bytes.to_vec()
     };
@@ -88,12 +102,19 @@ mod tests {
     fn records_under_domain_subdir() {
         let dir = tempdir().unwrap();
         let last = Mutex::new(Some(("GET".into(), "/billing".into())));
-        let body = br#"{"Balance":12.5}"#;
+        // Balance is a sensitive key — it will be redacted to 0.
+        let body = br#"{"Balance":12.5,"Name":"my-zone"}"#;
         maybe_record_response(Some(dir.path()), "core", &last, true, body);
         let p = dir.path().join("core").join("GET_billing.json");
         assert!(p.exists(), "fixture not written under domain subdir");
         let txt = std::fs::read_to_string(&p).unwrap();
-        assert!(txt.starts_with('{') && txt.contains("\"Balance\""));
+        // Balance key is present but value is redacted to 0; safe field preserved.
+        assert!(txt.contains("\"Balance\""));
+        assert!(txt.contains("\"Name\": \"my-zone\""));
+        assert!(
+            !txt.contains("12.5"),
+            "raw balance must not appear in fixture"
+        );
     }
 
     #[test]
@@ -121,5 +142,80 @@ mod tests {
         maybe_record_response(Some(dir.path()), "core", &last2, true, br#"{"a":2}"#);
         let txt = std::fs::read_to_string(dir.path().join("core").join("GET_x.json")).unwrap();
         assert!(txt.contains("\"a\": 2"));
+    }
+
+    /// Feed a synthetic billing-shaped body through `maybe_record_response` and
+    /// assert that all sensitive fields are masked and safe structure is preserved.
+    #[test]
+    fn billing_response_is_redacted_on_record() {
+        let dir = tempdir().unwrap();
+        let body = br#"{
+            "Balance": 42.50,
+            "ThisMonthCharges": 77.77,
+            "BillingRecords": [
+                {
+                    "Id": 1001,
+                    "Amount": 5.55,
+                    "PaymentId": "pm_test_abc123",
+                    "InvoiceDownloadUrl": "https://billing.bunny.net/invoice/1?token=tok_secret&expires=9999",
+                    "PayerEmail": "john.doe@example.com",
+                    "Description": "CDN charges",
+                    "Timestamp": "2026-06-01T00:00:00Z"
+                }
+            ],
+            "ReceivingFunds": false
+        }"#;
+        let last = Mutex::new(Some(("GET".into(), "/billing".into())));
+        maybe_record_response(Some(dir.path()), "core", &last, true, body);
+        let txt =
+            std::fs::read_to_string(dir.path().join("core").join("GET_billing.json")).unwrap();
+
+        // Sensitive values must not appear.
+        assert!(!txt.contains("42.50"), "real balance must not appear");
+        assert!(
+            !txt.contains("77.77"),
+            "real monthly charges must not appear"
+        );
+        assert!(
+            !txt.contains("pm_test_abc123"),
+            "payment ID must not appear"
+        );
+        assert!(
+            !txt.contains("john.doe@example.com"),
+            "email must not appear"
+        );
+        assert!(
+            !txt.contains("tok_secret"),
+            "signed URL token must not appear"
+        );
+
+        // Safe fields and structure must be preserved.
+        assert!(txt.contains("1001"), "record ID must be preserved");
+        assert!(
+            txt.contains("ReceivingFunds"),
+            "bool field must be preserved"
+        );
+        assert!(txt.contains("false"), "bool value must be preserved");
+        assert!(txt.contains("2026-06-01"), "timestamp must be preserved");
+    }
+
+    /// Snapshot test: run the known-good `billing_raw.json` fixture through
+    /// redaction and compare against the checked-in `billing_redacted.json`.
+    #[test]
+    fn billing_snapshot_matches_expected_redaction() {
+        let raw: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/billing_raw.json"))
+                .expect("billing_raw.json must be valid JSON");
+        let expected: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/billing_redacted.json"))
+                .expect("billing_redacted.json must be valid JSON");
+
+        let mut actual = raw;
+        redact::redact_in_place(&mut actual);
+
+        assert_eq!(
+            actual, expected,
+            "redacted output does not match billing_redacted.json snapshot"
+        );
     }
 }

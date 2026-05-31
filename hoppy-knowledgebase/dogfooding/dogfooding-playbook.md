@@ -97,12 +97,33 @@ numeric ID in the fixture path). Output:
 
 **Step 3 — verify:**
 
-1. Run `git diff -- fixtures/` and spot-check changed fixtures.
+1. Run `git diff -- fixtures/` and spot-check changed fixtures. Even though
+   `--record` redacts PII by default (see below), always do a manual diff review
+   before committing fixture changes.
 2. Look for account-specific leakage: account IDs, `LastUpdated` timestamps,
-   per-account hostnames, tokens. Redact by hand or file a backlog item.
+   per-account hostnames. Redacted fields (balance, email, tokens, etc.) will show
+   `"<redacted>"` or `0` — that is expected.
 3. Re-run `cargo test --workspace --quiet` to confirm the offline suite still passes.
 4. Commit the drift together with the iteration change that drove it.
 5. Clean up the scratch directory: `rm -rf fixtures-recorded`
+
+#### PII redaction in `--record` fixtures
+
+`--record` (and `HOPPY_RECORD_DIR`) redacts sensitive fields **by default** before
+writing any fixture to disk. The following are masked automatically:
+
+- **Field-name patterns** (case-insensitive substring): `email`, `payer`,
+  `paymentid`, `balance`, `charges`, `recharge`, `invoice`, `downloadurl`,
+  `apikey`, `accesskey`, `token`, `password`.
+- **Value patterns**: URLs containing `?token=`, `&token=`, `signature=`, or
+  `expires=`; JWT-shaped strings (three base64url segments).
+
+String values become `"<redacted>"`; numbers become `0`; booleans and array/object
+structure are preserved so fixture diffs remain meaningful.
+
+To capture raw responses (e.g. to inspect the real API shape), pass `--no-redact`
+or set `HOPPY_NO_REDACT=1`. **Do not commit raw output** — it may contain live
+billing balances, payer emails, payment IDs, and short-lived signed download URLs.
 
 **Notes on collisions and unmapped recordings:**
 
