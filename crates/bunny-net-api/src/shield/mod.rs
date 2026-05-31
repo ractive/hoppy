@@ -149,5 +149,6 @@ pub use types::{
     WafRuleSeverityType,
     WafRuleTransformationType,
     WafRulesByPlanModel,
+    parse_shield_2xx_envelope_error,
     parse_shield_error,
 };

@@ -8,6 +8,7 @@ mod cli_hints;
 mod cli_pull_zone;
 mod cli_script;
 mod cli_shield;
+mod cli_shield_202;
 mod cli_statistics;
 mod cli_storage;
 mod cli_storage_zone;
