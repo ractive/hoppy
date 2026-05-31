@@ -1,5 +1,5 @@
 use bunny_net_api::core::types::{
-    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, MatchingType,
+    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, LogAnonymizationType, MatchingType,
     OptimizerWatermarkPosition, OriginType, PullZoneLogForwarderProtocolType, TriggerType,
     UpdatePullZone,
 };
@@ -1175,4 +1175,148 @@ async fn get_pull_zone_with_log_forwarding_fields_round_trips() {
     );
     assert_eq!(zone.logging_save_to_storage, Some(true));
     assert_eq!(zone.logging_storage_zone_id, Some(99));
+}
+
+// ---------------------------------------------------------------------------
+// Security / compliance (iter-44)
+// ---------------------------------------------------------------------------
+
+/// Sparse update with two security/compliance fields must serialise to only
+/// those two keys — confirms sparse update semantics + correct PascalCase keys
+/// (`EnableTLS1` uppercase, `VerifyOriginSSL` uppercase, no extras).
+#[tokio::test]
+async fn update_pull_zone_with_security_fields_sends_only_set_keys() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "EnableTLS1": false,
+        "VerifyOriginSSL": true,
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .enable_tls1(false)
+        .verify_origin_ssl(true);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// `LogAnonymizationType` must serialise as its integer discriminant
+/// (`Drop` is 1 on the wire) — mirrors the watermark-position test.
+#[tokio::test]
+async fn update_pull_zone_with_log_anonymization_type_serializes_as_int() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "LogAnonymizationType": 1 });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().log_anonymization_type(LogAnonymizationType::Drop);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// Round-trip for the `LogAnonymizationType` enum: both variants must
+/// serialise to and deserialise from their integer discriminants.
+#[test]
+fn log_anonymization_type_round_trips() {
+    let one_digit = serde_json::to_string(&LogAnonymizationType::OneDigit).unwrap();
+    let drop = serde_json::to_string(&LogAnonymizationType::Drop).unwrap();
+    assert_eq!(one_digit, "0");
+    assert_eq!(drop, "1");
+
+    let parsed_one: LogAnonymizationType = serde_json::from_str("0").unwrap();
+    let parsed_drop: LogAnonymizationType = serde_json::from_str("1").unwrap();
+    assert_eq!(parsed_one, LogAnonymizationType::OneDigit);
+    assert_eq!(parsed_drop, LogAnonymizationType::Drop);
+}
+
+/// `AWSSigningKey` / `AWSSigningSecret` use the uppercase `AWS` rename. A
+/// sparse update containing both must serialise with the exact PascalCase keys
+/// the API expects.
+#[tokio::test]
+async fn update_pull_zone_with_aws_signing_uses_uppercase_keys() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "AWSSigningEnabled": true,
+        "AWSSigningKey": "AKIAEXAMPLE",
+        "AWSSigningSecret": "secret",
+        "AWSSigningRegionName": "us-east-1",
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .aws_signing_enabled(true)
+        .aws_signing_key("AKIAEXAMPLE")
+        .aws_signing_secret("secret")
+        .aws_signing_region_name("us-east-1");
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// CORS extensions list must round-trip as a JSON array under the
+/// `AccessControlOriginHeaderExtensions` key.
+#[tokio::test]
+async fn update_pull_zone_with_cors_extensions_sends_array() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "EnableAccessControlOriginHeader": true,
+        "AccessControlOriginHeaderExtensions": ["woff", "woff2", "ttf"],
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .enable_access_control_origin_header(true)
+        .access_control_origin_header_extensions(vec![
+            "woff".to_string(),
+            "woff2".to_string(),
+            "ttf".to_string(),
+        ]);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
 }

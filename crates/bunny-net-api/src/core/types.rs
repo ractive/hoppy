@@ -329,6 +329,45 @@ impl std::str::FromStr for OptimizerWatermarkPosition {
     }
 }
 
+/// How the last octet of a logged IP address is anonymised when IP anonymisation
+/// is enabled on a Pull Zone.
+///
+/// Spec: `LogAnonymizationType` — `0 = OneDigit`, `1 = Drop`. Serialised as the
+/// integer discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum LogAnonymizationType {
+    /// Replace the last octet with a single digit (e.g. `192.168.0.1` → `192.168.0.0`).
+    OneDigit = 0,
+    /// Drop the last octet entirely (e.g. `192.168.0.1` → `192.168.0`).
+    Drop = 1,
+}
+
+impl std::fmt::Display for LogAnonymizationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::OneDigit => "one-digit",
+            Self::Drop => "drop",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for LogAnonymizationType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "one-digit" | "OneDigit" => Ok(Self::OneDigit),
+            "drop" | "Drop" => Ok(Self::Drop),
+            _ => Err(format!(
+                "unknown log anonymization type: {s:?}; \
+                 expected one of: one-digit, drop"
+            )),
+        }
+    }
+}
+
 /// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
 ///
 /// Bunny.net may add new protocols in future API versions. The
@@ -609,6 +648,40 @@ pub struct PullZone {
     pub blocked_referrers: Vec<String>,
     #[serde(default)]
     pub blocked_ips: Vec<String>,
+
+    // Security / compliance (iter-44)
+    #[serde(rename = "EnableTLS1", default)]
+    pub enable_tls1: bool,
+    #[serde(rename = "EnableTLS1_1", default)]
+    pub enable_tls1_1: bool,
+    #[serde(rename = "EnableAutoSSL", default)]
+    pub enable_auto_ssl: bool,
+    #[serde(default)]
+    pub disable_lets_encrypt: bool,
+    #[serde(rename = "VerifyOriginSSL", default)]
+    pub verify_origin_ssl: bool,
+    #[serde(default)]
+    pub enable_access_control_origin_header: bool,
+    #[serde(default)]
+    pub access_control_origin_header_extensions: Vec<String>,
+    #[serde(rename = "ZoneSecurityIncludeHashRemoteIP", default)]
+    pub zone_security_include_hash_remote_ip: bool,
+    #[serde(rename = "AWSSigningEnabled", default)]
+    pub aws_signing_enabled: bool,
+    /// Write-only secret. The API never echoes this on read responses; we keep
+    /// the field for symmetry with the update payload but `skip_serializing`
+    /// so a populated value is never accidentally logged back out.
+    #[serde(rename = "AWSSigningKey", default, skip_serializing)]
+    pub aws_signing_key: Option<String>,
+    /// Write-only secret — see [`Self::aws_signing_key`].
+    #[serde(rename = "AWSSigningSecret", default, skip_serializing)]
+    pub aws_signing_secret: Option<String>,
+    #[serde(rename = "AWSSigningRegionName", default)]
+    pub aws_signing_region_name: Option<String>,
+    #[serde(rename = "LoggingIPAnonymizationEnabled", default)]
+    pub logging_ip_anonymization_enabled: bool,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub log_anonymization_type: Option<LogAnonymizationType>,
 }
 
 /// Generic paginated list response returned by the bunny.net API.
@@ -846,6 +919,46 @@ pub struct UpdatePullZone {
     pub optimizer_prerender_html: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optimizer_tunnel_enabled: Option<bool>,
+
+    // Security / compliance (iter-44)
+    #[serde(rename = "EnableTLS1", skip_serializing_if = "Option::is_none")]
+    pub enable_tls1: Option<bool>,
+    #[serde(rename = "EnableTLS1_1", skip_serializing_if = "Option::is_none")]
+    pub enable_tls1_1: Option<bool>,
+    #[serde(rename = "EnableAutoSSL", skip_serializing_if = "Option::is_none")]
+    pub enable_auto_ssl: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable_lets_encrypt: Option<bool>,
+    #[serde(rename = "VerifyOriginSSL", skip_serializing_if = "Option::is_none")]
+    pub verify_origin_ssl: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_access_control_origin_header: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_control_origin_header_extensions: Option<Vec<String>>,
+    #[serde(
+        rename = "ZoneSecurityIncludeHashRemoteIP",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub zone_security_include_hash_remote_ip: Option<bool>,
+    #[serde(rename = "AWSSigningEnabled", skip_serializing_if = "Option::is_none")]
+    pub aws_signing_enabled: Option<bool>,
+    #[serde(rename = "AWSSigningKey", skip_serializing_if = "Option::is_none")]
+    pub aws_signing_key: Option<String>,
+    #[serde(rename = "AWSSigningSecret", skip_serializing_if = "Option::is_none")]
+    pub aws_signing_secret: Option<String>,
+    #[serde(
+        rename = "AWSSigningRegionName",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub aws_signing_region_name: Option<String>,
+    #[serde(
+        rename = "LoggingIPAnonymizationEnabled",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub logging_ip_anonymization_enabled: Option<bool>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_anonymization_type: Option<LogAnonymizationType>,
 }
 
 impl UpdatePullZone {
@@ -1067,6 +1180,92 @@ impl UpdatePullZone {
     #[must_use]
     pub fn logging_storage_zone_id(mut self, v: i64) -> Self {
         self.logging_storage_zone_id = Some(v);
+        self
+    }
+
+    // ── Security / compliance (iter-44) ─────────────────────────────────────
+
+    #[must_use]
+    pub fn enable_tls1(mut self, v: bool) -> Self {
+        self.enable_tls1 = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_tls1_1(mut self, v: bool) -> Self {
+        self.enable_tls1_1 = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_auto_ssl(mut self, v: bool) -> Self {
+        self.enable_auto_ssl = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn disable_lets_encrypt(mut self, v: bool) -> Self {
+        self.disable_lets_encrypt = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn verify_origin_ssl(mut self, v: bool) -> Self {
+        self.verify_origin_ssl = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_access_control_origin_header(mut self, v: bool) -> Self {
+        self.enable_access_control_origin_header = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn access_control_origin_header_extensions(mut self, v: Vec<String>) -> Self {
+        self.access_control_origin_header_extensions = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn zone_security_include_hash_remote_ip(mut self, v: bool) -> Self {
+        self.zone_security_include_hash_remote_ip = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn aws_signing_enabled(mut self, v: bool) -> Self {
+        self.aws_signing_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn aws_signing_key(mut self, v: impl Into<String>) -> Self {
+        self.aws_signing_key = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn aws_signing_secret(mut self, v: impl Into<String>) -> Self {
+        self.aws_signing_secret = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn aws_signing_region_name(mut self, v: impl Into<String>) -> Self {
+        self.aws_signing_region_name = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn logging_ip_anonymization_enabled(mut self, v: bool) -> Self {
+        self.logging_ip_anonymization_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn log_anonymization_type(mut self, v: LogAnonymizationType) -> Self {
+        self.log_anonymization_type = Some(v);
         self
     }
 }
