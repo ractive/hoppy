@@ -7,7 +7,7 @@ tags:
   - shield
   - error-handling
   - dx
-status: in-progress
+status: completed
 branch: iter-50/shield-202-error-envelope
 ---
 
