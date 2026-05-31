@@ -181,6 +181,11 @@ impl ShieldClient {
     async fn handle_empty_response(&self, resp: Response) -> Result<()> {
         let (status, bytes) = self.read_body(resp).await?;
         if status.is_success() || status == StatusCode::NO_CONTENT {
+            // Plan-gated mutations can return a 2xx with an error envelope
+            // (`{"data": null, "error": {"success": false, ...}}`); surface it.
+            if let Some(err) = parse_shield_2xx_envelope_error(&bytes) {
+                return Err(err);
+            }
             return Ok(());
         }
         if let Some(err) = parse_shield_error(&bytes) {
@@ -1009,6 +1014,9 @@ impl ShieldClient {
             if bytes.is_empty() {
                 return Ok(serde_json::Value::Null);
             }
+            if let Some(err) = parse_shield_2xx_envelope_error(&bytes) {
+                return Err(err);
+            }
             return serde_json::from_slice(&bytes).context("failed to decode promo state");
         }
         if let Some(err) = parse_shield_error(&bytes) {
@@ -1166,6 +1174,43 @@ mod tests {
             result.is_ok(),
             "success=true envelope must not return Err: {result:?}"
         );
+    }
+
+    #[tokio::test]
+    async fn handle_empty_response_202_plan_gate_returns_err() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/shield/shield-zone"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(
+                ResponseTemplate::new(202).set_body_raw(PLAN_GATE_202_BODY, "application/json"),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let body = super::UpdateShieldZoneRequest {
+            shield_zone_id: 42,
+            shield_zone: None,
+        };
+        let err = client
+            .update_shield_zone(body)
+            .await
+            .expect_err("plan-gated empty-response endpoint should surface error");
+        assert!(
+            err.to_string().contains("Basic tier"),
+            "error should contain plan text; got: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn envelope_with_success_false_but_no_message_or_key_is_not_error() {
+        // A body whose embedded GenericRequestResponse has success=false (the
+        // default) but no message/errorKey must NOT be raised as an error —
+        // this is the false-positive class flagged in PR review.
+        let body = r#"{"data": {"id": 1}, "error": {"success": false}}"#;
+        assert!(super::parse_shield_2xx_envelope_error(body.as_bytes()).is_none());
     }
 
     #[test]

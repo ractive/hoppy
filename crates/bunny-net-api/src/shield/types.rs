@@ -540,8 +540,13 @@ pub fn parse_shield_error(bytes: &[u8]) -> Option<anyhow::Error> {
 /// (meaning the caller should proceed to deserialise the body normally).
 pub fn parse_shield_2xx_envelope_error(bytes: &[u8]) -> Option<anyhow::Error> {
     let env = serde_json::from_slice::<ShieldApiErrorEnvelope>(bytes).ok()?;
-    // Only treat this as an error when success is explicitly false.
-    if env.error.success == Some(false) {
+    // Only treat as error when success is explicitly false AND there's a
+    // human-readable signal (message or errorKey). This avoids false positives
+    // from happy-path responses that embed `GenericRequestResponse` (whose
+    // `success: bool` defaults to false via `#[serde(default)]`).
+    if env.error.success == Some(false)
+        && (env.error.message.is_some() || env.error.error_key.is_some())
+    {
         Some(anyhow::anyhow!(env))
     } else {
         None
