@@ -8,7 +8,7 @@ tags:
   - caching
   - vary-headers
   - openapi-coverage
-status: in-progress
+status: completed
 branch: iter-45/pull-zone-vary-and-caching
 ---
 
