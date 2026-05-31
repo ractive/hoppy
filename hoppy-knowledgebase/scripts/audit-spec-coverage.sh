@@ -128,13 +128,7 @@ awk -v target="$STRUCT_NAME" '
                 skip_next = 1
             }
             if (match(attr, /rename[ \t]*=[ \t]*"[^"]+"/)) {
-                r = substr(attr, RSTART, RLENGTH)
-                sub(/.*"/, "", r)  # not robust; redo:
-            }
-            # Extract first `rename = "X"` properly
-            tmp = attr
-            if (match(tmp, /rename[ \t]*=[ \t]*"[^"]+"/)) {
-                m = substr(tmp, RSTART, RLENGTH)
+                m = substr(attr, RSTART, RLENGTH)
                 sub(/^rename[ \t]*=[ \t]*"/, "", m)
                 sub(/"$/, "", m)
                 rename = m
@@ -160,10 +154,6 @@ awk -v target="$STRUCT_NAME" '
 STRUCT_COUNT=$(wc -l < "$STRUCT_TXT" | tr -d ' ')
 
 # --- Diff --------------------------------------------------------------------
-SPEC_LC="$TMP/spec.lc"
-STRUCT_LC="$TMP/struct.lc"
-awk '{print tolower($0) "\t" $0}' "$SPEC_TXT" | sort > "$SPEC_LC"
-awk '{print tolower($0) "\t" $0}' "$STRUCT_TXT" | sort > "$STRUCT_LC"
 
 # Gaps (in spec, missing from struct) — exact-case
 MISSING="$TMP/missing.txt"

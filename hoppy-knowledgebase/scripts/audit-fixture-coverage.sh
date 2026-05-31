@@ -113,6 +113,11 @@ awk -v target="$STRUCT_NAME" '
         if ($0 ~ /^\}/) { inside = 0; next }
         if (match($0, /#\[serde\([^]]*\)\]/)) {
             attr = substr($0, RSTART, RLENGTH)
+            # Mirror audit-spec-coverage.sh: drop fields that serde wholly skips
+            # so the two reports compute the struct-side set the same way.
+            if (attr ~ /skip[^a-z_]/ && attr !~ /skip_serializing_if/ && attr !~ /skip_serializing[^_]/ && attr !~ /skip_deserializing[^_]/) {
+                skip_next = 1
+            }
             if (attr ~ /\<flatten\>/) skip_next = 1
             if (match(attr, /rename[ \t]*=[ \t]*"[^"]+"/)) {
                 m = substr(attr, RSTART, RLENGTH)
