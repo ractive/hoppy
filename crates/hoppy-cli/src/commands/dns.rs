@@ -333,7 +333,13 @@ async fn handle_zone(
                 }
             }
             client.delete_dns_zone(*id).await?;
-            eprintln!("Deleted DNS zone {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "dns-zone",
+                serde_json::json!({ "Id": id }),
+                &format!("Deleted DNS zone {id}"),
+            );
         }
         DnsZoneAction::Export { id } => {
             let content = client.export_dns_zone(*id).await?;
@@ -370,7 +376,13 @@ async fn handle_zone(
         }
         DnsZoneAction::IssueCert { id } => {
             client.issue_dns_zone_wildcard_certificate(*id).await?;
-            eprintln!("Issued wildcard certificate for DNS zone {id}");
+            output::print_mutation_result(
+                format,
+                "issue-wildcard-cert",
+                "dns-zone",
+                serde_json::json!({ "Id": id }),
+                &format!("Issued wildcard certificate for DNS zone {id}"),
+            );
             return Ok(());
         }
         DnsZoneAction::Scan { action } => {
@@ -689,7 +701,13 @@ async fn handle_record(
             client
                 .update_dns_record(*zone_id, *record_id, &body)
                 .await?;
-            eprintln!("Updated DNS record {record_id} in zone {zone_id}");
+            output::print_mutation_result(
+                format,
+                "update",
+                "dns-record",
+                serde_json::json!({ "ZoneId": zone_id, "Id": record_id }),
+                &format!("Updated DNS record {record_id} in zone {zone_id}"),
+            );
         }
         DnsRecordAction::Delete { zone_id, record_id } => {
             if !yes {
@@ -704,7 +722,13 @@ async fn handle_record(
                 }
             }
             client.delete_dns_record(*zone_id, *record_id).await?;
-            eprintln!("Deleted DNS record {record_id} from zone {zone_id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "dns-record",
+                serde_json::json!({}),
+                &format!("Deleted DNS record {record_id} from zone {zone_id}"),
+            );
         }
     }
     Ok(())

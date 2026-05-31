@@ -140,7 +140,13 @@ pub async fn handle(
                 body = body.origin_url(url);
             }
             client.update_storage_zone(*id, &body).await?;
-            eprintln!("Updated storage zone {id}");
+            output::print_mutation_result(
+                format,
+                "update",
+                "storage-zone",
+                serde_json::json!({ "Id": id }),
+                &format!("Updated storage zone {id}"),
+            );
         }
         StorageZoneAction::Delete { id } => {
             if !yes {
@@ -155,7 +161,13 @@ pub async fn handle(
                 }
             }
             client.delete_storage_zone(*id).await?;
-            eprintln!("Deleted storage zone {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "storage-zone",
+                serde_json::json!({ "Id": id }),
+                &format!("Deleted storage zone {id}"),
+            );
         }
         StorageZoneAction::Statistics {
             id,

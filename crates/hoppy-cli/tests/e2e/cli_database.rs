@@ -295,3 +295,80 @@ async fn db_ping_uses_database_url_and_mints_token() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("\"ok\": true"), "got: {stdout}");
 }
+
+// ---------------------------------------------------------------------------
+// iter-51: --format parity for db v2-style commands
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn db_active_usage_format_json_pascal_case() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v2/databases/active_usage"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/active_usage.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "db", "active-usage"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // PascalCase keys, not snake_case from the upstream API.
+    assert!(stdout.contains("\"ActiveDb\""), "got: {stdout}");
+    assert!(stdout.contains("\"TotalDb\""), "got: {stdout}");
+    assert!(stdout.contains("\"TotalDbSize\""), "got: {stdout}");
+    assert!(!stdout.contains("active_db"));
+}
+
+#[tokio::test]
+async fn db_active_usage_format_table_not_raw_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v2/databases/active_usage"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/active_usage.json"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "db", "active-usage"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Table should not be raw JSON.
+    assert!(!stdout.trim_start().starts_with('{'), "got: {stdout}");
+    assert!(stdout.contains("ActiveDb"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn db_active_usage_format_text_pascal_case_keys() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v2/databases/active_usage"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/active_usage.json"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "text", "db", "active-usage"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // text uses tab-separated KEY<TAB>value lines, with PascalCase keys.
+    assert!(stdout.contains("ActiveDb\t"), "got: {stdout}");
+    assert!(stdout.contains("TotalDb\t"), "got: {stdout}");
+    assert!(!stdout.contains("active_db"));
+}

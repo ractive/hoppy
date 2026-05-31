@@ -222,8 +222,10 @@ impl From<&bunny_net_api::containers::ContainerRegistry> for RegistryRow {
 // ---------------------------------------------------------------------------
 
 #[derive(serde::Serialize, tabled::Tabled)]
+#[serde(rename_all = "PascalCase")]
 struct RegionRow {
     #[tabled(rename = "ID")]
+    #[serde(rename = "Id")]
     id: String,
     #[tabled(rename = "Name")]
     name: String,
@@ -767,7 +769,13 @@ async fn handle_app(
                 if let OutputFormat::Json = format {
                     print_json_with_redaction(&resp, redact)?;
                 } else {
-                    eprintln!("Created application: {}", resp.id);
+                    output::print_mutation_result(
+                        format,
+                        "create",
+                        "container-app",
+                        serde_json::json!({ "Id": resp.id }),
+                        &format!("Created application: {}", resp.id),
+                    );
                 }
             } else {
                 // Default: return the full document so downstream tooling
@@ -777,7 +785,13 @@ async fn handle_app(
                 if let OutputFormat::Json = format {
                     print_json_with_redaction(&app, redact)?;
                 } else {
-                    eprintln!("Created application: {}", resp.id);
+                    output::print_mutation_result(
+                        format,
+                        "create",
+                        "container-app",
+                        serde_json::json!({ "Id": resp.id }),
+                        &format!("Created application: {}", resp.id),
+                    );
                     let row = AppDetailWithIds::from(&app);
                     output::print_single(&row, format);
                 }
@@ -840,12 +854,24 @@ async fn handle_app(
                     serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
-                eprintln!("Updated application: {}", resp.id);
+                output::print_mutation_result(
+                    format,
+                    "update",
+                    "container-app",
+                    serde_json::json!({ "Id": resp.id }),
+                    &format!("Updated application: {}", resp.id),
+                );
             }
         }
         ContainerAppAction::Deploy { id } => {
             c.deploy_application(id).await?;
-            eprintln!("Deployed application {id}");
+            output::print_mutation_result(
+                format,
+                "deploy",
+                "container-app",
+                serde_json::json!({}),
+                &format!("Deployed application {id}"),
+            );
         }
         ContainerAppAction::Undeploy { id } => {
             if !yes && !confirm(format!("Undeploy application {id}?")).await? {
@@ -853,18 +879,30 @@ async fn handle_app(
                 return Ok(());
             }
             c.undeploy_application(id).await?;
-            eprintln!("Undeployed application {id}");
+            output::print_mutation_result(
+                format,
+                "undeploy",
+                "container-app",
+                serde_json::json!({}),
+                &format!("Undeployed application {id}"),
+            );
         }
         ContainerAppAction::Restart { id } => {
             c.restart_application(id).await?;
-            eprintln!("Restarted application {id}");
+            output::print_mutation_result(
+                format,
+                "restart",
+                "container-app",
+                serde_json::json!({}),
+                &format!("Restarted application {id}"),
+            );
         }
         ContainerAppAction::Delete {
             id,
             cascade,
             no_cascade,
         } => {
-            handle_app_delete(&c, id, *cascade, *no_cascade, yes, debug, record).await?;
+            handle_app_delete(&c, id, *cascade, *no_cascade, yes, format, debug, record).await?;
         }
         ContainerAppAction::Overview { id } => {
             let overview = c.get_application_overview(id).await?;
@@ -945,7 +983,13 @@ async fn handle_app(
                 max: *max,
             };
             c.update_autoscaling(app_id, &body).await?;
-            eprintln!("Updated autoscaling for application {app_id}");
+            output::print_mutation_result(
+                format,
+                "set-autoscaling",
+                "container-app",
+                serde_json::json!({}),
+                &format!("Updated autoscaling for application {app_id}"),
+            );
         }
         ContainerAppAction::RegionSettingsGet { app_id } => {
             let settings = c.get_region_settings(app_id).await?;
@@ -982,7 +1026,13 @@ async fn handle_app(
                 node_selectors: None,
             };
             c.update_region_settings(app_id, &body).await?;
-            eprintln!("Updated region settings for application {app_id}");
+            output::print_mutation_result(
+                format,
+                "set-region-settings",
+                "container-app",
+                serde_json::json!({}),
+                &format!("Updated region settings for application {app_id}"),
+            );
         }
     }
     Ok(())
@@ -1019,12 +1069,14 @@ fn parse_pull_zone_id(ep: &EndpointListItem) -> Option<i64> {
     if parsed == 0 { None } else { Some(parsed) }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_app_delete(
     c: &ContainersClient,
     id: &str,
     cascade: bool,
     no_cascade: bool,
     yes: bool,
+    format: OutputFormat,
     debug: bool,
     record: Option<&str>,
 ) -> Result<()> {
@@ -1072,7 +1124,13 @@ async fn handle_app_delete(
     }
 
     c.delete_application(id).await?;
-    eprintln!("Deleted application {id}");
+    output::print_mutation_result(
+        format,
+        "delete",
+        "container-app",
+        serde_json::json!({}),
+        &format!("Deleted application {id}"),
+    );
 
     if has_auto_pzs && cascade {
         let core = auth::core_client(debug, record)?;
@@ -1209,7 +1267,13 @@ async fn handle_template(
                 return Ok(());
             }
             c.delete_container(app_id, container_id).await?;
-            eprintln!("Deleted container template {container_id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "container-template",
+                serde_json::json!({}),
+                &format!("Deleted container template {container_id}"),
+            );
         }
         ContainerTemplateAction::Env {
             app_id,
@@ -1526,7 +1590,13 @@ async fn handle_endpoint(
                     serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
-                eprintln!("Created endpoint: {}", resp.id);
+                output::print_mutation_result(
+                    format,
+                    "create",
+                    "container-endpoint",
+                    serde_json::json!({ "Id": resp.id }),
+                    &format!("Created endpoint: {}", resp.id),
+                );
             }
         }
         ContainerEndpointAction::Update {
@@ -1541,7 +1611,13 @@ async fn handle_endpoint(
             let body =
                 build_endpoint_request(name, *container_port, *exposed_port, *cdn, *anycast)?;
             c.update_endpoint(app_id, endpoint_id, &body).await?;
-            eprintln!("Updated endpoint {endpoint_id}");
+            output::print_mutation_result(
+                format,
+                "update",
+                "container-endpoint",
+                serde_json::json!({}),
+                &format!("Updated endpoint {endpoint_id}"),
+            );
         }
         ContainerEndpointAction::Delete {
             app_id,
@@ -1553,7 +1629,13 @@ async fn handle_endpoint(
                 return Ok(());
             }
             c.delete_endpoint(app_id, endpoint_id).await?;
-            eprintln!("Deleted endpoint {endpoint_id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "container-endpoint",
+                serde_json::json!({}),
+                &format!("Deleted endpoint {endpoint_id}"),
+            );
         }
     }
     Ok(())
@@ -1604,7 +1686,13 @@ async fn handle_volume(
                     serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
-                eprintln!("Updated volume: {} ({:.1} GB)", resp.name, resp.size);
+                output::print_mutation_result(
+                    format,
+                    "update",
+                    "container-volume",
+                    serde_json::json!({}),
+                    &format!("Updated volume: {} ({:.1} GB)", resp.name, resp.size),
+                );
             }
         }
         ContainerVolumeAction::Detach { app_id, volume_id } => {
@@ -1626,7 +1714,13 @@ async fn handle_volume(
                 return Ok(());
             }
             let resp = c.delete_all_volume_instances(app_id, volume_id).await?;
-            eprintln!("Deleted {} volume instance(s)", resp.ids.len());
+            output::print_mutation_result(
+                format,
+                "delete-instances",
+                "container-volume",
+                serde_json::json!({}),
+                &format!("Deleted {} volume instance(s)", resp.ids.len()),
+            );
         }
         ContainerVolumeAction::DeleteInstance {
             app_id,
@@ -1645,7 +1739,13 @@ async fn handle_volume(
             let resp = c
                 .delete_volume_instance(app_id, volume_id, instance_id)
                 .await?;
-            eprintln!("Deleted volume instance: {}", resp.id);
+            output::print_mutation_result(
+                format,
+                "delete-instance",
+                "container-volume",
+                serde_json::json!({}),
+                &format!("Deleted volume instance: {}", resp.id),
+            );
         }
     }
     Ok(())
@@ -1722,7 +1822,13 @@ async fn handle_registry(
                     .id
                     .map(|id| id.to_string())
                     .unwrap_or_else(|| "-".to_owned());
-                eprintln!("Created registry: {} (status: {:?})", id_str, resp.status);
+                output::print_mutation_result(
+                    format,
+                    "create",
+                    "container-registry",
+                    serde_json::json!({ "Id": id_str }),
+                    &format!("Created registry: {} (status: {:?})", id_str, resp.status),
+                );
             }
         }
         ContainerRegistryAction::Update {
@@ -1751,7 +1857,13 @@ async fn handle_registry(
                     serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
                 );
             } else {
-                eprintln!("Updated registry {} (status: {:?})", id, resp.status);
+                output::print_mutation_result(
+                    format,
+                    "update",
+                    "container-registry",
+                    serde_json::json!({}),
+                    &format!("Updated registry {} (status: {:?})", id, resp.status),
+                );
             }
         }
         ContainerRegistryAction::Delete { id } => {
@@ -1760,7 +1872,13 @@ async fn handle_registry(
                 return Ok(());
             }
             let resp = c.delete_registry(*id).await?;
-            eprintln!("Deleted registry (status: {:?})", resp.status);
+            output::print_mutation_result(
+                format,
+                "delete",
+                "container-registry",
+                serde_json::json!({}),
+                &format!("Deleted registry (status: {:?})", resp.status),
+            );
         }
         ContainerRegistryAction::ImageTags {
             registry_id,
@@ -1873,27 +1991,13 @@ async fn handle_region(
             let result = c
                 .list_regions(cursor.as_deref(), limit.as_ref().copied())
                 .await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
-                );
-            } else {
-                let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
-                output::print_data(&rows, format);
-            }
+            let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
+            output::print_data(&rows, format);
         }
         ContainerRegionAction::Optimal => {
             let resp = c.get_optimal_region(None).await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
-                );
-            } else {
-                let row = RegionRow::from(&resp.region);
-                output::print_single(&row, format);
-            }
+            let row = RegionRow::from(&resp.region);
+            output::print_single(&row, format);
         }
     }
     Ok(())
@@ -2081,7 +2185,13 @@ async fn handle_log_forwarding(
                 return Ok(());
             }
             c.delete_log_forwarding(app_id).await?;
-            eprintln!("Deleted log forwarding configuration for app {app_id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "container-app-log-forwarding",
+                serde_json::json!({}),
+                &format!("Deleted log forwarding configuration for app {app_id}"),
+            );
         }
     }
     Ok(())

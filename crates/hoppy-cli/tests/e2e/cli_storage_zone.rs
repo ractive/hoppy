@@ -409,3 +409,64 @@ fn live_storage_zone_lifecycle() {
         // 7. Delete is handled by cleanup
     });
 }
+
+// ---------------------------------------------------------------------------
+// iter-51: --format json on mutations emits success envelope on stdout
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn storage_zone_delete_format_json_emits_envelope() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/storagezone/9001"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--yes",
+            "--format",
+            "json",
+            "storage-zone",
+            "delete",
+            "--id",
+            "9001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let v: serde_json::Value = serde_json::from_str(stdout.trim())
+        .unwrap_or_else(|e| panic!("stdout is not JSON: {e}\nstdout: {stdout}"));
+    assert_eq!(v["status"], "ok");
+    assert_eq!(v["action"], "delete");
+    assert_eq!(v["resource"], "storage-zone");
+    assert_eq!(v["Id"], 9001);
+}
+
+#[tokio::test]
+async fn storage_zone_delete_default_format_keeps_prose() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/storagezone/9001"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--yes", "storage-zone", "delete", "--id", "9001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    // Default format = table; prose goes to stderr, stdout stays clean.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Deleted storage zone 9001"),
+        "stderr: {stderr}"
+    );
+}

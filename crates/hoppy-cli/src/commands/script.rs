@@ -294,10 +294,10 @@ pub async fn handle(
         ScriptAction::Delete {
             id,
             delete_linked_pull_zones,
-        } => handle_delete(*id, *delete_linked_pull_zones, yes, debug, record).await,
+        } => handle_delete(*id, *delete_linked_pull_zones, yes, format, debug, record).await,
         ScriptAction::Code { action } => handle_code(action, format, debug, record).await,
         ScriptAction::Publish { id, note } => {
-            handle_publish(*id, note.as_deref(), debug, record).await
+            handle_publish(*id, note.as_deref(), format, debug, record).await
         }
         ScriptAction::Release { action } => handle_release(action, format, debug, record).await,
         ScriptAction::Variable { action } => {
@@ -461,6 +461,7 @@ async fn handle_delete(
     id: i64,
     delete_linked_pull_zones: bool,
     yes: bool,
+    format: OutputFormat,
     debug: bool,
     record: Option<&str>,
 ) -> Result<()> {
@@ -476,7 +477,13 @@ async fn handle_delete(
     }
     let c = client(debug, record)?;
     c.delete_script(id, delete_linked_pull_zones).await?;
-    eprintln!("Deleted script {id}");
+    output::print_mutation_result(
+        format,
+        "delete",
+        "script",
+        serde_json::json!({}),
+        &format!("Deleted script {id}"),
+    );
     Ok(())
 }
 
@@ -513,7 +520,13 @@ async fn handle_code(
                 (None, None) => bail!("one of --code or --file is required"),
             };
             c.update_script_code(*id, &source).await?;
-            eprintln!("Updated code for script {id}");
+            output::print_mutation_result(
+                format,
+                "update",
+                "script-code",
+                serde_json::json!({}),
+                &format!("Updated code for script {id}"),
+            );
         }
     }
     Ok(())
@@ -526,6 +539,7 @@ async fn handle_code(
 async fn handle_publish(
     id: i64,
     note: Option<&str>,
+    format: OutputFormat,
     debug: bool,
     record: Option<&str>,
 ) -> Result<()> {
@@ -534,7 +548,13 @@ async fn handle_publish(
         note: note.map(str::to_owned),
     };
     c.publish_script(id, &body).await?;
-    eprintln!("Published script {id}");
+    output::print_mutation_result(
+        format,
+        "publish",
+        "script",
+        serde_json::json!({}),
+        &format!("Published script {id}"),
+    );
     Ok(())
 }
 
@@ -668,7 +688,13 @@ async fn handle_variable(
                 }
             }
             c.delete_variable(*id, *variable_id).await?;
-            eprintln!("Deleted variable {variable_id} from script {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "script-variable",
+                serde_json::json!({}),
+                &format!("Deleted variable {variable_id} from script {id}"),
+            );
         }
         ScriptVariableAction::Upsert {
             id,
@@ -769,7 +795,13 @@ async fn handle_secret(
                 }
             }
             c.delete_secret(*id, *secret_id).await?;
-            eprintln!("Deleted secret {secret_id} from script {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "script-secret",
+                serde_json::json!({}),
+                &format!("Deleted secret {secret_id} from script {id}"),
+            );
         }
         ScriptSecretAction::Upsert { id, name, value } => {
             let body = UpsertSecret {
