@@ -39,8 +39,8 @@ pub use types::{
     EdgeRuleActionType, EdgeRuleExtraAction, EdgeRuleTrigger, HostnameInfo, LogAnonymizationType,
     MatchingType, OptimizerStatistics, OptimizerWatermarkPosition, OriginShieldQueueStatistics,
     OriginType, PaginatedList, PermaCacheType, PullZone, PullZoneLogForwarderProtocolType,
-    PullZoneType, PurgeCache, SafeHopStatistics, StorageZone, StorageZoneStatistics,
-    TriggerDnsRecordScan, TriggerType, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone,
-    UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
+    PullZoneTierType, PullZoneType, PurgeCache, SafeHopStatistics, StickySessionType, StorageZone,
+    StorageZoneStatistics, TriggerDnsRecordScan, TriggerType, UpdateDnsRecord, UpdateDnsZone,
+    UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
     VideoLibraryTranscribingStatistics,
 };

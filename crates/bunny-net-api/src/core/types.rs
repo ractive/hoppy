@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::serde_helpers::{deserialize_repr_option, deserialize_string_lossy_option};
+use super::serde_helpers::{
+    deserialize_repr_option, deserialize_string_lossy_option, null_to_empty_vec,
+};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
@@ -406,6 +408,81 @@ impl std::str::FromStr for PermaCacheType {
     }
 }
 
+/// Sticky session affinity mode for a Pull Zone.
+///
+/// Spec: `StickySessionType` — `0 = None`, `1 = Cookie`. Serialised as the
+/// integer discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum StickySessionType {
+    /// No sticky sessions — requests are load-balanced freely.
+    None = 0,
+    /// Sticky sessions via a cookie — a client is pinned to the same edge node.
+    Cookie = 1,
+}
+
+impl std::fmt::Display for StickySessionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::None => "none",
+            Self::Cookie => "cookie",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for StickySessionType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "none" | "None" => Ok(Self::None),
+            "cookie" | "Cookie" => Ok(Self::Cookie),
+            _ => Err(format!(
+                "unknown sticky session type: {s:?}; expected one of: none, cookie"
+            )),
+        }
+    }
+}
+
+/// Pull Zone tier / billing type (`Type` in the bunny.net spec, distinct from
+/// the existing `PullZoneType` which maps the `ZoneType` field).
+///
+/// Spec: `0 = Standard`, `1 = Volume`. Serialised as the integer discriminant
+/// on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum PullZoneTierType {
+    /// Standard tier — single optimised global network (default).
+    Standard = 0,
+    /// Volume tier — cheaper, optimised for high-traffic static assets.
+    Volume = 1,
+}
+
+impl std::fmt::Display for PullZoneTierType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Standard => "standard",
+            Self::Volume => "volume",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for PullZoneTierType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "standard" | "Standard" => Ok(Self::Standard),
+            "volume" | "Volume" => Ok(Self::Volume),
+            _ => Err(format!(
+                "unknown pull zone tier type: {s:?}; expected one of: standard, volume"
+            )),
+        }
+    }
+}
+
 /// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
 ///
 /// Bunny.net may add new protocols in future API versions. The
@@ -770,6 +847,68 @@ pub struct PullZone {
     pub perma_cache_storage_zone_id: Option<i64>,
     #[serde(default, deserialize_with = "deserialize_repr_option")]
     pub perma_cache_type: Option<PermaCacheType>,
+
+    // Origin host + DNS (iter-46)
+    #[serde(default)]
+    pub origin_host_header: Option<String>,
+    #[serde(default)]
+    pub add_host_header: bool,
+    #[serde(default)]
+    pub add_canonical_header: bool,
+    #[serde(default)]
+    pub dns_origin_port: Option<i32>,
+    #[serde(default)]
+    pub dns_origin_scheme: Option<String>,
+    #[serde(default)]
+    pub follow_redirects: bool,
+
+    // Timeout + retry (iter-46)
+    #[serde(default)]
+    pub origin_connect_timeout: Option<i32>,
+    #[serde(default)]
+    pub origin_response_timeout: Option<i32>,
+    #[serde(default)]
+    pub origin_retries: Option<i32>,
+    #[serde(rename = "OriginRetry5XXResponses", default)]
+    pub origin_retry_5xx_responses: bool,
+    #[serde(default)]
+    pub origin_retry_connection_timeout: bool,
+    #[serde(default)]
+    pub origin_retry_delay: Option<i32>,
+    #[serde(default)]
+    pub origin_retry_response_timeout: bool,
+
+    // Origin shield (iter-46)
+    #[serde(default)]
+    pub enable_origin_shield: bool,
+    #[serde(default)]
+    pub origin_shield_enable_concurrency_limit: bool,
+    #[serde(default)]
+    pub origin_shield_max_concurrent_requests: Option<i32>,
+    #[serde(default)]
+    pub origin_shield_max_queued_requests: Option<i32>,
+    #[serde(default)]
+    pub origin_shield_queue_max_wait_time: Option<i32>,
+    #[serde(default)]
+    pub origin_shield_zone_code: Option<String>,
+
+    // Routing + sticky sessions (iter-46)
+    #[serde(default)]
+    pub enable_request_coalescing: bool,
+    #[serde(default)]
+    pub request_coalescing_timeout: Option<i32>,
+    #[serde(default)]
+    pub routing_filters: Vec<String>,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub sticky_session_type: Option<StickySessionType>,
+    #[serde(default)]
+    pub sticky_session_cookie_name: Option<String>,
+    #[serde(default, deserialize_with = "null_to_empty_vec")]
+    pub sticky_session_client_headers: Vec<String>,
+    /// Pull Zone tier type. The wire key is `Type` — renamed here to avoid
+    /// collision with the Rust keyword and the existing `zone_type` field.
+    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
+    pub pull_zone_tier_type: Option<PullZoneTierType>,
 }
 
 /// Generic paginated list response returned by the bunny.net API.
@@ -1098,6 +1237,82 @@ pub struct UpdatePullZone {
     /// Serialises as an integer via `Serialize_repr`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub perma_cache_type: Option<PermaCacheType>,
+
+    // Origin host + DNS (iter-46)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_host_header: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub add_host_header: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub add_canonical_header: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_origin_port: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns_origin_scheme: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub follow_redirects: Option<bool>,
+
+    // Timeout + retry (iter-46)
+    /// Seconds to wait for a connection to the origin.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_connect_timeout: Option<i32>,
+    /// Seconds to wait for the origin to respond.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_response_timeout: Option<i32>,
+    /// Number of times to retry a failed origin request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_retries: Option<i32>,
+    #[serde(
+        rename = "OriginRetry5XXResponses",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub origin_retry_5xx_responses: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_retry_connection_timeout: Option<bool>,
+    /// Seconds to wait between retry attempts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_retry_delay: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_retry_response_timeout: Option<bool>,
+
+    // Origin shield (iter-46)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_origin_shield: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_shield_enable_concurrency_limit: Option<bool>,
+    /// Maximum number of concurrent requests forwarded to the origin shield.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_shield_max_concurrent_requests: Option<i32>,
+    /// Maximum number of requests queued at the origin shield.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_shield_max_queued_requests: Option<i32>,
+    /// Seconds a queued request will wait before being dropped.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_shield_queue_max_wait_time: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_shield_zone_code: Option<String>,
+
+    // Routing + sticky sessions (iter-46)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_request_coalescing: Option<bool>,
+    /// Seconds to wait for a coalesced request to complete before sending a
+    /// new request to the origin.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_coalescing_timeout: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub routing_filters: Option<Vec<String>>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sticky_session_type: Option<StickySessionType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sticky_session_cookie_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sticky_session_client_headers: Option<Vec<String>>,
+    /// Pull Zone tier type. The wire key is `Type` — renamed to avoid
+    /// collision with the Rust keyword and the existing `zone_type` field.
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(rename = "Type", skip_serializing_if = "Option::is_none")]
+    pub pull_zone_tier_type: Option<PullZoneTierType>,
 }
 
 impl UpdatePullZone {
@@ -1547,6 +1762,170 @@ impl UpdatePullZone {
     #[must_use]
     pub fn perma_cache_type(mut self, v: PermaCacheType) -> Self {
         self.perma_cache_type = Some(v);
+        self
+    }
+
+    // ── Origin host + DNS (iter-46) ──────────────────────────────────────────
+
+    #[must_use]
+    pub fn origin_host_header(mut self, v: impl Into<String>) -> Self {
+        self.origin_host_header = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn add_host_header(mut self, v: bool) -> Self {
+        self.add_host_header = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn add_canonical_header(mut self, v: bool) -> Self {
+        self.add_canonical_header = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn dns_origin_port(mut self, v: i32) -> Self {
+        self.dns_origin_port = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn dns_origin_scheme(mut self, v: impl Into<String>) -> Self {
+        self.dns_origin_scheme = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn follow_redirects(mut self, v: bool) -> Self {
+        self.follow_redirects = Some(v);
+        self
+    }
+
+    // ── Timeout + retry (iter-46) ────────────────────────────────────────────
+
+    #[must_use]
+    pub fn origin_connect_timeout(mut self, v: i32) -> Self {
+        self.origin_connect_timeout = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_response_timeout(mut self, v: i32) -> Self {
+        self.origin_response_timeout = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_retries(mut self, v: i32) -> Self {
+        self.origin_retries = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_retry_5xx_responses(mut self, v: bool) -> Self {
+        self.origin_retry_5xx_responses = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_retry_connection_timeout(mut self, v: bool) -> Self {
+        self.origin_retry_connection_timeout = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_retry_delay(mut self, v: i32) -> Self {
+        self.origin_retry_delay = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_retry_response_timeout(mut self, v: bool) -> Self {
+        self.origin_retry_response_timeout = Some(v);
+        self
+    }
+
+    // ── Origin shield (iter-46) ──────────────────────────────────────────────
+
+    #[must_use]
+    pub fn enable_origin_shield(mut self, v: bool) -> Self {
+        self.enable_origin_shield = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_shield_enable_concurrency_limit(mut self, v: bool) -> Self {
+        self.origin_shield_enable_concurrency_limit = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_shield_max_concurrent_requests(mut self, v: i32) -> Self {
+        self.origin_shield_max_concurrent_requests = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_shield_max_queued_requests(mut self, v: i32) -> Self {
+        self.origin_shield_max_queued_requests = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_shield_queue_max_wait_time(mut self, v: i32) -> Self {
+        self.origin_shield_queue_max_wait_time = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn origin_shield_zone_code(mut self, v: impl Into<String>) -> Self {
+        self.origin_shield_zone_code = Some(v.into());
+        self
+    }
+
+    // ── Routing + sticky sessions (iter-46) ──────────────────────────────────
+
+    #[must_use]
+    pub fn enable_request_coalescing(mut self, v: bool) -> Self {
+        self.enable_request_coalescing = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn request_coalescing_timeout(mut self, v: i32) -> Self {
+        self.request_coalescing_timeout = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn routing_filters(mut self, v: Vec<String>) -> Self {
+        self.routing_filters = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn sticky_session_type(mut self, v: StickySessionType) -> Self {
+        self.sticky_session_type = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn sticky_session_cookie_name(mut self, v: impl Into<String>) -> Self {
+        self.sticky_session_cookie_name = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn sticky_session_client_headers(mut self, v: Vec<String>) -> Self {
+        self.sticky_session_client_headers = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn pull_zone_tier_type(mut self, v: PullZoneTierType) -> Self {
+        self.pull_zone_tier_type = Some(v);
         self
     }
 }

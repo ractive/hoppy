@@ -11,7 +11,8 @@ use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
     LogAnonymizationType, MatchingType, OptimizerWatermarkPosition, PermaCacheType, PullZone,
-    PullZoneLogForwarderProtocolType, PullZoneType, PurgeCache, TriggerType, UpdatePullZone,
+    PullZoneLogForwarderProtocolType, PullZoneTierType, PullZoneType, PurgeCache,
+    StickySessionType, TriggerType, UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
 
@@ -232,6 +233,36 @@ pub async fn handle(
             cache_error_responses,
             perma_cache_storage_zone_id,
             perma_cache_type,
+            // Origin host / DNS (iter-46)
+            origin_host_header,
+            add_host_header,
+            add_canonical_header,
+            dns_origin_port,
+            dns_origin_scheme,
+            follow_redirects,
+            // Origin timeouts / retries (iter-46)
+            origin_connect_timeout,
+            origin_response_timeout,
+            origin_retries,
+            origin_retry_5xx_responses,
+            origin_retry_connection_timeout,
+            origin_retry_delay,
+            origin_retry_response_timeout,
+            // Origin shield (iter-46)
+            enable_origin_shield,
+            origin_shield_enable_concurrency_limit,
+            origin_shield_max_concurrent_requests,
+            origin_shield_max_queued_requests,
+            origin_shield_queue_max_wait_time,
+            origin_shield_zone_code,
+            // Routing / sticky sessions (iter-46)
+            enable_request_coalescing,
+            request_coalescing_timeout,
+            routing_filters,
+            sticky_session_type,
+            sticky_session_cookie_name,
+            sticky_session_client_headers,
+            pull_zone_tier_type,
         } => {
             // Guard: if any log-forwarding sub-field is being set without also
             // enabling log forwarding in this same call, verify the zone has
@@ -388,6 +419,50 @@ pub async fn handle(
             body.perma_cache_storage_zone_id = *perma_cache_storage_zone_id;
             if let Some(t) = perma_cache_type {
                 body = body.perma_cache_type(PermaCacheType::from(*t));
+            }
+            // Origin host / DNS (iter-46)
+            if let Some(v) = origin_host_header {
+                body = body.origin_host_header(v.as_str());
+            }
+            body.add_host_header = *add_host_header;
+            body.add_canonical_header = *add_canonical_header;
+            body.dns_origin_port = *dns_origin_port;
+            if let Some(v) = dns_origin_scheme {
+                body = body.dns_origin_scheme(v.as_str());
+            }
+            body.follow_redirects = *follow_redirects;
+            // Origin timeouts / retries (iter-46)
+            body.origin_connect_timeout = *origin_connect_timeout;
+            body.origin_response_timeout = *origin_response_timeout;
+            body.origin_retries = *origin_retries;
+            body.origin_retry_5xx_responses = *origin_retry_5xx_responses;
+            body.origin_retry_connection_timeout = *origin_retry_connection_timeout;
+            body.origin_retry_delay = *origin_retry_delay;
+            body.origin_retry_response_timeout = *origin_retry_response_timeout;
+            // Origin shield (iter-46)
+            body.enable_origin_shield = *enable_origin_shield;
+            body.origin_shield_enable_concurrency_limit = *origin_shield_enable_concurrency_limit;
+            body.origin_shield_max_concurrent_requests = *origin_shield_max_concurrent_requests;
+            body.origin_shield_max_queued_requests = *origin_shield_max_queued_requests;
+            body.origin_shield_queue_max_wait_time = *origin_shield_queue_max_wait_time;
+            if let Some(v) = origin_shield_zone_code {
+                body = body.origin_shield_zone_code(v.as_str());
+            }
+            // Routing / sticky sessions (iter-46)
+            body.enable_request_coalescing = *enable_request_coalescing;
+            body.request_coalescing_timeout = *request_coalescing_timeout;
+            body.routing_filters = routing_filters.as_deref().map(normalize_csv_list);
+            if let Some(t) = sticky_session_type {
+                body = body.sticky_session_type(StickySessionType::from(*t));
+            }
+            if let Some(v) = sticky_session_cookie_name {
+                body = body.sticky_session_cookie_name(v.as_str());
+            }
+            body.sticky_session_client_headers = sticky_session_client_headers
+                .as_deref()
+                .map(normalize_csv_list);
+            if let Some(t) = pull_zone_tier_type {
+                body = body.pull_zone_tier_type(PullZoneTierType::from(*t));
             }
             let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format, redact_cfg);

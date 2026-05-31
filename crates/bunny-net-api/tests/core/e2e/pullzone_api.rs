@@ -1,7 +1,7 @@
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, LogAnonymizationType, MatchingType,
     OptimizerWatermarkPosition, OriginType, PermaCacheType, PullZoneLogForwarderProtocolType,
-    TriggerType, UpdatePullZone,
+    PullZoneTierType, StickySessionType, TriggerType, UpdatePullZone,
 };
 use bunny_net_api::core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
@@ -1485,4 +1485,126 @@ fn perma_cache_type_round_trips() {
     let parsed_manual: PermaCacheType = serde_json::from_str("1").unwrap();
     assert_eq!(parsed_automatic, PermaCacheType::Automatic);
     assert_eq!(parsed_manual, PermaCacheType::Manual);
+}
+
+// ── iter-46: StickySessionType ───────────────────────────────────────────────
+
+/// Round-trip for `StickySessionType`: both variants must serialise to and
+/// deserialise from their integer discriminants.
+#[test]
+fn sticky_session_type_round_trips() {
+    let none = serde_json::to_string(&StickySessionType::None).unwrap();
+    let cookie = serde_json::to_string(&StickySessionType::Cookie).unwrap();
+    assert_eq!(none, "0");
+    assert_eq!(cookie, "1");
+
+    let parsed_none: StickySessionType = serde_json::from_str("0").unwrap();
+    let parsed_cookie: StickySessionType = serde_json::from_str("1").unwrap();
+    assert_eq!(parsed_none, StickySessionType::None);
+    assert_eq!(parsed_cookie, StickySessionType::Cookie);
+}
+
+/// `StickySessionType` must serialise as its integer discriminant on the wire.
+#[tokio::test]
+async fn update_pull_zone_with_sticky_session_type_serializes_as_int() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "StickySessionType": 1,
+        "StickySessionCookieName": "sticky",
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .sticky_session_type(StickySessionType::Cookie)
+        .sticky_session_cookie_name("sticky");
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+// ── iter-46: PullZoneTierType ────────────────────────────────────────────────
+
+/// Round-trip for `PullZoneTierType`: both variants must serialise to and
+/// deserialise from their integer discriminants.
+#[test]
+fn pull_zone_tier_type_round_trips() {
+    let standard = serde_json::to_string(&PullZoneTierType::Standard).unwrap();
+    let volume = serde_json::to_string(&PullZoneTierType::Volume).unwrap();
+    assert_eq!(standard, "0");
+    assert_eq!(volume, "1");
+
+    let parsed_standard: PullZoneTierType = serde_json::from_str("0").unwrap();
+    let parsed_volume: PullZoneTierType = serde_json::from_str("1").unwrap();
+    assert_eq!(parsed_standard, PullZoneTierType::Standard);
+    assert_eq!(parsed_volume, PullZoneTierType::Volume);
+}
+
+/// `PullZoneTierType` must serialise under the wire key `Type` and as an
+/// integer discriminant.
+#[tokio::test]
+async fn update_pull_zone_with_tier_type_uses_type_key() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "Type": 1 });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().pull_zone_tier_type(PullZoneTierType::Volume);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+// ── iter-46: origin timeout + retry + sticky session integration test ────────
+
+/// Sparse update with one timeout, one retry flag, and a sticky session cookie
+/// name — verifies the correct PascalCase keys appear in the wire payload.
+#[tokio::test]
+async fn update_pull_zone_origin_timeout_retry_sticky_session() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "OriginConnectTimeout": 10,
+        "OriginRetry5XXResponses": true,
+        "StickySessionCookieName": "my-session",
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .origin_connect_timeout(10)
+        .origin_retry_5xx_responses(true)
+        .sticky_session_cookie_name("my-session");
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
 }
