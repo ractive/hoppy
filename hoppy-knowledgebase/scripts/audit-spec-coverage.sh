@@ -24,13 +24,20 @@ SCHEMA=""
 STRUCT_FILE=""
 STRUCT_NAME=""
 TITLE=""
+DATA_DIR=""
 
 usage() {
     cat >&2 <<EOF
-Usage: $0 --spec <path> --schema <name> --struct-file <path> --struct-name <name> [--title <text>]
+Usage: $0 --spec <path> --schema <name> --struct-file <path> --struct-name <name> [--title <text>] [--data-dir <path>]
 
 Emits a markdown report fragment comparing the named OpenAPI schema's
 properties to the named Rust struct's fields. Exit 0 even when gaps exist.
+
+With --data-dir, also writes machine-readable sidecars per tuple:
+  <data-dir>/<schema>.spec.txt    one spec property per line (sorted)
+  <data-dir>/<schema>.struct.txt  one struct field per line (sorted)
+  <data-dir>/<schema>.missing.txt one missing field per line (sorted)
+The orchestrator uses these to compute deduplicated per-resource totals.
 EOF
     exit 2
 }
@@ -42,6 +49,7 @@ while [ $# -gt 0 ]; do
         --struct-file) STRUCT_FILE="$2"; shift 2 ;;
         --struct-name) STRUCT_NAME="$2"; shift 2 ;;
         --title) TITLE="$2"; shift 2 ;;
+        --data-dir) DATA_DIR="$2"; shift 2 ;;
         -h|--help) usage ;;
         *) echo "Unknown arg: $1" >&2; usage ;;
     esac
@@ -243,6 +251,14 @@ else
     while IFS= read -r line; do
         printf -- "- \`%s\`\n" "$line"
     done < "$REVERSE"
+fi
+
+# --- Optional sidecar emit for orchestrator dedup ---------------------------
+if [ -n "$DATA_DIR" ]; then
+    mkdir -p "$DATA_DIR"
+    cp "$SPEC_TXT"   "$DATA_DIR/$SCHEMA.spec.txt"
+    cp "$STRUCT_TXT" "$DATA_DIR/$SCHEMA.struct.txt"
+    cp "$MISSING"    "$DATA_DIR/$SCHEMA.missing.txt"
 fi
 
 exit 0
