@@ -3,7 +3,7 @@
 const SENSITIVE_KEY_PATTERNS: &[&str] = &[
     "email",
     "payer",
-    "paymentid",
+    "payment",
     "balance",
     "charges",
     "recharge",
@@ -11,6 +11,9 @@ const SENSITIVE_KEY_PATTERNS: &[&str] = &[
     "downloadurl",
     "apikey",
     "accesskey",
+    "signingkey",
+    "signingsecret",
+    "secret",
     "token",
     "password",
 ];
@@ -111,6 +114,9 @@ mod tests {
             ("AccessKey", json!("access-secret")),
             ("Token", json!("tok_abc")),
             ("Password", json!("hunter2")),
+            ("AutomaticPaymentIdentifier", json!("auto_pm_xyz")),
+            ("AWSSigningKey", json!("AKIA...")),
+            ("AWSSigningSecret", json!("secret")),
         ];
         for (key, val) in cases {
             let result = redacted(json!({ key: val }));
