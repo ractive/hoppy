@@ -2,9 +2,10 @@
 title: "14 top-level get/delete/statistics commands ship `--id <ID>` with no help text"
 type: backlog
 date: 2026-05-30
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-30 (post-iter-42)
+resolved-in: docs commit on main (post-iter-42 dogfooding)
 ---
 
 # Top-level `--id` args lack help description

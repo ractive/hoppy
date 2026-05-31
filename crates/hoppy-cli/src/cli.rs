@@ -343,6 +343,7 @@ pub enum PullZoneAction {
     },
     /// Get a specific pull zone
     Get {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
     },
@@ -391,6 +392,7 @@ pub enum PullZoneAction {
   # After enabling, read Optimizer usage stats
   hoppy pull-zone statistics --id <id> --type optimizer")]
     Update {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// HTTP/HTTPS origin URL. Mutually exclusive with --storage-zone-id.
@@ -517,11 +519,13 @@ pub enum PullZoneAction {
     },
     /// Delete a pull zone
     Delete {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
     },
     /// Purge pull zone cache
     Purge {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// Limit purge to a specific cache tag
@@ -530,6 +534,7 @@ pub enum PullZoneAction {
     },
     /// Get pull zone statistics
     Statistics {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// Statistics type: optimizer, origin-shield, safehop
@@ -796,6 +801,7 @@ pub enum StorageZoneAction {
     },
     /// Get a specific storage zone
     Get {
+        /// Storage zone ID
         #[arg(long)]
         id: i64,
     },
@@ -826,6 +832,7 @@ pub enum StorageZoneAction {
     },
     /// Update a storage zone
     Update {
+        /// Storage zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -837,11 +844,13 @@ pub enum StorageZoneAction {
     },
     /// Delete a storage zone
     Delete {
+        /// Storage zone ID
         #[arg(long)]
         id: i64,
     },
     /// Get statistics for a storage zone
     Statistics {
+        /// Storage zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -943,6 +952,7 @@ pub enum DnsZoneAction {
     },
     /// Get a specific DNS zone
     Get {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
     },
@@ -953,6 +963,7 @@ pub enum DnsZoneAction {
     },
     /// Update a DNS zone
     Update {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
         /// Enable custom nameservers
@@ -976,11 +987,13 @@ pub enum DnsZoneAction {
     },
     /// Delete a DNS zone
     Delete {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
     },
     /// Get statistics for a DNS zone
     Statistics {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -990,11 +1003,13 @@ pub enum DnsZoneAction {
     },
     /// Export DNS zone as a BIND zone file
     Export {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
     },
     /// Import DNS records from a BIND zone file
     Import {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
         /// Path to zone file (reads from stdin if omitted)
@@ -1012,6 +1027,7 @@ pub enum DnsZoneAction {
     /// certificate authority needs to validate the domain via DNS challenge.
     /// If the zone isn't delegated, the API returns an error.
     IssueCert {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
     },
@@ -1207,6 +1223,7 @@ pub enum StreamLibraryAction {
     },
     /// Get a specific video library
     Get {
+        /// Stream library ID
         #[arg(long)]
         id: i64,
     },
@@ -1217,6 +1234,7 @@ pub enum StreamLibraryAction {
     },
     /// Update a video library
     Update {
+        /// Stream library ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -1230,11 +1248,13 @@ pub enum StreamLibraryAction {
     },
     /// Delete a video library
     Delete {
+        /// Stream library ID
         #[arg(long)]
         id: i64,
     },
     /// Get statistics for a video library
     Statistics {
+        /// Stream library ID
         #[arg(long)]
         id: i64,
         #[arg(long)]
@@ -2088,6 +2108,7 @@ pub enum ScriptAction {
     },
     /// Get an edge script by ID
     Get {
+        /// Script ID
         #[arg(long)]
         id: i64,
     },
@@ -2110,6 +2131,7 @@ pub enum ScriptAction {
     },
     /// Update an edge script
     Update {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// New name for the script
@@ -2121,6 +2143,7 @@ pub enum ScriptAction {
     },
     /// Delete an edge script
     Delete {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Also delete linked pull zones
@@ -2134,6 +2157,7 @@ pub enum ScriptAction {
     },
     /// Publish a new release of the script
     Publish {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Release note
@@ -2157,6 +2181,7 @@ pub enum ScriptAction {
     },
     /// Get script usage statistics
     Statistics {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Start date (YYYY-MM-DD)
@@ -2171,6 +2196,7 @@ pub enum ScriptAction {
     },
     /// Rotate the deployment key for a script
     RotateDeploymentKey {
+        /// Script ID
         #[arg(long)]
         id: i64,
     },
@@ -2492,6 +2518,7 @@ pub enum ContainerAppAction {
     },
     /// Get a specific application
     Get {
+        /// Container app ID
         #[arg(long)]
         id: String,
     },
@@ -2536,6 +2563,7 @@ pub enum ContainerAppAction {
     },
     /// Update an application
     Update {
+        /// Container app ID
         #[arg(long)]
         id: String,
         /// New name
@@ -2553,16 +2581,19 @@ pub enum ContainerAppAction {
     },
     /// Deploy an application
     Deploy {
+        /// Container app ID
         #[arg(long)]
         id: String,
     },
     /// Undeploy (suspend) an application
     Undeploy {
+        /// Container app ID
         #[arg(long)]
         id: String,
     },
     /// Restart all pods in an application
     Restart {
+        /// Container app ID
         #[arg(long)]
         id: String,
     },
@@ -2572,6 +2603,7 @@ pub enum ContainerAppAction {
     /// for CDN endpoints) — pass `--cascade` to also delete them, or
     /// `--no-cascade` to delete only the app and print the orphan IDs.
     Delete {
+        /// Container app ID
         #[arg(long)]
         id: String,
         /// Also delete every auto-managed Pull Zone owned by this app.
@@ -2584,11 +2616,13 @@ pub enum ContainerAppAction {
     },
     /// Show live overview for an application
     Overview {
+        /// Container app ID
         #[arg(long)]
         id: String,
     },
     /// Show statistics for an application
     Statistics {
+        /// Container app ID
         #[arg(long)]
         id: String,
         /// Start date (YYYY-MM-DD)
