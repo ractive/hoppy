@@ -75,22 +75,43 @@ PCI/SOC2 posture):**
 - `EnableLogging`, `EnableExtendedLogging`
 - `EnableWebSockets`
 
+## Root cause: forgotten, not curated
+
+The CLI's `--format json` output is **not** filtering these fields away.
+Confirmed by diffing the raw API response against the `PullZone`
+deserialization struct in `crates/bunny-net-api/src/core/types.rs:460`:
+
+- API returns 164 fields, ~45 of them toggle-shaped.
+- `PullZone` struct has 56 modeled fields.
+- The 12 toggles the CLI exposes on `update` are exactly the ones the
+  struct models.
+- `comm -23 api_toggles struct_pascal_case` returns the same 33-field
+  list as the CLI update gap.
+
+Serde silently drops unknown fields at deserialization (no
+`#[serde(deny_unknown_fields)]`), so anything the API sends that the
+struct doesn't declare vanishes before reaching CLI output. The struct
+comment at types.rs:455 confirms the design ("Fields that bunny.net may
+omit on older zones are annotated with `#[serde(default)]`") — leniency
+on missing fields, with no intent to hide anything from users.
+
+This means **each gap is a two-layer fix, not a one-layer CLI tweak**:
+
+1. Add the field to the `PullZone` struct (so `get` / `list` surface it).
+2. Add the field to the `UpdatePullZone` payload (so `update` accepts it).
+3. Add the CLI flag in `PullZoneAction::Update` (cli.rs).
+4. Forward through in `crates/hoppy-cli/src/commands/pull_zone.rs`.
+5. Help text matching the bunny.net dashboard label.
+6. e2e snapshot refresh for the new `--help` shape.
+
 ## Suggested approach
 
-Treat this as one iteration (not 33). The pattern is repetitive — each
-gap is:
-
-1. `Option<bool>` arg in `PullZoneAction::Update` (cli.rs).
-2. Forward into the `UpdatePullZone` payload in
-   `crates/bunny-net-api/src/core/...`.
-3. Brief help text matching the bunny.net dashboard label.
-4. e2e snapshot for the new `--help` shape.
-
-A code-gen pass over the API spec (`specs/core-platform.json` →
-`UpdatePullZone` struct fields → matching CLI args) could land them all
-at once, but a hand-written pass per group is also fine. The
-**security** group is the only one that's genuinely blocking — the
-others are quality-of-life.
+Treat this as one iteration (not 33). The pattern is repetitive — a
+code-gen pass from `specs/core-platform.json` into both the struct and
+the CLI args could land them all at once, but a hand-written pass per
+group is also fine. The **security** group is the only one that's
+genuinely blocking compliance use cases — the others are
+quality-of-life.
 
 ## Out of scope
 
