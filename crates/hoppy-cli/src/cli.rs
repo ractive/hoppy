@@ -689,13 +689,28 @@ pub enum PullZoneAction {
         #[arg(long, action = clap::ArgAction::Set, help_heading = "Performance / caching")]
         use_background_update: Option<bool>,
         /// Override `Cache-Control` max-age (seconds) for edge caching. 0 = disable override.
-        #[arg(long, value_name = "SECONDS", help_heading = "Performance / caching")]
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i64).range(0..),
+            help_heading = "Performance / caching"
+        )]
         cache_control_max_age_override: Option<i64>,
         /// Override `Cache-Control: public` max-age (seconds). 0 = disable override.
-        #[arg(long, value_name = "SECONDS", help_heading = "Performance / caching")]
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i64).range(0..),
+            help_heading = "Performance / caching"
+        )]
         cache_control_public_max_age_override: Option<i64>,
         /// Override `Cache-Control` max-age (seconds) sent to the browser. 0 = disable override.
-        #[arg(long, value_name = "SECONDS", help_heading = "Performance / caching")]
+        #[arg(
+            long,
+            value_name = "SECONDS",
+            value_parser = clap::value_parser!(i64).range(0..),
+            help_heading = "Performance / caching"
+        )]
         cache_control_browser_max_age_override: Option<i64>,
         /// Cache error responses (4xx/5xx) briefly to shield the origin from
         /// thundering-herd retries.

@@ -722,7 +722,7 @@ pub struct PullZone {
     pub log_anonymization_type: Option<LogAnonymizationType>,
 
     // Vary headers (iter-45)
-    #[serde(default)]
+    #[serde(rename = "EnableWebPVary", default)]
     pub enable_webp_vary: bool,
     #[serde(rename = "EnableAvifVary", default)]
     pub enable_avif_vary: bool,

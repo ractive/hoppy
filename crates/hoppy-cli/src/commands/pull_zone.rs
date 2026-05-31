@@ -53,6 +53,17 @@ impl From<&PullZone> for PullZoneRow {
 // Log-forwarding precheck helper
 // ---------------------------------------------------------------------------
 
+/// Normalize a comma-separated CLI list: trim entries and drop empty ones.
+/// Passing a single empty string (`--foo ""`) yields an empty Vec, which the
+/// API treats as "clear".
+fn normalize_csv_list(vals: &[String]) -> Vec<String> {
+    vals.iter()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
 /// Returns `true` when a GET precheck is required before sending the update.
 ///
 /// A precheck is needed when:
@@ -363,8 +374,10 @@ pub async fn handle(
             body.enable_safe_hop = *enable_safe_hop;
             body.ignore_query_strings = *ignore_query_strings;
             body.enable_query_string_ordering = *enable_query_string_ordering;
-            body.query_string_vary_parameters = query_string_vary_parameters.clone();
-            body.cookie_vary_parameters = cookie_vary_parameters.clone();
+            body.query_string_vary_parameters = query_string_vary_parameters
+                .as_deref()
+                .map(normalize_csv_list);
+            body.cookie_vary_parameters = cookie_vary_parameters.as_deref().map(normalize_csv_list);
             body.use_stale_while_updating = *use_stale_while_updating;
             body.use_stale_while_offline = *use_stale_while_offline;
             body.use_background_update = *use_background_update;
