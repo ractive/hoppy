@@ -81,6 +81,13 @@ pub struct Cli {
     #[arg(long, value_name = "DIR", global = true)]
     pub record: Option<String>,
 
+    /// Disable PII redaction in `--record` fixtures. Off by default.
+    /// The raw output may contain billing balances, emails, payment IDs,
+    /// and signed URLs — do not commit it.
+    /// May also be set via `HOPPY_NO_REDACT=1`.
+    #[arg(long, global = true, env = "HOPPY_NO_REDACT")]
+    pub no_redact: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

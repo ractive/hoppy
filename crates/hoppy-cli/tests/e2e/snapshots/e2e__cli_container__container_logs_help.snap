@@ -78,5 +78,10 @@ Options:
       --record <DIR>
           Record API responses as JSON fixtures under `<DIR>/<domain>/` (one subdirectory per service: core, compute, containers, database, shield, storage, stream). Writes are idempotent — unchanged files are left alone. May also be set via `HOPPY_RECORD_DIR=<DIR>`
 
+      --no-redact
+          Disable PII redaction in `--record` fixtures. Off by default. The raw output may contain billing balances, emails, payment IDs, and signed URLs — do not commit it. May also be set via `HOPPY_NO_REDACT=1`
+          
+          [env: HOPPY_NO_REDACT=]
+
   -h, --help
           Print help (see a summary with '-h')

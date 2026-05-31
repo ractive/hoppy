@@ -17,6 +17,19 @@ async fn main() {
     let record = cli.record.as_deref();
     let redact_cfg = RedactConfig::new(cli.reveal, cli.reveal_env.clone());
 
+    // Propagate --no-redact to the recording layer via env var.
+    // The env-var indirection avoids threading a flag through every domain
+    // client builder. `bunny-net-api` reads HOPPY_NO_REDACT=1 inside
+    // `maybe_record_response` before writing fixtures to disk.
+    //
+    // SAFETY: single-threaded at this point — no other threads have been
+    // spawned before `main` reaches this line.
+    if cli.no_redact {
+        unsafe {
+            std::env::set_var("HOPPY_NO_REDACT", "1");
+        }
+    }
+
     // Hints are off when --no-hints or --quiet is set, or whenever output is
     // machine readable (`--format json`) so paired stdout/stderr stays clean.
     let hints_enabled =
