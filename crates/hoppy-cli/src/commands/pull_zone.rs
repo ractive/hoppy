@@ -12,7 +12,7 @@ use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
     LogAnonymizationType, MatchingType, OptimizerWatermarkPosition, PermaCacheType, PullZone,
     PullZoneLogForwarderProtocolType, PullZoneTierType, PullZoneType, PurgeCache,
-    StickySessionType, TriggerType, UpdatePullZone,
+    ShieldDDosProtectionType, StickySessionType, TriggerType, UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
 
@@ -263,6 +263,24 @@ pub async fn handle(
             sticky_session_cookie_name,
             sticky_session_client_headers,
             pull_zone_tier_type,
+            // Firewall / rate limiting (iter-47)
+            blocked_countries,
+            budget_redirected_countries,
+            blocked_ips,
+            allowed_referrers,
+            blocked_referrers,
+            block_none_referrer,
+            block_post_requests,
+            block_root_path_access,
+            disable_cookies,
+            shield_ddos_protection_enabled,
+            shield_ddos_protection_type,
+            burst_size,
+            request_limit,
+            limit_rate_after,
+            limit_rate_per_second,
+            connection_limit_per_ip_count,
+            max_web_socket_connections,
         } => {
             // Guard: if any log-forwarding sub-field is being set without also
             // enabling log forwarding in this same call, verify the zone has
@@ -464,6 +482,28 @@ pub async fn handle(
             if let Some(t) = pull_zone_tier_type {
                 body = body.pull_zone_tier_type(PullZoneTierType::from(*t));
             }
+            // Firewall / rate limiting (iter-47)
+            body.blocked_countries = blocked_countries.as_deref().map(normalize_csv_list);
+            body.budget_redirected_countries = budget_redirected_countries
+                .as_deref()
+                .map(normalize_csv_list);
+            body.blocked_ips = blocked_ips.as_deref().map(normalize_csv_list);
+            body.allowed_referrers = allowed_referrers.as_deref().map(normalize_csv_list);
+            body.blocked_referrers = blocked_referrers.as_deref().map(normalize_csv_list);
+            body.block_none_referrer = *block_none_referrer;
+            body.block_post_requests = *block_post_requests;
+            body.block_root_path_access = *block_root_path_access;
+            body.disable_cookies = *disable_cookies;
+            body.shield_ddos_protection_enabled = *shield_ddos_protection_enabled;
+            if let Some(t) = shield_ddos_protection_type {
+                body = body.shield_ddos_protection_type(ShieldDDosProtectionType::from(*t));
+            }
+            body.burst_size = *burst_size;
+            body.request_limit = *request_limit;
+            body.limit_rate_after = *limit_rate_after;
+            body.limit_rate_per_second = *limit_rate_per_second;
+            body.connection_limit_per_ip_count = *connection_limit_per_ip_count;
+            body.max_web_socket_connections = *max_web_socket_connections;
             let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format, redact_cfg);
         }

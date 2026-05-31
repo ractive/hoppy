@@ -483,6 +483,47 @@ impl std::str::FromStr for PullZoneTierType {
     }
 }
 
+/// Shield DDoS protection mode for a Pull Zone.
+///
+/// Spec: `ShieldDDosProtectionType` — `0 = DetectOnly`, `1 = ActiveStandard`,
+/// `2 = ActiveAggressive`. Serialised as the integer discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum ShieldDDosProtectionType {
+    /// Monitor and log suspected DDoS traffic but do not block it.
+    DetectOnly = 0,
+    /// Actively block DDoS traffic using standard mitigation.
+    ActiveStandard = 1,
+    /// Actively block DDoS traffic using aggressive mitigation.
+    ActiveAggressive = 2,
+}
+
+impl std::fmt::Display for ShieldDDosProtectionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::DetectOnly => "detect-only",
+            Self::ActiveStandard => "active-standard",
+            Self::ActiveAggressive => "active-aggressive",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for ShieldDDosProtectionType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "detect-only" | "DetectOnly" => Ok(Self::DetectOnly),
+            "active-standard" | "ActiveStandard" => Ok(Self::ActiveStandard),
+            "active-aggressive" | "ActiveAggressive" => Ok(Self::ActiveAggressive),
+            _ => Err(format!(
+                "unknown shield DDoS protection type: {s:?}; expected one of: detect-only, active-standard, active-aggressive"
+            )),
+        }
+    }
+}
+
 /// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
 ///
 /// Bunny.net may add new protocols in future API versions. The
@@ -909,6 +950,48 @@ pub struct PullZone {
     /// collision with the Rust keyword and the existing `zone_type` field.
     #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
     pub pull_zone_tier_type: Option<PullZoneTierType>,
+
+    // Firewall / blocking (iter-47)
+    #[serde(default)]
+    pub blocked_countries: Vec<String>,
+    #[serde(default)]
+    pub budget_redirected_countries: Vec<String>,
+    #[serde(default)]
+    pub block_none_referrer: bool,
+    #[serde(default)]
+    pub block_post_requests: bool,
+    #[serde(default)]
+    pub block_root_path_access: bool,
+    #[serde(default)]
+    pub disable_cookies: bool,
+
+    // Shield DDoS + rate limiting (iter-47)
+    #[serde(rename = "ShieldDDosProtectionEnabled", default)]
+    pub shield_ddos_protection_enabled: bool,
+    #[serde(
+        rename = "ShieldDDosProtectionType",
+        default,
+        deserialize_with = "deserialize_repr_option"
+    )]
+    pub shield_ddos_protection_type: Option<ShieldDDosProtectionType>,
+    #[serde(default)]
+    pub burst_size: Option<i32>,
+    #[serde(default)]
+    pub request_limit: Option<i32>,
+    /// The API returns this field as a float (e.g. `0.0`), so we store it as
+    /// `f64` to avoid deserialisation errors. Use `.round() as i32` when
+    /// passing to `UpdatePullZone::limit_rate_after`.
+    #[serde(default)]
+    pub limit_rate_after: Option<f64>,
+    /// The API returns this field as a float (e.g. `0.0`), so we store it as
+    /// `f64` to avoid deserialisation errors. Use `.round() as i32` when
+    /// passing to `UpdatePullZone::limit_rate_per_second`.
+    #[serde(default)]
+    pub limit_rate_per_second: Option<f64>,
+    #[serde(rename = "ConnectionLimitPerIPCount", default)]
+    pub connection_limit_per_ip_count: Option<i32>,
+    #[serde(default)]
+    pub max_web_socket_connections: Option<i32>,
 }
 
 /// Generic paginated list response returned by the bunny.net API.
@@ -1313,6 +1396,54 @@ pub struct UpdatePullZone {
     /// Serialises as an integer via `Serialize_repr`.
     #[serde(rename = "Type", skip_serializing_if = "Option::is_none")]
     pub pull_zone_tier_type: Option<PullZoneTierType>,
+
+    // Firewall / blocking (iter-47)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocked_countries: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub budget_redirected_countries: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocked_ips: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowed_referrers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blocked_referrers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_none_referrer: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_post_requests: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_root_path_access: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disable_cookies: Option<bool>,
+
+    // Shield DDoS + rate limiting (iter-47)
+    #[serde(
+        rename = "ShieldDDosProtectionEnabled",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub shield_ddos_protection_enabled: Option<bool>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(
+        rename = "ShieldDDosProtectionType",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub shield_ddos_protection_type: Option<ShieldDDosProtectionType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub burst_size: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_limit: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_rate_after: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_rate_per_second: Option<i32>,
+    #[serde(
+        rename = "ConnectionLimitPerIPCount",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub connection_limit_per_ip_count: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_web_socket_connections: Option<i32>,
 }
 
 impl UpdatePullZone {
@@ -1926,6 +2057,112 @@ impl UpdatePullZone {
     #[must_use]
     pub fn pull_zone_tier_type(mut self, v: PullZoneTierType) -> Self {
         self.pull_zone_tier_type = Some(v);
+        self
+    }
+
+    // ── Firewall / blocking (iter-47) ────────────────────────────────────────
+
+    #[must_use]
+    pub fn blocked_countries(mut self, v: Vec<String>) -> Self {
+        self.blocked_countries = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn budget_redirected_countries(mut self, v: Vec<String>) -> Self {
+        self.budget_redirected_countries = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn blocked_ips(mut self, v: Vec<String>) -> Self {
+        self.blocked_ips = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn allowed_referrers(mut self, v: Vec<String>) -> Self {
+        self.allowed_referrers = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn blocked_referrers(mut self, v: Vec<String>) -> Self {
+        self.blocked_referrers = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn block_none_referrer(mut self, v: bool) -> Self {
+        self.block_none_referrer = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn block_post_requests(mut self, v: bool) -> Self {
+        self.block_post_requests = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn block_root_path_access(mut self, v: bool) -> Self {
+        self.block_root_path_access = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn disable_cookies(mut self, v: bool) -> Self {
+        self.disable_cookies = Some(v);
+        self
+    }
+
+    // ── Shield DDoS + rate limiting (iter-47) ────────────────────────────────
+
+    #[must_use]
+    pub fn shield_ddos_protection_enabled(mut self, v: bool) -> Self {
+        self.shield_ddos_protection_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn shield_ddos_protection_type(mut self, v: ShieldDDosProtectionType) -> Self {
+        self.shield_ddos_protection_type = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn burst_size(mut self, v: i32) -> Self {
+        self.burst_size = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn request_limit(mut self, v: i32) -> Self {
+        self.request_limit = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn limit_rate_after(mut self, v: i32) -> Self {
+        self.limit_rate_after = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn limit_rate_per_second(mut self, v: i32) -> Self {
+        self.limit_rate_per_second = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn connection_limit_per_ip_count(mut self, v: i32) -> Self {
+        self.connection_limit_per_ip_count = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn max_web_socket_connections(mut self, v: i32) -> Self {
+        self.max_web_socket_connections = Some(v);
         self
     }
 }

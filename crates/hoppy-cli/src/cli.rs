@@ -1,6 +1,7 @@
 use bunny_net_api::core::types::{
     LogAnonymizationType, OptimizerWatermarkPosition, PermaCacheType,
-    PullZoneLogForwarderProtocolType, PullZoneTierType, StickySessionType,
+    PullZoneLogForwarderProtocolType, PullZoneTierType, ShieldDDosProtectionType,
+    StickySessionType,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
@@ -228,6 +229,27 @@ impl From<PullZoneTierTypeArg> for PullZoneTierType {
         match a {
             PullZoneTierTypeArg::Standard => Self::Standard,
             PullZoneTierTypeArg::Volume => Self::Volume,
+        }
+    }
+}
+
+/// Shield DDoS protection mode (`ShieldDDosProtectionType` in the bunny.net API).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum ShieldDDosProtectionTypeArg {
+    /// Monitor suspected DDoS traffic but do not block it (value 0).
+    DetectOnly,
+    /// Actively block DDoS traffic with standard mitigation (value 1).
+    ActiveStandard,
+    /// Actively block DDoS traffic with aggressive mitigation (value 2).
+    ActiveAggressive,
+}
+
+impl From<ShieldDDosProtectionTypeArg> for ShieldDDosProtectionType {
+    fn from(a: ShieldDDosProtectionTypeArg) -> Self {
+        match a {
+            ShieldDDosProtectionTypeArg::DetectOnly => Self::DetectOnly,
+            ShieldDDosProtectionTypeArg::ActiveStandard => Self::ActiveStandard,
+            ShieldDDosProtectionTypeArg::ActiveAggressive => Self::ActiveAggressive,
         }
     }
 }
@@ -889,6 +911,96 @@ pub enum PullZoneAction {
         /// Pull Zone billing tier: `standard` or `volume`.
         #[arg(long, value_name = "TIER", help_heading = "Routing / sticky sessions")]
         pull_zone_tier_type: Option<PullZoneTierTypeArg>,
+
+        // ── Firewall / rate limiting (iter-47) ───────────────────────────────
+        /// ISO-3166-1 alpha-2 country codes to block (e.g. `CN,RU`).
+        #[arg(
+            long,
+            value_name = "CODES",
+            value_delimiter = ',',
+            help_heading = "Firewall / rate limiting"
+        )]
+        blocked_countries: Option<Vec<String>>,
+        /// ISO-3166-1 alpha-2 country codes to redirect to a cheaper PoP.
+        #[arg(
+            long,
+            value_name = "CODES",
+            value_delimiter = ',',
+            help_heading = "Firewall / rate limiting"
+        )]
+        budget_redirected_countries: Option<Vec<String>>,
+        /// IP addresses or CIDR ranges to block (e.g. `1.2.3.4,10.0.0.0/8`).
+        #[arg(
+            long,
+            value_name = "IPS",
+            value_delimiter = ',',
+            help_heading = "Firewall / rate limiting"
+        )]
+        blocked_ips: Option<Vec<String>>,
+        /// Allowed referrer domains (anti-hotlinking allowlist).
+        #[arg(
+            long,
+            value_name = "DOMAINS",
+            value_delimiter = ',',
+            help_heading = "Firewall / rate limiting"
+        )]
+        allowed_referrers: Option<Vec<String>>,
+        /// Blocked referrer domains (anti-hotlinking blocklist).
+        #[arg(
+            long,
+            value_name = "DOMAINS",
+            value_delimiter = ',',
+            help_heading = "Firewall / rate limiting"
+        )]
+        blocked_referrers: Option<Vec<String>>,
+        /// Block requests with no `Referer` header.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Firewall / rate limiting")]
+        block_none_referrer: Option<bool>,
+        /// Block HTTP POST requests to this pull zone.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Firewall / rate limiting")]
+        block_post_requests: Option<bool>,
+        /// Block requests to the root path (`/`) of this pull zone.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Firewall / rate limiting")]
+        block_root_path_access: Option<bool>,
+        /// Strip cookies from requests and responses.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Firewall / rate limiting")]
+        disable_cookies: Option<bool>,
+        /// Enable Shield DDoS protection for this pull zone.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Firewall / rate limiting")]
+        shield_ddos_protection_enabled: Option<bool>,
+        /// Shield DDoS protection mode: `detect-only`, `active-standard`, `active-aggressive`.
+        #[arg(long, value_name = "MODE", help_heading = "Firewall / rate limiting")]
+        shield_ddos_protection_type: Option<ShieldDDosProtectionTypeArg>,
+        /// Maximum burst of requests above the rate limit before throttling.
+        #[arg(
+            long,
+            value_name = "REQUESTS",
+            help_heading = "Firewall / rate limiting"
+        )]
+        burst_size: Option<i32>,
+        /// Maximum number of requests per second allowed from a single IP.
+        #[arg(
+            long,
+            value_name = "REQ_PER_SEC",
+            help_heading = "Firewall / rate limiting"
+        )]
+        request_limit: Option<i32>,
+        /// Bytes served before rate limiting kicks in for a connection.
+        #[arg(long, value_name = "BYTES", help_heading = "Firewall / rate limiting")]
+        limit_rate_after: Option<i32>,
+        /// Bytes per second allowed after `--limit-rate-after` bytes have been served.
+        #[arg(
+            long,
+            value_name = "BYTES_PER_SEC",
+            help_heading = "Firewall / rate limiting"
+        )]
+        limit_rate_per_second: Option<i32>,
+        /// Maximum number of concurrent connections per IP address.
+        #[arg(long, value_name = "COUNT", help_heading = "Firewall / rate limiting")]
+        connection_limit_per_ip_count: Option<i32>,
+        /// Maximum number of concurrent WebSocket connections.
+        #[arg(long, value_name = "COUNT", help_heading = "Firewall / rate limiting")]
+        max_web_socket_connections: Option<i32>,
     },
     /// Delete a pull zone
     Delete {
