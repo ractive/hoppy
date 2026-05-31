@@ -175,10 +175,21 @@ fn check_iteration_ready(args: &[String]) -> anyhow::Result<()> {
         Err(e) => failures.push(format!("git rev-list error: {e}")),
     }
 
-    run_gate("cargo fmt --check", &["fmt", "--all", "--", "--check"], &mut failures);
+    run_gate(
+        "cargo fmt --check",
+        &["fmt", "--all", "--", "--check"],
+        &mut failures,
+    );
     run_gate(
         "cargo clippy -D warnings",
-        &["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],
+        &[
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--",
+            "-D",
+            "warnings",
+        ],
         &mut failures,
     );
     run_gate(
