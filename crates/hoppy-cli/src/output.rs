@@ -394,6 +394,32 @@ fn format_text_value_compact(v: &serde_json::Value) -> String {
     }
 }
 
+/// Return the ordered list of keys if every element of `arr` is an object
+/// containing only primitive values and sharing the same set of keys.
+/// Returns `None` otherwise (e.g. mixed types, nested objects/arrays, or
+/// differing keys), signalling that a multi-column table cannot be rendered
+/// faithfully and the caller should fall back to JSON.
+fn uniform_object_keys(arr: &[serde_json::Value]) -> Option<Vec<String>> {
+    let first = arr.first()?.as_object()?;
+    if first.values().any(|v| !is_primitive(v)) {
+        return None;
+    }
+    let keys: Vec<String> = first.keys().cloned().collect();
+    for item in arr.iter().skip(1) {
+        let obj = item.as_object()?;
+        if obj.len() != keys.len() {
+            return None;
+        }
+        for k in &keys {
+            match obj.get(k) {
+                Some(v) if is_primitive(v) => {}
+                _ => return None,
+            }
+        }
+    }
+    Some(keys)
+}
+
 fn print_table_from_value(value: &serde_json::Value) {
     #[derive(Serialize, Tabled)]
     struct FieldRow {
@@ -427,8 +453,26 @@ fn print_table_from_value(value: &serde_json::Value) {
             }
             // If every element is a flat object with the same keys, render a
             // multi-column table. Otherwise fall back to JSON.
-            let json = serde_json::to_string_pretty(value).expect("serialize");
-            println!("{json}");
+            if let Some(keys) = uniform_object_keys(arr) {
+                let mut builder = tabled::builder::Builder::default();
+                builder.push_record(keys.iter().cloned());
+                for item in arr {
+                    if let serde_json::Value::Object(obj) = item {
+                        let row: Vec<String> = keys
+                            .iter()
+                            .map(|k| match obj.get(k) {
+                                Some(v) => format_text_value_compact(v),
+                                None => String::new(),
+                            })
+                            .collect();
+                        builder.push_record(row);
+                    }
+                }
+                println!("{}", builder.build());
+            } else {
+                let json = serde_json::to_string_pretty(value).expect("serialize");
+                println!("{json}");
+            }
         }
         _ => println!("{}", format_text_value_compact(value)),
     }
@@ -585,6 +629,25 @@ mod tests {
     // -----------------------------------------------------------------------
     // to_pascal_case + pascalize_keys
     // -----------------------------------------------------------------------
+
+    #[test]
+    fn uniform_keys_flat_objects() {
+        let arr = vec![json!({"Id": 1, "Name": "a"}), json!({"Id": 2, "Name": "b"})];
+        let keys = uniform_object_keys(&arr).expect("uniform");
+        assert_eq!(keys, vec!["Id".to_owned(), "Name".to_owned()]);
+    }
+
+    #[test]
+    fn uniform_keys_rejects_nested() {
+        let arr = vec![json!({"Id": 1, "Nested": {"x": 1}})];
+        assert!(uniform_object_keys(&arr).is_none());
+    }
+
+    #[test]
+    fn uniform_keys_rejects_mismatched_keys() {
+        let arr = vec![json!({"Id": 1, "Name": "a"}), json!({"Id": 2})];
+        assert!(uniform_object_keys(&arr).is_none());
+    }
 
     #[test]
     fn pascal_case_snake() {
