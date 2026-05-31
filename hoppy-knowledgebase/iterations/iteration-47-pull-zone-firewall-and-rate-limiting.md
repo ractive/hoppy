@@ -8,7 +8,7 @@ tags:
   - firewall
   - rate-limiting
   - openapi-coverage
-status: in-progress
+status: completed
 branch: iter-47/pull-zone-firewall-and-rate-limiting
 ---
 
@@ -56,8 +56,8 @@ To `PullZone` (only those not already present) and `UpdatePullZone` (all):
       new enum, check spec for variants
 - [x] `burst_size: Option<i32>` (`BurstSize`)
 - [x] `request_limit: Option<i32>` (`RequestLimit`)
-- [x] `limit_rate_after: Option<i32>` (`LimitRateAfter`)
-- [x] `limit_rate_per_second: Option<i32>` (`LimitRatePerSecond`)
+- [x] `limit_rate_after: Option<f64>` (`LimitRateAfter`) — spec is `double`
+- [x] `limit_rate_per_second: Option<f64>` (`LimitRatePerSecond`) — spec is `double`
 - [x] `connection_limit_per_ip_count: Option<i32>` (`ConnectionLimitPerIPCount`)
 - [x] `max_web_socket_connections: Option<i32>` (`MaxWebSocketConnections`)
 

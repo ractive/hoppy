@@ -975,6 +975,7 @@ pub enum PullZoneAction {
         #[arg(
             long,
             value_name = "REQUESTS",
+            value_parser = clap::value_parser!(i32).range(0..),
             help_heading = "Firewall / rate limiting"
         )]
         burst_size: Option<i32>,
@@ -982,24 +983,37 @@ pub enum PullZoneAction {
         #[arg(
             long,
             value_name = "REQ_PER_SEC",
+            value_parser = clap::value_parser!(i32).range(0..),
             help_heading = "Firewall / rate limiting"
         )]
         request_limit: Option<i32>,
-        /// Bytes served before rate limiting kicks in for a connection.
+        /// Bytes served before rate limiting kicks in for a connection. Accepts
+        /// fractional values to match the API's `double` type.
         #[arg(long, value_name = "BYTES", help_heading = "Firewall / rate limiting")]
-        limit_rate_after: Option<i32>,
+        limit_rate_after: Option<f64>,
         /// Bytes per second allowed after `--limit-rate-after` bytes have been served.
+        /// Accepts fractional values to match the API's `double` type.
         #[arg(
             long,
             value_name = "BYTES_PER_SEC",
             help_heading = "Firewall / rate limiting"
         )]
-        limit_rate_per_second: Option<i32>,
+        limit_rate_per_second: Option<f64>,
         /// Maximum number of concurrent connections per IP address.
-        #[arg(long, value_name = "COUNT", help_heading = "Firewall / rate limiting")]
+        #[arg(
+            long,
+            value_name = "COUNT",
+            value_parser = clap::value_parser!(i32).range(0..),
+            help_heading = "Firewall / rate limiting"
+        )]
         connection_limit_per_ip_count: Option<i32>,
         /// Maximum number of concurrent WebSocket connections.
-        #[arg(long, value_name = "COUNT", help_heading = "Firewall / rate limiting")]
+        #[arg(
+            long,
+            value_name = "COUNT",
+            value_parser = clap::value_parser!(i32).range(0..),
+            help_heading = "Firewall / rate limiting"
+        )]
         max_web_socket_connections: Option<i32>,
     },
     /// Delete a pull zone
