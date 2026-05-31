@@ -1332,7 +1332,7 @@ async fn update_pull_zone_with_vary_and_cache_sends_only_set_keys() {
     let server = MockServer::start().await;
 
     let expected_body = serde_json::json!({
-        "EnableWebpVary": true,
+        "EnableWebPVary": true,
         "UseStaleWhileUpdating": true,
     });
 
@@ -1607,4 +1607,116 @@ async fn update_pull_zone_origin_timeout_retry_sticky_session() {
         .update_pull_zone(1001, &body)
         .await
         .unwrap();
+}
+
+// ── Geo-zone casing regression tests (iter-49) ───────────────────────────────
+
+/// Verify that the five geo-zone fields in `PullZone` correctly deserialise
+/// from the real API key names (`EnableGeoZoneUS`, `EnableGeoZoneEU`,
+/// `EnableGeoZoneASIA`, `EnableGeoZoneSA`, `EnableGeoZoneAF`).
+///
+/// Before iter-49 the fields had no explicit `#[serde(rename)]` and `serde`'s
+/// PascalCase conversion produced `EnableGeoZoneUs` etc., which silently
+/// defaulted to `false` instead of mapping to the true values in the response.
+#[tokio::test]
+async fn geo_zone_fields_deserialise_from_real_api_key_names() {
+    let server = MockServer::start().await;
+
+    // FIXTURE_GET has all five geo-zone flags set to true; use it as the
+    // response body so we get a realistic round-trip without an inline JSON blob.
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(1001)
+        .await
+        .unwrap();
+
+    assert!(
+        zone.enable_geo_zone_us,
+        "enable_geo_zone_us was false — serde key mismatch (expected EnableGeoZoneUS)"
+    );
+    assert!(
+        zone.enable_geo_zone_eu,
+        "enable_geo_zone_eu was false — serde key mismatch (expected EnableGeoZoneEU)"
+    );
+    assert!(
+        zone.enable_geo_zone_asia,
+        "enable_geo_zone_asia was false — serde key mismatch (expected EnableGeoZoneASIA)"
+    );
+    assert!(
+        zone.enable_geo_zone_sa,
+        "enable_geo_zone_sa was false — serde key mismatch (expected EnableGeoZoneSA)"
+    );
+    assert!(
+        zone.enable_geo_zone_af,
+        "enable_geo_zone_af was false — serde key mismatch (expected EnableGeoZoneAF)"
+    );
+}
+
+/// Verify that `UpdatePullZone` serialises geo-zone fields with the correct
+/// uppercase acronym key names expected by the bunny.net API.
+#[test]
+fn update_pull_zone_geo_zone_fields_serialise_with_correct_key_names() {
+    let body = UpdatePullZone::new()
+        .enable_geo_zone_us(true)
+        .enable_geo_zone_eu(false)
+        .enable_geo_zone_asia(true)
+        .enable_geo_zone_sa(false)
+        .enable_geo_zone_af(true);
+
+    let json: serde_json::Value = serde_json::to_value(&body).unwrap();
+
+    assert_eq!(
+        json["EnableGeoZoneUS"],
+        serde_json::Value::Bool(true),
+        "EnableGeoZoneUS key absent or wrong"
+    );
+    assert_eq!(
+        json["EnableGeoZoneEU"],
+        serde_json::Value::Bool(false),
+        "EnableGeoZoneEU key absent or wrong"
+    );
+    assert_eq!(
+        json["EnableGeoZoneASIA"],
+        serde_json::Value::Bool(true),
+        "EnableGeoZoneASIA key absent or wrong"
+    );
+    assert_eq!(
+        json["EnableGeoZoneSA"],
+        serde_json::Value::Bool(false),
+        "EnableGeoZoneSA key absent or wrong"
+    );
+    assert_eq!(
+        json["EnableGeoZoneAF"],
+        serde_json::Value::Bool(true),
+        "EnableGeoZoneAF key absent or wrong"
+    );
+
+    // Confirm the old wrong PascalCase keys are not present.
+    assert!(
+        json["EnableGeoZoneUs"].is_null(),
+        "stale key EnableGeoZoneUs present"
+    );
+    assert!(
+        json["EnableGeoZoneEu"].is_null(),
+        "stale key EnableGeoZoneEu present"
+    );
+    assert!(
+        json["EnableGeoZoneAsia"].is_null(),
+        "stale key EnableGeoZoneAsia present"
+    );
+    assert!(
+        json["EnableGeoZoneSa"].is_null(),
+        "stale key EnableGeoZoneSa present"
+    );
+    assert!(
+        json["EnableGeoZoneAf"].is_null(),
+        "stale key EnableGeoZoneAf present"
+    );
 }

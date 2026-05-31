@@ -697,15 +697,15 @@ pub struct PullZone {
     pub zone_security_key: String,
 
     // Geo zones
-    #[serde(default)]
+    #[serde(rename = "EnableGeoZoneUS", default)]
     pub enable_geo_zone_us: bool,
-    #[serde(default)]
+    #[serde(rename = "EnableGeoZoneEU", default)]
     pub enable_geo_zone_eu: bool,
-    #[serde(default)]
+    #[serde(rename = "EnableGeoZoneASIA", default)]
     pub enable_geo_zone_asia: bool,
-    #[serde(default)]
+    #[serde(rename = "EnableGeoZoneSA", default)]
     pub enable_geo_zone_sa: bool,
-    #[serde(default)]
+    #[serde(rename = "EnableGeoZoneAF", default)]
     pub enable_geo_zone_af: bool,
 
     // Optimizer — master switches
@@ -1132,15 +1132,15 @@ pub struct UpdatePullZone {
     pub cache_expiration_time: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub zone_security_enabled: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "EnableGeoZoneUS", skip_serializing_if = "Option::is_none")]
     pub enable_geo_zone_us: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "EnableGeoZoneEU", skip_serializing_if = "Option::is_none")]
     pub enable_geo_zone_eu: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "EnableGeoZoneASIA", skip_serializing_if = "Option::is_none")]
     pub enable_geo_zone_asia: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "EnableGeoZoneSA", skip_serializing_if = "Option::is_none")]
     pub enable_geo_zone_sa: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "EnableGeoZoneAF", skip_serializing_if = "Option::is_none")]
     pub enable_geo_zone_af: Option<bool>,
 
     // Log forwarding
@@ -1267,7 +1267,7 @@ pub struct UpdatePullZone {
     pub log_anonymization_type: Option<LogAnonymizationType>,
 
     // Vary headers (iter-45)
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "EnableWebPVary", skip_serializing_if = "Option::is_none")]
     pub enable_webp_vary: Option<bool>,
     #[serde(rename = "EnableAvifVary", skip_serializing_if = "Option::is_none")]
     pub enable_avif_vary: Option<bool>,
@@ -1481,6 +1481,36 @@ impl UpdatePullZone {
     #[must_use]
     pub fn zone_security_enabled(mut self, enabled: bool) -> Self {
         self.zone_security_enabled = Some(enabled);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_geo_zone_us(mut self, v: bool) -> Self {
+        self.enable_geo_zone_us = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_geo_zone_eu(mut self, v: bool) -> Self {
+        self.enable_geo_zone_eu = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_geo_zone_asia(mut self, v: bool) -> Self {
+        self.enable_geo_zone_asia = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_geo_zone_sa(mut self, v: bool) -> Self {
+        self.enable_geo_zone_sa = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_geo_zone_af(mut self, v: bool) -> Self {
+        self.enable_geo_zone_af = Some(v);
         self
     }
 
