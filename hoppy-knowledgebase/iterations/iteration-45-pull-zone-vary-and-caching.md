@@ -1,5 +1,5 @@
 ---
-title: "Iter-45 — pull-zone vary headers + caching toggles"
+title: Iter-45 — pull-zone vary headers + caching toggles
 type: iteration
 date: 2026-05-31
 tags:
@@ -8,7 +8,7 @@ tags:
   - caching
   - vary-headers
   - openapi-coverage
-status: planned
+status: in-progress
 branch: iter-45/pull-zone-vary-and-caching
 ---
 
@@ -27,49 +27,49 @@ deliver the biggest user-visible win per PR. See
 
 ### 1. Vary-header fields on `PullZone` + `UpdatePullZone`
 
-- [ ] `enable_webp_vary: bool` (`EnableWebpVary`)
-- [ ] `enable_avif_vary: bool` (`EnableAvifVary`)
-- [ ] `enable_cookie_vary: bool` (`EnableCookieVary`)
-- [ ] `enable_country_code_vary: bool` (`EnableCountryCodeVary`)
-- [ ] `enable_country_state_code_vary: bool` (`EnableCountryStateCodeVary`)
-- [ ] `enable_hostname_vary: bool` (`EnableHostnameVary`)
-- [ ] `enable_mobile_vary: bool` (`EnableMobileVary`)
+- [x] `enable_webp_vary: bool` (`EnableWebpVary`)
+- [x] `enable_avif_vary: bool` (`EnableAvifVary`)
+- [x] `enable_cookie_vary: bool` (`EnableCookieVary`)
+- [x] `enable_country_code_vary: bool` (`EnableCountryCodeVary`)
+- [x] `enable_country_state_code_vary: bool` (`EnableCountryStateCodeVary`)
+- [x] `enable_hostname_vary: bool` (`EnableHostnameVary`)
+- [x] `enable_mobile_vary: bool` (`EnableMobileVary`)
 
 ### 2. Caching fields on `PullZone` + `UpdatePullZone`
 
-- [ ] `enable_cache_slice: bool` (`EnableCacheSlice`)
-- [ ] `enable_smart_cache: bool` (`EnableSmartCache`)
-- [ ] `enable_safe_hop: bool` (`EnableSafeHop`)
-- [ ] `ignore_query_strings: bool` (`IgnoreQueryStrings`)
-- [ ] `enable_query_string_ordering: bool` (`EnableQueryStringOrdering`)
-- [ ] `query_string_vary_parameters: Vec<String>` (`QueryStringVaryParameters`)
-- [ ] `cookie_vary_parameters: Vec<String>` (`CookieVaryParameters`)
-- [ ] `use_stale_while_updating: bool` (`UseStaleWhileUpdating`)
-- [ ] `use_stale_while_offline: bool` (`UseStaleWhileOffline`)
-- [ ] `use_background_update: bool` (`UseBackgroundUpdate`)
-- [ ] `cache_control_max_age_override: Option<i64>` (`CacheControlMaxAgeOverride`)
-- [ ] `cache_control_public_max_age_override: Option<i64>` (`CacheControlPublicMaxAgeOverride`)
-- [ ] `cache_control_browser_max_age_override: Option<i64>` (`CacheControlBrowserMaxAgeOverride`)
-- [ ] `cache_error_responses: bool` (`CacheErrorResponses`)
-- [ ] `perma_cache_storage_zone_id: Option<i64>` (`PermaCacheStorageZoneId`)
-- [ ] `perma_cache_type: Option<PermaCacheType>` (`PermaCacheType`) — new enum; check spec for variants
+- [x] `enable_cache_slice: bool` (`EnableCacheSlice`)
+- [x] `enable_smart_cache: bool` (`EnableSmartCache`)
+- [x] `enable_safe_hop: bool` (`EnableSafeHop`)
+- [x] `ignore_query_strings: bool` (`IgnoreQueryStrings`)
+- [x] `enable_query_string_ordering: bool` (`EnableQueryStringOrdering`)
+- [x] `query_string_vary_parameters: Vec<String>` (`QueryStringVaryParameters`)
+- [x] `cookie_vary_parameters: Vec<String>` (`CookieVaryParameters`)
+- [x] `use_stale_while_updating: bool` (`UseStaleWhileUpdating`)
+- [x] `use_stale_while_offline: bool` (`UseStaleWhileOffline`)
+- [x] `use_background_update: bool` (`UseBackgroundUpdate`)
+- [x] `cache_control_max_age_override: Option<i64>` (`CacheControlMaxAgeOverride`)
+- [x] `cache_control_public_max_age_override: Option<i64>` (`CacheControlPublicMaxAgeOverride`)
+- [x] `cache_control_browser_max_age_override: Option<i64>` (`CacheControlBrowserMaxAgeOverride`)
+- [x] `cache_error_responses: bool` (`CacheErrorResponses`)
+- [x] `perma_cache_storage_zone_id: Option<i64>` (`PermaCacheStorageZoneId`)
+- [x] `perma_cache_type: Option<PermaCacheType>` (`PermaCacheType`) — new enum; check spec for variants
 
 ### 3. CLI flags
 
 In `crates/hoppy-cli/src/cli.rs`, add one flag per new field on
 `hoppy pull-zone update`:
 
-- [ ] 10 boolean toggles for vary + cache enable/use flags.
-- [ ] 3 `Option<i64>` override flags for cache-control max-age.
-- [ ] 2 `Vec<String>` flags with `value_delimiter = ','` for vary parameters.
-- [ ] `--perma-cache-storage-zone-id` and `--perma-cache-type`.
-- [ ] All flags carry `help = "..."` text describing the on/off semantics.
+- [x] 10 boolean toggles for vary + cache enable/use flags.
+- [x] 3 `Option<i64>` override flags for cache-control max-age.
+- [x] 2 `Vec<String>` flags with `value_delimiter = ','` for vary parameters.
+- [x] `--perma-cache-storage-zone-id` and `--perma-cache-type`.
+- [x] All flags carry `help = "..."` text describing the on/off semantics.
 
 ### 4. Tests + snapshots
 
-- [ ] `cargo test --workspace --quiet` clean.
-- [ ] Refresh e2e snapshots for `hoppy pull-zone update --help`.
-- [ ] Integration test: sparse update with one vary flag + one cache
+- [x] `cargo test --workspace --quiet` clean.
+- [x] Refresh e2e snapshots for `hoppy pull-zone update --help`.
+- [x] Integration test: sparse update with one vary flag + one cache
       override, verify wire payload.
 
 ## Out of scope
@@ -81,12 +81,12 @@ In `crates/hoppy-cli/src/cli.rs`, add one flag per new field on
 
 ## Acceptance Criteria
 
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean.
-- [ ] `hoppy pull-zone update --help` lists all 23 new flags with help text.
-- [ ] Sparse update with `--use-stale-while-updating true --enable-webp-vary true`
+- [x] `hoppy pull-zone update --help` lists all 23 new flags with help text.
+- [x] Sparse update with `--use-stale-while-updating true --enable-webp-vary true`
       serialises to exactly those two PascalCase keys.
-- [ ] `cargo run -p xtask -- check-iteration-ready --plan
+- [x] `cargo run -p xtask -- check-iteration-ready --plan
       hoppy-knowledgebase/iterations/iteration-45-pull-zone-vary-and-caching.md
       --base origin/main` exits 0.
 

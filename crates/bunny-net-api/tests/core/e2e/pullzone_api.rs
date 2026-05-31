@@ -1,7 +1,7 @@
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, LogAnonymizationType, MatchingType,
-    OptimizerWatermarkPosition, OriginType, PullZoneLogForwarderProtocolType, TriggerType,
-    UpdatePullZone,
+    OptimizerWatermarkPosition, OriginType, PermaCacheType, PullZoneLogForwarderProtocolType,
+    TriggerType, UpdatePullZone,
 };
 use bunny_net_api::core::{ApiError, CoreClient};
 use wiremock::matchers::{body_json, header, method, path, query_param};
@@ -1319,4 +1319,170 @@ async fn update_pull_zone_with_cors_extensions_sends_array() {
         .update_pull_zone(1001, &body)
         .await
         .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// Vary headers + performance / caching (iter-45)
+// ---------------------------------------------------------------------------
+
+/// Sparse update with one vary flag + one cache override must serialise to
+/// exactly those two PascalCase keys.
+#[tokio::test]
+async fn update_pull_zone_with_vary_and_cache_sends_only_set_keys() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "EnableWebpVary": true,
+        "UseStaleWhileUpdating": true,
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .enable_webp_vary(true)
+        .use_stale_while_updating(true);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// `EnableAvifVary` uses the explicit rename (rather than auto-PascalCase from
+/// `enable_avif_vary` → `EnableAvifVary`, which happens to match). Verify the
+/// exact wire spelling.
+#[tokio::test]
+async fn update_pull_zone_with_avif_vary_uses_pascal_case_key() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({ "EnableAvifVary": true });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new().enable_avif_vary(true);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// Cache-control max-age override fields must serialise as integers (not
+/// strings) and only when explicitly set.
+#[tokio::test]
+async fn update_pull_zone_with_cache_control_overrides_serializes_as_ints() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "CacheControlMaxAgeOverride": 3600,
+        "CacheControlPublicMaxAgeOverride": 1800,
+        "CacheControlBrowserMaxAgeOverride": 600,
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .cache_control_max_age_override(3600)
+        .cache_control_public_max_age_override(1800)
+        .cache_control_browser_max_age_override(600);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// `QueryStringVaryParameters` and `CookieVaryParameters` round-trip as JSON
+/// arrays.
+#[tokio::test]
+async fn update_pull_zone_with_vary_parameter_lists_sends_arrays() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "QueryStringVaryParameters": ["v", "locale"],
+        "CookieVaryParameters": ["session", "locale"],
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .query_string_vary_parameters(vec!["v".to_string(), "locale".to_string()])
+        .cookie_vary_parameters(vec!["session".to_string(), "locale".to_string()]);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// `PermaCacheType` must serialise as its integer discriminant (`Manual` is 1).
+#[tokio::test]
+async fn update_pull_zone_with_perma_cache_type_serializes_as_int() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "PermaCacheStorageZoneId": 4242,
+        "PermaCacheType": 1,
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdatePullZone::new()
+        .perma_cache_storage_zone_id(4242)
+        .perma_cache_type(PermaCacheType::Manual);
+
+    test_client(&server.uri())
+        .update_pull_zone(1001, &body)
+        .await
+        .unwrap();
+}
+
+/// Round-trip for the `PermaCacheType` enum: both variants must serialise to
+/// and deserialise from their integer discriminants.
+#[test]
+fn perma_cache_type_round_trips() {
+    let automatic = serde_json::to_string(&PermaCacheType::Automatic).unwrap();
+    let manual = serde_json::to_string(&PermaCacheType::Manual).unwrap();
+    assert_eq!(automatic, "0");
+    assert_eq!(manual, "1");
+
+    let parsed_automatic: PermaCacheType = serde_json::from_str("0").unwrap();
+    let parsed_manual: PermaCacheType = serde_json::from_str("1").unwrap();
+    assert_eq!(parsed_automatic, PermaCacheType::Automatic);
+    assert_eq!(parsed_manual, PermaCacheType::Manual);
 }
