@@ -2051,8 +2051,16 @@ async fn handle_region(
                 let result = c
                     .list_regions(cursor.as_deref(), limit.as_ref().copied())
                     .await?;
-                let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
-                output::print_data(&rows, format);
+                if let OutputFormat::Json = format {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&result)
+                            .context("failed to serialize to JSON")?
+                    );
+                } else {
+                    let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
+                    output::print_data(&rows, format);
+                }
             }
         }
         ContainerRegionAction::Optimal => {

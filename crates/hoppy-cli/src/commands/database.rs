@@ -537,11 +537,12 @@ async fn handle_v2(
                     current_page += 1;
                 }
                 if let OutputFormat::Json = format {
+                    let total_items = accumulated.len() as i64;
                     let combined = ListDatabaseV2Response {
                         databases: accumulated,
                         page_info: DatabaseV2PageInfo {
                             current_page: current_page as i64,
-                            total_items: 0,
+                            total_items,
                             has_more_items: false,
                         },
                     };
@@ -549,7 +550,7 @@ async fn handle_v2(
                 }
             } else {
                 let resp = client
-                    .list_databases_v2(*page, *per_page, search.as_deref())
+                    .list_databases_v2(page.unwrap_or(1), *per_page, search.as_deref())
                     .await?;
                 match format {
                     OutputFormat::Json => output::print_dynamic_pascal(&resp, format),

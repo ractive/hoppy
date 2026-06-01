@@ -3948,8 +3948,8 @@ Hoppy validates locally before the API call."
 pub enum DbV2Action {
     /// List databases (v2)
     List {
-        #[arg(long, default_value_t = 1, conflicts_with = "all")]
-        page: u32,
+        #[arg(long, conflicts_with = "all")]
+        page: Option<u32>,
         #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
         #[arg(long)]
