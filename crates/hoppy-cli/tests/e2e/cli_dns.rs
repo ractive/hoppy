@@ -1,6 +1,6 @@
 use super::support;
 
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // ---------------------------------------------------------------------------
@@ -1116,6 +1116,171 @@ async fn dns_zone_scan_results_json() {
     assert_eq!(json["ZoneId"], 50001);
     let records = json["Records"].as_array().expect("records array");
     assert_eq!(records.len(), 3);
+}
+
+#[tokio::test]
+async fn dns_zone_scan_results_by_domain_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone"))
+        .and(query_param("search", "example.com"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Items": [{
+                "Id": 50001,
+                "Domain": "example.com",
+                "Records": [],
+                "DateModified": "2026-06-01T00:00:00",
+                "DateCreated": "2026-06-01T00:00:00",
+                "NameserversDetected": true,
+                "CustomNameserversEnabled": false,
+                "Nameserver1": "kiki.bunny.net",
+                "Nameserver2": "coco.bunny.net",
+                "SoaEmail": "hostmaster@bunny.net",
+                "NameserversNextCheck": "2026-06-01T00:05:00",
+                "LoggingEnabled": false,
+                "LoggingIPAnonymizationEnabled": true,
+                "LogAnonymizationType": 0,
+                "DnsSecEnabled": false,
+                "CertificateKeyType": 0
+            }],
+            "CurrentPage": 1,
+            "TotalItems": 1,
+            "HasMoreItems": false
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/records/scan"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_result.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "zone",
+            "scan",
+            "results",
+            "--domain",
+            "example.com",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert_eq!(json["ZoneId"], 50001);
+}
+
+#[tokio::test]
+async fn dns_zone_scan_results_by_domain_not_found() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone"))
+        .and(query_param("search", "missing.example"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Items": [],
+            "CurrentPage": 1,
+            "TotalItems": 0,
+            "HasMoreItems": false
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "dns",
+            "zone",
+            "scan",
+            "results",
+            "--domain",
+            "missing.example",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("no DNS zone found"), "stderr was: {stderr}");
+}
+
+#[tokio::test]
+async fn dns_zone_scan_results_requires_id_or_domain() {
+    let server = MockServer::start().await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "scan", "results"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--id") || stderr.contains("--domain"));
+}
+
+#[tokio::test]
+async fn dns_zone_scan_start_prints_next_command_hint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/records/scan"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_trigger.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "scan", "start", "--domain", "example.com"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("hoppy dns zone scan results --domain example.com"),
+        "expected next-command hint, stderr was: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn dns_zone_scan_start_json_suppresses_hint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/records/scan"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_trigger.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "json", "dns", "zone", "scan", "start", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("hoppy dns zone scan results"),
+        "JSON output should not emit the next-command hint, stderr was: {stderr}"
+    );
 }
 
 #[tokio::test]

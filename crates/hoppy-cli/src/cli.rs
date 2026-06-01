@@ -1592,9 +1592,24 @@ pub enum DnsScanAction {
         domain: Option<String>,
     },
     /// Show the latest scan results for a zone.
+    ///
+    /// Provide either `--id <zone-id>` for an existing zone or `--domain
+    /// <domain>` (looked up via the zone list). At least one is required;
+    /// they are mutually exclusive.
+    ///
+    /// Note: the bunny.net API only exposes scan results keyed by zone id.
+    /// `--domain` resolves to a zone id by searching the zone list, so it
+    /// only works once the zone has been created. For a pre-onboarding
+    /// scan, create the zone first via `hoppy dns zone create --domain
+    /// <d>` and then re-run this command.
+    #[command(group = clap::ArgGroup::new("scan_results_target").required(true).args(["id", "domain"]))]
     Results {
-        #[arg(long)]
-        id: i64,
+        /// DNS Zone ID (use this for existing zones)
+        #[arg(long, conflicts_with = "domain")]
+        id: Option<i64>,
+        /// Domain name (resolved to a zone id via the zone list)
+        #[arg(long, conflicts_with = "id")]
+        domain: Option<String>,
     },
 }
 
