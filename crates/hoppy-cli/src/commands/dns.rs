@@ -542,10 +542,24 @@ async fn handle_scan(
                         .unwrap_or_else(|| "-".to_owned()),
                 };
                 output::print_single(&row, format);
+                let next_cmd = match (id, domain) {
+                    (Some(zone_id), _) => format!("hoppy dns zone scan results --id {zone_id}"),
+                    (None, Some(d)) => format!("hoppy dns zone scan results --domain {d}"),
+                    (None, None) => unreachable!(),
+                };
+                output::hints::tip(&format!("Run: {next_cmd}"));
             }
         }
-        DnsScanAction::Results { id } => {
-            let result = client.get_dns_zone_record_scan(*id).await?;
+        DnsScanAction::Results { id, domain } => {
+            let zone_id = match (id, domain) {
+                (Some(zid), None) => *zid,
+                (None, Some(d)) => resolve_domain_to_zone_id(client, d).await?,
+                (None, None) => unreachable!("clap ArgGroup ensures one of --id/--domain is set"),
+                (Some(_), Some(_)) => unreachable!(
+                    "clap conflicts_with ensures --id and --domain are mutually exclusive"
+                ),
+            };
+            let result = client.get_dns_zone_record_scan(zone_id).await?;
             if let OutputFormat::Json = format {
                 let json =
                     serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
@@ -568,6 +582,33 @@ async fn handle_scan(
         }
     }
     Ok(())
+}
+
+/// Resolve a domain name to a DNS zone id by searching the zone list.
+///
+/// The bunny.net API only exposes scan results keyed by zone id, so callers
+/// passing `--domain` need a zone to exist. We do an exact (case-insensitive)
+/// match on the `Domain` field; pure-prefix matches from the API search are
+/// rejected to avoid silently picking the wrong zone.
+async fn resolve_domain_to_zone_id(client: &CoreClient, domain: &str) -> Result<i64> {
+    let needle = domain.trim().to_ascii_lowercase();
+    let page = client
+        .list_dns_zones(None, None, Some(&needle))
+        .await
+        .with_context(|| format!("failed to look up DNS zone for domain '{needle}'"))?;
+    let exact = page
+        .items
+        .iter()
+        .find(|z| z.domain.eq_ignore_ascii_case(&needle));
+    match exact {
+        Some(z) => Ok(z.id),
+        None => bail!(
+            "no DNS zone found for domain '{needle}' — the bunny.net API only \
+             exposes scan results by zone id, so the zone must exist first. \
+             Create it with `hoppy dns zone create --domain {needle}` and then \
+             re-run `hoppy dns zone scan results --domain {needle}`."
+        ),
+    }
 }
 
 fn print_dnssec(ds: &DnsSecDsRecord, format: OutputFormat) -> Result<()> {
