@@ -24,7 +24,7 @@ See [[../backlog/pull-zone-list-missing-all-flag]].
 
 ## Scope
 
-### 1. Audit paginated list commands [0/2]
+### 1. Audit paginated list commands [2/2]
 
 - [x] Identify every `list` command that paginates. Initial list:
       `pull-zone list`, `storage-zone list`, `dns zone list`,
@@ -36,7 +36,7 @@ See [[../backlog/pull-zone-list-missing-all-flag]].
       missing.
 - [x] Note which already auto-paginate (none, ideally — confirm).
 
-### 2. Implement [0/3]
+### 2. Implement [3/3]
 
 - [x] Add a shared `--all` option helper (or extend the existing
       `Pagination` option struct) so the same flag wires into every
@@ -48,7 +48,7 @@ See [[../backlog/pull-zone-list-missing-all-flag]].
       either mutually exclusive (clap arg group) or `--all`
       silently overrides.
 
-### 3. Tests [0/3]
+### 3. Tests [3/3]
 
 - [x] E2E mock test: one representative list command (e.g.
       `pull-zone list --all`) collects across 3 mock pages.
