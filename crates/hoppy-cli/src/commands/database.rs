@@ -221,8 +221,24 @@ impl From<&Database2> for DatabaseV2Row {
             storage_region: d.storage_region.clone(),
             primary_regions: d.primary_regions.join(","),
             replicas_regions: d.replicas_regions.join(","),
-            current_size: d.current_size.clone(),
+            current_size: format_bytes(d.current_size_bytes),
         }
+    }
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const GB: f64 = 1_073_741_824.0;
+    const MB: f64 = 1_048_576.0;
+    const KB: f64 = 1_024.0;
+    let b = bytes as f64;
+    if b >= GB {
+        format!("{:.2} GB", b / GB)
+    } else if b >= MB {
+        format!("{:.2} MB", b / MB)
+    } else if b >= KB {
+        format!("{:.2} KB", b / KB)
+    } else {
+        format!("{bytes} B")
     }
 }
 
@@ -772,7 +788,10 @@ async fn handle_config(
         DbConfigAction::Limits => {
             let resp = client.get_config_limits().await?;
             match format {
-                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&resp)?),
+                OutputFormat::Json => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
+                ),
                 OutputFormat::Table | OutputFormat::Text => {
                     let row: LimitsRow = (&resp).into();
                     output::print_single(&row, format);
@@ -797,7 +816,10 @@ async fn handle_config(
 fn render_config_show(resp: &ListConfigResponse, format: OutputFormat) -> Result<()> {
     match format {
         OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(resp)?);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(resp).context("failed to serialize to JSON")?
+            );
         }
         OutputFormat::Table => {
             let storage: Vec<StorageRegionRow> = resp

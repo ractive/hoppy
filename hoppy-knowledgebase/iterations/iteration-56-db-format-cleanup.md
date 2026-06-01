@@ -31,7 +31,7 @@ See [[../backlog/db-config-show-limits-ignore-format]] and
 
 ## Scope
 
-### 1. `db config show` and `db config limits` [0/3]
+### 1. `db config show` and `db config limits` [3/3]
 
 - [x] Wire both subcommands through the standard `--format` pipeline
       (the same one `db active-usage` and `pull-zone get` use).
@@ -41,7 +41,7 @@ See [[../backlog/db-config-show-limits-ignore-format]] and
       - `limits`: simple Field/Value table.
 - [x] Implement `text` (tab-separated key/value) rendering.
 
-### 2. `db v2 list` table [0/2]
+### 2. `db v2 list` table [2/2]
 
 - [x] Render the `Databases` array as the primary table — one row per
       database with useful columns (id, name, region, created, size).
@@ -49,7 +49,7 @@ See [[../backlog/db-config-show-limits-ignore-format]] and
       footer; suppress it under `--format json` paths (no change to
       JSON envelope).
 
-### 3. Tests [0/3]
+### 3. Tests [3/3]
 
 - [x] E2E mock test for each of the three `db config` formats.
 - [x] E2E mock test for `db v2 list` table with 0, 1, and N
