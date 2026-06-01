@@ -7,7 +7,7 @@ tags:
   - dns
   - format
   - polish
-status: in-progress
+status: completed
 branch: iter-60/dns-export-format
 ---
 
