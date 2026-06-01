@@ -53,6 +53,30 @@ async fn hints_suppressed_by_no_hints_flag() {
 }
 
 #[tokio::test]
+async fn quiet_keeps_table_but_drops_hint_on_data_command() {
+    let server = mock_pull_zone_list().await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--quiet", "pull-zone", "list"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Primary payload (the table) still prints — `pull-zone list` is a
+    // data command, not a predicate command.
+    assert!(
+        !stdout.is_empty(),
+        "expected the pull-zone list table on stdout under --quiet, got empty stdout"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("tip:"),
+        "--quiet must suppress hints, got:\n{stderr}"
+    );
+}
+
+#[tokio::test]
 async fn hints_suppressed_by_json_format() {
     let server = mock_pull_zone_list().await;
 

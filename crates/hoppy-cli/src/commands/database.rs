@@ -340,6 +340,7 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    quiet: bool,
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
@@ -458,7 +459,12 @@ pub async fn handle(
                 mint.token
             };
             let result = client.ping(&db.url, &token).await;
-            output::print_single(&PingRow::from(&result), format);
+            // `db ping` is a predicate command: exit code carries the
+            // success/failure signal. Under `--quiet` we skip the payload so
+            // it can be used as `if hoppy db ping --id ... --quiet; then ...`.
+            if !quiet {
+                output::print_single(&PingRow::from(&result), format);
+            }
             if !result.ok {
                 bail!("ping failed: {}", result.error.unwrap_or_default());
             }

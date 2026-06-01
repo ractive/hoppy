@@ -1,5 +1,6 @@
 ---
 source: crates/hoppy-cli/tests/e2e/cli_container.rs
+assertion_line: 2205
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 Stream live syslog output from a Magic Containers application.
@@ -44,7 +45,7 @@ Options:
           [possible values: bore, none]
 
       --quiet
-          Suppress non-essential output
+          Suppress non-essential output. On predicate commands (`auth check`, `db ping`) the stdout payload is suppressed on success — the exit code carries the signal. On data commands the primary payload still prints; only hints/progress bars are hidden
 
       --tunnel-host <TUNNEL_HOST>
           Static public endpoint for a pre-established tunnel (host:port). When set, hoppy registers this address with Bunny and listens locally.  Conflicts with --tunnel. Example: --tunnel-host vps.example.com:5514

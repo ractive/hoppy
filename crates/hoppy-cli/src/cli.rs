@@ -51,7 +51,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub debug: bool,
 
-    /// Suppress non-essential output
+    /// Suppress non-essential output. On predicate commands
+    /// (`auth check`, `db ping`) the stdout payload is suppressed on
+    /// success — the exit code carries the signal. On data commands the
+    /// primary payload still prints; only hints/progress bars are hidden.
     #[arg(long, global = true)]
     pub quiet: bool,
 
