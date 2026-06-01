@@ -1516,7 +1516,7 @@ pub enum DnsZoneAction {
         #[arg(long)]
         date_to: Option<String>,
     },
-    /// Export DNS zone as a BIND zone file (use --format json to wrap in {"Bind": ...})
+    /// Export DNS zone as a BIND zone file (text and table both emit raw BIND; --format json wraps it in {"Bind": ...})
     Export {
         /// DNS zone ID
         #[arg(long)]
