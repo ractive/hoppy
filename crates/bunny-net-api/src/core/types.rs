@@ -3325,7 +3325,7 @@ mod tests {
         assert!(result.records.is_empty());
     }
 
-    /// Regression: chart fields use BTreeMap so serialized JSON keys are always
+    /// Regression: chart fields use BTreeMap so serialised JSON keys are always
     /// in ascending order regardless of insertion order.
     #[test]
     fn statistics_chart_keys_serialise_in_sorted_order() {
@@ -3352,6 +3352,6 @@ mod tests {
 
         // Serialising twice must produce identical output (determinism check).
         let json2 = serde_json::to_string(&stats).unwrap();
-        assert_eq!(json, json2, "Serialization must be deterministic");
+        assert_eq!(json, json2, "Serialisation must be deterministic");
     }
 }

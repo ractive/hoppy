@@ -26,21 +26,21 @@ See [[../backlog/statistics-chart-keys-unordered-json]].
 
 ## Scope
 
-### 1. Audit chart-shaped fields [0/2]
+### 1. Audit chart-shaped fields [2/2]
 
 - [x] Grep the workspace for serde models with map-of-date fields
       across statistics, stream, and any nascent db/container
       metrics surfaces.
 - [x] List each affected field in the PR description.
 
-### 2. Implement [0/2]
+### 2. Implement [2/2]
 
 - [x] Switch the affected map types from `HashMap` (or
       `IndexMap` if used) to `BTreeMap<String, T>` so serialised
       output is key-sorted automatically.
 - [x] Verify no callers rely on insertion order.
 
-### 3. Tests [0/2]
+### 3. Tests [2/2]
 
 - [x] Add a regression test that calls a statistics surface twice
       against the same mock and asserts byte-identical JSON output.
