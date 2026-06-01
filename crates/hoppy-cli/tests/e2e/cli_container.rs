@@ -252,8 +252,6 @@ async fn container_app_overview_json() {
         .output()
         .unwrap();
 
-    // Overview response contains HashMap-backed charts whose key ordering is
-    // non-deterministic after deserialization, so we only verify success.
     assert!(output.status.success());
 }
 
@@ -287,8 +285,6 @@ async fn container_app_statistics_json() {
         .output()
         .unwrap();
 
-    // Statistics response contains HashMap-backed charts whose key ordering is
-    // non-deterministic after deserialization, so we only verify success.
     assert!(output.status.success());
 }
 
