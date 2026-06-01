@@ -502,12 +502,52 @@ impl std::fmt::Display for ShieldApiErrorEnvelope {
 
 impl std::error::Error for ShieldApiErrorEnvelope {}
 
+/// Alternate Shield error envelope used by endpoints like
+/// `/shield/event-logs/...` whose success body embeds an
+/// `errorResponse: GenericRequestResponse` field instead of the
+/// top-level `error` envelope.
+///
+/// Real shape: `{"logs": null, ..., "errorResponse": {"statusCode": 401, "success": false, "message": "...", "errorKey": "..."}}`
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldErrorResponseEnvelope {
+    pub error_response: ShieldApiErrorInner,
+}
+
+impl std::fmt::Display for ShieldErrorResponseEnvelope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let e = &self.error_response;
+        let code = e.status_code.unwrap_or(0);
+        match (&e.error_key, &e.message) {
+            (Some(key), Some(msg)) => write!(f, "Shield API error {code} ({key}): {msg}"),
+            (Some(key), None) => write!(f, "Shield API error {code} ({key})"),
+            (None, Some(msg)) => write!(f, "Shield API error {code}: {msg}"),
+            (None, None) => write!(f, "Shield API error {code}"),
+        }
+    }
+}
+
+impl std::error::Error for ShieldErrorResponseEnvelope {}
+
+/// Test whether the inner error object carries a real error signal: an
+/// explicit `success=false`, or a message / errorKey. Used to gate
+/// `errorResponse`-style envelopes which are also present on happy-path
+/// responses (with null values).
+fn shield_inner_has_error_signal(inner: &ShieldApiErrorInner) -> bool {
+    inner.success == Some(false) || inner.message.is_some() || inner.error_key.is_some()
+}
+
 /// Parse a Shield API error body, trying the real nested envelope first, then
 /// the RFC 7807 `ProblemDetails` format as a fallback.
 ///
 /// Returns `Some(err)` when either format is recognised, `None` otherwise.
 pub fn parse_shield_error(bytes: &[u8]) -> Option<anyhow::Error> {
     if let Ok(env) = serde_json::from_slice::<ShieldApiErrorEnvelope>(bytes) {
+        return Some(anyhow::anyhow!(env));
+    }
+    if let Ok(env) = serde_json::from_slice::<ShieldErrorResponseEnvelope>(bytes)
+        && shield_inner_has_error_signal(&env.error_response)
+    {
         return Some(anyhow::anyhow!(env));
     }
     if let Ok(problem) = serde_json::from_slice::<ProblemDetails>(bytes) {
@@ -539,18 +579,24 @@ pub fn parse_shield_error(bytes: &[u8]) -> Option<anyhow::Error> {
 /// Returns `Some(err)` when the body contains such an envelope, `None` otherwise
 /// (meaning the caller should proceed to deserialise the body normally).
 pub fn parse_shield_2xx_envelope_error(bytes: &[u8]) -> Option<anyhow::Error> {
-    let env = serde_json::from_slice::<ShieldApiErrorEnvelope>(bytes).ok()?;
-    // Only treat as error when success is explicitly false AND there's a
-    // human-readable signal (message or errorKey). This avoids false positives
-    // from happy-path responses that embed `GenericRequestResponse` (whose
-    // `success: bool` defaults to false via `#[serde(default)]`).
-    if env.error.success == Some(false)
-        && (env.error.message.is_some() || env.error.error_key.is_some())
-    {
-        Some(anyhow::anyhow!(env))
-    } else {
-        None
+    if let Ok(env) = serde_json::from_slice::<ShieldApiErrorEnvelope>(bytes) {
+        // Only treat as error when success is explicitly false AND there's a
+        // human-readable signal (message or errorKey). This avoids false positives
+        // from happy-path responses that embed `GenericRequestResponse` (whose
+        // `success: bool` defaults to false via `#[serde(default)]`).
+        if env.error.success == Some(false)
+            && (env.error.message.is_some() || env.error.error_key.is_some())
+        {
+            return Some(anyhow::anyhow!(env));
+        }
     }
+    if let Ok(env) = serde_json::from_slice::<ShieldErrorResponseEnvelope>(bytes) {
+        let inner = &env.error_response;
+        if inner.success == Some(false) && (inner.message.is_some() || inner.error_key.is_some()) {
+            return Some(anyhow::anyhow!(env));
+        }
+    }
+    None
 }
 
 /// Generic API operation result embedded in many Shield responses.
@@ -2146,6 +2192,53 @@ mod tests {
         // returns None and the caller can fall back to status + raw body.
         let body = br#"{"something":"unexpected"}"#;
         assert!(parse_shield_error(body).is_none());
+    }
+
+    #[test]
+    fn parse_shield_error_recognises_error_response_envelope() {
+        // event-logs shape: top-level body carries an `errorResponse` field.
+        let body = br#"{"logs":null,"hasMoreData":false,"continuationToken":null,"startToken":null,"errorResponse":{"statusCode":401,"success":false,"message":"You can only view the past 3 days (72 hours) of Event Logs.","errorKey":"invalid_datetime_window.event_logs"}}"#;
+        let err = parse_shield_error(body).expect("should parse errorResponse envelope");
+        let msg = err.to_string();
+        assert_eq!(
+            msg,
+            "Shield API error 401 (invalid_datetime_window.event_logs): You can only view the past 3 days (72 hours) of Event Logs."
+        );
+    }
+
+    #[test]
+    fn parse_shield_error_ignores_null_error_response_field() {
+        // Happy-path success bodies on these endpoints also carry an
+        // `errorResponse` field — present but null. Must not be parsed as an error.
+        let body = br#"{"logs":[],"errorResponse":null}"#;
+        assert!(parse_shield_error(body).is_none());
+    }
+
+    #[test]
+    fn parse_shield_error_ignores_empty_error_response_object() {
+        // If `errorResponse` is present but carries no message/key/success-false,
+        // we must not treat the body as an error.
+        let body = br#"{"errorResponse":{}}"#;
+        assert!(parse_shield_error(body).is_none());
+    }
+
+    #[test]
+    fn shield_error_response_envelope_display_paren_format() {
+        let env = ShieldErrorResponseEnvelope {
+            error_response: ShieldApiErrorInner {
+                status_code: Some(401),
+                success: Some(false),
+                error_key: Some("invalid_datetime_window.event_logs".to_owned()),
+                message: Some(
+                    "You can only view the past 3 days (72 hours) of Event Logs.".to_owned(),
+                ),
+            },
+        };
+        let s = env.to_string();
+        assert_eq!(
+            s,
+            "Shield API error 401 (invalid_datetime_window.event_logs): You can only view the past 3 days (72 hours) of Event Logs."
+        );
     }
 
     #[test]

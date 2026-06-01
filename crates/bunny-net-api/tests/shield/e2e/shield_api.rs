@@ -1287,6 +1287,55 @@ async fn get_event_logs_returns_logs() {
     assert_eq!(result.has_more_data, Some(false));
 }
 
+#[tokio::test]
+async fn get_event_logs_401_error_response_envelope_surfaces_key_and_message() {
+    let server = MockServer::start().await;
+    let body = r#"{"logs":null,"hasMoreData":false,"continuationToken":null,"startToken":null,"errorResponse":{"statusCode":401,"success":false,"message":"You can only view the past 3 days (72 hours) of Event Logs.","errorKey":"invalid_datetime_window.event_logs"}}"#;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/event-logs/42/01-01-2099/"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(401).set_body_raw(body, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .get_event_logs(42, "01-01-2099", "")
+        .await
+        .expect_err("future-date event logs should produce structured error");
+
+    let msg = err.to_string();
+    assert_eq!(
+        msg,
+        "Shield API error 401 (invalid_datetime_window.event_logs): You can only view the past 3 days (72 hours) of Event Logs."
+    );
+}
+
+#[tokio::test]
+async fn get_event_logs_401_no_body_falls_back_to_status_code() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/event-logs/42/01-01-2099/"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(401))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = test_client(&server.uri())
+        .get_event_logs(42, "01-01-2099", "")
+        .await
+        .expect_err("401 with no body should still produce an error");
+
+    let msg = err.to_string();
+    assert!(
+        msg.contains("401"),
+        "fallback error should mention status code; got: {msg}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // WAF Triggered Rules
 // ---------------------------------------------------------------------------

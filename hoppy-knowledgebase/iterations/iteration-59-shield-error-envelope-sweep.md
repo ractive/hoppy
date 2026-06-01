@@ -7,7 +7,7 @@ tags:
   - shield
   - errors
   - dx
-status: planned
+status: in-progress
 branch: iter-59/shield-error-envelope-sweep
 ---
 
@@ -30,27 +30,27 @@ See [[../backlog/shield-event-logs-discards-error-body]].
 
 ### 1. Audit Shield response shapes [0/2]
 
-- [ ] Sweep every Shield client error path for response bodies of
+- [x] Sweep every Shield client error path for response bodies of
       the shape `{ "errorResponse": { "message", "errorKey",
       "statusCode" } }`. Record the list in the PR description.
-- [ ] For each found, confirm whether iter-50's top-level handling
+- [x] For each found, confirm whether iter-50's top-level handling
       already covers it or it needs a separate branch.
 
 ### 2. Implement [0/2]
 
-- [ ] Teach the Shield error-mapping helper to recognise the
+- [x] Teach the Shield error-mapping helper to recognise the
       `errorResponse`-wrapped envelope and surface
       `Shield API error <status> (<errorKey>): <message>`
       (matching iter-50's format).
-- [ ] Keep a graceful fallback when both envelopes are absent
+- [x] Keep a graceful fallback when both envelopes are absent
       (404 with no body, etc.).
 
 ### 3. Tests [0/2]
 
-- [ ] E2E mock test: `shield event-logs` future date → renders
+- [x] E2E mock test: `shield event-logs` future date → renders
       `Shield API error 401 (invalid_datetime_window.event_logs):
       You can only view the past 3 days (72 hours) of Event Logs.`
-- [ ] Regression test: a 401 with no body still produces a graceful
+- [x] Regression test: a 401 with no body still produces a graceful
       message.
 
 ## Out of scope
@@ -60,11 +60,11 @@ See [[../backlog/shield-event-logs-discards-error-body]].
 
 ## Acceptance Criteria
 
-- [ ] `hoppy shield event-logs --id <z> --date 2099-01-01` prints
+- [x] `hoppy shield event-logs --id <z> --date 2099-01-01` prints
       the structured error with `errorKey` + `message`.
-- [ ] Any sibling Shield endpoint using the same envelope is also
+- [x] Any sibling Shield endpoint using the same envelope is also
       covered.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 
