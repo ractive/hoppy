@@ -7,7 +7,7 @@ tags:
   - dns
   - errors
   - dx
-status: in-progress
+status: completed
 branch: iter-61/dns-issue-cert-hint
 ---
 
