@@ -8,7 +8,7 @@ tags:
   - stream
   - json
   - determinism
-status: in-progress
+status: completed
 branch: iter-55/deterministic-chart-ordering
 ---
 
