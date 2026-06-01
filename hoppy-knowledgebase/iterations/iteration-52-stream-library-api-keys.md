@@ -7,7 +7,7 @@ tags:
   - stream
   - secrets
   - dx
-status: in-progress
+status: completed
 branch: iter-52/stream-library-api-keys
 ---
 
