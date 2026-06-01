@@ -1189,6 +1189,7 @@ async fn dns_zone_scan_results_by_domain_table_shows_domain() {
     Mock::given(method("GET"))
         .and(path("/dnszone"))
         .and(query_param("search", "example.com"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "Items": [{
                 "Id": 50001,
@@ -1217,6 +1218,7 @@ async fn dns_zone_scan_results_by_domain_table_shows_domain() {
         .await;
     Mock::given(method("GET"))
         .and(path("/dnszone/50001/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(
             support::fixture("core/dnszone_scan_result_no_domain.json"),
             "application/json",
@@ -1246,6 +1248,7 @@ async fn dns_zone_scan_results_by_id_table_shows_domain() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/dnszone/50001/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(
             support::fixture("core/dnszone_scan_result_no_domain.json"),
             "application/json",
@@ -1255,6 +1258,7 @@ async fn dns_zone_scan_results_by_id_table_shows_domain() {
         .await;
     Mock::given(method("GET"))
         .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "Id": 50001,
             "Domain": "resolved.example",

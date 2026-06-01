@@ -563,7 +563,7 @@ async fn handle_scan(
             if result.domain.is_none() {
                 result.domain = match resolved_domain {
                     Some(d) => Some(d),
-                    None => client.get_dns_zone(zone_id).await.ok().map(|z| z.domain),
+                    None => Some(client.get_dns_zone(zone_id).await?.domain),
                 };
             }
             if let OutputFormat::Json = format {
