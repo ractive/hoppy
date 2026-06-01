@@ -28,7 +28,7 @@ See [[../backlog/dns-zone-export-ignores-format]] and
 
 ## Scope
 
-### 1. Decide the format mapping [0/1]
+### 1. Decide the format mapping [1/1]
 
 - [x] Pick the JSON shape:
       (a) **Envelope**: `{"Bind": "<BIND text>"}` — minimal, ships
@@ -37,7 +37,7 @@ See [[../backlog/dns-zone-export-ignores-format]] and
       Recommended: **(a)** for parity with [[iteration-56-db-format-cleanup]]
       and minimal cost. Document the decision in the PR.
 
-### 2. Implement [0/3]
+### 2. Implement [3/3]
 
 - [x] Route `dns zone export` through the standard `--format`
       pipeline.
@@ -48,7 +48,7 @@ See [[../backlog/dns-zone-export-ignores-format]] and
 - [x] For empty zones, emit at minimum a `;; zone <domain> — 0 records`
       comment so stdout is never literally empty.
 
-### 3. Tests [0/3]
+### 3. Tests [3/3]
 
 - [x] E2E mock test for `--format json` on a zone with records.
 - [x] E2E mock test for empty-zone behaviour across all three
