@@ -595,7 +595,7 @@ async fn resolve_domain_to_zone_id(client: &CoreClient, domain: &str) -> Result<
     let page = client
         .list_dns_zones(None, None, Some(&needle))
         .await
-        .with_context(|| format!("failed to look up DNS zone for domain '{domain}'"))?;
+        .with_context(|| format!("failed to look up DNS zone for domain '{needle}'"))?;
     let exact = page
         .items
         .iter()
@@ -603,10 +603,10 @@ async fn resolve_domain_to_zone_id(client: &CoreClient, domain: &str) -> Result<
     match exact {
         Some(z) => Ok(z.id),
         None => bail!(
-            "no DNS zone found for domain '{domain}' — the bunny.net API only \
+            "no DNS zone found for domain '{needle}' — the bunny.net API only \
              exposes scan results by zone id, so the zone must exist first. \
-             Create it with `hoppy dns zone create --domain {domain}` and then \
-             re-run `hoppy dns zone scan results --domain {domain}`."
+             Create it with `hoppy dns zone create --domain {needle}` and then \
+             re-run `hoppy dns zone scan results --domain {needle}`."
         ),
     }
 }
