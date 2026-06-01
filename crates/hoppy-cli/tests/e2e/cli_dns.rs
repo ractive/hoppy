@@ -1184,6 +1184,120 @@ async fn dns_zone_scan_results_by_domain_json() {
 }
 
 #[tokio::test]
+async fn dns_zone_scan_results_by_domain_table_shows_domain() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone"))
+        .and(query_param("search", "example.com"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Items": [{
+                "Id": 50001,
+                "Domain": "example.com",
+                "Records": [],
+                "DateModified": "2026-06-01T00:00:00",
+                "DateCreated": "2026-06-01T00:00:00",
+                "NameserversDetected": true,
+                "CustomNameserversEnabled": false,
+                "Nameserver1": "kiki.bunny.net",
+                "Nameserver2": "coco.bunny.net",
+                "SoaEmail": "hostmaster@bunny.net",
+                "NameserversNextCheck": "2026-06-01T00:05:00",
+                "LoggingEnabled": false,
+                "LoggingIPAnonymizationEnabled": true,
+                "LogAnonymizationType": 0,
+                "DnsSecEnabled": false,
+                "CertificateKeyType": 0
+            }],
+            "CurrentPage": 1,
+            "TotalItems": 1,
+            "HasMoreItems": false
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_result_no_domain.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "scan", "results", "--domain", "example.com"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("example.com"),
+        "expected resolved domain in table output, stdout was: {stdout}"
+    );
+}
+
+#[tokio::test]
+async fn dns_zone_scan_results_by_id_table_shows_domain() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/records/scan"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_scan_result_no_domain.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "Id": 50001,
+            "Domain": "resolved.example",
+            "Records": [],
+            "DateModified": "2026-06-01T00:00:00",
+            "DateCreated": "2026-06-01T00:00:00",
+            "NameserversDetected": true,
+            "CustomNameserversEnabled": false,
+            "Nameserver1": "kiki.bunny.net",
+            "Nameserver2": "coco.bunny.net",
+            "SoaEmail": "hostmaster@bunny.net",
+            "NameserversNextCheck": "2026-06-01T00:05:00",
+            "LoggingEnabled": false,
+            "LoggingIPAnonymizationEnabled": true,
+            "LogAnonymizationType": 0,
+            "DnsSecEnabled": false,
+            "CertificateKeyType": 0
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "scan", "results", "--id", "50001"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("resolved.example"),
+        "expected resolved domain in table output, stdout was: {stdout}"
+    );
+}
+
+#[tokio::test]
 async fn dns_zone_scan_results_by_domain_not_found() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
