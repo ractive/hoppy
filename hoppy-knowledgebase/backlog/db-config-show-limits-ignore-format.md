@@ -2,7 +2,7 @@
 title: db config show and db config limits ignore --format
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-06-01
 tags:

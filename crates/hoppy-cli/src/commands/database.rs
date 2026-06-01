@@ -4,9 +4,10 @@ use crate::date;
 use anyhow::{Context as _, Result, bail};
 use bunny_net_api::database::types::{
     Authorization, CreateDatabaseGroupPayload, CreateDatabasePayload, CreateDatabaseV2Payload,
-    Database, DatabaseGroup, ForkDatabasePayload, GenerateTokenDatabaseGroupPayload,
-    GenerateTokenDatabasePayload, GenerateTokenDatabaseV2Payload, ListVersionsDatabasePayload,
-    PingResult, RestoreVersionDatabasePayload,
+    Database, Database2, DatabaseGroup, ForkDatabasePayload, GenerateTokenDatabaseGroupPayload,
+    GenerateTokenDatabasePayload, GenerateTokenDatabaseV2Payload, LimitsResponse,
+    ListConfigResponse, ListVersionsDatabasePayload, PingResult, Region,
+    RestoreVersionDatabasePayload, StorageRegion,
 };
 
 use crate::auth;
@@ -192,6 +193,114 @@ impl From<&PingResult> for PingRow {
             ok: p.ok,
             latency_ms: p.latency_ms,
             error: p.error.clone().unwrap_or_else(|| "-".to_owned()),
+        }
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct DatabaseV2Row {
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Storage")]
+    storage_region: String,
+    #[tabled(rename = "Primary")]
+    primary_regions: String,
+    #[tabled(rename = "Replicas")]
+    replicas_regions: String,
+    #[tabled(rename = "Size")]
+    current_size: String,
+}
+
+impl From<&Database2> for DatabaseV2Row {
+    fn from(d: &Database2) -> Self {
+        Self {
+            id: d.id.clone(),
+            name: d.name.clone(),
+            storage_region: d.storage_region.clone(),
+            primary_regions: d.primary_regions.join(","),
+            replicas_regions: d.replicas_regions.join(","),
+            current_size: format_bytes(d.current_size_bytes),
+        }
+    }
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const GB: f64 = 1_073_741_824.0;
+    const MB: f64 = 1_048_576.0;
+    const KB: f64 = 1_024.0;
+    let b = bytes as f64;
+    if b >= GB {
+        format!("{:.2} GB", b / GB)
+    } else if b >= MB {
+        format!("{:.2} MB", b / MB)
+    } else if b >= KB {
+        format!("{:.2} KB", b / KB)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct StorageRegionRow {
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Group")]
+    group: String,
+}
+
+impl From<&StorageRegion> for StorageRegionRow {
+    fn from(r: &StorageRegion) -> Self {
+        Self {
+            id: r.id.clone(),
+            name: r.name.clone(),
+            group: r.group.clone(),
+        }
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct RegionRow {
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Group")]
+    group: String,
+    #[tabled(rename = "Lat")]
+    latitude: f64,
+    #[tabled(rename = "Lon")]
+    longitude: f64,
+}
+
+impl From<&Region> for RegionRow {
+    fn from(r: &Region) -> Self {
+        Self {
+            id: r.id.clone(),
+            name: r.name.clone(),
+            group: r.group.clone(),
+            latitude: r.latitude,
+            longitude: r.longitude,
+        }
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct LimitsRow {
+    #[tabled(rename = "Current Databases")]
+    current_databases: u32,
+    #[tabled(rename = "Max Databases")]
+    max_databases: u32,
+}
+
+impl From<&LimitsResponse> for LimitsRow {
+    fn from(l: &LimitsResponse) -> Self {
+        Self {
+            current_databases: l.current_databases,
+            max_databases: l.max_databases,
         }
     }
 }
@@ -402,7 +511,24 @@ async fn handle_v2(
             let resp = client
                 .list_databases_v2(*page, *per_page, search.as_deref())
                 .await?;
-            output::print_dynamic_pascal(&resp, format);
+            match format {
+                OutputFormat::Json => output::print_dynamic_pascal(&resp, format),
+                OutputFormat::Table | OutputFormat::Text => {
+                    let rows: Vec<DatabaseV2Row> = resp.databases.iter().map(Into::into).collect();
+                    output::print_data(&rows, format);
+                    let p = &resp.page_info;
+                    eprintln!(
+                        "page {} • {} total • {}",
+                        p.current_page,
+                        p.total_items,
+                        if p.has_more_items {
+                            "more pages available"
+                        } else {
+                            "no more pages"
+                        }
+                    );
+                }
+            }
         }
         DbV2Action::Get { id } => {
             let resp = client.get_database_v2(id).await?;
@@ -654,15 +780,23 @@ async fn handle_config(
     action: &DbConfigAction,
     format: OutputFormat,
 ) -> Result<()> {
-    let _ = format; // Config responses are nested → JSON only.
     match action {
         DbConfigAction::Show => {
             let resp = client.get_config().await?;
-            println!("{}", serde_json::to_string_pretty(&resp)?);
+            render_config_show(&resp, format)?;
         }
         DbConfigAction::Limits => {
             let resp = client.get_config_limits().await?;
-            println!("{}", serde_json::to_string_pretty(&resp)?);
+            match format {
+                OutputFormat::Json => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&resp).context("failed to serialize to JSON")?
+                ),
+                OutputFormat::Table | OutputFormat::Text => {
+                    let row: LimitsRow = (&resp).into();
+                    output::print_single(&row, format);
+                }
+            }
         }
         DbConfigAction::Optimal => {
             let resp = client.get_optimal().await?;
@@ -674,6 +808,50 @@ async fn handle_config(
                  — missing field `cdn_server_token`). The subcommand is hidden until upstream \
                  fixes the route."
             );
+        }
+    }
+    Ok(())
+}
+
+fn render_config_show(resp: &ListConfigResponse, format: OutputFormat) -> Result<()> {
+    match format {
+        OutputFormat::Json => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(resp).context("failed to serialize to JSON")?
+            );
+        }
+        OutputFormat::Table => {
+            let storage: Vec<StorageRegionRow> = resp
+                .storage_region_available
+                .iter()
+                .map(Into::into)
+                .collect();
+            let primary: Vec<RegionRow> = resp.primary_regions.iter().map(Into::into).collect();
+            let replica: Vec<RegionRow> = resp.replica_regions.iter().map(Into::into).collect();
+            eprintln!("Storage regions:");
+            output::print_data(&storage, format);
+            eprintln!("\nPrimary regions:");
+            output::print_data(&primary, format);
+            eprintln!("\nReplica regions:");
+            output::print_data(&replica, format);
+        }
+        OutputFormat::Text => {
+            for r in &resp.storage_region_available {
+                println!("storage\t{}\t{}\t{}", r.id, r.name, r.group);
+            }
+            for r in &resp.primary_regions {
+                println!(
+                    "primary\t{}\t{}\t{}\t{}\t{}",
+                    r.id, r.name, r.group, r.latitude, r.longitude
+                );
+            }
+            for r in &resp.replica_regions {
+                println!(
+                    "replica\t{}\t{}\t{}\t{}\t{}",
+                    r.id, r.name, r.group, r.latitude, r.longitude
+                );
+            }
         }
     }
     Ok(())

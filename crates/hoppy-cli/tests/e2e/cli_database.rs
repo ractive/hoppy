@@ -225,7 +225,7 @@ async fn db_config_show_json() {
         .await;
 
     let output = hoppy_db_cmd("test-api-key", &server.uri())
-        .args(["db", "config", "show"])
+        .args(["--format", "json", "db", "config", "show"])
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -324,6 +324,203 @@ async fn db_active_usage_format_json_pascal_case() {
     assert!(stdout.contains("\"TotalDb\""), "got: {stdout}");
     assert!(stdout.contains("\"TotalDbSize\""), "got: {stdout}");
     assert!(!stdout.contains("active_db"));
+}
+
+// ---------------------------------------------------------------------------
+// iter-56: db config + db v2 list --format parity
+// ---------------------------------------------------------------------------
+
+async fn mount_config(server: &MockServer) {
+    Mock::given(method("GET"))
+        .and(path("/v1/config"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("database/config.json"), "application/json"),
+        )
+        .mount(server)
+        .await;
+}
+
+async fn mount_limits(server: &MockServer) {
+    Mock::given(method("GET"))
+        .and(path("/v1/config/limits"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/config_limits.json"),
+            "application/json",
+        ))
+        .mount(server)
+        .await;
+}
+
+#[tokio::test]
+async fn db_config_show_format_table() {
+    let server = MockServer::start().await;
+    mount_config(&server).await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "db", "config", "show"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stdout.trim_start().starts_with('{'), "got: {stdout}");
+    assert!(stdout.contains("eu-west-1"), "got: {stdout}");
+    assert!(stdout.contains("Frankfurt"), "got: {stdout}");
+    assert!(stdout.contains("London"), "got: {stdout}");
+    assert!(stderr.contains("Storage regions"), "stderr: {stderr}");
+    assert!(stderr.contains("Primary regions"), "stderr: {stderr}");
+    assert!(stderr.contains("Replica regions"), "stderr: {stderr}");
+}
+
+#[tokio::test]
+async fn db_config_show_format_text() {
+    let server = MockServer::start().await;
+    mount_config(&server).await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "text", "db", "config", "show"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("storage\teu-west-1"), "got: {stdout}");
+    assert!(stdout.contains("primary\tDE\tFrankfurt"), "got: {stdout}");
+    assert!(stdout.contains("replica\tUK\tLondon"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn db_config_show_format_json() {
+    let server = MockServer::start().await;
+    mount_config(&server).await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "db", "config", "show"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.trim_start().starts_with('{'), "got: {stdout}");
+    assert!(stdout.contains("storage_region_available"));
+}
+
+#[tokio::test]
+async fn db_config_limits_format_table() {
+    let server = MockServer::start().await;
+    mount_limits(&server).await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "db", "config", "limits"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!stdout.trim_start().starts_with('{'), "got: {stdout}");
+    assert!(stdout.contains("Current Databases"), "got: {stdout}");
+    assert!(stdout.contains("Max Databases"), "got: {stdout}");
+    assert!(stdout.contains("50"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn db_config_limits_format_text() {
+    let server = MockServer::start().await;
+    mount_limits(&server).await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "text", "db", "config", "limits"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("current_databases\t3"), "got: {stdout}");
+    assert!(stdout.contains("max_databases\t50"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn db_config_limits_format_json() {
+    let server = MockServer::start().await;
+    mount_limits(&server).await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "db", "config", "limits"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.trim_start().starts_with('{'));
+    assert!(stdout.contains("current_databases"));
+}
+
+async fn mount_v2_list(server: &MockServer, fixture: &str) {
+    Mock::given(method("GET"))
+        .and(path("/v2/databases"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(support::fixture(fixture), "application/json"),
+        )
+        .mount(server)
+        .await;
+}
+
+#[tokio::test]
+async fn db_v2_list_table_empty() {
+    let server = MockServer::start().await;
+    mount_v2_list(&server, "database/database_list_v2_empty.json").await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "db", "v2", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("No results."), "stderr: {stderr}");
+    assert!(stderr.contains("0 total"), "stderr: {stderr}");
+}
+
+#[tokio::test]
+async fn db_v2_list_table_one() {
+    let server = MockServer::start().await;
+    mount_v2_list(&server, "database/database_list_v2_one.json").await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "db", "v2", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stdout.contains("alpha"), "got: {stdout}");
+    assert!(stdout.contains("eu-west-1"), "got: {stdout}");
+    assert!(stdout.contains("ID"), "got: {stdout}");
+    assert!(stdout.contains("Name"), "got: {stdout}");
+    assert!(!stdout.contains("<empty list>"), "got: {stdout}");
+    assert!(!stdout.contains("<object:"), "got: {stdout}");
+    assert!(stderr.contains("1 total"), "stderr: {stderr}");
+}
+
+#[tokio::test]
+async fn db_v2_list_table_many() {
+    let server = MockServer::start().await;
+    mount_v2_list(&server, "database/database_list_v2_many.json").await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "db", "v2", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("alpha"), "got: {stdout}");
+    assert!(stdout.contains("beta"), "got: {stdout}");
+    assert!(stdout.contains("gamma"), "got: {stdout}");
+    // Row count: header + 3 data rows + framing — count occurrences of unique IDs.
+    let row_count = stdout.matches("db_01HX").count();
+    assert_eq!(row_count, 3, "expected 3 db rows, got: {stdout}");
+}
+
+#[tokio::test]
+async fn db_v2_list_json_unchanged() {
+    let server = MockServer::start().await;
+    mount_v2_list(&server, "database/database_list_v2_many.json").await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "db", "v2", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // JSON envelope still PascalCase with Databases + PageInfo.
+    assert!(stdout.contains("\"Databases\""), "got: {stdout}");
+    assert!(stdout.contains("\"PageInfo\""), "got: {stdout}");
+    assert!(stdout.contains("\"HasMoreItems\""), "got: {stdout}");
 }
 
 #[tokio::test]

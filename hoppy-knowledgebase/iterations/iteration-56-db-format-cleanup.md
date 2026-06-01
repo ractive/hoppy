@@ -8,7 +8,7 @@ tags:
   - format
   - table
   - consistency
-status: planned
+status: in-progress
 branch: iter-56/db-format-cleanup
 ---
 
@@ -31,30 +31,30 @@ See [[../backlog/db-config-show-limits-ignore-format]] and
 
 ## Scope
 
-### 1. `db config show` and `db config limits` [0/3]
+### 1. `db config show` and `db config limits` [3/3]
 
-- [ ] Wire both subcommands through the standard `--format` pipeline
+- [x] Wire both subcommands through the standard `--format` pipeline
       (the same one `db active-usage` and `pull-zone get` use).
-- [ ] Implement a meaningful `table` rendering:
+- [x] Implement a meaningful `table` rendering:
       - `show`: one table per region list (storage regions, primary
         regions) or a single combined table with a `Kind` column.
       - `limits`: simple Field/Value table.
-- [ ] Implement `text` (tab-separated key/value) rendering.
+- [x] Implement `text` (tab-separated key/value) rendering.
 
-### 2. `db v2 list` table [0/2]
+### 2. `db v2 list` table [2/2]
 
-- [ ] Render the `Databases` array as the primary table — one row per
+- [x] Render the `Databases` array as the primary table — one row per
       database with useful columns (id, name, region, created, size).
-- [ ] Print `PageInfo` as a trailing single-row table or a stderr
+- [x] Print `PageInfo` as a trailing single-row table or a stderr
       footer; suppress it under `--format json` paths (no change to
       JSON envelope).
 
-### 3. Tests [0/3]
+### 3. Tests [3/3]
 
-- [ ] E2E mock test for each of the three `db config` formats.
-- [ ] E2E mock test for `db v2 list` table with 0, 1, and N
+- [x] E2E mock test for each of the three `db config` formats.
+- [x] E2E mock test for `db v2 list` table with 0, 1, and N
       databases (uses fixtures).
-- [ ] Snapshot tests that exercise structural assertions (column
+- [x] Snapshot tests that exercise structural assertions (column
       headers present, row count matches) per the
       [[../dogfooding/dogfooding-playbook]] drift guidance.
 
@@ -66,14 +66,14 @@ See [[../backlog/db-config-show-limits-ignore-format]] and
 
 ## Acceptance Criteria
 
-- [ ] `db config show --format table|text|json` produce three
+- [x] `db config show --format table|text|json` produce three
       distinct, useful outputs.
-- [ ] `db config limits --format table|text|json` produce three
+- [x] `db config limits --format table|text|json` produce three
       distinct, useful outputs.
-- [ ] `db v2 list` with N databases shows N rows in table mode;
+- [x] `db v2 list` with N databases shows N rows in table mode;
       shows `No results.` when empty (matching every other `* list`).
-- [ ] `db v2 list --format json` unchanged.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] `db v2 list --format json` unchanged.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 
