@@ -1,0 +1,11 @@
+{
+  "JobId": "11111111-2222-3333-4444-555555555555",
+  "ZoneId": 50001,
+  "Domain": null,
+  "AccountId": "abc123",
+  "Status": 2,
+  "CreatedAt": "2026-03-20T10:00:00Z",
+  "CompletedAt": "2026-03-20T10:00:30Z",
+  "Records": [],
+  "Error": null
+}

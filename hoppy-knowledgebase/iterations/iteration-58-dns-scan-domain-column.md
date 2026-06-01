@@ -7,7 +7,7 @@ tags:
   - dns
   - scan
   - polish
-status: planned
+status: in-progress
 branch: iter-58/dns-scan-domain-column
 ---
 
@@ -24,26 +24,26 @@ See [[../backlog/dns-scan-results-domain-column-empty]].
 
 ## Scope
 
-### 1. Plumb the resolved domain [0/2]
+### 1. Plumb the resolved domain [2/2]
 
-- [ ] In the `--domain` code path, capture the user-supplied
+- [x] In the `--domain` code path, capture the user-supplied
       domain and pass it to the render layer alongside the scan
       result.
-- [ ] In the `--id` code path, look up the domain via the zone
+- [x] In the `--id` code path, look up the domain via the zone
       list (one extra read) so both paths render symmetrically.
 
-### 2. Render [0/2]
+### 2. Render [2/2]
 
-- [ ] Populate the `Domain` column in the table output.
-- [ ] Include the `Domain` field in `--format json` and `--format
+- [x] Populate the `Domain` column in the table output.
+- [x] Include the `Domain` field in `--format json` and `--format
       text`. Decide whether to add it to the response model
       (preferred) or merge in the renderer.
 
-### 3. Tests [0/2]
+### 3. Tests [2/2]
 
-- [ ] E2E mock test that `scan results --domain X` shows `X` in
+- [x] E2E mock test that `scan results --domain X` shows `X` in
       the Domain column.
-- [ ] E2E mock test that `scan results --id <z>` also shows the
+- [x] E2E mock test that `scan results --id <z>` also shows the
       resolved domain.
 
 ## Out of scope
@@ -54,12 +54,12 @@ See [[../backlog/dns-scan-results-domain-column-empty]].
 
 ## Acceptance Criteria
 
-- [ ] `hoppy dns zone scan results --domain X` shows `X` in the
+- [x] `hoppy dns zone scan results --domain X` shows `X` in the
       Domain column.
-- [ ] `hoppy dns zone scan results --id <z>` shows the resolved
+- [x] `hoppy dns zone scan results --id <z>` shows the resolved
       domain in the Domain column.
-- [ ] `--format json` includes the `Domain` field.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] `--format json` includes the `Domain` field.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 

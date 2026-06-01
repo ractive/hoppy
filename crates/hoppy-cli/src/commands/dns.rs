@@ -551,15 +551,21 @@ async fn handle_scan(
             }
         }
         DnsScanAction::Results { id, domain } => {
-            let zone_id = match (id, domain) {
-                (Some(zid), None) => *zid,
-                (None, Some(d)) => resolve_domain_to_zone_id(client, d).await?,
+            let (zone_id, resolved_domain) = match (id, domain) {
+                (Some(zid), None) => (*zid, None),
+                (None, Some(d)) => (resolve_domain_to_zone_id(client, d).await?, Some(d.clone())),
                 (None, None) => unreachable!("clap ArgGroup ensures one of --id/--domain is set"),
                 (Some(_), Some(_)) => unreachable!(
                     "clap conflicts_with ensures --id and --domain are mutually exclusive"
                 ),
             };
-            let result = client.get_dns_zone_record_scan(zone_id).await?;
+            let mut result = client.get_dns_zone_record_scan(zone_id).await?;
+            if result.domain.is_none() {
+                result.domain = match resolved_domain {
+                    Some(d) => Some(d),
+                    None => client.get_dns_zone(zone_id).await.ok().map(|z| z.domain),
+                };
+            }
             if let OutputFormat::Json = format {
                 let json =
                     serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
