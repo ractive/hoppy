@@ -7,7 +7,7 @@ tags:
   - cli
   - help
   - polish
-status: planned
+status: in-progress
 branch: iter-64/empty-help-strings-sweep
 ---
 
@@ -25,26 +25,26 @@ See [[../backlog/pull-zone-create-name-help-empty]].
 
 ### 1. Audit [0/1]
 
-- [ ] Grep the workspace for `#[arg(...)]` declarations without a
+- [x] Grep the workspace for `#[arg(...)]` declarations without a
       `help = "..."` (or a doc comment that clap uses). Build the
       list — at minimum `pull-zone create --name`; probably more.
 
 ### 2. Implement [0/2]
 
-- [ ] Write a one-liner help description for each flag in the
+- [x] Write a one-liner help description for each flag in the
       audit list. For `pull-zone create --name`, use something
       close to:
       > Pull Zone name. Becomes the hostname `<name>.b-cdn.net`
       > and must be globally unique across bunny.net. Lowercase
       > letters, digits, and hyphens only.
-- [ ] Match tone to surrounding flags on the same subcommand.
+- [x] Match tone to surrounding flags on the same subcommand.
 
 ### 3. Tests [0/2]
 
-- [ ] Add a workspace-level unit test that walks every clap arg
+- [x] Add a workspace-level unit test that walks every clap arg
       and asserts `help.is_some() && !help.unwrap().is_empty()`.
       Future regressions get caught in CI.
-- [ ] Snapshot check (or grep) on representative `--help` outputs
+- [x] Snapshot check (or grep) on representative `--help` outputs
       to confirm the new descriptions render.
 
 ## Out of scope
@@ -55,10 +55,10 @@ See [[../backlog/pull-zone-create-name-help-empty]].
 
 ## Acceptance Criteria
 
-- [ ] `hoppy pull-zone create --help` shows a non-empty description
+- [x] `hoppy pull-zone create --help` shows a non-empty description
       for `--name`.
-- [ ] The workspace unit test passes (no flag has empty help).
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] The workspace unit test passes (no flag has empty help).
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 

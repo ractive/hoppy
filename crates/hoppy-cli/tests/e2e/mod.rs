@@ -4,6 +4,7 @@ mod cli_auth;
 mod cli_container;
 mod cli_database;
 mod cli_dns;
+mod cli_help_completeness;
 mod cli_hints;
 mod cli_pull_zone;
 mod cli_script;
