@@ -1738,9 +1738,9 @@ pub enum StreamAction {
 pub enum StreamLibraryAction {
     /// List video libraries
     ///
-    /// `ApiKey` and `ReadOnlyApiKey` are redacted by default in every
-    /// output format. Pass the global `--reveal` flag to print the raw
-    /// values.
+    /// The table/text output omits `ApiKey` and `ReadOnlyApiKey`. JSON
+    /// output redacts them by default; pass the global `--reveal` flag
+    /// to print the raw values in JSON.
     List {
         /// Filter by name
         #[arg(long)]

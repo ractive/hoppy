@@ -128,15 +128,21 @@ billing balances, payer emails, payment IDs, and short-lived signed download URL
 #### Surfacing CLI-redacted secrets with `--reveal`
 
 The CLI applies a separate redaction pass to its own output (independent of
-`--record`) so secrets stay out of terminals and logs by default. Pass the
-global `--reveal` flag to print the raw value across every output format
-(JSON/table/text):
+`--record`) so secrets stay out of terminals and logs by default. The global
+`--reveal` flag opts in to printing the raw value for every redacted field
+across every output format (JSON/table/text). A separate `--reveal-env <KEY>`
+flag exists for the container env-var case — it reveals a single env-var by
+name and is not a variant of `--reveal`.
+
+Commands that surface secrets:
 
 - `hoppy storage-zone get --reveal --id <id>` — `Password` / `ReadOnlyPassword`.
-- `hoppy stream library get --reveal --id <id>` — `ApiKey` / `ReadOnlyApiKey`
-  (also applies to `stream library list` and `stream library create`).
+- `hoppy stream library get --reveal --id <id>` — `ApiKey` / `ReadOnlyApiKey`.
+  Also applies to `stream library create` (JSON/table/text) and
+  `stream library list` (JSON only — the list table omits these fields).
 - `hoppy db token mint --reveal …` — minted DB token.
-- `hoppy container app get --reveal-env <KEY>` — single env-var by name.
+- `hoppy container app get --reveal-env <KEY>` — single env-var by name
+  (independent of `--reveal`).
 
 **Notes on collisions and unmapped recordings:**
 
