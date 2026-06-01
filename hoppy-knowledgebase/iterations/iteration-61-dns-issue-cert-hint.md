@@ -7,7 +7,7 @@ tags:
   - dns
   - errors
   - dx
-status: planned
+status: in-progress
 branch: iter-61/dns-issue-cert-hint
 ---
 
@@ -31,22 +31,22 @@ See [[../backlog/dns-issue-cert-error-translation]].
 
 ## Scope
 
-### 1. Implement [0/2]
+### 1. Implement [2/2]
 
-- [ ] In the `issue-cert` command handler, on a 500 with no
+- [x] In the `issue-cert` command handler, on a 500 with no
       structured error key, append a hint to the error message:
       ```text
       hint: the zone must be delegated to bunny.net nameservers
             before a certificate can be issued. Set NS records to
             the values from `hoppy dns zone get --id <z>`.
       ```
-- [ ] Keep the original upstream message — append, don't replace.
+- [x] Keep the original upstream message — append, don't replace.
 
-### 2. Tests [0/2]
+### 2. Tests [2/2]
 
-- [ ] E2E mock test: 500 response on `issue-cert` produces the
+- [x] E2E mock test: 500 response on `issue-cert` produces the
       hint.
-- [ ] Regression test: 500 on a different command does NOT get the
+- [x] Regression test: 500 on a different command does NOT get the
       hint.
 
 ## Out of scope
@@ -57,10 +57,10 @@ See [[../backlog/dns-issue-cert-error-translation]].
 
 ## Acceptance Criteria
 
-- [ ] `hoppy dns zone issue-cert` on an undelegated zone produces
+- [x] `hoppy dns zone issue-cert` on an undelegated zone produces
       an error message that mentions delegation.
-- [ ] Successful issue-cert calls are unaffected.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] Successful issue-cert calls are unaffected.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 

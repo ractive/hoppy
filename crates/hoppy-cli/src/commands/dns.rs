@@ -6,7 +6,7 @@ use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table}
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
-    AddDnsRecord, CreateDnsZone, DnsDiscoveredRecord, DnsRecord, DnsRecordScanResult,
+    AddDnsRecord, ApiError, CreateDnsZone, DnsDiscoveredRecord, DnsRecord, DnsRecordScanResult,
     DnsRecordType, DnsSecDsRecord, DnsZone, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
 };
 use std::io::{self, BufRead, Read, Write};
@@ -393,7 +393,9 @@ async fn handle_zone(
             return Ok(());
         }
         DnsZoneAction::IssueCert { id } => {
-            client.issue_dns_zone_wildcard_certificate(*id).await?;
+            if let Err(err) = client.issue_dns_zone_wildcard_certificate(*id).await {
+                return Err(annotate_issue_cert_error(err, *id));
+            }
             output::print_mutation_result(
                 format,
                 "issue-wildcard-cert",
@@ -436,6 +438,25 @@ async fn handle_zone(
         }
     }
     Ok(())
+}
+
+/// Append a delegation hint when `issue-cert` returns a generic upstream 500.
+///
+/// The bunny.net API responds with a structureless 500 when the zone is not
+/// delegated to bunny nameservers (the DNS-01 challenge can't complete). The
+/// raw message is "An error has occurred." — we wrap it as `anyhow` context so
+/// the original `ApiError` is preserved as `source()` for debug printing while
+/// the user-facing message gains an actionable next step.
+fn annotate_issue_cert_error(err: anyhow::Error, zone_id: i64) -> anyhow::Error {
+    if let Some(api_err) = err.downcast_ref::<ApiError>()
+        && api_err.status_code == 500
+        && api_err.error_key.is_empty()
+    {
+        return err.context(format!(
+            "hint: the zone must be delegated to bunny.net nameservers before a certificate can be issued. Set NS records to the values from `hoppy dns zone get --id {zone_id}`."
+        ));
+    }
+    err
 }
 
 async fn handle_dnssec(

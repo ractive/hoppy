@@ -1006,6 +1006,64 @@ async fn dns_zone_issue_cert_succeeds() {
     assert!(stderr.contains("Issued wildcard certificate"));
 }
 
+#[tokio::test]
+async fn dns_zone_issue_cert_500_appends_delegation_hint() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/certificate/issue"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(500)
+                .set_body_json(serde_json::json!({"Message": "An error has occurred."})),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "issue-cert", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("hint:") && stderr.contains("delegated to bunny.net nameservers"),
+        "expected delegation hint in stderr, got: {stderr}"
+    );
+    assert!(
+        stderr.contains("hoppy dns zone get --id 50001"),
+        "expected command suggestion in stderr, got: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn dns_zone_get_500_does_not_get_issue_cert_hint() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(500)
+                .set_body_json(serde_json::json!({"Message": "An error has occurred."})),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "get", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("delegated to bunny.net nameservers"),
+        "delegation hint should not appear on unrelated commands: {stderr}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // DNS record scan tests
 // ---------------------------------------------------------------------------
