@@ -7,7 +7,7 @@ tags:
   - cli
   - clap
   - dx
-status: planned
+status: in-progress
 branch: iter-62/negative-int-flag-sweep
 ---
 
@@ -31,20 +31,20 @@ See [[../backlog/container-app-create-negative-int-rejection]].
 
 ### 1. Audit numeric flags [0/2]
 
-- [ ] Grep the workspace for `#[arg(...)] ... <i32|i64|isize|...>`
+- [x] Grep the workspace for `#[arg(...)] ... <i32|i64|isize|...>`
       and similar numeric flag declarations. Build a list per
       subcommand.
-- [ ] Mark each as "domain allows negative" (e.g. priorities,
+- [x] Mark each as "domain allows negative" (e.g. priorities,
       offsets, deltas) or "domain forbids negative" (counts,
       ports, IDs).
 
 ### 2. Implement [0/2]
 
-- [ ] For flags whose domain allows negative values: add
+- [x] For flags whose domain allows negative values: add
       `allow_hyphen_values = true` so `--min -1` parses cleanly,
       then validate the range in the handler with a clear error
       ("min must be in [0, N]").
-- [ ] For flags whose domain forbids negative values: keep the
+- [x] For flags whose domain forbids negative values: keep the
       current clap behaviour but extend the error rendering so
       "unexpected argument '-1'" becomes "negative values are not
       accepted for --<flag>; use --<flag>=<n> or a non-negative
@@ -52,9 +52,9 @@ See [[../backlog/container-app-create-negative-int-rejection]].
 
 ### 3. Tests [0/2]
 
-- [ ] E2E test: `container app create --min -1` produces a domain
+- [x] E2E test: `container app create --min -1` produces a domain
       validation error.
-- [ ] E2E test: a flag that legitimately accepts negative values
+- [x] E2E test: a flag that legitimately accepts negative values
       (if any survive step 1) parses `--<flag> -<n>` cleanly.
 
 ## Out of scope
@@ -65,14 +65,31 @@ See [[../backlog/container-app-create-negative-int-rejection]].
 
 ## Acceptance Criteria
 
-- [ ] All numeric flags across the workspace either accept negative
+- [x] All numeric flags across the workspace either accept negative
       values cleanly or surface a clap-aware error explaining the
       issue.
-- [ ] No subcommand surfaces "unexpected argument '-1'" or similar
+- [x] No subcommand surfaces "unexpected argument '-1'" or similar
       for a numeric flag that the user obviously meant as a value.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 
 - [[../backlog/container-app-create-negative-int-rejection]]
 - [[../dogfooding/session-2026-06-01-round2]]
+
+## Notes (implementation)
+
+Audit found **no** flags in `crates/hoppy-cli/src/cli.rs` whose domain
+semantically accepts negative values — every signed numeric flag is an
+ID, count, size, timeout, port, priority, or weight (all non-negative
+in bunny.net's API surface). So step 2's "add `allow_hyphen_values` +
+validate" branch had no candidates.
+
+Step 2's other branch (improve the rendered error for the forbidden
+case) was implemented as a **global parse-error rewriter** in
+`cli::parse_or_exit()` rather than per-flag overrides. On
+`ErrorKind::UnknownArgument` where the offending token matches a
+negative-number shape, the wrapper walks argv to find the preceding
+`--<flag>` and emits a message naming the flag and the `--flag=-N`
+workaround. This keeps the fix in one place instead of touching ~200
+flag declarations and stays uniform for any future numeric flag.

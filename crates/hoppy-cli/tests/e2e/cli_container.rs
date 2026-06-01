@@ -2204,3 +2204,78 @@ fn container_logs_help() {
     assert!(output.status.success(), "status: {}", output.status);
     crate::assert_cli_snapshot!(String::from_utf8_lossy(&output.stdout));
 }
+
+// ---------------------------------------------------------------------------
+// iter-62: negative-int flag parsing hint
+// ---------------------------------------------------------------------------
+
+/// `--min -1` previously surfaced clap's confusing "unexpected argument '-1'"
+/// error. Iter-62 rewrites that into a friendly hint that points at the
+/// preceding `--min` and the `--min=-1` workaround.
+#[test]
+fn container_app_create_negative_min_emits_hint() {
+    let output = support::hoppy_cmd()
+        .args([
+            "container",
+            "app",
+            "create",
+            "--name",
+            "probe",
+            "--runtime-type",
+            "Shared",
+            "--min",
+            "-1",
+            "--max",
+            "1",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success(), "expected non-zero exit");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("looks like a negative number"),
+        "stderr missing hint: {stderr}"
+    );
+    assert!(stderr.contains("--min"), "stderr missing flag: {stderr}");
+    assert!(
+        stderr.contains("--min=-1"),
+        "stderr missing workaround: {stderr}"
+    );
+    assert!(
+        !stderr.contains("unexpected argument"),
+        "stderr still surfaces clap's confusing default error: {stderr}"
+    );
+}
+
+/// The `=` form sidesteps clap's short-flag parsing. The user can keep using
+/// it as a workaround; this test pins that escape hatch.
+#[test]
+fn container_app_create_eq_form_passes_negative_value() {
+    // We don't run the full create flow (that would need a mock server); we
+    // just confirm clap accepts the value and the failure now happens later,
+    // at the API-credentials or domain-validation layer — never at parse time.
+    let output = support::hoppy_cmd()
+        .args([
+            "container",
+            "app",
+            "create",
+            "--name",
+            "probe",
+            "--runtime-type",
+            "Shared",
+            "--min=-1",
+            "--max",
+            "1",
+        ])
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("unexpected argument"),
+        "--min=-1 should bypass clap's short-flag parsing: {stderr}"
+    );
+    assert!(
+        !stderr.contains("looks like a negative number"),
+        "should not trigger negative-value hint for --min=-1: {stderr}"
+    );
+}
