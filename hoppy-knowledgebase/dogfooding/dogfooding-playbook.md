@@ -125,6 +125,25 @@ To capture raw responses (e.g. to inspect the real API shape), pass `--no-redact
 or set `HOPPY_NO_REDACT=1`. **Do not commit raw output** — it may contain live
 billing balances, payer emails, payment IDs, and short-lived signed download URLs.
 
+#### Surfacing CLI-redacted secrets with `--reveal`
+
+The CLI applies a separate redaction pass to its own output (independent of
+`--record`) so secrets stay out of terminals and logs by default. The global
+`--reveal` flag opts in to printing the raw value for every redacted field
+across every output format (JSON/table/text). A separate `--reveal-env <KEY>`
+flag exists for the container env-var case — it reveals a single env-var by
+name and is not a variant of `--reveal`.
+
+Commands that surface secrets:
+
+- `hoppy storage-zone get --reveal --id <id>` — `Password` / `ReadOnlyPassword`.
+- `hoppy stream library get --reveal --id <id>` — `ApiKey` / `ReadOnlyApiKey`.
+  Also applies to `stream library create` (JSON/table/text) and
+  `stream library list` (JSON only — the list table omits these fields).
+- `hoppy db token mint --reveal …` — minted DB token.
+- `hoppy container app get --reveal-env <KEY>` — single env-var by name
+  (independent of `--reveal`).
+
 **Notes on collisions and unmapped recordings:**
 
 - *Collisions* occur when multiple descriptive fixtures share the same (method, path)

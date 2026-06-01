@@ -1,8 +1,10 @@
 ---
-title: Stream library `ApiKey`/`ReadOnlyApiKey` are unreachable from the CLI (even with `--reveal`)
+title: >-
+  Stream library `ApiKey`/`ReadOnlyApiKey` are unreachable from the CLI (even
+  with `--reveal`)
 type: backlog
 date: 2026-05-31
-status: planned
+status: completed
 priority: high
 origin: dogfooding-2026-05-31
 tags:
@@ -10,6 +12,7 @@ tags:
   - secrets
   - dx
   - blocker
+resolved_in: iter-52
 ---
 
 # Stream `ApiKey` and `ReadOnlyApiKey` cannot be retrieved at all

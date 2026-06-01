@@ -222,6 +222,131 @@ async fn stream_library_delete() {
     assert!(output.status.success());
 }
 
+/// `stream library get` without `--reveal` redacts ApiKey / ReadOnlyApiKey
+/// in JSON and never leaks the raw token to stdout.
+#[tokio::test]
+async fn stream_library_get_redacts_api_keys_by_default() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/10001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/videolibrary_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "json", "stream", "library", "get", "--id", "10001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("REDACTED-STREAM-API-KEY"),
+        "raw ApiKey leaked without --reveal: {stdout}"
+    );
+    assert!(
+        !stdout.contains("REDACTED-STREAM-READONLY-KEY"),
+        "raw ReadOnlyApiKey leaked without --reveal: {stdout}"
+    );
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    let api_key = json["ApiKey"].as_str().expect("ApiKey should be a string");
+    assert!(
+        api_key.starts_with("<set, length="),
+        "expected redaction placeholder, got {api_key}"
+    );
+    let ro = json["ReadOnlyApiKey"]
+        .as_str()
+        .expect("ReadOnlyApiKey should be a string");
+    assert!(
+        ro.starts_with("<set, length="),
+        "expected redaction placeholder, got {ro}"
+    );
+}
+
+/// `stream library get --reveal` prints the raw ApiKey / ReadOnlyApiKey.
+#[tokio::test]
+async fn stream_library_get_reveals_api_keys_when_requested() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/10001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/videolibrary_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--reveal", "--format", "json", "stream", "library", "get", "--id", "10001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert_eq!(
+        json["ApiKey"].as_str(),
+        Some("REDACTED-STREAM-API-KEY"),
+        "expected raw ApiKey from fixture under --reveal"
+    );
+    assert_eq!(
+        json["ReadOnlyApiKey"].as_str(),
+        Some("REDACTED-STREAM-READONLY-KEY"),
+        "expected raw ReadOnlyApiKey from fixture under --reveal"
+    );
+}
+
+/// `stream library get --format text` redacts API keys in the row-oriented
+/// output too — the redact policy applies across formats.
+#[tokio::test]
+async fn stream_library_get_text_redacts_api_keys_by_default() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/10001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/videolibrary_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "text", "stream", "library", "get", "--id", "10001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("REDACTED-STREAM-API-KEY"),
+        "raw ApiKey leaked in text output without --reveal: {stdout}"
+    );
+    assert!(
+        stdout.contains("ApiKey") || stdout.contains("API Key"),
+        "expected ApiKey row in text output: {stdout}"
+    );
+    assert!(
+        stdout.contains("<set, length="),
+        "expected redaction placeholder in text output: {stdout}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Collection tests (stream API, AccessKey = stream key)
 // ---------------------------------------------------------------------------

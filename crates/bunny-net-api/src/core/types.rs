@@ -2848,8 +2848,10 @@ impl UpdateDnsZone {
 
 /// A bunny.net Video Library (Stream).
 ///
-/// `ApiKey` and `ReadOnlyApiKey` are deserialized but never serialized
-/// to prevent accidental exposure in JSON output.
+/// `ApiKey` and `ReadOnlyApiKey` are sensitive — they grant full
+/// (resp. read-only) access to the library. They are serialized as part
+/// of the struct so callers can surface them, but the CLI layer redacts
+/// them by default and only prints the raw values under `--reveal`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct VideoLibrary {
@@ -2863,9 +2865,9 @@ pub struct VideoLibrary {
     pub storage_usage: i64,
     #[serde(default)]
     pub date_created: String,
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub api_key: String,
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub read_only_api_key: String,
     #[serde(default)]
     pub has_watermark: bool,
