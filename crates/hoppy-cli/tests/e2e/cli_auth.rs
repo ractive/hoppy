@@ -116,6 +116,63 @@ async fn auth_check_unauthorized() {
     assert!(stderr.contains("rror") || stderr.contains("nauthorized"));
 }
 
+#[tokio::test]
+async fn auth_check_quiet_success_silent() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/billing_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--quiet", "auth", "check"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(
+        output.stdout.is_empty(),
+        "expected empty stdout under --quiet, got: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("tip:"),
+        "--quiet must suppress hints, got:\n{stderr}"
+    );
+}
+
+#[tokio::test]
+async fn auth_check_quiet_failure_prints_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(ResponseTemplate::new(401).set_body_raw(
+            support::fixture("core/error_unauthorized.json"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("bad-key", &server.uri())
+        .args(["--quiet", "auth", "check"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("rror") || stderr.contains("nauthorized"),
+        "expected an error message on stderr, got:\n{stderr}"
+    );
+}
+
 #[cfg(feature = "live-api")]
 #[test]
 fn live_auth_check() {

@@ -47,7 +47,7 @@ async fn run(cli: Cli) {
 
     let result = match &cli.command {
         Commands::Auth { action } => {
-            commands::auth::handle(action, cli.format, cli.debug, cli.yes, record).await
+            commands::auth::handle(action, cli.format, cli.debug, cli.yes, cli.quiet, record).await
         }
         Commands::PullZone { action } => {
             commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
@@ -94,8 +94,16 @@ async fn run(cli: Cli) {
                 .await
         }
         Commands::Db { action } => {
-            commands::database::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
-                .await
+            commands::database::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.yes,
+                cli.quiet,
+                record,
+                &redact_cfg,
+            )
+            .await
         }
         Commands::Statistics {
             date_from,

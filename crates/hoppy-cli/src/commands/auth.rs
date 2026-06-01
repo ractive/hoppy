@@ -79,16 +79,29 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     _yes: bool,
+    quiet: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
-        AuthAction::Check => handle_check(format, debug, record).await,
+        AuthAction::Check => handle_check(format, debug, quiet, record).await,
     }
 }
 
-async fn handle_check(format: OutputFormat, debug: bool, record: Option<&str>) -> Result<()> {
+async fn handle_check(
+    format: OutputFormat,
+    debug: bool,
+    quiet: bool,
+    record: Option<&str>,
+) -> Result<()> {
     let client = auth::core_client(debug, record)?;
     let billing = client.get_billing().await?;
+
+    // `auth check` is a predicate command: exit code carries the
+    // success/failure signal. Under `--quiet` we skip the payload entirely
+    // so it can be used as `if hoppy auth check --quiet; then ...`.
+    if quiet {
+        return Ok(());
+    }
 
     match format {
         OutputFormat::Json => {
