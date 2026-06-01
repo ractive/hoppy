@@ -8,7 +8,7 @@ tags:
   - metrics
   - dx
   - consistency
-status: in-progress
+status: completed
 branch: iter-54/shield-metrics-flag-parity
 ---
 
@@ -31,14 +31,14 @@ See [[../backlog/shield-metrics-waf-rule-flag-divergence]].
       (matches all siblings) and keep `--shield-zone-id` as a
       hidden alias for back-compat.
 
-### 2. Implement [0/2]
+### 2. Implement [2/2]
 
 - [x] Update `shield metrics waf-rule` clap arg: `long = "id"` with
       `alias = "shield-zone-id"`.
 - [x] Verify no other `shield metrics *` subcommand carries the old
       name; if it does, apply the same alias.
 
-### 3. Tests [0/2]
+### 3. Tests [2/2]
 
 - [x] E2E mock test calling `shield metrics waf-rule --id <z>
       --rule-id <r>` succeeds.
