@@ -9,12 +9,13 @@ use crate::redact::{self, RedactConfig};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
-    AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions, ContainerImage,
-    ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest, ContainersClient,
-    EndpointListItem, EndpointRequest, ErrorDetails, GetContainerConfigSuggestionsRequest,
-    GetContainerImageDigestRequest, Granularity, ImageTagInfo, ListContainerImageTagsRequest,
-    LogForwardingConfiguration, LogForwardingRequest, LogForwardingType, PatchApplicationRequest,
-    PatchContainerRequest, PatchVolumeRequest, ProblemDetails, RegionSettings, RegistryCredentials,
+    AppListItem, AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions,
+    ContainerImage, ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest,
+    ContainersClient, CursorList, EndpointListItem, EndpointRequest, ErrorDetails,
+    GetContainerConfigSuggestionsRequest, GetContainerImageDigestRequest, Granularity,
+    ImageTagInfo, ListContainerImageTagsRequest, LogForwardingConfiguration, LogForwardingRequest,
+    LogForwardingType, PatchApplicationRequest, PatchContainerRequest, PatchVolumeRequest,
+    ProblemDetails, Region, RegionSettings, RegistryCredentials,
     SearchPublicContainerImagesRequest, SyslogFormat, UpdateRegionSettingsRequest,
 };
 use bunny_syslog_receiver::{
@@ -575,11 +576,12 @@ pub async fn handle(
         ContainerAction::LogForwarding { action } => {
             handle_log_forwarding(action, format, debug, yes, record).await
         }
-        ContainerAction::List { cursor, limit } => {
+        ContainerAction::List { cursor, limit, all } => {
             handle_app(
                 &ContainerAppAction::List {
                     cursor: cursor.clone(),
                     limit: *limit,
+                    all: *all,
                 },
                 format,
                 debug,
@@ -658,15 +660,42 @@ async fn handle_app(
 ) -> Result<()> {
     let c = client(debug, record)?;
     match action {
-        ContainerAppAction::List { cursor, limit } => {
-            let result = c
-                .list_applications(cursor.as_deref(), limit.as_ref().copied())
-                .await?;
-            if let OutputFormat::Json = format {
-                print_json_with_redaction(&result, redact)?;
+        ContainerAppAction::List { cursor, limit, all } => {
+            if *all {
+                let mut next_cursor: Option<String> = None;
+                let mut accumulated: Vec<AppListItem> = Vec::new();
+                loop {
+                    let result = c.list_applications(next_cursor.as_deref(), None).await?;
+                    let more_cursor = result.cursor.clone();
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<AppRow> = result.items.iter().map(AppRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    match more_cursor {
+                        Some(c) if !c.is_empty() => next_cursor = Some(c),
+                        _ => break,
+                    }
+                }
+                if let OutputFormat::Json = format {
+                    let combined: CursorList<AppListItem> = CursorList {
+                        items: accumulated,
+                        meta: None,
+                        cursor: None,
+                    };
+                    print_json_with_redaction(&combined, redact)?;
+                }
             } else {
-                let rows: Vec<AppRow> = result.items.iter().map(AppRow::from).collect();
-                output::print_data(&rows, format);
+                let result = c
+                    .list_applications(cursor.as_deref(), limit.as_ref().copied())
+                    .await?;
+                if let OutputFormat::Json = format {
+                    print_json_with_redaction(&result, redact)?;
+                } else {
+                    let rows: Vec<AppRow> = result.items.iter().map(AppRow::from).collect();
+                    output::print_data(&rows, format);
+                }
             }
         }
         ContainerAppAction::Get { id } => {
@@ -1987,12 +2016,44 @@ async fn handle_region(
 ) -> Result<()> {
     let c = client(debug, record)?;
     match action {
-        ContainerRegionAction::List { cursor, limit } => {
-            let result = c
-                .list_regions(cursor.as_deref(), limit.as_ref().copied())
-                .await?;
-            let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
-            output::print_data(&rows, format);
+        ContainerRegionAction::List { cursor, limit, all } => {
+            if *all {
+                let mut next_cursor: Option<String> = None;
+                let mut accumulated: Vec<Region> = Vec::new();
+                loop {
+                    let result = c.list_regions(next_cursor.as_deref(), None).await?;
+                    let more_cursor = result.cursor.clone();
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<RegionRow> =
+                            result.items.iter().map(RegionRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    match more_cursor {
+                        Some(c) if !c.is_empty() => next_cursor = Some(c),
+                        _ => break,
+                    }
+                }
+                if let OutputFormat::Json = format {
+                    let combined: CursorList<Region> = CursorList {
+                        items: accumulated,
+                        meta: None,
+                        cursor: None,
+                    };
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&combined)
+                            .context("failed to serialize to JSON")?
+                    );
+                }
+            } else {
+                let result = c
+                    .list_regions(cursor.as_deref(), limit.as_ref().copied())
+                    .await?;
+                let rows: Vec<RegionRow> = result.items.iter().map(RegionRow::from).collect();
+                output::print_data(&rows, format);
+            }
         }
         ContainerRegionAction::Optimal => {
             let resp = c.get_optimal_region(None).await?;
@@ -2015,19 +2076,51 @@ async fn handle_node(
 ) -> Result<()> {
     let c = client(debug, record)?;
     match action {
-        ContainerNodeAction::List { cursor, limit } => {
-            let result = c
-                .list_nodes(cursor.as_deref(), limit.as_ref().copied())
-                .await?;
-            if let OutputFormat::Json = format {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?
-                );
+        ContainerNodeAction::List { cursor, limit, all } => {
+            if *all {
+                let mut next_cursor: Option<String> = None;
+                let mut accumulated: Vec<String> = Vec::new();
+                loop {
+                    let result = c.list_nodes(next_cursor.as_deref(), None).await?;
+                    let more_cursor = result.cursor.clone();
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        for node in &result.items {
+                            println!("{node}");
+                        }
+                    }
+                    match more_cursor {
+                        Some(c) if !c.is_empty() => next_cursor = Some(c),
+                        _ => break,
+                    }
+                }
+                if let OutputFormat::Json = format {
+                    let combined: CursorList<String> = CursorList {
+                        items: accumulated,
+                        meta: None,
+                        cursor: None,
+                    };
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&combined)
+                            .context("failed to serialize to JSON")?
+                    );
+                }
             } else {
-                // Nodes are strings — print one per line
-                for node in &result.items {
-                    println!("{node}");
+                let result = c
+                    .list_nodes(cursor.as_deref(), limit.as_ref().copied())
+                    .await?;
+                if let OutputFormat::Json = format {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&result)
+                            .context("failed to serialize to JSON")?
+                    );
+                } else {
+                    for node in &result.items {
+                        println!("{node}");
+                    }
                 }
             }
         }

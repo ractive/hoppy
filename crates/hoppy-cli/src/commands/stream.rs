@@ -212,32 +212,75 @@ async fn handle_library(
             search,
             page,
             per_page,
+            all,
         } => {
-            let result = core
-                .list_video_libraries(*page, *per_page, search.as_deref())
-                .await?;
-            if let OutputFormat::Json = format {
-                let envelope = PaginatedListJson {
-                    items: &result.items,
-                    current_page: result.current_page,
-                    total_items: result.total_items,
-                    has_more_items: result.has_more_items,
-                };
-                let mut value = serde_json::to_value(&envelope)
-                    .expect("failed to serialize video library list to JSON");
-                redact_secrets_in_json(&mut value, redact_cfg);
-                let json =
-                    serde_json::to_string_pretty(&value).expect("failed to serialize to JSON");
-                println!("{json}");
+            if *all {
+                const AUTO_PER_PAGE: u32 = 1000;
+                let mut current_page: u32 = 1;
+                let mut accumulated: Vec<VideoLibrary> = Vec::new();
+                loop {
+                    let result = core
+                        .list_video_libraries(
+                            Some(current_page),
+                            Some(AUTO_PER_PAGE),
+                            search.as_deref(),
+                        )
+                        .await?;
+                    let has_more = result.has_more_items;
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<VideoLibraryRow> =
+                            result.items.iter().map(VideoLibraryRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    if !has_more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                if let OutputFormat::Json = format {
+                    let total = accumulated.len() as i64;
+                    let envelope = PaginatedListJson {
+                        items: &accumulated,
+                        current_page: current_page as i64,
+                        total_items: total,
+                        has_more_items: false,
+                    };
+                    let mut value = serde_json::to_value(&envelope)
+                        .context("failed to serialize video library list to JSON")?;
+                    redact_secrets_in_json(&mut value, redact_cfg);
+                    let json = serde_json::to_string_pretty(&value)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                }
             } else {
-                let rows: Vec<VideoLibraryRow> =
-                    result.items.iter().map(VideoLibraryRow::from).collect();
-                output::print_data(&rows, format);
-                if let Some(first) = result.items.first() {
-                    output::hints::tip(&format!(
-                        "hoppy stream video list --library-id {}",
-                        first.id
-                    ));
+                let result = core
+                    .list_video_libraries(*page, *per_page, search.as_deref())
+                    .await?;
+                if let OutputFormat::Json = format {
+                    let envelope = PaginatedListJson {
+                        items: &result.items,
+                        current_page: result.current_page,
+                        total_items: result.total_items,
+                        has_more_items: result.has_more_items,
+                    };
+                    let mut value = serde_json::to_value(&envelope)
+                        .context("failed to serialize video library list to JSON")?;
+                    redact_secrets_in_json(&mut value, redact_cfg);
+                    let json = serde_json::to_string_pretty(&value)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                } else {
+                    let rows: Vec<VideoLibraryRow> =
+                        result.items.iter().map(VideoLibraryRow::from).collect();
+                    output::print_data(&rows, format);
+                    if let Some(first) = result.items.first() {
+                        output::hints::tip(&format!(
+                            "hoppy stream video list --library-id {}",
+                            first.id
+                        ));
+                    }
                 }
             }
         }
@@ -403,31 +446,73 @@ async fn handle_video(
             search,
             collection,
             order_by,
+            all,
         } => {
             let stream = resolve_stream_client(*library_id, debug, record).await?;
-            let result = stream
-                .list_videos(
-                    *library_id,
-                    *page,
-                    *items_per_page,
-                    search.as_deref(),
-                    collection.as_deref(),
-                    order_by.as_deref(),
-                )
-                .await?;
-            if let OutputFormat::Json = format {
-                let envelope = PaginatedListJson {
-                    items: &result.items,
-                    current_page: result.current_page,
-                    total_items: result.total_items,
-                    has_more_items: has_more_items(&result),
-                };
-                let json =
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
-                println!("{json}");
+            if *all {
+                const AUTO_PER_PAGE: u32 = 1000;
+                let mut current_page: u32 = 1;
+                let mut accumulated: Vec<Video> = Vec::new();
+                loop {
+                    let result = stream
+                        .list_videos(
+                            *library_id,
+                            Some(current_page),
+                            Some(AUTO_PER_PAGE),
+                            search.as_deref(),
+                            collection.as_deref(),
+                            order_by.as_deref(),
+                        )
+                        .await?;
+                    let more = has_more_items(&result);
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<VideoRow> = result.items.iter().map(VideoRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    if !more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                if let OutputFormat::Json = format {
+                    let total = accumulated.len() as i64;
+                    let envelope = PaginatedListJson {
+                        items: &accumulated,
+                        current_page: current_page as i64,
+                        total_items: total,
+                        has_more_items: false,
+                    };
+                    let json = serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                }
             } else {
-                let rows: Vec<VideoRow> = result.items.iter().map(VideoRow::from).collect();
-                output::print_data(&rows, format);
+                let result = stream
+                    .list_videos(
+                        *library_id,
+                        *page,
+                        *items_per_page,
+                        search.as_deref(),
+                        collection.as_deref(),
+                        order_by.as_deref(),
+                    )
+                    .await?;
+                if let OutputFormat::Json = format {
+                    let envelope = PaginatedListJson {
+                        items: &result.items,
+                        current_page: result.current_page,
+                        total_items: result.total_items,
+                        has_more_items: has_more_items(&result),
+                    };
+                    let json = serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                } else {
+                    let rows: Vec<VideoRow> = result.items.iter().map(VideoRow::from).collect();
+                    output::print_data(&rows, format);
+                }
             }
         }
         StreamVideoAction::Get {
@@ -1026,31 +1111,73 @@ async fn handle_collection(
             items_per_page,
             search,
             order_by,
+            all,
         } => {
             let stream = resolve_stream_client(*library_id, debug, record).await?;
-            let result = stream
-                .list_collections(
-                    *library_id,
-                    *page,
-                    *items_per_page,
-                    search.as_deref(),
-                    order_by.as_deref(),
-                )
-                .await?;
-            if let OutputFormat::Json = format {
-                let envelope = PaginatedListJson {
-                    items: &result.items,
-                    current_page: result.current_page,
-                    total_items: result.total_items,
-                    has_more_items: has_more_items(&result),
-                };
-                let json =
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
-                println!("{json}");
+            if *all {
+                const AUTO_PER_PAGE: u32 = 1000;
+                let mut current_page: u32 = 1;
+                let mut accumulated: Vec<Collection> = Vec::new();
+                loop {
+                    let result = stream
+                        .list_collections(
+                            *library_id,
+                            Some(current_page),
+                            Some(AUTO_PER_PAGE),
+                            search.as_deref(),
+                            order_by.as_deref(),
+                        )
+                        .await?;
+                    let more = has_more_items(&result);
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<CollectionRow> =
+                            result.items.iter().map(CollectionRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    if !more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                if let OutputFormat::Json = format {
+                    let total = accumulated.len() as i64;
+                    let envelope = PaginatedListJson {
+                        items: &accumulated,
+                        current_page: current_page as i64,
+                        total_items: total,
+                        has_more_items: false,
+                    };
+                    let json = serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                }
             } else {
-                let rows: Vec<CollectionRow> =
-                    result.items.iter().map(CollectionRow::from).collect();
-                output::print_data(&rows, format);
+                let result = stream
+                    .list_collections(
+                        *library_id,
+                        *page,
+                        *items_per_page,
+                        search.as_deref(),
+                        order_by.as_deref(),
+                    )
+                    .await?;
+                if let OutputFormat::Json = format {
+                    let envelope = PaginatedListJson {
+                        items: &result.items,
+                        current_page: result.current_page,
+                        total_items: result.total_items,
+                        has_more_items: has_more_items(&result),
+                    };
+                    let json = serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                } else {
+                    let rows: Vec<CollectionRow> =
+                        result.items.iter().map(CollectionRow::from).collect();
+                    output::print_data(&rows, format);
+                }
             }
         }
         StreamCollectionAction::Get {

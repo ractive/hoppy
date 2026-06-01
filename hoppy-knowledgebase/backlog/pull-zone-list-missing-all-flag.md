@@ -2,7 +2,7 @@
 title: pull-zone list missing --all auto-paginate flag
 type: backlog
 date: 2026-06-01
-status: planned
+status: completed
 priority: low
 origin: dogfooding-2026-06-01-round2
 tags:

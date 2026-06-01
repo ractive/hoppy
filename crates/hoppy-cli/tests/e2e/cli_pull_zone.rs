@@ -3,6 +3,248 @@ use super::support;
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+// ---------------------------------------------------------------------------
+// --all flag: auto-pagination tests
+// ---------------------------------------------------------------------------
+
+/// `pull-zone list --all --format json` fetches 3 pages and merges them into one
+/// JSON envelope with `hasMoreItems: false`.
+#[tokio::test]
+async fn pull_zone_list_all_json_three_pages() {
+    let server = MockServer::start().await;
+
+    // Page 1 — hasMoreItems: true
+    Mock::given(method("GET"))
+        .and(path("/pullzone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "1"))
+        .and(query_param("perPage", "1000"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_list_page1.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Page 2 — hasMoreItems: true
+    Mock::given(method("GET"))
+        .and(path("/pullzone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "2"))
+        .and(query_param("perPage", "1000"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_list_page2.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Page 3 — hasMoreItems: false
+    Mock::given(method("GET"))
+        .and(path("/pullzone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "3"))
+        .and(query_param("perPage", "1000"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_list_page3.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "pull-zone", "list", "--all"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+
+    // Three items collected across 3 pages (PaginatedListJson uses PascalCase)
+    let items = json["Items"].as_array().expect("Items must be array");
+    assert_eq!(items.len(), 3, "expected 3 items from 3 pages");
+    assert_eq!(items[0]["Id"], 1001);
+    assert_eq!(items[1]["Id"], 1002);
+    assert_eq!(items[2]["Id"], 1003);
+    assert_eq!(json["HasMoreItems"], false, "all pages consumed — no more");
+}
+
+/// `pull-zone list --all --format table` fetches multiple pages and appends rows.
+#[tokio::test]
+async fn pull_zone_list_all_table_three_pages() {
+    let server = MockServer::start().await;
+
+    for (page, fixture) in [
+        ("1", "core/pullzone_list_page1.json"),
+        ("2", "core/pullzone_list_page2.json"),
+        ("3", "core/pullzone_list_page3.json"),
+    ] {
+        Mock::given(method("GET"))
+            .and(path("/pullzone"))
+            .and(header("AccessKey", "test-api-key"))
+            .and(query_param("page", page))
+            .and(query_param("perPage", "1000"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_raw(support::fixture(fixture), "application/json"),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+    }
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "pull-zone", "list", "--all"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Expect rows for all 3 zones
+    assert!(stdout.contains("pz-page-one"), "missing page 1 row");
+    assert!(stdout.contains("pz-page-two"), "missing page 2 row");
+    assert!(stdout.contains("pz-page-three"), "missing page 3 row");
+}
+
+/// `pull-zone list --all --format text` works the same as table.
+#[tokio::test]
+async fn pull_zone_list_all_text_three_pages() {
+    let server = MockServer::start().await;
+
+    for (page, fixture) in [
+        ("1", "core/pullzone_list_page1.json"),
+        ("2", "core/pullzone_list_page2.json"),
+        ("3", "core/pullzone_list_page3.json"),
+    ] {
+        Mock::given(method("GET"))
+            .and(path("/pullzone"))
+            .and(header("AccessKey", "test-api-key"))
+            .and(query_param("page", page))
+            .and(query_param("perPage", "1000"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_raw(support::fixture(fixture), "application/json"),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+    }
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "text", "pull-zone", "list", "--all"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("pz-page-one"));
+    assert!(stdout.contains("pz-page-two"));
+    assert!(stdout.contains("pz-page-three"));
+}
+
+/// `--all` conflicts with `--page` (clap error, exit code 2).
+#[tokio::test]
+async fn pull_zone_list_all_conflicts_with_page() {
+    let output = support::hoppy_cmd()
+        .env("BUNNY_API_KEY", "test-api-key")
+        .args(["pull-zone", "list", "--all", "--page", "2"])
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "expected clap error exit code 2"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("cannot be used with"),
+        "expected conflict error, got: {stderr}"
+    );
+}
+
+/// `--all` conflicts with `--per-page` (clap error, exit code 2).
+#[tokio::test]
+async fn pull_zone_list_all_conflicts_with_per_page() {
+    let output = support::hoppy_cmd()
+        .env("BUNNY_API_KEY", "test-api-key")
+        .args(["pull-zone", "list", "--all", "--per-page", "50"])
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "expected clap error exit code 2"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("cannot be used with"),
+        "expected conflict error, got: {stderr}"
+    );
+}
+
+/// Regression: `--page` and `--per-page` still work without `--all`.
+#[tokio::test]
+async fn pull_zone_list_explicit_page_regression() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "2"))
+        .and(query_param("perPage", "10"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_list_paginated.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "list",
+            "--page",
+            "2",
+            "--per-page",
+            "10",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["Items"].is_array(), "expected Items array");
+}
+
 #[tokio::test]
 async fn pull_zone_list_json() {
     let server = MockServer::start().await;

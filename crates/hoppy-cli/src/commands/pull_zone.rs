@@ -103,29 +103,66 @@ pub async fn handle(
             search,
             page,
             per_page,
+            all,
         } => {
-            let result = client
-                .list_pull_zones(*page, *per_page, search.as_deref())
-                .await?;
-            if let OutputFormat::Json = format {
-                let envelope = PaginatedListJson {
-                    items: &result.items,
-                    current_page: result.current_page,
-                    total_items: result.total_items,
-                    has_more_items: result.has_more_items,
-                };
-                let json =
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
-                println!("{json}");
+            if *all {
+                const AUTO_PER_PAGE: u32 = 1000;
+                let mut current_page: u32 = 1;
+                let mut accumulated: Vec<PullZone> = Vec::new();
+                loop {
+                    let result = client
+                        .list_pull_zones(Some(current_page), Some(AUTO_PER_PAGE), search.as_deref())
+                        .await?;
+                    let has_more = result.has_more_items;
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<PullZoneRow> =
+                            result.items.iter().map(PullZoneRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    if !has_more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                if let OutputFormat::Json = format {
+                    let total = accumulated.len() as i64;
+                    let envelope = PaginatedListJson {
+                        items: &accumulated,
+                        current_page: current_page as i64,
+                        total_items: total,
+                        has_more_items: false,
+                    };
+                    let json = serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                }
             } else {
-                let rows: Vec<PullZoneRow> = result.items.iter().map(PullZoneRow::from).collect();
-                output::print_data(&rows, format);
-                if let Some(first) = result.items.first() {
-                    let id = first.id;
-                    output::hints::tips(&[
-                        &format!("hoppy pull-zone get --id {id}"),
-                        &format!("hoppy pull-zone statistics --id {id}"),
-                    ]);
+                let result = client
+                    .list_pull_zones(*page, *per_page, search.as_deref())
+                    .await?;
+                if let OutputFormat::Json = format {
+                    let envelope = PaginatedListJson {
+                        items: &result.items,
+                        current_page: result.current_page,
+                        total_items: result.total_items,
+                        has_more_items: result.has_more_items,
+                    };
+                    let json = serde_json::to_string_pretty(&envelope)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                } else {
+                    let rows: Vec<PullZoneRow> =
+                        result.items.iter().map(PullZoneRow::from).collect();
+                    output::print_data(&rows, format);
+                    if let Some(first) = result.items.first() {
+                        let id = first.id;
+                        output::hints::tips(&[
+                            &format!("hoppy pull-zone get --id {id}"),
+                            &format!("hoppy pull-zone statistics --id {id}"),
+                        ]);
+                    }
                 }
             }
         }
