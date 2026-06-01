@@ -6,13 +6,12 @@ mod output;
 mod progress;
 mod redact;
 
-use clap::Parser;
 use clap_complete::generate;
 use cli::{Cli, Commands};
 use redact::RedactConfig;
 
 fn main() {
-    let cli = Cli::parse();
+    let cli = cli::parse_or_exit();
 
     // Propagate --no-redact to the recording layer via env var, BEFORE the
     // Tokio runtime is constructed. The env-var indirection avoids threading

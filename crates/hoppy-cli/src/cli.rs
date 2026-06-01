@@ -3,7 +3,8 @@ use bunny_net_api::core::types::{
     PullZoneLogForwarderProtocolType, PullZoneTierType, ShieldDDosProtectionType,
     StickySessionType,
 };
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::error::{ContextKind, ContextValue, ErrorKind};
+use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
 /// Build the `-V` / `--version` string from compile-time provenance. clap
@@ -17,6 +18,99 @@ pub fn build_version_string() -> String {
         env!("HOPPY_BUILD_VERSION_SHA"),
         env!("HOPPY_BUILD_DATE"),
     )
+}
+
+/// Parse the CLI, rewriting clap's confusing "unexpected argument '-1'" error
+/// (and similar negative-number trip-wires) into a human-readable hint.
+///
+/// clap parses tokens like `-1`, `-2.5`, or `-12h` as short flags rather than
+/// values, so `hoppy container app create --min -1 ...` fails with
+/// `error: unexpected argument '-1' found` even though the user obviously
+/// meant `--min` to receive `-1`. This wrapper detects that case and emits a
+/// message that points at the preceding `--<flag>` and the `--flag=value`
+/// workaround.
+pub fn parse_or_exit() -> Cli {
+    match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(err) => exit_with_friendly_error(err, std::env::args().collect()),
+    }
+}
+
+fn exit_with_friendly_error(err: clap::Error, argv: Vec<String>) -> ! {
+    if let Some(rendered) = rewrite_negative_value_error(&err, &argv) {
+        let mut cmd = Cli::command();
+        let new_err = cmd.error(ErrorKind::InvalidValue, rendered);
+        new_err.exit()
+    } else {
+        err.exit()
+    }
+}
+
+/// Return a friendlier error message when clap rejected a negative-looking
+/// value (`-1`, `-2.5`, ...) that almost certainly belongs to the preceding
+/// `--<flag>`. Returns `None` if the error is something else.
+fn rewrite_negative_value_error(err: &clap::Error, argv: &[String]) -> Option<String> {
+    if err.kind() != ErrorKind::UnknownArgument {
+        return None;
+    }
+    let invalid = match err.get(ContextKind::InvalidArg)? {
+        ContextValue::String(s) => s.clone(),
+        ContextValue::Strings(v) => v.first()?.clone(),
+        _ => return None,
+    };
+    if !looks_like_negative_number(&invalid) {
+        return None;
+    }
+    let preceding_flag = preceding_long_flag(argv, &invalid);
+    Some(format_negative_value_hint(
+        &invalid,
+        preceding_flag.as_deref(),
+    ))
+}
+
+fn looks_like_negative_number(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    if bytes.len() < 2 || bytes[0] != b'-' {
+        return false;
+    }
+    // Accept `-1`, `-1.5`, `-.5`, `-1e3` etc.; require at least one digit.
+    let rest = &s[1..];
+    let has_digit = rest.chars().any(|c| c.is_ascii_digit());
+    let only_numeric = rest
+        .chars()
+        .all(|c| c.is_ascii_digit() || c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-');
+    has_digit && only_numeric
+}
+
+/// Walk argv and find the long flag (e.g. `--min`) that immediately precedes
+/// the offending negative-looking token. Returns the flag name without the
+/// leading `--`, or `None` if no such flag is found.
+fn preceding_long_flag(argv: &[String], invalid: &str) -> Option<String> {
+    let idx = argv.iter().position(|a| a == invalid)?;
+    if idx == 0 {
+        return None;
+    }
+    let prev = &argv[idx - 1];
+    let stripped = prev.strip_prefix("--")?;
+    if stripped.is_empty() || stripped.contains('=') {
+        return None;
+    }
+    Some(stripped.to_string())
+}
+
+fn format_negative_value_hint(invalid: &str, preceding: Option<&str>) -> String {
+    match preceding {
+        Some(flag) => format!(
+            "the value '{invalid}' looks like a negative number, but clap parsed it as a flag.\n\n\
+             '--{flag}' expected a value. To pass a negative value, use the '=' form:\n    \
+             --{flag}={invalid}\n\n\
+             If '--{flag}' is a count or ID, negative values are not accepted — pass a non-negative number instead."
+        ),
+        None => format!(
+            "the value '{invalid}' looks like a negative number, but clap parsed it as a flag.\n\n\
+             To pass a negative value to a long flag, use the '=' form: --<flag>={invalid}"
+        ),
+    }
 }
 
 fn format_version(pkg: &str, sha: &str, date: &str) -> String {
@@ -4050,6 +4144,107 @@ mod cli_parse_tests {
         let result = Cli::try_parse_from(["hoppy", "--no-hints", "pull-zone", "list"]);
         assert!(result.is_ok(), "CLI parse failed: {:?}", result.err());
         assert!(result.unwrap().no_hints);
+    }
+
+    #[test]
+    fn looks_like_negative_number_basic() {
+        assert!(super::looks_like_negative_number("-1"));
+        assert!(super::looks_like_negative_number("-12"));
+        assert!(super::looks_like_negative_number("-1.5"));
+        assert!(super::looks_like_negative_number("-.5"));
+        assert!(super::looks_like_negative_number("-1e3"));
+        assert!(!super::looks_like_negative_number("-"));
+        assert!(!super::looks_like_negative_number("-x"));
+        assert!(!super::looks_like_negative_number("--min"));
+        assert!(!super::looks_like_negative_number("1"));
+        assert!(!super::looks_like_negative_number(""));
+    }
+
+    #[test]
+    fn preceding_long_flag_finds_min() {
+        let argv = vec![
+            "hoppy".to_string(),
+            "container".to_string(),
+            "app".to_string(),
+            "create".to_string(),
+            "--min".to_string(),
+            "-1".to_string(),
+        ];
+        assert_eq!(
+            super::preceding_long_flag(&argv, "-1"),
+            Some("min".to_string())
+        );
+    }
+
+    #[test]
+    fn preceding_long_flag_skips_short_flag() {
+        let argv = vec!["hoppy".to_string(), "-x".to_string(), "-1".to_string()];
+        assert_eq!(super::preceding_long_flag(&argv, "-1"), None);
+    }
+
+    #[test]
+    fn rewrite_negative_value_error_targets_unknown_argument() {
+        let result = Cli::try_parse_from([
+            "hoppy",
+            "container",
+            "app",
+            "create",
+            "--name",
+            "x",
+            "--runtime-type",
+            "shared",
+            "--min",
+            "-1",
+            "--max",
+            "1",
+        ]);
+        let err = match result {
+            Ok(_) => panic!("expected parse error for --min -1"),
+            Err(e) => e,
+        };
+        let argv: Vec<String> = vec![
+            "hoppy".into(),
+            "container".into(),
+            "app".into(),
+            "create".into(),
+            "--name".into(),
+            "x".into(),
+            "--runtime-type".into(),
+            "shared".into(),
+            "--min".into(),
+            "-1".into(),
+            "--max".into(),
+            "1".into(),
+        ];
+        let rendered = super::rewrite_negative_value_error(&err, &argv)
+            .expect("expected a friendlier hint to be produced");
+        assert!(rendered.contains("'-1'"), "rendered: {rendered}");
+        assert!(rendered.contains("--min"), "rendered: {rendered}");
+        assert!(rendered.contains("--min=-1"), "rendered: {rendered}");
+    }
+
+    #[test]
+    fn rewrite_negative_value_error_eq_form_is_accepted() {
+        // The `=` form sidesteps clap's short-flag parsing, so parse succeeds
+        // and there is no error to rewrite. This locks the documented
+        // workaround into the test suite.
+        let result = Cli::try_parse_from([
+            "hoppy",
+            "container",
+            "app",
+            "create",
+            "--name",
+            "x",
+            "--runtime-type",
+            "shared",
+            "--min=-1",
+            "--max",
+            "1",
+        ]);
+        // Parse succeeds even though -1 is out of the domain (we deliberately
+        // do not validate range here — handler-level validation is out of
+        // scope for this iteration).
+        assert!(result.is_ok(), "parse should succeed for --min=-1");
     }
 
     #[test]
