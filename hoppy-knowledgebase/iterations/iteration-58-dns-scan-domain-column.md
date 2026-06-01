@@ -7,7 +7,7 @@ tags:
   - dns
   - scan
   - polish
-status: in-progress
+status: completed
 branch: iter-58/dns-scan-domain-column
 ---
 
