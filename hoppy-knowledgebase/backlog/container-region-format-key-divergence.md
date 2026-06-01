@@ -1,8 +1,8 @@
 ---
-title: `container region optimal` uses three different field names across `table`/`text`/`json`
+title: "container region optimal uses three different field names across table/text/json"
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-05-31
 tags:

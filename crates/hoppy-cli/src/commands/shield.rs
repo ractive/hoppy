@@ -701,7 +701,13 @@ async fn handle_zone(
                 shield_zone: Some(zone_req),
             };
             client.update_shield_zone(body).await?;
-            eprintln!("Updated Shield Zone {shield_zone_id}");
+            output::print_mutation_result(
+                format,
+                "update",
+                "shield-zone",
+                serde_json::json!({}),
+                &format!("Updated Shield Zone {shield_zone_id}"),
+            );
         }
     }
     Ok(())
@@ -838,7 +844,13 @@ async fn handle_waf(
                 }
             }
             client.delete_waf_rule(*id).await?;
-            eprintln!("Deleted WAF rule {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "shield-waf",
+                serde_json::json!({}),
+                &format!("Deleted WAF rule {id}"),
+            );
         }
         ShieldWafAction::TriggeredRules { shield_zone_id } => {
             let result = client.get_triggered_waf_rules(*shield_zone_id).await?;
@@ -1054,7 +1066,13 @@ async fn handle_rate_limit(
                 }
             }
             client.delete_rate_limit_rule(*id).await?;
-            eprintln!("Deleted rate limit rule {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "shield-rate-limit",
+                serde_json::json!({}),
+                &format!("Deleted rate limit rule {id}"),
+            );
         }
     }
     Ok(())
@@ -1157,7 +1175,13 @@ async fn handle_access_list(
                 }
             }
             client.delete_access_list(*shield_zone_id, *id).await?;
-            eprintln!("Deleted access list {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "shield-access-list",
+                serde_json::json!({}),
+                &format!("Deleted access list {id}"),
+            );
         }
         ShieldAccessListAction::UpdateConfig {
             shield_zone_id,
@@ -1177,7 +1201,13 @@ async fn handle_access_list(
             client
                 .update_access_list_configuration(*shield_zone_id, *configuration_id, body)
                 .await?;
-            eprintln!("Updated access list configuration {configuration_id}");
+            output::print_mutation_result(
+                format,
+                "update-config",
+                "shield-access-list",
+                serde_json::json!({}),
+                &format!("Updated access list configuration {configuration_id}"),
+            );
         }
     }
     Ok(())
@@ -1290,13 +1320,25 @@ async fn handle_bot_detection(
                         "{}",
                         serde_json::to_string_pretty(state).expect("failed to serialize to JSON")
                     ),
-                    None => eprintln!("Updated bot detection for Shield Zone {shield_zone_id}"),
+                    None => output::print_mutation_result(
+                        format,
+                        "update",
+                        "shield-bot-detection",
+                        serde_json::json!({}),
+                        &format!("Updated bot detection for Shield Zone {shield_zone_id}"),
+                    ),
                 }
             } else if let Some(state) = &result.data {
                 let row = BotDetectionRow::from(state);
                 output::print_single(&row, format);
             } else {
-                eprintln!("Updated bot detection for Shield Zone {shield_zone_id}");
+                output::print_mutation_result(
+                    format,
+                    "update",
+                    "shield-bot-detection",
+                    serde_json::json!({}),
+                    &format!("Updated bot detection for Shield Zone {shield_zone_id}"),
+                );
             }
         }
     }
@@ -1721,7 +1763,13 @@ async fn handle_api_guardian(
                 let row = ApiGuardianEndpointRow::from(endpoint);
                 output::print_single(&row, format);
             } else {
-                eprintln!("Updated API Guardian endpoint {endpoint_id}");
+                output::print_mutation_result(
+                    format,
+                    "update",
+                    "shield-api-guardian",
+                    serde_json::json!({}),
+                    &format!("Updated API Guardian endpoint {endpoint_id}"),
+                );
             }
         }
     }
@@ -1785,7 +1833,13 @@ async fn handle_upload_scanning(
                 let row = UploadScanningRow::from(state);
                 output::print_single(&row, format);
             } else {
-                eprintln!("Updated upload scanning for Shield Zone {shield_zone_id}");
+                output::print_mutation_result(
+                    format,
+                    "update",
+                    "shield-upload-scanning",
+                    serde_json::json!({}),
+                    &format!("Updated upload scanning for Shield Zone {shield_zone_id}"),
+                );
             }
         }
     }

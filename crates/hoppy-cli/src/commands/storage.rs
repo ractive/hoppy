@@ -106,8 +106,14 @@ pub async fn handle(
             if quiet {
                 // nothing
             } else if pb.is_none() {
-                // Not a TTY — emit a plain message to stderr.
-                eprintln!("Uploaded {file} → {zone}/{display_path}");
+                // Not a TTY — emit result (JSON envelope or prose to stderr).
+                output::print_mutation_result(
+                    format,
+                    "upload",
+                    "storage-object",
+                    serde_json::json!({ "Path": format!("{zone}/{display_path}") }),
+                    &format!("Uploaded {file} → {zone}/{display_path}"),
+                );
             }
         }
         StorageAction::Download {
@@ -168,7 +174,13 @@ pub async fn handle(
             let client = build_storage_client(zone, region, debug, record).await?;
             let (dir, name) = split_remote_path(remote_path)?;
             client.delete_file(zone, dir, name).await?;
-            eprintln!("Deleted {zone}/{display_path}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "storage-object",
+                serde_json::json!({ "Path": format!("{zone}/{display_path}") }),
+                &format!("Deleted {zone}/{display_path}"),
+            );
         }
     }
 

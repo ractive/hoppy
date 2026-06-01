@@ -1,13 +1,11 @@
 ---
-source: tests/e2e/cli_container.rs
+source: crates/hoppy-cli/tests/e2e/cli_container.rs
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 {
-  "region": {
-    "id": "DE",
-    "name": "DE",
-    "group": "EU",
-    "hasAnycastSupport": true,
-    "hasCapacity": true
-  }
+  "Id": "DE",
+  "Name": "DE",
+  "Group": "EU",
+  "HasAnycastSupport": true,
+  "HasCapacity": true
 }

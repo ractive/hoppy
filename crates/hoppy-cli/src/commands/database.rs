@@ -197,12 +197,6 @@ impl From<&PingResult> for PingRow {
 }
 
 #[derive(serde::Serialize, tabled::Tabled)]
-struct StatusRow {
-    #[tabled(rename = "Status")]
-    status: String,
-}
-
-#[derive(serde::Serialize, tabled::Tabled)]
 struct GenerationRow {
     #[tabled(rename = "Generation")]
     generation: String,
@@ -265,12 +259,13 @@ pub async fn handle(
                 return Ok(());
             }
             let resp = client.delete_database(id).await?;
-            if let OutputFormat::Json = format {
-                let json = serde_json::json!({ "deleted": resp.database });
-                println!("{}", serde_json::to_string_pretty(&json)?);
-            } else {
-                eprintln!("Deleted database {}", resp.database);
-            }
+            output::print_mutation_result(
+                format,
+                "delete",
+                "database",
+                serde_json::json!({ "Database": resp.database }),
+                &format!("Deleted database {}", resp.database),
+            );
         }
         DbAction::Fork { id, target, group } => {
             validate_slug(target)?;
@@ -310,10 +305,13 @@ pub async fn handle(
                     },
                 )
                 .await?;
-            let row = StatusRow {
-                status: format!("restored to generation {}", resp.generation),
-            };
-            output::print_single(&row, format);
+            output::print_mutation_result(
+                format,
+                "restore",
+                "database",
+                serde_json::json!({ "Generation": resp.generation }),
+                &format!("Restored database to generation {}", resp.generation),
+            );
         }
         DbAction::Versions { id, limit } => {
             let body = ListVersionsDatabasePayload {
@@ -360,29 +358,24 @@ pub async fn handle(
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let stats = client.get_database_statistics_v2(id, &from, &to).await?;
-            // Statistics is a complex nested object; print as JSON regardless.
-            let json = serde_json::to_string_pretty(&stats)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&stats, format);
         }
         DbAction::Usage { id, from, to } => {
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let usage = client.get_database_usage_v2(id, &from, &to).await?;
-            let json = serde_json::to_string_pretty(&usage)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&usage, format);
         }
         DbAction::ActiveUsage => {
             let resp = client.get_active_usage_v2().await?;
-            let json = serde_json::to_string_pretty(&resp)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&resp, format);
         }
         DbAction::Live { ids } => {
             if ids.is_empty() {
                 bail!("at least one --id is required");
             }
             let resp = client.live_metrics_db(ids).await?;
-            let json = serde_json::to_string_pretty(&resp)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&resp, format);
         }
         DbAction::V2 { action } => handle_v2(&client, action, format, yes).await?,
         DbAction::Group { action } => {
@@ -409,15 +402,11 @@ async fn handle_v2(
             let resp = client
                 .list_databases_v2(*page, *per_page, search.as_deref())
                 .await?;
-            let json = serde_json::to_string_pretty(&resp)?;
-            println!("{json}");
-            // Suppress unused for `format` in non-table cases:
-            let _ = format;
+            output::print_dynamic_pascal(&resp, format);
         }
         DbV2Action::Get { id } => {
             let resp = client.get_database_v2(id).await?;
-            let json = serde_json::to_string_pretty(&resp)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&resp, format);
         }
         DbV2Action::Create {
             name,
@@ -437,20 +426,26 @@ async fn handle_v2(
                 replicas_regions.clone(),
             );
             let resp = client.create_database_v2(&body).await?;
-            let row = StatusRow {
-                status: format!("created: {}", resp.db_id),
-            };
-            output::print_single(&row, format);
+            output::print_mutation_result(
+                format,
+                "create",
+                "database-v2",
+                serde_json::json!({ "DbId": resp.db_id }),
+                &format!("Created database (v2) {}", resp.db_id),
+            );
         }
         DbV2Action::Delete { id } => {
             if !confirm_destructive(&format!("Delete database {id} (v2)?"), yes)? {
                 return Ok(());
             }
             let resp = client.delete_database_v2(id).await?;
-            let row = StatusRow {
-                status: format!("deleted: {}", resp.db_id),
-            };
-            output::print_single(&row, format);
+            output::print_mutation_result(
+                format,
+                "delete",
+                "database-v2",
+                serde_json::json!({ "DbId": resp.db_id }),
+                &format!("Deleted database (v2) {}", resp.db_id),
+            );
         }
     }
     Ok(())
@@ -498,34 +493,32 @@ async fn handle_group(
                 return Ok(());
             }
             let resp = client.delete_group(id).await?;
-            if let OutputFormat::Json = format {
-                let json = serde_json::json!({ "deleted": resp.group.id });
-                println!("{}", serde_json::to_string_pretty(&json)?);
-            } else {
-                eprintln!("Deleted database group {}", resp.group.id);
-            }
+            output::print_mutation_result(
+                format,
+                "delete",
+                "database-group",
+                serde_json::json!({ "Id": resp.group.id }),
+                &format!("Deleted database group {}", resp.group.id),
+            );
         }
         DbGroupAction::Stats { id, from, to } => {
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let stats = client.get_group_stats(id, &from, &to).await?;
-            let json = serde_json::to_string_pretty(&stats)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&stats, format);
         }
         DbGroupAction::Usage { id, from, to } => {
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let usage = client.get_group_aggregated_usage(id, &from, &to).await?;
-            let json = serde_json::to_string_pretty(&usage)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&usage, format);
         }
         DbGroupAction::Live { ids } => {
             if ids.is_empty() {
                 bail!("at least one --id is required");
             }
             let resp = client.live_metrics_group(ids).await?;
-            let json = serde_json::to_string_pretty(&resp)?;
-            println!("{json}");
+            output::print_dynamic_pascal(&resp, format);
         }
         DbGroupAction::GenerateKeys {
             id,
@@ -547,10 +540,13 @@ async fn handle_group(
         }
         DbGroupAction::InvalidateKeys { id } => {
             client.invalidate_group_keys(id).await?;
-            let row = StatusRow {
-                status: format!("invalidated all keys for group {id}"),
-            };
-            output::print_single(&row, format);
+            output::print_mutation_result(
+                format,
+                "invalidate-keys",
+                "database-group",
+                serde_json::json!({ "Id": id }),
+                &format!("Invalidated all keys for group {id}"),
+            );
         }
     }
     Ok(())
@@ -583,10 +579,13 @@ async fn handle_token(
         }
         DbTokenAction::Invalidate { db_id } => {
             client.invalidate_database_keys(db_id).await?;
-            let row = StatusRow {
-                status: format!("invalidated all keys for database {db_id}"),
-            };
-            output::print_single(&row, format);
+            output::print_mutation_result(
+                format,
+                "invalidate-keys",
+                "database-token",
+                serde_json::json!({ "DbId": db_id }),
+                &format!("Invalidated all keys for database {db_id}"),
+            );
         }
         DbTokenAction::GenerateV2 {
             db_id,
@@ -608,10 +607,13 @@ async fn handle_token(
         }
         DbTokenAction::RevokeV2 { db_id } => {
             client.revoke_database_token_v2(db_id).await?;
-            let row = StatusRow {
-                status: format!("revoked v2 token(s) for database {db_id}"),
-            };
-            output::print_single(&row, format);
+            output::print_mutation_result(
+                format,
+                "revoke",
+                "database-token-v2",
+                serde_json::json!({ "DbId": db_id }),
+                &format!("Revoked v2 token(s) for database {db_id}"),
+            );
         }
     }
     Ok(())

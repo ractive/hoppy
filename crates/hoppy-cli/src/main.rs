@@ -109,7 +109,9 @@ async fn run(cli: Cli) {
         Commands::VideoLibrary { action } => {
             commands::video_library::handle(action, cli.format, cli.debug, record).await
         }
-        Commands::Purge { url } => commands::purge::handle(url, cli.debug, record).await,
+        Commands::Purge { url } => {
+            commands::purge::handle(url, cli.format, cli.debug, record).await
+        }
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();
             generate(*shell, &mut cmd, "hoppy", &mut std::io::stdout());

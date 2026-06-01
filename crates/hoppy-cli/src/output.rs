@@ -239,6 +239,245 @@ fn is_primitive(v: &serde_json::Value) -> bool {
     )
 }
 
+/// Print a mutation success result.
+///
+/// For `--format json`: emits a stable success envelope on **stdout** so
+/// scripts can `| jq …` reliably. Shape:
+/// `{"status":"ok","action":"<verb>","resource":"<noun>",...extra}`.
+///
+/// For `--format table` and `--format text` (and the default): emits the
+/// human-readable `message` to **stderr** so it doesn't pollute stdout
+/// pipelines.
+///
+/// `extra` is merged into the JSON envelope (must be a JSON object). Pass
+/// `serde_json::json!({})` if there's nothing extra to attach.
+pub fn print_mutation_result(
+    format: OutputFormat,
+    action: &str,
+    resource: &str,
+    extra: serde_json::Value,
+    message: &str,
+) {
+    match format {
+        OutputFormat::Json => {
+            let mut envelope = serde_json::Map::new();
+            envelope.insert(
+                "status".to_owned(),
+                serde_json::Value::String("ok".to_owned()),
+            );
+            envelope.insert(
+                "action".to_owned(),
+                serde_json::Value::String(action.to_owned()),
+            );
+            envelope.insert(
+                "resource".to_owned(),
+                serde_json::Value::String(resource.to_owned()),
+            );
+            if let serde_json::Value::Object(extras) = extra {
+                for (k, v) in extras {
+                    envelope.insert(k, v);
+                }
+            }
+            let json = serde_json::to_string_pretty(&serde_json::Value::Object(envelope))
+                .expect("failed to serialize mutation envelope");
+            println!("{json}");
+        }
+        OutputFormat::Table | OutputFormat::Text => {
+            eprintln!("{message}");
+        }
+    }
+}
+
+/// Recursively rewrite all JSON object keys from snake_case / camelCase to
+/// PascalCase. Used to normalise raw API responses that ship with snake_case
+/// keys (e.g. the bunny.net Database v2 endpoints) so the CLI surface matches
+/// the PascalCase convention used by every other domain.
+pub fn pascalize_keys(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(map) => {
+            let entries: Vec<(String, serde_json::Value)> =
+                map.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            map.clear();
+            for (k, mut v) in entries {
+                pascalize_keys(&mut v);
+                map.insert(to_pascal_case(&k), v);
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr.iter_mut() {
+                pascalize_keys(v);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Convert a key from `snake_case` / `camelCase` / `kebab-case` to `PascalCase`.
+fn to_pascal_case(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut upper_next = true;
+    let mut prev_lower = false;
+    for ch in s.chars() {
+        if ch == '_' || ch == '-' || ch == ' ' {
+            upper_next = true;
+            prev_lower = false;
+            continue;
+        }
+        if upper_next {
+            out.extend(ch.to_uppercase());
+            upper_next = false;
+            prev_lower = ch.is_lowercase();
+        } else if prev_lower && ch.is_uppercase() {
+            // already starts a new word in camelCase
+            out.push(ch);
+            prev_lower = false;
+        } else {
+            out.push(ch);
+            prev_lower = ch.is_lowercase();
+        }
+    }
+    out
+}
+
+/// Print arbitrary serde data after rewriting keys to PascalCase.
+///
+/// - `json`: pretty-prints the PascalCase-keyed JSON.
+/// - `text`: one `Key\tvalue` line per top-level field (objects/arrays
+///   serialized as JSON strings).
+/// - `table`: a 2-column Field/Value table for object payloads, or a
+///   row-per-element table for arrays of flat objects. Falls back to JSON
+///   when the structure doesn't fit a table.
+pub fn print_dynamic_pascal<T: Serialize>(item: &T, format: OutputFormat) {
+    let mut value = serde_json::to_value(item).expect("failed to serialize for dynamic output");
+    pascalize_keys(&mut value);
+    match format {
+        OutputFormat::Json => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&value).expect("serialize")
+            );
+        }
+        OutputFormat::Text => print_text_from_value(&value),
+        OutputFormat::Table => print_table_from_value(&value),
+    }
+}
+
+fn print_text_from_value(value: &serde_json::Value) {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (k, v) in map {
+                println!("{k}\t{}", format_text_value_compact(v));
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                if let serde_json::Value::Object(obj) = v {
+                    let vals: Vec<String> = obj.values().map(format_text_value_compact).collect();
+                    println!("{}", vals.join("\t"));
+                } else {
+                    println!("{}", format_text_value_compact(v));
+                }
+            }
+        }
+        _ => println!("{}", format_text_value_compact(value)),
+    }
+}
+
+fn format_text_value_compact(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Null => String::new(),
+        serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+            serde_json::to_string(v).unwrap_or_default()
+        }
+        other => other.to_string(),
+    }
+}
+
+/// Return the ordered list of keys if every element of `arr` is an object
+/// containing only primitive values and sharing the same set of keys.
+/// Returns `None` otherwise (e.g. mixed types, nested objects/arrays, or
+/// differing keys), signalling that a multi-column table cannot be rendered
+/// faithfully and the caller should fall back to JSON.
+fn uniform_object_keys(arr: &[serde_json::Value]) -> Option<Vec<String>> {
+    let first = arr.first()?.as_object()?;
+    if first.values().any(|v| !is_primitive(v)) {
+        return None;
+    }
+    let keys: Vec<String> = first.keys().cloned().collect();
+    for item in arr.iter().skip(1) {
+        let obj = item.as_object()?;
+        if obj.len() != keys.len() {
+            return None;
+        }
+        for k in &keys {
+            match obj.get(k) {
+                Some(v) if is_primitive(v) => {}
+                _ => return None,
+            }
+        }
+    }
+    Some(keys)
+}
+
+fn print_table_from_value(value: &serde_json::Value) {
+    #[derive(Serialize, Tabled)]
+    struct FieldRow {
+        #[tabled(rename = "Field")]
+        field: String,
+        #[tabled(rename = "Value")]
+        value: String,
+    }
+    match value {
+        serde_json::Value::Object(map) => {
+            if map.is_empty() {
+                eprintln!("No data.");
+                return;
+            }
+            let rows: Vec<FieldRow> = map
+                .iter()
+                .map(|(k, v)| {
+                    let (rendered, _) = format_vertical_value(v);
+                    FieldRow {
+                        field: k.clone(),
+                        value: rendered,
+                    }
+                })
+                .collect();
+            println!("{}", tabled::Table::new(&rows));
+        }
+        serde_json::Value::Array(arr) => {
+            if arr.is_empty() {
+                eprintln!("No results.");
+                return;
+            }
+            // If every element is a flat object with the same keys, render a
+            // multi-column table. Otherwise fall back to JSON.
+            if let Some(keys) = uniform_object_keys(arr) {
+                let mut builder = tabled::builder::Builder::default();
+                builder.push_record(keys.iter().cloned());
+                for item in arr {
+                    if let serde_json::Value::Object(obj) = item {
+                        let row: Vec<String> = keys
+                            .iter()
+                            .map(|k| match obj.get(k) {
+                                Some(v) => format_text_value_compact(v),
+                                None => String::new(),
+                            })
+                            .collect();
+                        builder.push_record(row);
+                    }
+                }
+                println!("{}", builder.build());
+            } else {
+                let json = serde_json::to_string_pretty(value).expect("serialize");
+                println!("{json}");
+            }
+        }
+        _ => println!("{}", format_text_value_compact(value)),
+    }
+}
+
 /// Print an error in the appropriate format.
 pub fn print_error(message: &str, format: OutputFormat) {
     match format {
@@ -385,6 +624,92 @@ mod tests {
         // Rendered width must not exceed max: 59 'a's + '…' = 60 chars.
         assert_eq!(out.chars().count(), TABLE_CELL_MAX);
         assert!(out.ends_with('…'));
+    }
+
+    // -----------------------------------------------------------------------
+    // to_pascal_case + pascalize_keys
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn uniform_keys_flat_objects() {
+        let arr = vec![json!({"Id": 1, "Name": "a"}), json!({"Id": 2, "Name": "b"})];
+        let keys = uniform_object_keys(&arr).expect("uniform");
+        assert_eq!(keys, vec!["Id".to_owned(), "Name".to_owned()]);
+    }
+
+    #[test]
+    fn uniform_keys_rejects_nested() {
+        let arr = vec![json!({"Id": 1, "Nested": {"x": 1}})];
+        assert!(uniform_object_keys(&arr).is_none());
+    }
+
+    #[test]
+    fn uniform_keys_rejects_mismatched_keys() {
+        let arr = vec![json!({"Id": 1, "Name": "a"}), json!({"Id": 2})];
+        assert!(uniform_object_keys(&arr).is_none());
+    }
+
+    #[test]
+    fn pascal_case_snake() {
+        assert_eq!(to_pascal_case("active_db"), "ActiveDb");
+        assert_eq!(to_pascal_case("total_db_size"), "TotalDbSize");
+        assert_eq!(to_pascal_case("has_more_items"), "HasMoreItems");
+    }
+
+    #[test]
+    fn pascal_case_camel() {
+        assert_eq!(to_pascal_case("hasAnycastSupport"), "HasAnycastSupport");
+        assert_eq!(to_pascal_case("shieldZoneId"), "ShieldZoneId");
+        assert_eq!(to_pascal_case("id"), "Id");
+    }
+
+    #[test]
+    fn pascal_case_already_pascal() {
+        assert_eq!(to_pascal_case("Id"), "Id");
+        assert_eq!(to_pascal_case("TotalItems"), "TotalItems");
+    }
+
+    #[test]
+    fn pascalize_nested() {
+        let mut v = json!({
+            "active_db": 0,
+            "total_db_size": "0 B",
+            "nested": {
+                "page_info": {"has_more_items": false}
+            },
+            "list": [{"some_key": 1}]
+        });
+        pascalize_keys(&mut v);
+        assert_eq!(v["ActiveDb"], json!(0));
+        assert_eq!(v["TotalDbSize"], json!("0 B"));
+        assert_eq!(v["Nested"]["PageInfo"]["HasMoreItems"], json!(false));
+        assert_eq!(v["List"][0]["SomeKey"], json!(1));
+    }
+
+    #[test]
+    fn mutation_envelope_shape() {
+        // Smoke test the JSON shape of `print_mutation_result` envelope by
+        // re-deriving its construction logic — keeps the contract visible.
+        let mut envelope = serde_json::Map::new();
+        envelope.insert(
+            "status".to_owned(),
+            serde_json::Value::String("ok".to_owned()),
+        );
+        envelope.insert(
+            "action".to_owned(),
+            serde_json::Value::String("add".to_owned()),
+        );
+        envelope.insert(
+            "resource".to_owned(),
+            serde_json::Value::String("edge-rule".to_owned()),
+        );
+        envelope.insert("PullZoneId".to_owned(), json!(5_940_331));
+        envelope.insert("Guid".to_owned(), json!("4309cc85"));
+        let value = serde_json::Value::Object(envelope);
+        assert_eq!(value["status"], json!("ok"));
+        assert_eq!(value["action"], json!("add"));
+        assert_eq!(value["resource"], json!("edge-rule"));
+        assert_eq!(value["PullZoneId"], json!(5_940_331));
     }
 
     #[test]

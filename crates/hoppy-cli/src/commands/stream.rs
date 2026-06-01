@@ -272,7 +272,13 @@ async fn handle_library(
                 }
             }
             core.delete_video_library(*id).await?;
-            eprintln!("Deleted video library {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "stream-library",
+                serde_json::json!({}),
+                &format!("Deleted video library {id}"),
+            );
         }
         StreamLibraryAction::Statistics {
             id,
@@ -460,7 +466,13 @@ async fn handle_video(
                 format!("Uploaded {} ({})", video.guid, video.title),
             );
             if pb.is_none() && !quiet {
-                eprintln!("Uploaded video {} ({})", video.guid, video.title);
+                output::print_mutation_result(
+                    format,
+                    "upload",
+                    "stream-video",
+                    serde_json::json!({ "Guid": video.guid }),
+                    &format!("Uploaded video {} ({})", video.guid, video.title),
+                );
             }
 
             if let OutputFormat::Json = format {
@@ -541,7 +553,13 @@ async fn handle_video(
             }
             let stream = resolve_stream_client(*library_id, debug, record).await?;
             stream.delete_video(*library_id, video_id).await?;
-            eprintln!("Deleted video {video_id} from library {library_id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "stream-video",
+                serde_json::json!({}),
+                &format!("Deleted video {video_id} from library {library_id}"),
+            );
         }
         StreamVideoAction::Caption { action } => {
             handle_caption(action, format, debug, record).await?;
@@ -941,7 +959,13 @@ async fn handle_caption(
                     serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
-                eprintln!("Added {srclang} captions to video {video_id}");
+                output::print_mutation_result(
+                    format,
+                    "add",
+                    "stream-caption",
+                    serde_json::json!({}),
+                    &format!("Added {srclang} captions to video {video_id}"),
+                );
             }
         }
         StreamCaptionAction::Delete {
@@ -953,7 +977,13 @@ async fn handle_caption(
             stream
                 .delete_caption(*library_id, video_id, srclang)
                 .await?;
-            eprintln!("Deleted {srclang} captions from video {video_id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "stream-caption",
+                serde_json::json!({}),
+                &format!("Deleted {srclang} captions from video {video_id}"),
+            );
         }
     }
     Ok(())
@@ -1070,7 +1100,13 @@ async fn handle_collection(
             }
             let stream = resolve_stream_client(*library_id, debug, record).await?;
             stream.delete_collection(*library_id, collection_id).await?;
-            eprintln!("Deleted collection {collection_id} from library {library_id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "stream-collection",
+                serde_json::json!({}),
+                &format!("Deleted collection {collection_id} from library {library_id}"),
+            );
         }
     }
     Ok(())

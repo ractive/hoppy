@@ -520,7 +520,13 @@ pub async fn handle(
                 }
             }
             client.delete_pull_zone(*id).await?;
-            eprintln!("Deleted pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "pull-zone",
+                serde_json::json!({ "Id": id }),
+                &format!("Deleted pull zone {id}"),
+            );
         }
         PullZoneAction::Purge { id, cache_tag } => {
             let body = match cache_tag {
@@ -528,10 +534,16 @@ pub async fn handle(
                 None => PurgeCache::all(),
             };
             client.purge_pull_zone_cache(*id, &body).await?;
-            eprintln!("Purged cache for pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "purge",
+                "pull-zone-cache",
+                serde_json::json!({ "Id": id }),
+                &format!("Purged cache for pull zone {id}"),
+            );
         }
         PullZoneAction::Hostname { action } => {
-            handle_hostname(&client, action).await?;
+            handle_hostname(&client, action, format).await?;
         }
         PullZoneAction::EdgeRule { action } => {
             handle_edge_rule(&client, action, format, yes).await?;
@@ -646,19 +658,41 @@ pub async fn handle(
     Ok(())
 }
 
-async fn handle_hostname(client: &CoreClient, action: &PullZoneHostnameAction) -> Result<()> {
+async fn handle_hostname(
+    client: &CoreClient,
+    action: &PullZoneHostnameAction,
+    format: OutputFormat,
+) -> Result<()> {
     match action {
         PullZoneHostnameAction::Add { id, hostname } => {
             client.add_hostname(*id, hostname).await?;
-            eprintln!("Added hostname {hostname} to pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "add",
+                "hostname",
+                serde_json::json!({ "PullZoneId": id, "Hostname": hostname }),
+                &format!("Added hostname {hostname} to pull zone {id}"),
+            );
         }
         PullZoneHostnameAction::Remove { id, hostname } => {
             client.remove_hostname(*id, hostname).await?;
-            eprintln!("Removed hostname {hostname} from pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "remove",
+                "hostname",
+                serde_json::json!({}),
+                &format!("Removed hostname {hostname} from pull zone {id}"),
+            );
         }
         PullZoneHostnameAction::LoadFreeCert { hostname } => {
             client.load_free_certificate(hostname).await?;
-            eprintln!("Loaded free certificate for {hostname}");
+            output::print_mutation_result(
+                format,
+                "load-free-cert",
+                "hostname",
+                serde_json::json!({}),
+                &format!("Loaded free certificate for {hostname}"),
+            );
         }
         PullZoneHostnameAction::ForceSsl {
             id,
@@ -667,7 +701,13 @@ async fn handle_hostname(client: &CoreClient, action: &PullZoneHostnameAction) -
         } => {
             client.set_force_ssl(*id, hostname, *enabled).await?;
             let status = if *enabled { "enabled" } else { "disabled" };
-            eprintln!("Force SSL {status} for {hostname} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "set-force-ssl",
+                "hostname",
+                serde_json::json!({ "Enabled": enabled }),
+                &format!("Force SSL {status} for {hostname} on pull zone {id}"),
+            );
         }
         PullZoneHostnameAction::AddCert {
             id,
@@ -678,11 +718,23 @@ async fn handle_hostname(client: &CoreClient, action: &PullZoneHostnameAction) -
             client
                 .add_certificate(*id, hostname, certificate, key)
                 .await?;
-            eprintln!("Added certificate for {hostname} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "add-cert",
+                "hostname",
+                serde_json::json!({}),
+                &format!("Added certificate for {hostname} on pull zone {id}"),
+            );
         }
         PullZoneHostnameAction::RemoveCert { id, hostname } => {
             client.remove_certificate(*id, hostname).await?;
-            eprintln!("Removed certificate for {hostname} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "remove-cert",
+                "hostname",
+                serde_json::json!({}),
+                &format!("Removed certificate for {hostname} on pull zone {id}"),
+            );
         }
     }
     Ok(())
@@ -741,19 +793,43 @@ async fn handle_referrer(
         }
         PullZoneReferrerAction::Allow { id, value } => {
             client.add_allowed_referrer(*id, value).await?;
-            eprintln!("Allowed referrer {value} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "allow",
+                "referrer",
+                serde_json::json!({ "PullZoneId": id, "Value": value }),
+                &format!("Allowed referrer {value} on pull zone {id}"),
+            );
         }
         PullZoneReferrerAction::RemoveAllowed { id, value } => {
             client.remove_allowed_referrer(*id, value).await?;
-            eprintln!("Removed allowed referrer {value} from pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "remove-allowed",
+                "referrer",
+                serde_json::json!({}),
+                &format!("Removed allowed referrer {value} from pull zone {id}"),
+            );
         }
         PullZoneReferrerAction::Block { id, value } => {
             client.add_blocked_referrer(*id, value).await?;
-            eprintln!("Blocked referrer {value} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "block",
+                "referrer",
+                serde_json::json!({}),
+                &format!("Blocked referrer {value} on pull zone {id}"),
+            );
         }
         PullZoneReferrerAction::RemoveBlocked { id, value } => {
             client.remove_blocked_referrer(*id, value).await?;
-            eprintln!("Removed blocked referrer {value} from pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "remove-blocked",
+                "referrer",
+                serde_json::json!({}),
+                &format!("Removed blocked referrer {value} from pull zone {id}"),
+            );
         }
     }
     Ok(())
@@ -782,11 +858,23 @@ async fn handle_ip(
         }
         PullZoneIpAction::Block { id, value } => {
             client.add_blocked_ip(*id, value).await?;
-            eprintln!("Blocked IP {value} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "block",
+                "blocked-ip",
+                serde_json::json!({ "PullZoneId": id, "Ip": value }),
+                &format!("Blocked IP {value} on pull zone {id}"),
+            );
         }
         PullZoneIpAction::Unblock { id, value } => {
             client.remove_blocked_ip(*id, value).await?;
-            eprintln!("Unblocked IP {value} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "unblock",
+                "blocked-ip",
+                serde_json::json!({}),
+                &format!("Unblocked IP {value} on pull zone {id}"),
+            );
         }
     }
     Ok(())
@@ -951,7 +1039,13 @@ async fn handle_edge_rule(
                 description.as_deref(),
             )?;
             client.add_or_update_edge_rule(*id, &body).await?;
-            eprintln!("Added edge rule to pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "add",
+                "edge-rule",
+                serde_json::json!({ "PullZoneId": id }),
+                &format!("Added edge rule to pull zone {id}"),
+            );
         }
         EdgeRuleAction::Update {
             id,
@@ -973,7 +1067,13 @@ async fn handle_edge_rule(
                 description.as_deref(),
             )?;
             client.add_or_update_edge_rule(*id, &body).await?;
-            eprintln!("Updated edge rule {rule_id} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "update",
+                "edge-rule",
+                serde_json::json!({ "PullZoneId": id, "RuleId": rule_id }),
+                &format!("Updated edge rule {rule_id} on pull zone {id}"),
+            );
         }
         EdgeRuleAction::Delete { id, rule_id } => {
             if !yes {
@@ -988,7 +1088,13 @@ async fn handle_edge_rule(
                 }
             }
             client.delete_edge_rule(*id, rule_id).await?;
-            eprintln!("Deleted edge rule {rule_id} from pull zone {id}");
+            output::print_mutation_result(
+                format,
+                "delete",
+                "edge-rule",
+                serde_json::json!({ "PullZoneId": id, "RuleId": rule_id }),
+                &format!("Deleted edge rule {rule_id} from pull zone {id}"),
+            );
         }
         EdgeRuleAction::Enable {
             id,
@@ -996,8 +1102,15 @@ async fn handle_edge_rule(
             enabled,
         } => {
             client.set_edge_rule_enabled(*id, rule_id, *enabled).await?;
+            let action_verb = if *enabled { "enable" } else { "disable" };
             let status = if *enabled { "Enabled" } else { "Disabled" };
-            eprintln!("{status} edge rule {rule_id} on pull zone {id}");
+            output::print_mutation_result(
+                format,
+                action_verb,
+                "edge-rule",
+                serde_json::json!({ "PullZoneId": id, "RuleId": rule_id, "Enabled": enabled }),
+                &format!("{status} edge rule {rule_id} on pull zone {id}"),
+            );
         }
     }
     Ok(())

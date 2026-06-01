@@ -2,7 +2,7 @@
 title: Mutation commands ignore `--format json` and always print prose
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-31
 tags:
