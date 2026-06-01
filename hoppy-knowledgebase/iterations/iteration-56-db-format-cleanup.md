@@ -8,7 +8,7 @@ tags:
   - format
   - table
   - consistency
-status: in-progress
+status: completed
 branch: iter-56/db-format-cleanup
 ---
 
