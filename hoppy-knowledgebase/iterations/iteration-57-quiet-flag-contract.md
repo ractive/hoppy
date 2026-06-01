@@ -8,7 +8,7 @@ tags:
   - global-flags
   - dx
   - consistency
-status: in-progress
+status: completed
 branch: iter-57/quiet-flag-contract
 ---
 
