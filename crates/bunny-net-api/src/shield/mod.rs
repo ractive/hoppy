@@ -91,6 +91,7 @@ pub use types::{
     ShieldDdosSummary,
     ShieldDetailedMetricsData,
     ShieldDetailedMetricsResponse,
+    ShieldErrorResponseEnvelope,
     ShieldMetricsData,
     ShieldMetricsResponse,
     ShieldOverviewSummary,
