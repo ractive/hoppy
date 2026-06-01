@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Deserialise a JSON `null` as an empty `String` instead of failing.
 fn nullable_string<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
@@ -1305,7 +1305,7 @@ pub struct ApplicationOverview {
     #[serde(default)]
     pub monthly_cost: Option<f64>,
     #[serde(default)]
-    pub latency_chart: Option<HashMap<String, f64>>,
+    pub latency_chart: Option<BTreeMap<String, f64>>,
 }
 
 /// Status indicator with a double value.
@@ -1365,7 +1365,7 @@ pub struct OverviewPod {
     #[serde(default)]
     pub last_heart_beat: Option<String>,
     #[serde(default)]
-    pub outbound_traffic_chart: Option<HashMap<String, i64>>,
+    pub outbound_traffic_chart: Option<BTreeMap<String, i64>>,
     #[serde(default)]
     pub cpu_usage: f64,
     #[serde(default)]
@@ -1375,7 +1375,7 @@ pub struct OverviewPod {
     #[serde(default)]
     pub message: Option<String>,
     #[serde(default)]
-    pub volumes_utilization_percentage: Option<HashMap<String, f64>>,
+    pub volumes_utilization_percentage: Option<BTreeMap<String, f64>>,
 }
 
 /// Container overview.
@@ -1413,27 +1413,27 @@ pub struct OverviewContainer {
 #[serde(rename_all = "camelCase")]
 pub struct ApplicationStatistics {
     #[serde(default)]
-    pub target_latency_chart: Option<HashMap<String, f64>>,
+    pub target_latency_chart: Option<BTreeMap<String, f64>>,
     #[serde(default)]
-    pub active_regions_chart: Option<HashMap<String, i64>>,
+    pub active_regions_chart: Option<BTreeMap<String, i64>>,
     #[serde(default)]
-    pub latency_chart: Option<HashMap<String, f64>>,
+    pub latency_chart: Option<BTreeMap<String, f64>>,
     #[serde(default)]
-    pub instances_chart: Option<HashMap<String, i64>>,
+    pub instances_chart: Option<BTreeMap<String, i64>>,
     #[serde(default)]
-    pub cpu_usage_chart: Option<HashMap<String, f64>>,
+    pub cpu_usage_chart: Option<BTreeMap<String, f64>>,
     #[serde(default)]
-    pub ram_usage_chart: Option<HashMap<String, f64>>,
+    pub ram_usage_chart: Option<BTreeMap<String, f64>>,
     #[serde(default)]
-    pub traffic_chart: Option<HashMap<String, f64>>,
+    pub traffic_chart: Option<BTreeMap<String, f64>>,
     #[serde(default)]
-    pub volumes_usage_chart: Option<HashMap<String, f64>>,
+    pub volumes_usage_chart: Option<BTreeMap<String, f64>>,
     #[serde(default)]
-    pub volumes_capacity_chart: Option<HashMap<String, f64>>,
+    pub volumes_capacity_chart: Option<BTreeMap<String, f64>>,
     #[serde(default)]
-    pub volumes_split_usage_chart: Option<HashMap<String, HashMap<String, f64>>>,
+    pub volumes_split_usage_chart: Option<BTreeMap<String, BTreeMap<String, f64>>>,
     #[serde(default)]
-    pub volumes_split_capacity_chart: Option<HashMap<String, HashMap<String, f64>>>,
+    pub volumes_split_capacity_chart: Option<BTreeMap<String, BTreeMap<String, f64>>>,
 }
 
 // ---------------------------------------------------------------------------

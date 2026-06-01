@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Script type: DNS, CDN, or Middleware.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
@@ -227,9 +227,9 @@ pub struct EdgeScriptStatistics {
     pub total_cpu_used: f64,
     pub total_monthly_cost: f64,
     pub average_cpu_time_per_execution: f64,
-    pub requests_served_chart: Option<HashMap<String, f64>>,
-    pub average_cpu_time_chart: Option<HashMap<String, f64>>,
-    pub total_cpu_time_chart: Option<HashMap<String, f64>>,
+    pub requests_served_chart: Option<BTreeMap<String, f64>>,
+    pub average_cpu_time_chart: Option<BTreeMap<String, f64>>,
+    pub total_cpu_time_chart: Option<BTreeMap<String, f64>>,
 }
 
 pub(crate) fn deserialize_null_as_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>

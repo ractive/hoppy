@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::serde_helpers::{
     deserialize_repr_option, deserialize_string_lossy_option, null_to_empty_vec,
@@ -3180,31 +3180,31 @@ pub struct AccountStatistics {
     pub total_requests_served: i64,
     #[serde(default)]
     pub cache_hit_rate: f64,
-    pub origin_response_time_chart: Option<HashMap<String, i64>>,
-    pub bandwidth_used_chart: Option<HashMap<String, i64>>,
-    pub bandwidth_cached_chart: Option<HashMap<String, i64>>,
-    pub cache_hit_rate_chart: Option<HashMap<String, f64>>,
-    pub requests_served_chart: Option<HashMap<String, i64>>,
-    pub pull_requests_pulled_chart: Option<HashMap<String, i64>>,
-    pub origin_shield_bandwidth_used_chart: Option<HashMap<String, i64>>,
-    pub origin_shield_internal_bandwidth_used_chart: Option<HashMap<String, i64>>,
-    pub origin_traffic_chart: Option<HashMap<String, i64>>,
-    pub user_balance_history_chart: Option<HashMap<String, f64>>,
-    pub geo_traffic_distribution: Option<HashMap<String, i64>>,
+    pub origin_response_time_chart: Option<BTreeMap<String, i64>>,
+    pub bandwidth_used_chart: Option<BTreeMap<String, i64>>,
+    pub bandwidth_cached_chart: Option<BTreeMap<String, i64>>,
+    pub cache_hit_rate_chart: Option<BTreeMap<String, f64>>,
+    pub requests_served_chart: Option<BTreeMap<String, i64>>,
+    pub pull_requests_pulled_chart: Option<BTreeMap<String, i64>>,
+    pub origin_shield_bandwidth_used_chart: Option<BTreeMap<String, i64>>,
+    pub origin_shield_internal_bandwidth_used_chart: Option<BTreeMap<String, i64>>,
+    pub origin_traffic_chart: Option<BTreeMap<String, i64>>,
+    pub user_balance_history_chart: Option<BTreeMap<String, f64>>,
+    pub geo_traffic_distribution: Option<BTreeMap<String, i64>>,
     #[serde(rename = "Error3xxChart")]
-    pub error3xx_chart: Option<HashMap<String, i64>>,
+    pub error3xx_chart: Option<BTreeMap<String, i64>>,
     #[serde(rename = "Error4xxChart")]
-    pub error4xx_chart: Option<HashMap<String, i64>>,
+    pub error4xx_chart: Option<BTreeMap<String, i64>>,
     #[serde(rename = "Error5xxChart")]
-    pub error5xx_chart: Option<HashMap<String, i64>>,
+    pub error5xx_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// Storage Zone statistics returned by `GET /storagezone/{id}/statistics`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct StorageZoneStatistics {
-    pub storage_used_chart: Option<HashMap<String, i64>>,
-    pub file_count_chart: Option<HashMap<String, i64>>,
+    pub storage_used_chart: Option<BTreeMap<String, i64>>,
+    pub file_count_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// DNS Zone statistics returned by `GET /dnszone/{id}/statistics`.
@@ -3213,10 +3213,10 @@ pub struct StorageZoneStatistics {
 pub struct DnsZoneStatistics {
     #[serde(default)]
     pub total_queries_served: i64,
-    pub queries_served_chart: Option<HashMap<String, i64>>,
-    pub normal_queries_served_chart: Option<HashMap<String, i64>>,
-    pub smart_queries_served_chart: Option<HashMap<String, i64>>,
-    pub queries_by_type_chart: Option<HashMap<String, i64>>,
+    pub queries_served_chart: Option<BTreeMap<String, i64>>,
+    pub normal_queries_served_chart: Option<BTreeMap<String, i64>>,
+    pub smart_queries_served_chart: Option<BTreeMap<String, i64>>,
+    pub queries_by_type_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// Pull Zone optimizer statistics returned by
@@ -3232,10 +3232,10 @@ pub struct OptimizerStatistics {
     pub average_processing_time: f64,
     #[serde(default)]
     pub average_compression_ratio: f64,
-    pub requests_optimized_chart: Option<HashMap<String, i64>>,
-    pub average_compression_chart: Option<HashMap<String, f64>>,
-    pub traffic_saved_chart: Option<HashMap<String, i64>>,
-    pub average_processing_time_chart: Option<HashMap<String, f64>>,
+    pub requests_optimized_chart: Option<BTreeMap<String, i64>>,
+    pub average_compression_chart: Option<BTreeMap<String, f64>>,
+    pub traffic_saved_chart: Option<BTreeMap<String, i64>>,
+    pub average_processing_time_chart: Option<BTreeMap<String, f64>>,
 }
 
 /// Origin shield queue statistics returned by
@@ -3243,8 +3243,8 @@ pub struct OptimizerStatistics {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct OriginShieldQueueStatistics {
-    pub concurrent_requests_chart: Option<HashMap<String, i64>>,
-    pub queued_requests_chart: Option<HashMap<String, i64>>,
+    pub concurrent_requests_chart: Option<BTreeMap<String, i64>>,
+    pub queued_requests_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// SafeHop statistics returned by
@@ -3256,8 +3256,8 @@ pub struct SafeHopStatistics {
     pub total_requests_retried: f64,
     #[serde(default)]
     pub total_requests_saved: f64,
-    pub requests_retried_chart: Option<HashMap<String, i64>>,
-    pub requests_saved_chart: Option<HashMap<String, i64>>,
+    pub requests_retried_chart: Option<BTreeMap<String, i64>>,
+    pub requests_saved_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// Video Library DRM statistics returned by
@@ -3267,7 +3267,7 @@ pub struct SafeHopStatistics {
 pub struct VideoLibraryDrmStatistics {
     #[serde(default)]
     pub total_licenses_issued: i64,
-    pub licenses_issued_chart: Option<HashMap<String, i64>>,
+    pub licenses_issued_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// Video Library transcribing statistics returned by
@@ -3277,7 +3277,7 @@ pub struct VideoLibraryDrmStatistics {
 pub struct VideoLibraryTranscribingStatistics {
     #[serde(default)]
     pub total_transcription_seconds: i64,
-    pub transcription_seconds_chart: Option<HashMap<String, i64>>,
+    pub transcription_seconds_chart: Option<BTreeMap<String, i64>>,
 }
 
 #[cfg(test)]
@@ -3323,5 +3323,35 @@ mod tests {
         let json = r#"{"JobId": "abc123"}"#;
         let result: DnsRecordScanResult = serde_json::from_str(json).unwrap();
         assert!(result.records.is_empty());
+    }
+
+    /// Regression: chart fields use BTreeMap so serialised JSON keys are always
+    /// in ascending order regardless of insertion order.
+    #[test]
+    fn statistics_chart_keys_serialise_in_sorted_order() {
+        // Insert keys in non-ascending order to prove BTreeMap sorts them.
+        let mut chart = BTreeMap::new();
+        chart.insert("2024-03-01T00:00:00Z".to_string(), 300_i64);
+        chart.insert("2024-01-01T00:00:00Z".to_string(), 100_i64);
+        chart.insert("2024-02-01T00:00:00Z".to_string(), 200_i64);
+
+        // Use StorageZoneStatistics as a representative chart-bearing struct.
+        let stats = StorageZoneStatistics {
+            storage_used_chart: Some(chart),
+            file_count_chart: None,
+        };
+
+        let json = serde_json::to_string(&stats).unwrap();
+
+        // Keys must appear in ascending lexicographic order.
+        let jan = json.find("2024-01").unwrap();
+        let feb = json.find("2024-02").unwrap();
+        let mar = json.find("2024-03").unwrap();
+        assert!(jan < feb, "January should come before February in JSON");
+        assert!(feb < mar, "February should come before March in JSON");
+
+        // Serialising twice must produce identical output (determinism check).
+        let json2 = serde_json::to_string(&stats).unwrap();
+        assert_eq!(json, json2, "Serialisation must be deterministic");
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -500,7 +500,7 @@ impl SmartGenerateSettings {
 #[serde(rename_all = "camelCase")]
 pub struct VideoHeatmap {
     #[serde(default)]
-    pub heatmap: Option<HashMap<String, i32>>,
+    pub heatmap: Option<BTreeMap<String, i32>>,
 }
 
 /// Resolution + storage path pair returned inside [`VideoResolutionsInfo`].
@@ -633,10 +633,10 @@ pub struct StatusEnvelope<T> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoStatistics {
-    pub views_chart: Option<HashMap<String, i64>>,
-    pub watch_time_chart: Option<HashMap<String, i64>>,
-    pub country_view_counts: Option<HashMap<String, i64>>,
-    pub country_watch_time: Option<HashMap<String, i64>>,
+    pub views_chart: Option<BTreeMap<String, i64>>,
+    pub watch_time_chart: Option<BTreeMap<String, i64>>,
+    pub country_view_counts: Option<BTreeMap<String, i64>>,
+    pub country_watch_time: Option<BTreeMap<String, i64>>,
     #[serde(default)]
     pub engagement_score: i64,
 }
