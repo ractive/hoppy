@@ -1,0 +1,51 @@
+{
+  "databases": [
+    {
+      "name": "alpha",
+      "id": "db_01HX00000000000000000000A1",
+      "url": "https://alpha.bunny.net",
+      "block_reads": false,
+      "block_writes": false,
+      "size_max": "1 GB",
+      "current_size": "12 MB",
+      "size_max_bytes": 1073741824,
+      "current_size_bytes": 12582912,
+      "storage_region": "eu-west-1",
+      "primary_regions": ["DE"],
+      "replicas_regions": ["UK"]
+    },
+    {
+      "name": "beta",
+      "id": "db_01HX00000000000000000000B2",
+      "url": "https://beta.bunny.net",
+      "block_reads": false,
+      "block_writes": false,
+      "size_max": "1 GB",
+      "current_size": "5 MB",
+      "size_max_bytes": 1073741824,
+      "current_size_bytes": 5242880,
+      "storage_region": "us-east-1",
+      "primary_regions": ["NY"],
+      "replicas_regions": []
+    },
+    {
+      "name": "gamma",
+      "id": "db_01HX00000000000000000000C3",
+      "url": "https://gamma.bunny.net",
+      "block_reads": false,
+      "block_writes": false,
+      "size_max": "2 GB",
+      "current_size": "100 MB",
+      "size_max_bytes": 2147483648,
+      "current_size_bytes": 104857600,
+      "storage_region": "eu-west-1",
+      "primary_regions": ["DE", "FR"],
+      "replicas_regions": ["UK"]
+    }
+  ],
+  "page_info": {
+    "current_page": 1,
+    "total_items": 3,
+    "has_more_items": false
+  }
+}

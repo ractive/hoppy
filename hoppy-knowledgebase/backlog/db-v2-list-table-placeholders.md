@@ -2,7 +2,7 @@
 title: db v2 list table renders only envelope placeholders
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-06-01
 tags:
