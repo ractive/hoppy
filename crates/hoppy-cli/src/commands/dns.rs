@@ -444,17 +444,17 @@ async fn handle_zone(
 ///
 /// The bunny.net API responds with a structureless 500 when the zone is not
 /// delegated to bunny nameservers (the DNS-01 challenge can't complete). The
-/// raw message is "An error has occurred." — we keep it and add an actionable
-/// next step.
+/// raw message is "An error has occurred." — we wrap it as `anyhow` context so
+/// the original `ApiError` is preserved as `source()` for debug printing while
+/// the user-facing message gains an actionable next step.
 fn annotate_issue_cert_error(err: anyhow::Error, zone_id: i64) -> anyhow::Error {
     if let Some(api_err) = err.downcast_ref::<ApiError>()
         && api_err.status_code == 500
         && api_err.error_key.is_empty()
     {
-        let original = err.to_string();
-        return anyhow::anyhow!(
-            "{original}\nhint: the zone must be delegated to bunny.net nameservers before a certificate can be issued. Set NS records to the values from `hoppy dns zone get --id {zone_id}`."
-        );
+        return err.context(format!(
+            "hint: the zone must be delegated to bunny.net nameservers before a certificate can be issued. Set NS records to the values from `hoppy dns zone get --id {zone_id}`."
+        ));
     }
     err
 }
