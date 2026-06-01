@@ -504,8 +504,9 @@ impl std::error::Error for ShieldApiErrorEnvelope {}
 
 /// Alternate Shield error envelope used by endpoints like
 /// `/shield/event-logs/...` whose success body embeds an
-/// `errorResponse: GenericRequestResponse` field instead of the
-/// top-level `error` envelope.
+/// `errorResponse` field instead of the top-level `error` envelope.
+/// The inner shape mirrors `ShieldApiErrorInner` (carries `statusCode`
+/// on error bodies), not bunny.net's `GenericRequestResponse`.
 ///
 /// Real shape: `{"logs": null, ..., "errorResponse": {"statusCode": 401, "success": false, "message": "...", "errorKey": "..."}}`
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -582,8 +583,8 @@ pub fn parse_shield_2xx_envelope_error(bytes: &[u8]) -> Option<anyhow::Error> {
     if let Ok(env) = serde_json::from_slice::<ShieldApiErrorEnvelope>(bytes) {
         // Only treat as error when success is explicitly false AND there's a
         // human-readable signal (message or errorKey). This avoids false positives
-        // from happy-path responses that embed `GenericRequestResponse` (whose
-        // `success: bool` defaults to false via `#[serde(default)]`).
+        // from happy-path 2xx responses whose embedded error object is empty or
+        // only partially populated.
         if env.error.success == Some(false)
             && (env.error.message.is_some() || env.error.error_key.is_some())
         {
@@ -2220,6 +2221,27 @@ mod tests {
         // we must not treat the body as an error.
         let body = br#"{"errorResponse":{}}"#;
         assert!(parse_shield_error(body).is_none());
+    }
+
+    #[test]
+    fn parse_shield_2xx_envelope_error_recognises_error_response_branch() {
+        // 2xx body that nonetheless carries an `errorResponse` with success=false
+        // and a human-readable signal must be surfaced as an error.
+        let body = br#"{"logs":null,"errorResponse":{"statusCode":202,"success":false,"message":"Plan tier required.","errorKey":"plan.feature_gated"}}"#;
+        let err = parse_shield_2xx_envelope_error(body)
+            .expect("should detect errorResponse branch on 2xx body");
+        assert_eq!(
+            err.to_string(),
+            "Shield API error 202 (plan.feature_gated): Plan tier required."
+        );
+    }
+
+    #[test]
+    fn parse_shield_2xx_envelope_error_ignores_empty_error_response() {
+        // Happy-path 2xx body where `errorResponse` deserialises but carries
+        // no error signal must NOT be treated as an error.
+        let body = br#"{"errorResponse":{}}"#;
+        assert!(parse_shield_2xx_envelope_error(body).is_none());
     }
 
     #[test]

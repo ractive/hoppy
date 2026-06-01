@@ -28,7 +28,7 @@ See [[../backlog/shield-event-logs-discards-error-body]].
 
 ## Scope
 
-### 1. Audit Shield response shapes [0/2]
+### 1. Audit Shield response shapes [2/2]
 
 - [x] Sweep every Shield client error path for response bodies of
       the shape `{ "errorResponse": { "message", "errorKey",
@@ -36,7 +36,7 @@ See [[../backlog/shield-event-logs-discards-error-body]].
 - [x] For each found, confirm whether iter-50's top-level handling
       already covers it or it needs a separate branch.
 
-### 2. Implement [0/2]
+### 2. Implement [2/2]
 
 - [x] Teach the Shield error-mapping helper to recognise the
       `errorResponse`-wrapped envelope and surface
@@ -45,7 +45,7 @@ See [[../backlog/shield-event-logs-discards-error-body]].
 - [x] Keep a graceful fallback when both envelopes are absent
       (404 with no body, etc.).
 
-### 3. Tests [0/2]
+### 3. Tests [2/2]
 
 - [x] E2E mock test: `shield event-logs` future date → renders
       `Shield API error 401 (invalid_datetime_window.event_logs):
