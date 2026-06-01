@@ -9,6 +9,8 @@ expression: "String::from_utf8_lossy(&output.stdout)"
   "TrafficUsage": 0,
   "StorageUsage": 0,
   "DateCreated": "2024-06-01T00:00:00Z",
+  "ApiKey": "<set, length=18>",
+  "ReadOnlyApiKey": "<set, length=20>",
   "HasWatermark": false,
   "PullZoneId": 0,
   "StorageZoneId": 0,

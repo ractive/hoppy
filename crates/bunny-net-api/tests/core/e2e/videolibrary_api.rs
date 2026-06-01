@@ -303,11 +303,16 @@ async fn debug_mode_logs_to_stderr_video_library() {
 }
 
 // ---------------------------------------------------------------------------
-// api_key not exposed in JSON serialization
+// api_key serialization
+//
+// Iter-52: the API client no longer suppresses ApiKey / ReadOnlyApiKey on
+// serialization — the CLI layer redacts them via the shared `redact` module
+// instead, which keeps the raw values available to library consumers and
+// makes `--reveal` work uniformly across formats.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn video_library_api_key_not_serialized() {
+async fn video_library_api_key_roundtrips_through_serde() {
     let server = MockServer::start().await;
 
     Mock::given(method("GET"))
@@ -321,19 +326,19 @@ async fn video_library_api_key_not_serialized() {
         .await
         .unwrap();
 
-    // Deserialised correctly (presence of the field is the intent — the
-    // specific value is fixture-derived).
     assert!(!lib.api_key.is_empty());
+    assert!(!lib.read_only_api_key.is_empty());
 
-    // Must not appear in serialized output
     let json = serde_json::to_value(&lib).unwrap();
-    assert!(
-        json.get("ApiKey").is_none(),
-        "ApiKey must not be serialized"
+    assert_eq!(
+        json.get("ApiKey").and_then(|v| v.as_str()),
+        Some(lib.api_key.as_str()),
+        "ApiKey must serialize so the CLI layer can redact it consistently"
     );
-    assert!(
-        json.get("ReadOnlyApiKey").is_none(),
-        "ReadOnlyApiKey must not be serialized"
+    assert_eq!(
+        json.get("ReadOnlyApiKey").and_then(|v| v.as_str()),
+        Some(lib.read_only_api_key.as_str()),
+        "ReadOnlyApiKey must serialize so the CLI layer can redact it consistently"
     );
 }
 

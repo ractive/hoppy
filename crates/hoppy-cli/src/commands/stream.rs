@@ -6,6 +6,7 @@ use crate::cli::{
 use crate::date;
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
+use crate::redact::{RedactConfig, placeholder, redact_secrets_in_json};
 use anyhow::{Context as _, Result, bail};
 use bunny_net_api::core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
 use bunny_net_api::stream::types::{Collection, Video};
@@ -70,10 +71,25 @@ struct VideoLibraryDetail {
     enable_mp4_fallback: bool,
     #[tabled(rename = "Created")]
     date_created: String,
+    /// Sensitive — redacted unless `--reveal` is set.
+    #[serde(rename = "ApiKey")]
+    #[tabled(rename = "API Key")]
+    api_key: String,
+    /// Sensitive — redacted unless `--reveal` is set.
+    #[serde(rename = "ReadOnlyApiKey")]
+    #[tabled(rename = "Read-Only API Key")]
+    read_only_api_key: String,
 }
 
-impl From<&VideoLibrary> for VideoLibraryDetail {
-    fn from(l: &VideoLibrary) -> Self {
+impl VideoLibraryDetail {
+    fn from_library(l: &VideoLibrary, redact_cfg: &RedactConfig) -> Self {
+        let render_secret = |raw: &str| {
+            if redact_cfg.reveal_field() {
+                raw.to_owned()
+            } else {
+                placeholder(raw)
+            }
+        };
         Self {
             id: l.id,
             name: l.name.clone(),
@@ -86,6 +102,8 @@ impl From<&VideoLibrary> for VideoLibraryDetail {
             has_watermark: l.has_watermark,
             enable_mp4_fallback: l.enable_mp4_fallback,
             date_created: l.date_created.clone(),
+            api_key: render_secret(&l.api_key),
+            read_only_api_key: render_secret(&l.read_only_api_key),
         }
     }
 }
@@ -164,10 +182,11 @@ pub async fn handle(
     yes: bool,
     quiet: bool,
     record: Option<&str>,
+    redact_cfg: &RedactConfig,
 ) -> Result<()> {
     match action {
         StreamAction::Library { action } => {
-            handle_library(action, format, debug, yes, record).await
+            handle_library(action, format, debug, yes, record, redact_cfg).await
         }
         StreamAction::Video { action } => {
             handle_video(action, format, debug, yes, quiet, record).await
@@ -184,6 +203,7 @@ async fn handle_library(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    redact_cfg: &RedactConfig,
 ) -> Result<()> {
     let core = auth::core_client(debug, record)?;
 
@@ -203,8 +223,11 @@ async fn handle_library(
                     total_items: result.total_items,
                     has_more_items: result.has_more_items,
                 };
+                let mut value = serde_json::to_value(&envelope)
+                    .expect("failed to serialize video library list to JSON");
+                redact_secrets_in_json(&mut value, redact_cfg);
                 let json =
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON");
+                    serde_json::to_string_pretty(&value).expect("failed to serialize to JSON");
                 println!("{json}");
             } else {
                 let rows: Vec<VideoLibraryRow> =
@@ -220,12 +243,12 @@ async fn handle_library(
         }
         StreamLibraryAction::Get { id } => {
             let lib = core.get_video_library(*id).await?;
-            print_library(&lib, format);
+            print_library(&lib, format, redact_cfg);
         }
         StreamLibraryAction::Create { name } => {
             let body = CreateVideoLibrary::new(name);
             let lib = core.create_video_library(&body).await?;
-            print_library(&lib, format);
+            print_library(&lib, format, redact_cfg);
         }
         StreamLibraryAction::Update {
             id,
@@ -257,7 +280,7 @@ async fn handle_library(
                 body = body.has_watermark(*v);
             }
             let lib = core.update_video_library(*id, &body).await?;
-            print_library(&lib, format);
+            print_library(&lib, format, redact_cfg);
         }
         StreamLibraryAction::Delete { id } => {
             if !yes {
@@ -1117,12 +1140,20 @@ fn has_more_items<T>(list: &bunny_net_api::stream::PaginatedList<T>) -> bool {
     list.current_page.saturating_mul(list.items_per_page as i64) < list.total_items
 }
 
-fn print_library(lib: &VideoLibrary, format: OutputFormat) {
+/// Render a single video library.
+///
+/// `ApiKey` and `ReadOnlyApiKey` are sensitive — they grant full
+/// (resp. read-only) access to the library. They are redacted by default
+/// across every output format; `--reveal` opts in to the raw values.
+fn print_library(lib: &VideoLibrary, format: OutputFormat, redact_cfg: &RedactConfig) {
     if let OutputFormat::Json = format {
-        let json = serde_json::to_string_pretty(lib).expect("failed to serialize to JSON");
+        let mut value =
+            serde_json::to_value(lib).expect("failed to serialize video library to JSON");
+        redact_secrets_in_json(&mut value, redact_cfg);
+        let json = serde_json::to_string_pretty(&value).expect("failed to serialize to JSON");
         println!("{json}");
     } else {
-        let detail = VideoLibraryDetail::from(lib);
+        let detail = VideoLibraryDetail::from_library(lib, redact_cfg);
         output::print_single(&detail, format);
     }
 }

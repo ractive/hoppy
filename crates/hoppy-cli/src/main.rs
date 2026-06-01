@@ -72,8 +72,16 @@ async fn run(cli: Cli) {
             commands::dns::handle(action, cli.format, cli.debug, cli.yes, record).await
         }
         Commands::Stream { action } => {
-            commands::stream::handle(action, cli.format, cli.debug, cli.yes, cli.quiet, record)
-                .await
+            commands::stream::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.yes,
+                cli.quiet,
+                record,
+                &redact_cfg,
+            )
+            .await
         }
         Commands::Shield { action } => {
             commands::shield::handle(action, cli.format, cli.debug, cli.yes, record).await

@@ -1737,6 +1737,10 @@ pub enum StreamAction {
 #[derive(Subcommand)]
 pub enum StreamLibraryAction {
     /// List video libraries
+    ///
+    /// `ApiKey` and `ReadOnlyApiKey` are redacted by default in every
+    /// output format. Pass the global `--reveal` flag to print the raw
+    /// values.
     List {
         /// Filter by name
         #[arg(long)]
@@ -1749,12 +1753,20 @@ pub enum StreamLibraryAction {
         per_page: Option<u32>,
     },
     /// Get a specific video library
+    ///
+    /// `ApiKey` and `ReadOnlyApiKey` are redacted by default in every
+    /// output format. Pass the global `--reveal` flag to print the raw
+    /// values.
     Get {
         /// Stream library ID
         #[arg(long)]
         id: i64,
     },
     /// Create a video library
+    ///
+    /// The response includes `ApiKey` and `ReadOnlyApiKey`, which are
+    /// redacted by default. Pass the global `--reveal` flag to capture
+    /// the new credentials in scripts.
     Create {
         #[arg(long)]
         name: String,
