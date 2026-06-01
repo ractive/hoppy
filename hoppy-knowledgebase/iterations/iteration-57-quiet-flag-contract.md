@@ -25,7 +25,7 @@ See [[../backlog/quiet-flag-no-op-on-many-commands]].
 
 ## Scope
 
-### 1. Decide the contract [0/1]
+### 1. Decide the contract [1/1]
 
 - [x] Pick one of:
       (a) **Strict**: `--quiet` only suppresses ancillary lines
@@ -38,7 +38,7 @@ See [[../backlog/quiet-flag-no-op-on-many-commands]].
       Recommended: **(b)** for the predicate-style commands
       (`auth check`, `db ping`), **(a)** everywhere else.
 
-### 2. Audit the surface [0/2]
+### 2. Audit the surface [2/2]
 
 - [x] Walk every subcommand and classify it as "predicate"
       (success/failure is the entire signal) vs "data" (the
@@ -48,7 +48,7 @@ See [[../backlog/quiet-flag-no-op-on-many-commands]].
       (hints, "Deleted …" confirmations, etc.) that `--quiet`
       should suppress under the strict reading.
 
-### 3. Implement [0/3]
+### 3. Implement [3/3]
 
 - [x] Plumb the `quiet` flag through the print/hint helpers so
       "non-essential" lines are gated.
@@ -57,7 +57,7 @@ See [[../backlog/quiet-flag-no-op-on-many-commands]].
 - [x] Hide `--quiet` from `--help` on any command where it is a
       genuine no-op after the audit (or remove the unused arg).
 
-### 4. Tests [0/2]
+### 4. Tests [2/2]
 
 - [x] E2E test: `auth check --quiet` on success prints nothing,
       exits 0; on failure prints the error, exits non-zero.
