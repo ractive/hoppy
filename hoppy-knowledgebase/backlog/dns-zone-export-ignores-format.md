@@ -2,7 +2,7 @@
 title: dns zone export ignores --format and always emits raw BIND
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-06-01-round2
 tags:

@@ -2,7 +2,7 @@
 title: dns zone export emits literally nothing for empty zones
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-06-01-round2
 tags:
