@@ -7,7 +7,7 @@ tags:
   - cli
   - clap
   - dx
-status: in-progress
+status: completed
 branch: iter-62/negative-int-flag-sweep
 ---
 
