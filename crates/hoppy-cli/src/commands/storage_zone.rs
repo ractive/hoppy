@@ -60,27 +60,71 @@ pub async fn handle(
             search,
             page,
             per_page,
+            all,
         } => {
-            let result = client
-                .list_storage_zones(*page, *per_page, search.as_deref(), None)
-                .await?;
-            if let OutputFormat::Json = format {
-                let envelope = PaginatedListJson {
-                    items: &result.items,
-                    current_page: result.current_page,
-                    total_items: result.total_items,
-                    has_more_items: result.has_more_items,
-                };
-                let mut value = serde_json::to_value(&envelope)
-                    .context("failed to serialize storage zone list to JSON")?;
-                redact_secrets_in_json(&mut value, redact_cfg);
-                let json =
-                    serde_json::to_string_pretty(&value).context("failed to serialize to JSON")?;
-                println!("{json}");
+            if *all {
+                const AUTO_PER_PAGE: u32 = 1000;
+                let mut current_page: u32 = 1;
+                let mut accumulated: Vec<StorageZone> = Vec::new();
+                loop {
+                    let result = client
+                        .list_storage_zones(
+                            Some(current_page),
+                            Some(AUTO_PER_PAGE),
+                            search.as_deref(),
+                            None,
+                        )
+                        .await?;
+                    let has_more = result.has_more_items;
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<StorageZoneRow> =
+                            result.items.iter().map(StorageZoneRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    if !has_more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                if let OutputFormat::Json = format {
+                    let total = accumulated.len() as i64;
+                    let envelope = PaginatedListJson {
+                        items: &accumulated,
+                        current_page: current_page as i64,
+                        total_items: total,
+                        has_more_items: false,
+                    };
+                    let mut value = serde_json::to_value(&envelope)
+                        .context("failed to serialize storage zone list to JSON")?;
+                    redact_secrets_in_json(&mut value, redact_cfg);
+                    let json = serde_json::to_string_pretty(&value)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                }
             } else {
-                let rows: Vec<StorageZoneRow> =
-                    result.items.iter().map(StorageZoneRow::from).collect();
-                output::print_data(&rows, format);
+                let result = client
+                    .list_storage_zones(*page, *per_page, search.as_deref(), None)
+                    .await?;
+                if let OutputFormat::Json = format {
+                    let envelope = PaginatedListJson {
+                        items: &result.items,
+                        current_page: result.current_page,
+                        total_items: result.total_items,
+                        has_more_items: result.has_more_items,
+                    };
+                    let mut value = serde_json::to_value(&envelope)
+                        .context("failed to serialize storage zone list to JSON")?;
+                    redact_secrets_in_json(&mut value, redact_cfg);
+                    let json = serde_json::to_string_pretty(&value)
+                        .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                } else {
+                    let rows: Vec<StorageZoneRow> =
+                        result.items.iter().map(StorageZoneRow::from).collect();
+                    output::print_data(&rows, format);
+                }
             }
         }
         StorageZoneAction::Get { id } => {

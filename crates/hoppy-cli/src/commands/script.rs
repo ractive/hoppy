@@ -4,7 +4,7 @@ use crate::cli::{
     ScriptTypeArg, ScriptVariableAction,
 };
 use crate::output::{self, PaginatedListJson};
-use anyhow::{Result, bail};
+use anyhow::{Context as _, Result, bail};
 use bunny_net_api::compute::ComputeClient;
 use bunny_net_api::compute::{
     AddSecret, AddVariable, CreateEdgeScript, EdgeScript, EdgeScriptCode, EdgeScriptRelease,
@@ -265,7 +265,19 @@ pub async fn handle(
             search,
             page,
             per_page,
-        } => handle_list(search.as_deref(), *page, *per_page, format, debug, record).await,
+            all,
+        } => {
+            handle_list(
+                search.as_deref(),
+                *page,
+                *per_page,
+                *all,
+                format,
+                debug,
+                record,
+            )
+            .await
+        }
         ScriptAction::Get { id } => handle_get(*id, format, debug, record).await,
         ScriptAction::Create {
             name,
@@ -350,26 +362,62 @@ async fn handle_list(
     search: Option<&str>,
     page: Option<i32>,
     per_page: Option<i32>,
+    all: bool,
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let c = client(debug, record)?;
-    let result = c.list_scripts(page, per_page, search).await?;
-    if let OutputFormat::Json = format {
-        let envelope = PaginatedListJson {
-            items: &result.items,
-            current_page: result.current_page as i64,
-            total_items: result.total_items as i64,
-            has_more_items: result.has_more_items,
-        };
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
-        );
+    if all {
+        const AUTO_PER_PAGE: i32 = 1000;
+        let mut current_page: i32 = 1;
+        let mut accumulated: Vec<EdgeScript> = Vec::new();
+        loop {
+            let result = c
+                .list_scripts(Some(current_page), Some(AUTO_PER_PAGE), search)
+                .await?;
+            let has_more = result.has_more_items;
+            if let OutputFormat::Json = format {
+                accumulated.extend(result.items);
+            } else {
+                let rows: Vec<ScriptRow> = result.items.iter().map(ScriptRow::from).collect();
+                output::print_data(&rows, format);
+            }
+            if !has_more {
+                break;
+            }
+            current_page += 1;
+        }
+        if let OutputFormat::Json = format {
+            let total = accumulated.len() as i64;
+            let envelope = PaginatedListJson {
+                items: &accumulated,
+                current_page: current_page as i64,
+                total_items: total,
+                has_more_items: false,
+            };
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&envelope).context("failed to serialize to JSON")?
+            );
+        }
     } else {
-        let rows: Vec<ScriptRow> = result.items.iter().map(ScriptRow::from).collect();
-        output::print_data(&rows, format);
+        let result = c.list_scripts(page, per_page, search).await?;
+        if let OutputFormat::Json = format {
+            let envelope = PaginatedListJson {
+                items: &result.items,
+                current_page: result.current_page as i64,
+                total_items: result.total_items as i64,
+                has_more_items: result.has_more_items,
+            };
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&envelope).context("failed to serialize to JSON")?
+            );
+        } else {
+            let rows: Vec<ScriptRow> = result.items.iter().map(ScriptRow::from).collect();
+            output::print_data(&rows, format);
+        }
     }
     Ok(())
 }
@@ -570,22 +618,65 @@ async fn handle_release(
 ) -> Result<()> {
     let c = client(debug, record)?;
     match action {
-        ScriptReleaseAction::List { id, page, per_page } => {
-            let result = c.list_releases(*id, *page, *per_page).await?;
-            if let OutputFormat::Json = format {
-                let envelope = PaginatedListJson {
-                    items: &result.items,
-                    current_page: result.current_page as i64,
-                    total_items: result.total_items as i64,
-                    has_more_items: result.has_more_items,
-                };
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&envelope).expect("failed to serialize to JSON")
-                );
+        ScriptReleaseAction::List {
+            id,
+            page,
+            per_page,
+            all,
+        } => {
+            if *all {
+                const AUTO_PER_PAGE: i32 = 1000;
+                let mut current_page: i32 = 1;
+                let mut accumulated: Vec<EdgeScriptRelease> = Vec::new();
+                loop {
+                    let result = c
+                        .list_releases(*id, Some(current_page), Some(AUTO_PER_PAGE))
+                        .await?;
+                    let has_more = result.has_more_items;
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(result.items);
+                    } else {
+                        let rows: Vec<ReleaseRow> =
+                            result.items.iter().map(ReleaseRow::from).collect();
+                        output::print_data(&rows, format);
+                    }
+                    if !has_more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                if let OutputFormat::Json = format {
+                    let total = accumulated.len() as i64;
+                    let envelope = PaginatedListJson {
+                        items: &accumulated,
+                        current_page: current_page as i64,
+                        total_items: total,
+                        has_more_items: false,
+                    };
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&envelope)
+                            .context("failed to serialize to JSON")?
+                    );
+                }
             } else {
-                let rows: Vec<ReleaseRow> = result.items.iter().map(ReleaseRow::from).collect();
-                output::print_data(&rows, format);
+                let result = c.list_releases(*id, *page, *per_page).await?;
+                if let OutputFormat::Json = format {
+                    let envelope = PaginatedListJson {
+                        items: &result.items,
+                        current_page: result.current_page as i64,
+                        total_items: result.total_items as i64,
+                        has_more_items: result.has_more_items,
+                    };
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&envelope)
+                            .context("failed to serialize to JSON")?
+                    );
+                } else {
+                    let rows: Vec<ReleaseRow> = result.items.iter().map(ReleaseRow::from).collect();
+                    output::print_data(&rows, format);
+                }
             }
         }
         ScriptReleaseAction::GetActive { id } => {

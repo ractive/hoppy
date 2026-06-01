@@ -4,10 +4,10 @@ use crate::date;
 use anyhow::{Context as _, Result, bail};
 use bunny_net_api::database::types::{
     Authorization, CreateDatabaseGroupPayload, CreateDatabasePayload, CreateDatabaseV2Payload,
-    Database, Database2, DatabaseGroup, ForkDatabasePayload, GenerateTokenDatabaseGroupPayload,
-    GenerateTokenDatabasePayload, GenerateTokenDatabaseV2Payload, LimitsResponse,
-    ListConfigResponse, ListVersionsDatabasePayload, PingResult, Region,
-    RestoreVersionDatabasePayload, StorageRegion,
+    Database, Database2, DatabaseGroup, DatabaseV2PageInfo, ForkDatabasePayload,
+    GenerateTokenDatabaseGroupPayload, GenerateTokenDatabasePayload,
+    GenerateTokenDatabaseV2Payload, LimitsResponse, ListConfigResponse, ListDatabaseV2Response,
+    ListVersionsDatabasePayload, PingResult, Region, RestoreVersionDatabasePayload, StorageRegion,
 };
 
 use crate::auth;
@@ -513,26 +513,63 @@ async fn handle_v2(
             page,
             per_page,
             search,
+            all,
         } => {
-            let resp = client
-                .list_databases_v2(*page, *per_page, search.as_deref())
-                .await?;
-            match format {
-                OutputFormat::Json => output::print_dynamic_pascal(&resp, format),
-                OutputFormat::Table | OutputFormat::Text => {
-                    let rows: Vec<DatabaseV2Row> = resp.databases.iter().map(Into::into).collect();
-                    output::print_data(&rows, format);
-                    let p = &resp.page_info;
-                    eprintln!(
-                        "page {} • {} total • {}",
-                        p.current_page,
-                        p.total_items,
-                        if p.has_more_items {
-                            "more pages available"
-                        } else {
-                            "no more pages"
-                        }
-                    );
+            if *all {
+                const AUTO_PER_PAGE: u32 = 1000;
+                let mut current_page: u32 = 1;
+                let mut accumulated: Vec<Database2> = Vec::new();
+                loop {
+                    let resp = client
+                        .list_databases_v2(current_page, Some(AUTO_PER_PAGE), search.as_deref())
+                        .await?;
+                    let has_more = resp.page_info.has_more_items;
+                    if let OutputFormat::Json = format {
+                        accumulated.extend(resp.databases);
+                    } else {
+                        let rows: Vec<DatabaseV2Row> =
+                            resp.databases.iter().map(Into::into).collect();
+                        output::print_data(&rows, format);
+                    }
+                    if !has_more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                if let OutputFormat::Json = format {
+                    let total_items = accumulated.len() as i64;
+                    let combined = ListDatabaseV2Response {
+                        databases: accumulated,
+                        page_info: DatabaseV2PageInfo {
+                            current_page: current_page as i64,
+                            total_items,
+                            has_more_items: false,
+                        },
+                    };
+                    output::print_dynamic_pascal(&combined, format);
+                }
+            } else {
+                let resp = client
+                    .list_databases_v2(page.unwrap_or(1), *per_page, search.as_deref())
+                    .await?;
+                match format {
+                    OutputFormat::Json => output::print_dynamic_pascal(&resp, format),
+                    OutputFormat::Table | OutputFormat::Text => {
+                        let rows: Vec<DatabaseV2Row> =
+                            resp.databases.iter().map(Into::into).collect();
+                        output::print_data(&rows, format);
+                        let p = &resp.page_info;
+                        eprintln!(
+                            "page {} • {} total • {}",
+                            p.current_page,
+                            p.total_items,
+                            if p.has_more_items {
+                                "more pages available"
+                            } else {
+                                "no more pages"
+                            }
+                        );
+                    }
                 }
             }
         }

@@ -544,11 +544,14 @@ pub enum PullZoneAction {
         #[arg(long)]
         search: Option<String>,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<u32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a specific pull zone
     Get {
@@ -1398,11 +1401,14 @@ pub enum StorageZoneAction {
         #[arg(long)]
         search: Option<String>,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<u32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a specific storage zone
     Get {
@@ -1551,11 +1557,14 @@ pub enum DnsZoneAction {
         #[arg(long)]
         search: Option<String>,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<u32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a specific DNS zone
     Get {
@@ -1843,11 +1852,14 @@ pub enum StreamLibraryAction {
         #[arg(long)]
         search: Option<String>,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<u32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a specific video library
     ///
@@ -1916,10 +1928,10 @@ pub enum StreamVideoAction {
         #[arg(long = "id", alias = "library-id", value_name = "ID")]
         library_id: i64,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<u32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         items_per_page: Option<u32>,
         /// Filter by title
         #[arg(long)]
@@ -1930,6 +1942,9 @@ pub enum StreamVideoAction {
         /// Sort order
         #[arg(long)]
         order_by: Option<String>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a specific video
     Get {
@@ -2181,10 +2196,10 @@ pub enum StreamCollectionAction {
         #[arg(long = "id", alias = "library-id", value_name = "ID")]
         library_id: i64,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<u32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         items_per_page: Option<u32>,
         /// Filter by name
         #[arg(long)]
@@ -2192,6 +2207,9 @@ pub enum StreamCollectionAction {
         /// Sort order
         #[arg(long)]
         order_by: Option<String>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a specific collection
     Get {
@@ -2738,11 +2756,14 @@ pub enum ScriptAction {
         #[arg(long)]
         search: Option<String>,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<i32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         per_page: Option<i32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get an edge script by ID
     Get {
@@ -2867,11 +2888,14 @@ pub enum ScriptReleaseAction {
         #[arg(long)]
         id: i64,
         /// Page number (1-based)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         page: Option<i32>,
         /// Items per page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         per_page: Option<i32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get the active (live) release for a script
     GetActive {
@@ -3122,10 +3146,13 @@ pub enum ContainerAction {
     /// Shortcut for `container app list` — mirrors `pull-zone list` etc.
     /// `app` is the canonical subcommand; this alias is provided for symmetry.
     List {
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         cursor: Option<String>,
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         limit: Option<i32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Shortcut for `container app get`. `app` is the canonical subcommand.
     Get {
@@ -3148,11 +3175,14 @@ pub enum ContainerAppAction {
     /// List all applications
     List {
         /// Cursor for the next page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         cursor: Option<String>,
         /// Maximum number of results
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         limit: Option<i32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a specific application
     Get {
@@ -3665,11 +3695,14 @@ pub enum ContainerRegionAction {
     /// List available regions
     List {
         /// Cursor for the next page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         cursor: Option<String>,
         /// Maximum number of results
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         limit: Option<i32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get the optimal base region
     Optimal,
@@ -3680,11 +3713,14 @@ pub enum ContainerNodeAction {
     /// List available nodes
     List {
         /// Cursor for the next page
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         cursor: Option<String>,
         /// Maximum number of results
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
         limit: Option<i32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
 }
 
@@ -3912,12 +3948,15 @@ Hoppy validates locally before the API call."
 pub enum DbV2Action {
     /// List databases (v2)
     List {
-        #[arg(long, default_value_t = 1)]
-        page: u32,
-        #[arg(long)]
+        #[arg(long, conflicts_with = "all")]
+        page: Option<u32>,
+        #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
         #[arg(long)]
         search: Option<String>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Get a database (v2)
     Get {
