@@ -7,7 +7,7 @@ tags:
   - shield
   - errors
   - dx
-status: in-progress
+status: completed
 branch: iter-59/shield-error-envelope-sweep
 ---
 
