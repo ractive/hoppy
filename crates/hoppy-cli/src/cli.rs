@@ -2229,7 +2229,7 @@ pub enum ShieldMetricsAction {
     /// Get WAF rule metrics for a specific rule in a Shield Zone
     WafRule {
         /// Shield zone ID
-        #[arg(long)]
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
         /// WAF rule ID
         #[arg(long)]

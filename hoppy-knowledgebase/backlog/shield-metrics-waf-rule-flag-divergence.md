@@ -2,7 +2,7 @@
 title: shield metrics waf-rule uses --shield-zone-id while siblings use --id
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-06-01
 tags:
@@ -10,6 +10,7 @@ tags:
   - shield
   - dx
   - consistency
+resolved-in: iter-54
 ---
 
 # `shield metrics waf-rule` has the wrong shield-zone flag

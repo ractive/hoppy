@@ -1403,6 +1403,39 @@ async fn shield_metrics_waf_rule_json() {
             "shield",
             "metrics",
             "waf-rule",
+            "--id",
+            "55001",
+            "--rule-id",
+            "9001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+}
+
+#[tokio::test]
+async fn shield_metrics_waf_rule_accepts_shield_zone_id_alias() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/55001/waf-rule/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_waf_rule.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "waf-rule",
             "--shield-zone-id",
             "55001",
             "--rule-id",

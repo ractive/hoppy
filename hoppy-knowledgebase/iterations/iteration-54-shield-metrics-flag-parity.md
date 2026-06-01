@@ -8,7 +8,7 @@ tags:
   - metrics
   - dx
   - consistency
-status: planned
+status: completed
 branch: iter-54/shield-metrics-flag-parity
 ---
 
@@ -27,22 +27,22 @@ See [[../backlog/shield-metrics-waf-rule-flag-divergence]].
 
 ### 1. Pick the convention [1/1]
 
-- [ ] Decide: rename `--shield-zone-id` to `--id` on `waf-rule`
+- [x] Decide: rename `--shield-zone-id` to `--id` on `waf-rule`
       (matches all siblings) and keep `--shield-zone-id` as a
       hidden alias for back-compat.
 
-### 2. Implement [0/2]
+### 2. Implement [2/2]
 
-- [ ] Update `shield metrics waf-rule` clap arg: `long = "id"` with
+- [x] Update `shield metrics waf-rule` clap arg: `long = "id"` with
       `alias = "shield-zone-id"`.
-- [ ] Verify no other `shield metrics *` subcommand carries the old
+- [x] Verify no other `shield metrics *` subcommand carries the old
       name; if it does, apply the same alias.
 
-### 3. Tests [0/2]
+### 3. Tests [2/2]
 
-- [ ] E2E mock test calling `shield metrics waf-rule --id <z>
+- [x] E2E mock test calling `shield metrics waf-rule --id <z>
       --rule-id <r>` succeeds.
-- [ ] E2E mock test that `--shield-zone-id` still works (hidden
+- [x] E2E mock test that `--shield-zone-id` still works (hidden
       alias).
 
 ## Out of scope
@@ -52,11 +52,11 @@ See [[../backlog/shield-metrics-waf-rule-flag-divergence]].
 
 ## Acceptance Criteria
 
-- [ ] `hoppy shield metrics waf-rule --id <z> --rule-id <r>` works.
-- [ ] `hoppy shield metrics waf-rule --shield-zone-id <z> --rule-id <r>`
+- [x] `hoppy shield metrics waf-rule --id <z> --rule-id <r>` works.
+- [x] `hoppy shield metrics waf-rule --shield-zone-id <z> --rule-id <r>`
       still works (hidden alias).
-- [ ] `--help` shows `--id` as the documented flag.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] `--help` shows `--id` as the documented flag.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 
