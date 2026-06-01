@@ -1428,3 +1428,198 @@ async fn dns_zone_statistics_json() {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
     assert!(json["TotalQueriesServed"].is_number());
 }
+
+// ---------------------------------------------------------------------------
+// iter-60: dns zone export --format and empty-zone behaviour
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn dns_zone_export_format_json_wraps_bind_envelope() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("core/dnszone_export.txt"), "text/plain"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "dns", "zone", "export", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    let bind = json["Bind"].as_str().expect("Bind field must be a string");
+    assert!(bind.contains("$ORIGIN"));
+    assert!(bind.contains("example.com"));
+}
+
+#[tokio::test]
+async fn dns_zone_export_format_table_aliases_text() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("core/dnszone_export.txt"), "text/plain"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "table", "dns", "zone", "export", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("$ORIGIN"));
+    assert!(stdout.contains("example.com"));
+}
+
+#[tokio::test]
+async fn dns_zone_export_empty_zone_text_emits_comment() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw("", "text/plain"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["dns", "zone", "export", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.trim().is_empty(),
+        "empty-zone export must not be silent"
+    );
+    assert!(stdout.contains(";; zone"));
+    assert!(stdout.contains("0 records"));
+}
+
+#[tokio::test]
+async fn dns_zone_export_empty_zone_json_emits_envelope() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw("   \n", "text/plain"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "dns", "zone", "export", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    let bind = json["Bind"].as_str().expect("Bind field must be a string");
+    assert!(bind.contains(";; zone"));
+    assert!(bind.contains("0 records"));
+}
+
+#[tokio::test]
+async fn dns_zone_export_empty_zone_table_emits_comment() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw("", "text/plain"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "table", "dns", "zone", "export", "--id", "50001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains(";; zone"));
+    assert!(stdout.contains("0 records"));
+}
+
+#[tokio::test]
+async fn dns_zone_export_text_snapshot_matches_bind() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/export"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("core/dnszone_export.txt"), "text/plain"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "text", "dns", "zone", "export", "--id", "50001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let fixture: String = support::fixture("core/dnszone_export.txt");
+    // The fixture is the raw BIND text the API returns. The CLI's text output
+    // must preserve the BIND payload verbatim (with a trailing newline appended
+    // if missing) — no envelope, no extra framing.
+    let expected = if fixture.ends_with('\n') {
+        fixture
+    } else {
+        format!("{fixture}\n")
+    };
+    assert_eq!(stdout, expected);
+}

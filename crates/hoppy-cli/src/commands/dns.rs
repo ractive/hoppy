@@ -342,8 +342,26 @@ async fn handle_zone(
             );
         }
         DnsZoneAction::Export { id } => {
-            let content = client.export_dns_zone(*id).await?;
-            print!("{content}");
+            let raw = client.export_dns_zone(*id).await?;
+            let content = if raw.trim().is_empty() {
+                let zone = client.get_dns_zone(*id).await?;
+                format!(";; zone {} — 0 records\n", zone.domain)
+            } else if !raw.ends_with('\n') {
+                format!("{raw}\n")
+            } else {
+                raw
+            };
+            match format {
+                OutputFormat::Json => {
+                    let json =
+                        serde_json::to_string_pretty(&serde_json::json!({ "Bind": content }))
+                            .context("failed to serialize to JSON")?;
+                    println!("{json}");
+                }
+                OutputFormat::Table | OutputFormat::Text => {
+                    print!("{content}");
+                }
+            }
         }
         DnsZoneAction::Import { id, file } => {
             let zone_data = match file {

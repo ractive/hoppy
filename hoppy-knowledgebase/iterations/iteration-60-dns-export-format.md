@@ -7,7 +7,7 @@ tags:
   - dns
   - format
   - polish
-status: planned
+status: in-progress
 branch: iter-60/dns-export-format
 ---
 
@@ -30,7 +30,7 @@ See [[../backlog/dns-zone-export-ignores-format]] and
 
 ### 1. Decide the format mapping [0/1]
 
-- [ ] Pick the JSON shape:
+- [x] Pick the JSON shape:
       (a) **Envelope**: `{"Bind": "<BIND text>"}` — minimal, ships
           the same payload but JSON-wrapped.
       (b) **Structured**: `{"Records": [{...}, ...]}` — pre-parsed.
@@ -39,21 +39,21 @@ See [[../backlog/dns-zone-export-ignores-format]] and
 
 ### 2. Implement [0/3]
 
-- [ ] Route `dns zone export` through the standard `--format`
+- [x] Route `dns zone export` through the standard `--format`
       pipeline.
-- [ ] `--format json` emits the chosen envelope. `--format text`
+- [x] `--format json` emits the chosen envelope. `--format text`
       keeps the existing raw BIND output (current default
       behaviour). `--format table` either renders a per-record
       table or aliases to text — pick and document.
-- [ ] For empty zones, emit at minimum a `;; zone <domain> — 0 records`
+- [x] For empty zones, emit at minimum a `;; zone <domain> — 0 records`
       comment so stdout is never literally empty.
 
 ### 3. Tests [0/3]
 
-- [ ] E2E mock test for `--format json` on a zone with records.
-- [ ] E2E mock test for empty-zone behaviour across all three
+- [x] E2E mock test for `--format json` on a zone with records.
+- [x] E2E mock test for empty-zone behaviour across all three
       formats.
-- [ ] Snapshot test for `--format text` keeping current output.
+- [x] Snapshot test for `--format text` keeping current output.
 
 ## Out of scope
 
@@ -63,13 +63,13 @@ See [[../backlog/dns-zone-export-ignores-format]] and
 
 ## Acceptance Criteria
 
-- [ ] `dns zone export --format json` emits valid JSON for both
+- [x] `dns zone export --format json` emits valid JSON for both
       populated and empty zones.
-- [ ] `dns zone export --format text` keeps the current raw BIND
+- [x] `dns zone export --format text` keeps the current raw BIND
       output for populated zones.
-- [ ] Empty-zone exports produce non-empty stdout across all
+- [x] Empty-zone exports produce non-empty stdout across all
       formats.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.
 
 ## Related
 
