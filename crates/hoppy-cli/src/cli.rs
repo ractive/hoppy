@@ -511,6 +511,7 @@ pub enum AuthAction {
 pub enum VideoLibraryAction {
     /// Get DRM statistics for a video library
     DrmStatistics {
+        /// Video library ID
         #[arg(long)]
         id: i64,
         /// Start date (YYYY-MM-DD)
@@ -522,6 +523,7 @@ pub enum VideoLibraryAction {
     },
     /// Get transcribing statistics for a video library
     TranscribingStatistics {
+        /// Video library ID
         #[arg(long)]
         id: i64,
         /// Start date (YYYY-MM-DD)
@@ -578,6 +580,7 @@ pub enum PullZoneAction {
   hoppy pull-zone hostname add --id <pz-id> --hostname cdn.example.com
   hoppy pull-zone hostname load-free-cert --hostname cdn.example.com")]
     Create {
+        /// Pull Zone name. Becomes the hostname `<name>.b-cdn.net` and must be globally unique across bunny.net. Lowercase letters, digits, and hyphens only.
         #[arg(long)]
         name: String,
         /// HTTP/HTTPS origin URL the Pull Zone fetches from. Mutually
@@ -614,20 +617,28 @@ pub enum PullZoneAction {
         /// exclusive with --origin-url.
         #[arg(long)]
         storage_zone_id: Option<i64>,
+        /// Monthly bandwidth limit in bytes (0 = unlimited).
         #[arg(long)]
         monthly_bandwidth_limit: Option<i64>,
+        /// Default cache TTL in seconds (-1 = honour origin headers).
         #[arg(long)]
         cache_expiration_time: Option<i64>,
+        /// Enable Zone Security (token-signed URLs).
         #[arg(long)]
         zone_security_enabled: Option<bool>,
+        /// Serve from US PoPs.
         #[arg(long)]
         enable_geo_zone_us: Option<bool>,
+        /// Serve from EU PoPs.
         #[arg(long)]
         enable_geo_zone_eu: Option<bool>,
+        /// Serve from Asia PoPs.
         #[arg(long)]
         enable_geo_zone_asia: Option<bool>,
+        /// Serve from South America PoPs.
         #[arg(long)]
         enable_geo_zone_sa: Option<bool>,
+        /// Serve from Africa PoPs.
         #[arg(long)]
         enable_geo_zone_af: Option<bool>,
 
@@ -1182,11 +1193,13 @@ pub enum PullZoneAction {
 pub enum PullZoneReferrerAction {
     /// List allowed and blocked referrers for a pull zone
     List {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
     },
     /// Add a hostname to the allowed referrer list
     Allow {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
         /// Referrer hostname pattern (e.g. example.com or *.example.com)
@@ -1195,22 +1208,28 @@ pub enum PullZoneReferrerAction {
     },
     /// Remove a hostname from the allowed referrer list
     RemoveAllowed {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Referrer hostname pattern to remove
         #[arg(long)]
         value: String,
     },
     /// Add a hostname to the blocked referrer list
     Block {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Referrer hostname pattern (e.g. example.com or *.example.com)
         #[arg(long)]
         value: String,
     },
     /// Remove a hostname from the blocked referrer list
     RemoveBlocked {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Referrer hostname pattern to remove
         #[arg(long)]
         value: String,
     },
@@ -1220,20 +1239,25 @@ pub enum PullZoneReferrerAction {
 pub enum PullZoneIpAction {
     /// List blocked IPs for a pull zone
     List {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
     },
     /// Block an IP address (single IP or CIDR range)
     Block {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// IP address or CIDR range to block (e.g. 1.2.3.4 or 10.0.0.0/8)
         #[arg(long)]
         value: String,
     },
     /// Unblock an IP address
     Unblock {
+        /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// IP address or CIDR range to unblock
         #[arg(long)]
         value: String,
     },
@@ -1339,6 +1363,7 @@ pub enum PullZoneHostnameAction {
         /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Custom hostname to attach (e.g. cdn.example.com)
         #[arg(long)]
         hostname: String,
     },
@@ -1347,6 +1372,7 @@ pub enum PullZoneHostnameAction {
         /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Custom hostname to remove
         #[arg(long)]
         hostname: String,
     },
@@ -1361,6 +1387,7 @@ pub enum PullZoneHostnameAction {
         /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Hostname to configure Force SSL on
         #[arg(long)]
         hostname: String,
         /// Enable or disable Force SSL
@@ -1372,6 +1399,7 @@ pub enum PullZoneHostnameAction {
         /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Hostname the certificate applies to
         #[arg(long)]
         hostname: String,
         /// Base64-encoded PEM certificate
@@ -1386,6 +1414,7 @@ pub enum PullZoneHostnameAction {
         /// Pull zone ID
         #[arg(long)]
         id: i64,
+        /// Hostname to remove the certificate from
         #[arg(long)]
         hostname: String,
     },
@@ -1429,6 +1458,7 @@ pub enum StorageZoneAction {
     ///   # After creation, retrieve credentials with `--reveal`:
     ///   hoppy storage-zone get --reveal --id <id>
     Create {
+        /// Storage zone name (used as the hostname prefix for the storage endpoint).
         #[arg(long)]
         name: String,
         /// Primary region (e.g. DE, NY, LA, SG, SYD)
@@ -1446,10 +1476,13 @@ pub enum StorageZoneAction {
         /// Storage zone ID
         #[arg(long)]
         id: i64,
+        /// Rewrite 404 responses to 200 (useful for SPAs).
         #[arg(long)]
         rewrite_404_to_200: Option<bool>,
+        /// Path to a custom 404 file served in place of the default error page.
         #[arg(long)]
         custom_404_file_path: Option<String>,
+        /// HTTP/HTTPS origin URL for the storage zone (when used as an origin mirror).
         #[arg(long)]
         origin_url: Option<String>,
     },
@@ -1574,6 +1607,7 @@ pub enum DnsZoneAction {
     },
     /// Create a DNS zone
     Create {
+        /// Domain name for the new DNS zone (e.g. example.com)
         #[arg(long)]
         domain: String,
     },
@@ -1663,6 +1697,7 @@ pub enum DnsZoneAction {
 pub enum DnsDnssecAction {
     /// Enable DNSSEC and display the DS record details to copy to your registrar.
     Enable {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
     },
@@ -1672,11 +1707,13 @@ pub enum DnsDnssecAction {
     /// disabling DNSSEC at bunny.net will break resolution. Remove the DS
     /// records from your registrar first.
     Disable {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
     },
     /// Show the current DNSSEC status (read from the DNS zone metadata).
     Status {
+        /// DNS zone ID
         #[arg(long)]
         id: i64,
     },
@@ -1877,6 +1914,7 @@ pub enum StreamLibraryAction {
     /// redacted by default. Pass the global `--reveal` flag to capture
     /// the new credentials in scripts.
     Create {
+        /// Display name for the new video library.
         #[arg(long)]
         name: String,
     },
@@ -1885,12 +1923,16 @@ pub enum StreamLibraryAction {
         /// Stream library ID
         #[arg(long)]
         id: i64,
+        /// New display name for the library.
         #[arg(long)]
         name: Option<String>,
+        /// Allow viewers to directly download or play the original video.
         #[arg(long)]
         allow_direct_play: Option<bool>,
+        /// Generate MP4 fallback renditions for compatibility with older players.
         #[arg(long)]
         enable_mp4_fallback: Option<bool>,
+        /// Overlay a watermark on encoded video renditions.
         #[arg(long)]
         has_watermark: Option<bool>,
     },
@@ -2082,14 +2124,19 @@ pub enum StreamVideoAction {
         /// Video GUID
         #[arg(long)]
         video_id: String,
+        /// Language code for AI generation (ISO 639-1, e.g. `en`)
         #[arg(long)]
         language: Option<String>,
+        /// Auto-generate a title for the video
         #[arg(long)]
         generate_title: bool,
+        /// Auto-generate a description for the video
         #[arg(long)]
         generate_description: bool,
+        /// Auto-generate chapter markers for the video
         #[arg(long)]
         generate_chapters: bool,
+        /// Auto-generate moment highlights for the video
         #[arg(long)]
         generate_moments: bool,
     },
@@ -2101,6 +2148,7 @@ pub enum StreamVideoAction {
         /// Video GUID
         #[arg(long)]
         video_id: String,
+        /// Public URL of the image to use as the video thumbnail
         #[arg(long)]
         thumbnail_url: String,
     },
@@ -2376,11 +2424,13 @@ pub enum ShieldZoneAction {
     },
     /// Get a Shield Zone by Pull Zone ID
     GetByPullzone {
+        /// Pull zone ID to look up the associated Shield Zone for
         #[arg(long)]
         pull_zone_id: i64,
     },
     /// Create a Shield Zone for a Pull Zone
     Create {
+        /// Pull zone ID to attach the new Shield Zone to
         #[arg(long)]
         pull_zone_id: i64,
     },
@@ -2773,6 +2823,7 @@ pub enum ScriptAction {
     },
     /// Create a new edge script
     Create {
+        /// Display name for the edge script.
         #[arg(long)]
         name: String,
         /// Script type
@@ -2865,11 +2916,13 @@ pub enum ScriptAction {
 pub enum ScriptCodeAction {
     /// Get the current draft source code
     Get {
+        /// Script ID
         #[arg(long)]
         id: i64,
     },
     /// Update the draft source code
     Update {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Inline source code
@@ -2885,6 +2938,7 @@ pub enum ScriptCodeAction {
 pub enum ScriptReleaseAction {
     /// List all releases for a script
     List {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Page number (1-based)
@@ -2899,6 +2953,7 @@ pub enum ScriptReleaseAction {
     },
     /// Get the active (live) release for a script
     GetActive {
+        /// Script ID
         #[arg(long)]
         id: i64,
     },
@@ -2908,11 +2963,13 @@ pub enum ScriptReleaseAction {
 pub enum ScriptVariableAction {
     /// List environment variables for a script
     List {
+        /// Script ID
         #[arg(long)]
         id: i64,
     },
     /// Add an environment variable to a script
     Add {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Variable name
@@ -2927,6 +2984,7 @@ pub enum ScriptVariableAction {
     },
     /// Update an environment variable
     Update {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Variable ID
@@ -2941,6 +2999,7 @@ pub enum ScriptVariableAction {
     },
     /// Delete an environment variable
     Delete {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Variable ID
@@ -2949,6 +3008,7 @@ pub enum ScriptVariableAction {
     },
     /// Upsert (create or update by name) an environment variable
     Upsert {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Variable name
@@ -2967,11 +3027,13 @@ pub enum ScriptVariableAction {
 pub enum ScriptSecretAction {
     /// List secrets for a script
     List {
+        /// Script ID
         #[arg(long)]
         id: i64,
     },
     /// Add a secret to a script
     Add {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Secret name
@@ -2983,6 +3045,7 @@ pub enum ScriptSecretAction {
     },
     /// Update a secret's value
     Update {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Secret ID
@@ -2994,6 +3057,7 @@ pub enum ScriptSecretAction {
     },
     /// Delete a secret
     Delete {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Secret ID
@@ -3002,6 +3066,7 @@ pub enum ScriptSecretAction {
     },
     /// Upsert (create or update by name) a secret
     Upsert {
+        /// Script ID
         #[arg(long)]
         id: i64,
         /// Secret name
@@ -3146,8 +3211,10 @@ pub enum ContainerAction {
     /// Shortcut for `container app list` — mirrors `pull-zone list` etc.
     /// `app` is the canonical subcommand; this alias is provided for symmetry.
     List {
+        /// Cursor for the next page
         #[arg(long, conflicts_with = "all")]
         cursor: Option<String>,
+        /// Maximum number of results
         #[arg(long, conflicts_with = "all")]
         limit: Option<i32>,
         /// Automatically paginate through all available pages
@@ -3156,15 +3223,19 @@ pub enum ContainerAction {
     },
     /// Shortcut for `container app get`. `app` is the canonical subcommand.
     Get {
+        /// Container app ID
         #[arg(long)]
         id: String,
     },
     /// Shortcut for `container app delete`. `app` is the canonical subcommand.
     Delete {
+        /// Container app ID
         #[arg(long)]
         id: String,
+        /// Also delete every auto-managed Pull Zone owned by this app.
         #[arg(long, conflicts_with = "no_cascade")]
         cascade: bool,
+        /// Delete only the app; print orphan Pull Zone IDs for manual cleanup.
         #[arg(long)]
         no_cascade: bool,
     },
@@ -3594,6 +3665,7 @@ pub enum ContainerRegistryAction {
     List,
     /// Get a specific container registry
     Get {
+        /// Registry ID
         #[arg(long)]
         id: i64,
     },
@@ -3614,6 +3686,7 @@ pub enum ContainerRegistryAction {
     },
     /// Update a container registry
     Update {
+        /// Registry ID
         #[arg(long)]
         id: i64,
         /// New display name
@@ -3628,6 +3701,7 @@ pub enum ContainerRegistryAction {
     },
     /// Delete a container registry
     Delete {
+        /// Registry ID
         #[arg(long)]
         id: i64,
     },
@@ -3894,6 +3968,7 @@ Hoppy validates locally before the API call."
     },
     /// Get statistics for a database (v2)
     Statistics {
+        /// Database ID
         #[arg(long)]
         id: String,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
@@ -3905,6 +3980,7 @@ Hoppy validates locally before the API call."
     },
     /// Get aggregated usage for a database (v2)
     Usage {
+        /// Database ID
         #[arg(long)]
         id: String,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
@@ -3948,10 +4024,13 @@ Hoppy validates locally before the API call."
 pub enum DbV2Action {
     /// List databases (v2)
     List {
+        /// Page number (1-based)
         #[arg(long, conflicts_with = "all")]
         page: Option<u32>,
+        /// Items per page
         #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
+        /// Filter by name
         #[arg(long)]
         search: Option<String>,
         /// Automatically paginate through all available pages
@@ -3960,6 +4039,7 @@ pub enum DbV2Action {
     },
     /// Get a database (v2)
     Get {
+        /// Database ID
         #[arg(long)]
         id: String,
     },
@@ -3968,6 +4048,7 @@ pub enum DbV2Action {
     /// long_help: storage-region uses flat regions (eu-west-1, us-east-1).
     /// primary-region/replicas-region use compute codes (DE, FR, AMS, …).
     Create {
+        /// Display name for the database.
         #[arg(long)]
         name: String,
         /// Storage region, e.g. `eu-west-1` (see `db config show`)
@@ -3982,6 +4063,7 @@ pub enum DbV2Action {
     },
     /// Delete a database (v2)
     Delete {
+        /// Database ID
         #[arg(long)]
         id: String,
     },
@@ -3991,11 +4073,13 @@ pub enum DbV2Action {
 pub enum DbGroupAction {
     /// List database groups
     List {
+        /// Filter by name
         #[arg(long)]
         search: Option<String>,
     },
     /// Get a database group
     Get {
+        /// Database group ID
         #[arg(long)]
         id: String,
     },
@@ -4019,11 +4103,13 @@ pub enum DbGroupAction {
     },
     /// Delete a database group
     Delete {
+        /// Database group ID
         #[arg(long)]
         id: String,
     },
     /// Get statistics for a database group
     Stats {
+        /// Database group ID
         #[arg(long)]
         id: String,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
@@ -4035,6 +4121,7 @@ pub enum DbGroupAction {
     },
     /// Get aggregated usage for a database group
     Usage {
+        /// Database group ID
         #[arg(long)]
         id: String,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
@@ -4046,11 +4133,13 @@ pub enum DbGroupAction {
     },
     /// Get live metrics for one or more groups
     Live {
+        /// Database group IDs to fetch live metrics for (repeatable)
         #[arg(long = "id", value_name = "GROUP_ID")]
         ids: Vec<String>,
     },
     /// Generate a new auth token for a whole group
     GenerateKeys {
+        /// Database group ID
         #[arg(long)]
         id: String,
         /// Token scope: full-access (default) or read-only
@@ -4062,6 +4151,7 @@ pub enum DbGroupAction {
     },
     /// Invalidate every auth token for a group
     InvalidateKeys {
+        /// Database group ID
         #[arg(long)]
         id: String,
     },
@@ -4078,6 +4168,7 @@ pub enum DbTokenAction {
     /// By default the JWT is redacted in the output (length + scope only).
     /// Pass `--reveal` (the global flag) to print the raw token.
     Mint {
+        /// Database ID (db_<ulid>)
         #[arg(long)]
         db_id: String,
         /// Token scope: full-access or read-only
@@ -4089,20 +4180,25 @@ pub enum DbTokenAction {
     },
     /// Invalidate every auth token for a database (v1)
     Invalidate {
+        /// Database ID (db_<ulid>)
         #[arg(long)]
         db_id: String,
     },
     /// Mint a JWT for a database (v2)
     GenerateV2 {
+        /// Database ID (db_<ulid>)
         #[arg(long)]
         db_id: String,
+        /// Token scope: full-access or read-only
         #[arg(long, value_enum, default_value_t = TokenAuthorization::FullAccess)]
         authorization: TokenAuthorization,
+        /// Optional expiry timestamp (RFC 3339)
         #[arg(long)]
         expires_at: Option<String>,
     },
     /// Revoke every auth token for a database (v2)
     RevokeV2 {
+        /// Database ID (db_<ulid>)
         #[arg(long)]
         db_id: String,
     },
