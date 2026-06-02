@@ -7,7 +7,7 @@ tags:
   - cli
   - help
   - polish
-status: in-progress
+status: completed
 branch: iter-64/empty-help-strings-sweep
 ---
 
