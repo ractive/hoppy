@@ -23,13 +23,13 @@ See [[../backlog/pull-zone-create-name-help-empty]].
 
 ## Scope
 
-### 1. Audit [0/1]
+### 1. Audit [1/1]
 
 - [x] Grep the workspace for `#[arg(...)]` declarations without a
       `help = "..."` (or a doc comment that clap uses). Build the
       list — at minimum `pull-zone create --name`; probably more.
 
-### 2. Implement [0/2]
+### 2. Implement [2/2]
 
 - [x] Write a one-liner help description for each flag in the
       audit list. For `pull-zone create --name`, use something
@@ -39,7 +39,7 @@ See [[../backlog/pull-zone-create-name-help-empty]].
       > letters, digits, and hyphens only.
 - [x] Match tone to surrounding flags on the same subcommand.
 
-### 3. Tests [0/2]
+### 3. Tests [2/2]
 
 - [x] Add a workspace-level unit test that walks every clap arg
       and asserts `help.is_some() && !help.unwrap().is_empty()`.
