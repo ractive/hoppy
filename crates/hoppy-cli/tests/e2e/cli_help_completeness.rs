@@ -1,16 +1,19 @@
+//! Asserts that every `--flag` in the entire Cli command tree has non-empty
+//! help text. This catches regressions where a new arg is added without a
+//! `///` doc comment (the convention used throughout cli.rs).
+//!
+//! The walk skips clap-internal flags (`help`, `version`) whose help text is
+//! auto-generated and never empty, so false positives are not a concern —
+//! but they would pass anyway.
+
 use clap::CommandFactory;
-/// Asserts that every `--flag` in the entire Cli command tree has non-empty
-/// help text. This catches regressions where a new arg is added without a
-/// `///` doc comment (the convention used throughout cli.rs).
-///
-/// The walk skips clap-internal flags (`help`, `version`) whose help text is
-/// auto-generated and never empty, so false positives are not a concern —
-/// but they would pass anyway.
 use hoppy_cli::cli::Cli;
+
+use super::support;
 
 fn walk_command(cmd: &clap::Command, path: &str, failures: &mut Vec<String>) {
     for arg in cmd.get_arguments() {
-        // Skip positional args (no long/short name) and clap builtins.
+        // Skip args with no long name (positionals and short-only flags).
         let Some(long) = arg.get_long() else { continue };
         if long == "help" || long == "version" {
             continue;
@@ -44,11 +47,18 @@ fn all_args_have_help_text() {
 /// description introduced in iter-64.
 #[test]
 fn pull_zone_create_help_shows_name_description() {
-    let output = std::process::Command::new(assert_cmd::cargo::cargo_bin("hoppy"))
+    let output = support::hoppy_cmd()
         .args(["pull-zone", "create", "--help"])
-        .env_remove("BUNNY_API_KEY")
         .output()
         .expect("failed to run hoppy");
+
+    assert!(
+        output.status.success(),
+        "`hoppy pull-zone create --help` failed: status={:?}\nstdout: {}\nstderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
