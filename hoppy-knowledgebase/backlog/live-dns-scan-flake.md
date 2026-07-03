@@ -1,8 +1,8 @@
 ---
-title: "live_dns_zone_record_scan_lifecycle times out waiting for scan to finish"
+title: live_dns_zone_record_scan_lifecycle times out waiting for scan to finish
 type: backlog
 date: 2026-05-14
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-14 (iter-33 §5 sweep)
 ---

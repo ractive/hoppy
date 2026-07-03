@@ -2,7 +2,7 @@
 title: "`statistics --hourly` produces identical table output to non-hourly"
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-31
 tags:

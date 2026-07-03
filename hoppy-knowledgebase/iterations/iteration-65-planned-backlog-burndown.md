@@ -34,39 +34,39 @@ The remaining 4 are bundled here:
 
 ### 1. `statistics --hourly` visible effect
 
-- [ ] Print a hint after the table when `--hourly` is set and format is
+- [x] Print a hint after the table when `--hourly` is set and format is
   table: hourly buckets are only in `--format json` (suppressed by
   `--quiet`, consistent with the global hints gate)
-- [ ] e2e test locking the hint (present with `--hourly`, absent without,
+- [x] e2e test locking the hint (present with `--hourly`, absent without,
   absent with `--quiet` / `--format json`)
 
 ### 2. Last 4 pull-zone toggles
 
 All four confirmed present in `specs/core-platform.json`.
 
-- [ ] `EnableBunnyImageAi`, `EnableLogging`, `EnableExtendedLogging`,
+- [x] `EnableBunnyImageAi`, `EnableLogging`, `EnableExtendedLogging`,
   `EnableWebSockets` added to `PullZone` read struct
-- [ ] Same four added to `UpdatePullZone` body (`skip_serializing_if`)
-- [ ] CLI flags on `pull-zone update` with dashboard-style help text,
+- [x] Same four added to `UpdatePullZone` body (`skip_serializing_if`)
+- [x] CLI flags on `pull-zone update` with dashboard-style help text,
   forwarded in `commands/pull_zone.rs`
-- [ ] Wiremock serialize/deserialize coverage + e2e `--help` snapshot refresh
-- [ ] Fixture `fixtures/core/pullzone_get.json` carries the new keys
+- [x] Wiremock serialize/deserialize coverage + e2e `--help` snapshot refresh
+- [x] Fixture `fixtures/core/pullzone_get.json` carries the new keys
 
 ### 3. DNS scan lifecycle flake
 
-- [ ] Relax `live_dns_zone_record_scan_lifecycle`: keep polling for a
+- [x] Relax `live_dns_zone_record_scan_lifecycle`: keep polling for a
   terminal state but stop failing on a scan that stays Pending — assert
   scan started + status is a well-typed known value (terminal-state timing
   is the API's behaviour, not hoppy's)
-- [ ] Verified with a live run (`TEST_BUNNY_API_KEY`)
+- [x] Verified with a live run (`TEST_BUNNY_API_KEY`)
 
 ### 4. Stream collection 401 diagnosis
 
-- [ ] Reproduce `live_stream_collection_lifecycle` in isolation against the
+- [x] Reproduce `live_stream_collection_lifecycle` in isolation against the
   test account; distinguish cleanup race vs plan feature-gate
-- [ ] Fix accordingly: cleanup ordering, or skip-with-message when the
+- [x] Fix accordingly: cleanup ordering, or skip-with-message when the
   account lacks the feature
-- [ ] Correct the stale hypothesis in the backlog note
+- [x] Correct the stale hypothesis in the backlog note
 
 ## Out of scope
 
@@ -77,11 +77,11 @@ All four confirmed present in `specs/core-platform.json`.
 
 ## Acceptance
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings` clean,
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings` clean,
   `cargo test --workspace --quiet` green
-- [ ] Both live tests pass (or skip gracefully with a clear message) with
+- [x] Both live tests pass (or skip gracefully with a clear message) with
   `BUNNY_API_KEY=$TEST_BUNNY_API_KEY --features live-api`
-- [ ] All four backlog items moved to `resolved`/documented follow-up
+- [x] All four backlog items moved to `resolved`/documented follow-up
 
 ## Related
 
