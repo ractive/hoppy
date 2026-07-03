@@ -2,7 +2,7 @@
 title: dns issue-cert undelegated returns generic 500 ()
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-06-01-round2
 tags:

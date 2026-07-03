@@ -2,7 +2,7 @@
 title: statistics and stream library statistics return chart maps in arbitrary order
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-06-01
 tags:

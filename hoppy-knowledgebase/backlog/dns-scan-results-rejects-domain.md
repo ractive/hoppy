@@ -1,8 +1,8 @@
 ---
-title: `dns zone scan results` rejects `--domain`, breaking the pre-zone scan workflow
+title: "`dns zone scan results` rejects `--domain`, breaking the pre-zone scan workflow"
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-31
 tags:

@@ -8,7 +8,7 @@ tags:
   - cli
   - help-text
   - consistency
-status: in-progress
+status: completed
 branch: iter-42/dogfooding-2026-05-29-fixes
 ---
 

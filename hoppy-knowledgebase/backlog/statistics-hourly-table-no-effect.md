@@ -1,5 +1,5 @@
 ---
-title: `statistics --hourly` produces identical table output to non-hourly
+title: "`statistics --hourly` produces identical table output to non-hourly"
 type: backlog
 date: 2026-05-31
 status: planned

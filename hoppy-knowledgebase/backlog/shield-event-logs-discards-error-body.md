@@ -2,7 +2,7 @@
 title: shield event-logs discards the rich errorResponse body on 401
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-06-01-round2
 tags:

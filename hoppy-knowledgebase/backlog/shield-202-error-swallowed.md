@@ -1,8 +1,10 @@
 ---
-title: Shield 202-with-error responses are reported as "No results", hiding the upgrade message
+title: >-
+  Shield 202-with-error responses are reported as "No results", hiding the
+  upgrade message
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: high
 origin: dogfooding-2026-05-31
 tags:

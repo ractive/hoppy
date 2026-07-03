@@ -1,8 +1,8 @@
 ---
-title: `EnableGeoZone*` fields deserialize to false because of casing mismatch with API
+title: "`EnableGeoZone*` fields deserialize to false because of casing mismatch with API"
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: high
 origin: dogfooding-2026-05-31
 tags:

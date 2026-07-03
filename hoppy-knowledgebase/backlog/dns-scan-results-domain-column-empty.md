@@ -2,7 +2,7 @@
 title: dns zone scan results --domain shows blank Domain column
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: low
 origin: dogfooding-2026-06-01
 tags:
