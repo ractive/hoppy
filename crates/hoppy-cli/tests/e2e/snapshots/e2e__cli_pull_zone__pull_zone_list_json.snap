@@ -168,7 +168,11 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "LimitRateAfter": 0.0,
       "LimitRatePerSecond": 0.0,
       "ConnectionLimitPerIPCount": 0,
-      "MaxWebSocketConnections": 500
+      "MaxWebSocketConnections": 500,
+      "EnableBunnyImageAi": false,
+      "EnableLogging": true,
+      "EnableExtendedLogging": false,
+      "EnableWebSockets": true
     },
     {
       "Id": 1001,
@@ -327,7 +331,11 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "LimitRateAfter": 0.0,
       "LimitRatePerSecond": 0.0,
       "ConnectionLimitPerIPCount": 0,
-      "MaxWebSocketConnections": 500
+      "MaxWebSocketConnections": 500,
+      "EnableBunnyImageAi": false,
+      "EnableLogging": true,
+      "EnableExtendedLogging": false,
+      "EnableWebSockets": true
     }
   ],
   "CurrentPage": 1,

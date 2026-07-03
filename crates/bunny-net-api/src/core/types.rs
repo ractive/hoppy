@@ -988,6 +988,16 @@ pub struct PullZone {
     pub connection_limit_per_ip_count: Option<i32>,
     #[serde(default)]
     pub max_web_socket_connections: Option<i32>,
+
+    // Remaining toggles (iter-65)
+    #[serde(default)]
+    pub enable_bunny_image_ai: bool,
+    #[serde(default)]
+    pub enable_logging: bool,
+    #[serde(default)]
+    pub enable_extended_logging: bool,
+    #[serde(default)]
+    pub enable_web_sockets: bool,
 }
 
 /// Generic paginated list response returned by the bunny.net API.
@@ -1440,6 +1450,16 @@ pub struct UpdatePullZone {
     pub connection_limit_per_ip_count: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_web_socket_connections: Option<i32>,
+
+    // Remaining toggles (iter-65)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_bunny_image_ai: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_logging: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_extended_logging: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_web_sockets: Option<bool>,
 }
 
 impl UpdatePullZone {
@@ -2189,6 +2209,32 @@ impl UpdatePullZone {
     #[must_use]
     pub fn max_web_socket_connections(mut self, v: i32) -> Self {
         self.max_web_socket_connections = Some(v);
+        self
+    }
+
+    // ── Remaining toggles (iter-65) ──────────────────────────────────────────
+
+    #[must_use]
+    pub fn enable_bunny_image_ai(mut self, v: bool) -> Self {
+        self.enable_bunny_image_ai = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_logging(mut self, v: bool) -> Self {
+        self.enable_logging = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_extended_logging(mut self, v: bool) -> Self {
+        self.enable_extended_logging = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_web_sockets(mut self, v: bool) -> Self {
+        self.enable_web_sockets = Some(v);
         self
     }
 }

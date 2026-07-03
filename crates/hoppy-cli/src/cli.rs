@@ -1133,6 +1133,20 @@ pub enum PullZoneAction {
             help_heading = "Firewall / rate limiting"
         )]
         max_web_socket_connections: Option<i32>,
+
+        // ── Remaining toggles (iter-65) ──────────────────────────────────────
+        /// Enable WebSocket connections for this pull zone.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Firewall / rate limiting")]
+        enable_web_sockets: Option<bool>,
+        /// Enable raw CDN access logging for this pull zone.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Log forwarding")]
+        enable_logging: Option<bool>,
+        /// Include additional request details (e.g. headers) in CDN logs.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Log forwarding")]
+        enable_extended_logging: Option<bool>,
+        /// Enable Bunny Image AI processing for this pull zone.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
+        enable_bunny_image_ai: Option<bool>,
     },
     /// Delete a pull zone
     Delete {
