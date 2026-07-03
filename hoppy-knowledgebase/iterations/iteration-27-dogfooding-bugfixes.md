@@ -19,7 +19,7 @@ modules. Bundling them so one PR ships the round's correctness work.
 ## Scope
 
 ### 1. `container logs` clap panic — CRITICAL
-Source: [[../backlog/container-logs-clap-panic]]
+Source: [[backlog/container-logs-clap-panic]]
 
 `hoppy container logs --app-id <id>` panics with
 `Mismatch between definition and access of 'format'` before doing any work.
@@ -36,7 +36,8 @@ Iter-24's headline feature is unusable.
       (`hoppy container logs --app-id <id> --tunnel none`).
 
 ### 2. `dns zone scan results` panics on pending scan
-Source: [[../backlog/dns-scan-results-null-records]]
+
+Source: [[backlog/dns-scan-results-null-records]]
 
 API returns `"Records": null` while the scan is in flight; hoppy's
 `Vec<Record>` deserialise blows up.
@@ -49,7 +50,8 @@ API returns `"Records": null` while the scan is in flight; hoppy's
       sleep) and assert no error.
 
 ### 3. `pull-zone update --optimizer-classes` rejected by API
-Source: [[../backlog/optimizer-classes-rejected]]
+
+Source: [[backlog/optimizer-classes-rejected]]
 
 Iter-26's optimizer-classes flag always returns 400 `model.invalid`.
 Likely the bunny.net API expects a string-encoded JSON map on the request
@@ -64,7 +66,8 @@ side (matching the response side, where the deserializer already tolerates
       asserts equality.
 
 ### 4. Shield error responses surface as "error 0: unknown"
-Source: [[../backlog/shield-api-error-mapping]]
+
+Source: [[backlog/shield-api-error-mapping]]
 
 Shield API errors are wrapped in
 `{"error": {"statusCode", "errorKey", "message"}, "data": null}`. The
@@ -80,7 +83,8 @@ unknown`, dropping every useful field.
       a config — should report 404 + the API's real message.
 
 ### 5. `db config optimal-single` returns nonsense error
-Source: [[../backlog/db-config-optimal-single-broken]]
+
+Source: [[backlog/db-config-optimal-single-broken]]
 
 The endpoint replies with
 `Failed to deserialize query string: missing field 'cdn_server_token'`,
@@ -109,5 +113,5 @@ formatting) is bundled into iter-28 — see
 
 ## Related
 
-- [[../dogfooding/dogfooding-playbook]]
+- [[dogfooding/dogfooding-playbook]]
 - [[iteration-28-dogfooding-ux-polish]]

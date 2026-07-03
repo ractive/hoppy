@@ -79,8 +79,10 @@ bunny-syslog-receiver = { path = "crates/bunny-syslog-receiver", version = "0.3.
 - [x] Update `crates/bunny-api/src/lib.rs` to expose each module
       gated by a feature:
       ```rust
-      #[cfg(feature = "core")]    pub mod core;
-      #[cfg(feature = "compute")] pub mod compute;
+#[cfg(feature = "core")]    pub mod core;
+
+#[cfg(feature = "compute")] pub mod compute;
+
       // ... etc
       ```
 - [x] In `Cargo.toml [features]`:
@@ -233,8 +235,8 @@ bunny-syslog-receiver = { path = "crates/bunny-syslog-receiver", version = "0.3.
 
 - [[iteration-29-ci-greenify]]
 - [[iteration-30-drop-x86-macos]]
-- [[iteration-31-release-prep]] (released as v0.2.0; this iteration
+- [[iterations/iteration-8-release]] (released as v0.2.0; this iteration
   prepares v0.3.0)
-- [[../decision-log]]
+- [[decision-log]]
 - hyalo's pattern: `hyalo-core` (lib) + `hyalo-cli` (bin), one publish
   step per crate, binary name decoupled from package name.

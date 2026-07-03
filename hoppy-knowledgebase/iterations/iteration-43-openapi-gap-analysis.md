@@ -21,7 +21,7 @@ exposes only 12 of the ~45 toggle fields the API supports — and that
 the same gap exists in the deserialization struct (`PullZone` has
 56 of the 164 properties defined in `PullZoneModel`). Spot-checks
 suggest this is **not** unique to pull-zone: the original "hand-written
-clients" decision (iter-0.5, see [[../decision-log]]) preserved hoppy's
+clients" decision (iter-0.5, see [[decision-log]]) preserved hoppy's
 control over UX, but the audit step that should have kept the structs
 in sync with the spec was never institutionalised. Every resource is
 probably under-covered, and we don't know by how much.
@@ -34,6 +34,7 @@ defensible order.
 ## Scope
 
 ### 1. Build a reusable audit script
+
 Output: `hoppy-knowledgebase/scripts/audit-spec-coverage.sh`
 
 A shell script (jq + comm, no Rust) that takes a spec file, a schema
@@ -129,7 +130,7 @@ to surface the data, not paper over uncertainty.
 Output: append to `hoppy-knowledgebase/research/spec-coverage/pull-zone.md`
 
 Use the categorisation already in
-[[../backlog/pull-zone-update-toggle-coverage-gap]] (security,
+[[backlog/pull-zone-update-toggle-coverage-gap]] (security,
 caching, vary headers, origin/edge, blocking, logging) but extend it to
 **all** PullZoneSettingsModel fields the struct is missing, not just
 toggles. Numbers (e.g. `CacheControlMaxAgeOverride`), strings (e.g.
@@ -152,7 +153,7 @@ toggles. Numbers (e.g. `CacheControlMaxAgeOverride`), strings (e.g.
   iteration produces a report and a script; the actual struct/CLI
   expansion happens in iter-44+ informed by the data here.
 - Wider tooling like a `progenitor`-driven codegen (already evaluated
-  and rejected in iter-0.5, see [[../decision-log]]). Just data this
+  and rejected in iter-0.5, see [[decision-log]]). Just data this
   round.
 - Tests for the audit script. It's a one-shot investigation tool, not
   shipped product code.
@@ -176,14 +177,14 @@ toggles. Numbers (e.g. `CacheControlMaxAgeOverride`), strings (e.g.
 - [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings &&
       cargo test --workspace --quiet` clean (should be trivially true
       since no code changed).
-- [x] [[../backlog/pull-zone-update-toggle-coverage-gap]] updated with
+- [x] [[backlog/pull-zone-update-toggle-coverage-gap]] updated with
       a link to the new pull-zone report.
 
 ## Related
 
-- [[../backlog/pull-zone-update-toggle-coverage-gap]] — the dogfood
+- [[backlog/pull-zone-update-toggle-coverage-gap]] — the dogfood
   finding that motivated this audit.
-- [[../decision-log]] — iter-0.5's hand-written-clients decision, which
+- [[decision-log]] — iter-0.5's hand-written-clients decision, which
   this audit is the missing companion process to.
 - [[iteration-0.5-codegen-experiment]] — the codegen evaluation that
   rejected the spec-driven approach. This iteration produces the data

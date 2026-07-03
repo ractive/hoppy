@@ -88,9 +88,11 @@ Returns **LogForwardingConfiguration** (same schema as create response above).
 **GET** `/log/forwarding`
 
 ### Request Body
+
 None
 
 ### Query Parameters
+
 None
 
 ### Response (200)
@@ -158,6 +160,7 @@ Returns **LogForwardingConfiguration** (same schema as create response).
 | appId | string | Yes |
 
 ### Request Body
+
 None
 
 ### Response

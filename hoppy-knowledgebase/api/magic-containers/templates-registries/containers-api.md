@@ -20,14 +20,17 @@ Authentication: `AccessKey` header with personal API key.
 **POST** `/apps/{appId}/containers`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | appId | string | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body - AddContainerRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | name | string | yes | 1-50 characters |
@@ -45,9 +48,11 @@ None.
 | volumeMounts | VolumeMountRequest[] | no | |
 
 ### Response 201 - ContainerTemplate
+
 See ContainerTemplate schema below.
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 201 | Container template was created | ContainerTemplate |
@@ -64,21 +69,26 @@ See ContainerTemplate schema below.
 **GET** `/apps/{appId}/containers/{containerId}`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | appId | string | yes |
 | containerId | string | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body
+
 None.
 
 ### Response 200 - ContainerTemplate
+
 See ContainerTemplate schema below.
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Successful retrieval | ContainerTemplate |
@@ -93,15 +103,18 @@ See ContainerTemplate schema below.
 **PATCH** `/apps/{appId}/containers/{containerId}`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | appId | string | yes |
 | containerId | string | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body - PatchContainerRequest
+
 All fields are optional (nullable):
 
 | Field | Type | Required | Constraints |
@@ -121,9 +134,11 @@ All fields are optional (nullable):
 | volumeMounts | VolumeMountRequest[] | no | nullable |
 
 ### Response 200 - ContainerTemplate
+
 See ContainerTemplate schema below.
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container template was updated | ContainerTemplate |
@@ -140,21 +155,26 @@ See ContainerTemplate schema below.
 **DELETE** `/apps/{appId}/containers/{containerId}`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | appId | string | yes |
 | containerId | string | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body
+
 None.
 
 ### Response 200
+
 Empty/no content.
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container template was successfully deleted | (empty) |
@@ -171,18 +191,22 @@ Empty/no content.
 **PUT** `/apps/{appId}/containers/{containerId}/env`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | appId | string | yes |
 | containerId | string | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body
+
 A JSON object with string key-value pairs (additionalProperties of type string). Each key is a variable name, each value is a string.
 
 Example:
+
 ```json
 {
   "DATABASE_URL": "postgres://...",
@@ -191,9 +215,11 @@ Example:
 ```
 
 ### Response 200 - ContainerTemplate
+
 See ContainerTemplate schema below.
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Success | ContainerTemplate |
@@ -208,6 +234,7 @@ See ContainerTemplate schema below.
 ## Shared Types
 
 ### ContainerTemplate (Response Object)
+
 All fields required.
 
 | Field | Type |
@@ -229,10 +256,12 @@ All fields required.
 | volumeMounts | ContainerVolumeMount[] |
 
 ### ImagePullPolicy Enum
+
 - `Always`
 - `IfNotPresent`
 
 ### ContainerEntryPoint
+
 | Field | Type | Notes |
 |-------|------|-------|
 | command | string | nullable |
@@ -242,6 +271,7 @@ All fields required.
 | workingDirectory | string | nullable |
 
 ### ContainerProbes
+
 | Field | Type | Notes |
 |-------|------|-------|
 | startup | ContainerProbe | optional |
@@ -249,6 +279,7 @@ All fields required.
 | liveness | ContainerProbe | optional |
 
 ### ContainerProbe
+
 | Field | Type | Constraints | Default |
 |-------|------|-------------|---------|
 | initialDelaySeconds | integer | 1-3600, nullable | 10 |
@@ -261,50 +292,59 @@ All fields required.
 | grpc | GrpcProbe | optional | |
 
 ### HttpGetProbe
+
 | Field | Type |
 |-------|------|
 | request | HttpGetProbeRequestDetails (optional) |
 | response | HttpGetProbeResponseDetails (optional) |
 
 ### HttpGetProbeRequestDetails
+
 | Field | Type | Constraints |
 |-------|------|-------------|
 | path | string | optional |
 | portNumber | integer | 1-65535, optional |
 
 ### HttpGetProbeResponseDetails
+
 | Field | Type |
 |-------|------|
 | expectedStatusCode | HttpStatusCode (enum, optional) |
 
 ### TcpSocketProbe
+
 | Field | Type |
 |-------|------|
 | request | TcpSocketProbeRequestDetails (optional) |
 
 ### TcpSocketProbeRequestDetails
+
 | Field | Type | Constraints |
 |-------|------|-------------|
 | portNumber | integer | 1-65535 |
 
 ### GrpcProbe
+
 | Field | Type |
 |-------|------|
 | request | GrpcProbeRequestDetails (optional) |
 
 ### GrpcProbeRequestDetails
+
 | Field | Type | Constraints |
 |-------|------|-------------|
 | portNumber | integer | 1-65535 |
 | serviceName | string | nullable; probes overall health if unspecified |
 
 ### EnvironmentVariable
+
 | Field | Type | Required |
 |-------|------|----------|
 | name | string | yes (minLength: 1) |
 | value | string | no |
 
 ### EndpointRequest (used in add/patch requests)
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | displayName | string | yes | 1-50 characters |
@@ -312,6 +352,7 @@ All fields required.
 | anycast | AnycastEndpointRequest | no | |
 
 ### CdnEndpointRequest
+
 | Field | Type | Notes |
 |-------|------|-------|
 | isSslEnabled | boolean | |
@@ -320,15 +361,18 @@ All fields required.
 | portMappings | ContainerPortMappingRequest[] | minItems: 1, maxItems: 1 |
 
 ### AnycastEndpointRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | type | AnycastIpProtocolVersion | yes | |
 | portMappings | ContainerPortMappingRequest[] | yes | minItems: 1 |
 
 ### AnycastIpProtocolVersion Enum
+
 - `IPv4`
 
 ### StickySessionSettings
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | sessionHeaders | string[] | yes | 1-3 items |
@@ -336,6 +380,7 @@ All fields required.
 | cookieName | string | no | |
 
 ### ContainerPortMappingRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | containerPort | integer | yes | 1-65535 |
@@ -343,17 +388,20 @@ All fields required.
 | protocols | Protocol[] | no | |
 
 ### Protocol Enum
+
 - `Tcp`
 - `Udp`
 - `Sctp`
 
 ### VolumeMountRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | name | string | yes | 1-50 characters |
 | mountPath | string | yes | minLength: 1; pattern: `^/(?!.*//)(?!.*\.\.)(?!.*\s)([a-zA-Z0-9._-]+/?)+$` |
 
 ### ContainerEndpoint (response object)
+
 | Field | Type | Required |
 |-------|------|----------|
 | displayName | string | yes (minLength: 1) |
@@ -367,11 +415,13 @@ All fields required.
 | publicIpAddresses | EndpointInternalIp[] | no, nullable |
 
 ### EndpointType Enum
+
 - `CDN`
 - `Anycast`
 - `PublicIp`
 
 ### EndpointPortMapping
+
 | Field | Type | Required |
 |-------|------|----------|
 | containerPort | integer | yes |
@@ -379,6 +429,7 @@ All fields required.
 | protocols | Protocol[] | yes |
 
 ### EndpointStickySession
+
 | Field | Type | Required |
 |-------|------|----------|
 | enabled | boolean | yes |
@@ -386,18 +437,21 @@ All fields required.
 | cookieName | string | yes (minLength: 1) |
 
 ### EndpointInternalIp
+
 | Field | Type | Required |
 |-------|------|----------|
 | address | string | yes (minLength: 1) |
 | region | string | yes (minLength: 1) |
 
 ### ContainerVolumeMount
+
 | Field | Type | Required |
 |-------|------|----------|
 | name | string | yes (minLength: 1) |
 | mountPath | string | yes (minLength: 1) |
 
 ### HttpStatusCode Enum
+
 Continue, SwitchingProtocols, Processing, EarlyHints, OK, Created, Accepted, NonAuthoritativeInformation, NoContent, ResetContent, PartialContent, MultiStatus, AlreadyReported, IMUsed, MultipleChoices, MovedPermanently, Found, SeeOther, NotModified, UseProxy, Unused, TemporaryRedirect, PermanentRedirect, BadRequest, Unauthorized, PaymentRequired, Forbidden, NotFound, MethodNotAllowed, NotAcceptable, ProxyAuthenticationRequired, RequestTimeout, Conflict, Gone, LengthRequired, PreconditionFailed, RequestEntityTooLarge, RequestUriTooLong, UnsupportedMediaType, RequestedRangeNotSatisfiable, ExpectationFailed, MisdirectedRequest, UnprocessableEntity, Locked, FailedDependency, UpgradeRequired, PreconditionRequired, TooManyRequests, RequestHeaderFieldsTooLarge, UnavailableForLegalReasons, InternalServerError, NotImplemented, BadGateway, ServiceUnavailable, GatewayTimeout, HttpVersionNotSupported, VariantAlsoNegotiates, InsufficientStorage, LoopDetected, NotExtended, NetworkAuthenticationRequired
 
 ---
@@ -405,6 +459,7 @@ Continue, SwitchingProtocols, Processing, EarlyHints, OK, Created, Accepted, Non
 ## Shared Error Types
 
 ### ProblemDetails
+
 | Field | Type | Notes |
 |-------|------|-------|
 | type | string | nullable |
@@ -414,6 +469,7 @@ Continue, SwitchingProtocols, Processing, EarlyHints, OK, Created, Accepted, Non
 | instance | string | nullable |
 
 ### ErrorDetails
+
 | Field | Type | Notes |
 |-------|------|-------|
 | title | string | read-only |
@@ -423,6 +479,7 @@ Continue, SwitchingProtocols, Processing, EarlyHints, OK, Created, Accepted, Non
 | errors | ValidationError[] | nullable, read-only |
 
 ### ValidationError
+
 | Field | Type | Notes |
 |-------|------|-------|
 | field | string | nullable |

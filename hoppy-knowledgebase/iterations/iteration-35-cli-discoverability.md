@@ -21,7 +21,8 @@ landing-page README.
 ## Scope
 
 ### 1. Drill-down hints after commands
-Source: [[../backlog/drill-down-hints]]
+
+Source: [[backlog/drill-down-hints]]
 
 Borrow the hyalo iter-107 pattern. After each command, print a short
 `tip: <next command>` block suggesting one or two natural follow-ups.
@@ -70,7 +71,8 @@ just `hoppy 0.3.0`. Helps dogfooding triage: "which build am I on?".
       matches `^hoppy \d+\.\d+\.\d+ \([0-9a-f]{12}(\+dirty)? \d{4}-\d{2}-\d{2}\)$`.
 
 ### 3. Lean README
-Source: [[../backlog/lean-readme]]
+
+Source: [[backlog/lean-readme]]
 
 Restructure the top-level `README.md` as a landing page. Move exhaustive
 reference into `hoppy-knowledgebase/cli/` and/or `docs/MANUAL.md`.
@@ -100,7 +102,7 @@ reference into `hoppy-knowledgebase/cli/` and/or `docs/MANUAL.md`.
 
 ## Related
 
-- [[../backlog/drill-down-hints]]
-- [[../backlog/lean-readme]]
+- [[backlog/drill-down-hints]]
+- [[backlog/lean-readme]]
 - hyalo iter-107 commit `d28325d` (drill-down hints reference)
 - hyalo commit `4b6df49` (lean README reference)

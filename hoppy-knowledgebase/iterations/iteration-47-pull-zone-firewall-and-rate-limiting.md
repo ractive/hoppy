@@ -17,7 +17,7 @@ branch: iter-47/pull-zone-firewall-and-rate-limiting
 ## Why
 
 Fourth and final structural pull-zone bucket from
-[[../research/spec-coverage/pull-zone-buckets]] — 🟠 **firewall /
+[[research/spec-coverage/pull-zone-buckets]] — 🟠 **firewall /
 blocking** (~14 fields). Includes geo blocking, IP/referrer
 allow/deny lists, request gating, Shield DDoS toggles, and rate
 limiting. Some fields exist on `PullZone` read already
@@ -103,5 +103,5 @@ To `PullZone` (only those not already present) and `UpdatePullZone` (all):
 - [[iteration-44-pull-zone-security-compliance]]
 - [[iteration-45-pull-zone-vary-and-caching]]
 - [[iteration-46-pull-zone-origin-and-routing]]
-- [[../research/spec-coverage/pull-zone-buckets]]
+- [[research/spec-coverage/pull-zone-buckets]]
 - [[iteration-43-openapi-gap-analysis]]

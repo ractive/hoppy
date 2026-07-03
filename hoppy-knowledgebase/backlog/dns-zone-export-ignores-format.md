@@ -17,10 +17,10 @@ tags:
 ```sh
 $ hoppy dns zone export --id <z> --format json
 ;A records
-www.example.com.	IN	5m	A	1.2.3.4
+www.example.com.    IN    5m    A    1.2.3.4
 
 ;TXT records
-example.com.	IN	5m	TXT	"hello world"
+example.com.    IN    5m    TXT    "hello world"
 ```
 
 The `--format json` flag is silently ignored — the BIND zone file

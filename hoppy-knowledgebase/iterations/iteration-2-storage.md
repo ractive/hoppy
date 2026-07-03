@@ -30,6 +30,7 @@ branch: iter-2/storage
 **Deliverable:** Upload and download files to/from bunny.net storage.
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[iterations/iteration-1-pull-zones]] — previous iteration
 - [[decision-log]] — storage auth resolution decision

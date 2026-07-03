@@ -20,7 +20,7 @@ paginated `list` command requires manual `--page`/`--per-page`
 juggling. The inconsistency means scripts have to special-case
 each surface.
 
-See [[../backlog/pull-zone-list-missing-all-flag]].
+See [[backlog/pull-zone-list-missing-all-flag]].
 
 ## Scope
 
@@ -104,5 +104,5 @@ See [[../backlog/pull-zone-list-missing-all-flag]].
 
 ## Related
 
-- [[../backlog/pull-zone-list-missing-all-flag]]
-- [[../dogfooding/session-2026-06-01-round2]]
+- [[backlog/pull-zone-list-missing-all-flag]]
+- [[dogfooding/session-2026-06-01-round2]]

@@ -23,6 +23,7 @@ The OpenAPI spec (`specs/core-platform.json`) only documents the paginated envel
 ## Authentication error response
 
 A `401 Unauthorized` response returns:
+
 ```json
 {"Message": "Authorization has been denied for this request."}
 ```
@@ -179,7 +180,7 @@ and exposes:
 
 ## Magic Containers: no logs-fetch endpoint
 
-**Logs.** Bunny does not expose a logs-fetch endpoint for Magic Containers (verified against the LLM-friendly docs index at https://docs.bunny.net/llms.txt — 0 of 60 endpoints retrieve logs). The only path is **log-forwarding configuration** (5 endpoints): the operator points Bunny at a syslog receiver they control. `hoppy container logs` automates this round-trip with a transient receiver + tunnel.
+**Logs.** Bunny does not expose a logs-fetch endpoint for Magic Containers (verified against the LLM-friendly docs index at <https://docs.bunny.net/llms.txt> — 0 of 60 endpoints retrieve logs). The only path is **log-forwarding configuration** (5 endpoints): the operator points Bunny at a syslog receiver they control. `hoppy container logs` automates this round-trip with a transient receiver + tunnel.
 
 ## Magic Containers: env-var values are returned in plaintext
 
@@ -345,6 +346,7 @@ hoppy applies `#[serde(rename = "OptimizerMinifyCSS")]` explicitly
 on this field in both the response and request structs.
 
 ## Related
+
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks
 - [[api/bunny-api-overview]] — API overview
 - [[api/bunny-database-research]] — full Database API research note

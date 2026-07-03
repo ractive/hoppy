@@ -37,4 +37,4 @@ use the horizontal layout.
 
 ## Resolution
 
-Fixed in [[../iterations/iteration-39-dogfooding-2026-05-26-fixes]].
+Fixed in [[iterations/iteration-39-dogfooding-2026-05-26-fixes]].

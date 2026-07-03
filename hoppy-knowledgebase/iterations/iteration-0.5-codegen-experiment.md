@@ -82,6 +82,7 @@ The CLI crate depends on the generated crates and wraps their clients with our a
 **Deliverable:** Decision document with codegen results per spec. Generated crates compile (or documented reasons why not).
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[research/openapi-codegen-rust]] — codegen research
 - [[research/hand-written-experiment-results]] — experiment results that led to hand-written decision

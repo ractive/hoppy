@@ -23,8 +23,8 @@ Two related polish items on the same surface:
    (no header, no blank line) — silent success looks identical to
    a hang.
 
-See [[../backlog/dns-zone-export-ignores-format]] and
-[[../backlog/dns-zone-export-empty-zone-silent]].
+See [[backlog/dns-zone-export-ignores-format]] and
+[[backlog/dns-zone-export-empty-zone-silent]].
 
 ## Scope
 
@@ -73,7 +73,7 @@ See [[../backlog/dns-zone-export-ignores-format]] and
 
 ## Related
 
-- [[../backlog/dns-zone-export-ignores-format]]
-- [[../backlog/dns-zone-export-empty-zone-silent]]
-- [[../iterations/iteration-56-db-format-cleanup]]
-- [[../dogfooding/session-2026-06-01-round2]]
+- [[backlog/dns-zone-export-ignores-format]]
+- [[backlog/dns-zone-export-empty-zone-silent]]
+- [[iterations/iteration-56-db-format-cleanup]]
+- [[dogfooding/session-2026-06-01-round2]]

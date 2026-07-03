@@ -25,7 +25,7 @@ as `EnableGeoZoneUs` (serde PascalCase default), so all five
 Same shape of bug iter-47 fixed for `BlockedIps` vs `BlockedIPs`. We
 need both a targeted fix and a sweep so this doesn't keep showing up.
 
-See [[../backlog/geo-zone-flags-casing-mismatch]].
+See [[backlog/geo-zone-flags-casing-mismatch]].
 
 ## Scope
 
@@ -110,5 +110,5 @@ fixture. This is a pre-existing inconsistency left for a future iteration.
 
 ## Related
 
-- [[../backlog/geo-zone-flags-casing-mismatch]]
+- [[backlog/geo-zone-flags-casing-mismatch]]
 - [[iteration-47-pull-zone-firewall-and-rate-limiting]]

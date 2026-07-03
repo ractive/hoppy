@@ -65,9 +65,11 @@ In the shield client/response handler:
    `ShieldError::PlanUpgradeRequired { feature, message }`.
 2. CLI surface should print the upstream `message` verbatim on stderr
    and exit non-zero. Example:
+
    ```
    Error: bot detection requires an Advanced Shield plan (errorKey: invalid_plan_type.bot_detection)
    ```
+
 3. For `--format json`, emit the envelope's `error` object directly under a
    top-level `error` key.
 

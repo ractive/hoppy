@@ -10,7 +10,7 @@ type: log
 
 # Decision Log
 
-Significant architectural and design decisions made during development. API-specific quirks are documented separately in [[api/bunny-net-api-quirks]].
+Significant architectural and design decisions made during development. API-specific quirks are documented separately in [[api/bunny-api-quirks]].
 
 ## Architecture
 
@@ -124,6 +124,7 @@ Significant architectural and design decisions made during development. API-spec
 | 2026-05-10 | Storage local-file flag: `--file` everywhere | Both `storage upload` and `storage download` use `--file` for the local path (input on upload, output destination on download — stdout if omitted). Renamed `download --output` → `--file`. The earlier asymmetry (`upload --file` / `download --output`) forced operators to memorise per-direction flags. Pairs with the `--remote-path` standardisation across all storage subcommands (`ls` was `--path`) (iter-28) |
 
 ## Related
+
 - [[development-roadmap]] — iteration history
-- [[api/bunny-net-api-client-patterns]] — established API client patterns
+- [[api/bunny-api-client-patterns]] — established API client patterns
 - [[iterations/iteration-1-code-review]] — code review that drove several decisions

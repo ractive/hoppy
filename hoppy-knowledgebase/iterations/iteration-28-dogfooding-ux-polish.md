@@ -21,7 +21,8 @@ reviewed together rather than per-noun.
 ## Scope
 
 ### 1. Standardise flag names across nouns
-Source: [[../backlog/flag-naming-consistency]]
+
+Source: [[backlog/flag-naming-consistency]]
 
 - [x] storage: standardise on `--remote-path` everywhere (currently `ls`
       uses `--path`). Pick a consistent local-file flag — proposal: keep
@@ -35,7 +36,8 @@ Source: [[../backlog/flag-naming-consistency]]
       is the convention.
 
 ### 2. Replace raw numeric enum flags with named ValueEnums
-Source: [[../backlog/numeric-enum-flags]]
+
+Source: [[backlog/numeric-enum-flags]]
 
 Mirror iter-26's `pull-zone create --zone-tier {premium,volume}` pattern.
 
@@ -44,7 +46,8 @@ Mirror iter-26's `pull-zone create --zone-tier {premium,volume}` pattern.
 - [x] Grep the cli.rs for any remaining `(0 = …, 1 = …)` help text.
 
 ### 3. Date/time flag friction
-Source: [[../backlog/date-format-friction]]
+
+Source: [[backlog/date-format-friction]]
 
 - [x] Helper: accept `YYYY-MM-DD` as a synonym for `YYYY-MM-DDT00:00:00Z`
       across every time-window flag.
@@ -58,7 +61,8 @@ Source: [[../backlog/date-format-friction]]
       user.
 
 ### 4. `db delete` / `db group delete` confirmation message
-Source: [[../backlog/db-delete-output-format]]
+
+Source: [[backlog/db-delete-output-format]]
 
 - [x] Both currently print empty table headers. Make them print
       `Deleted database <id>` / `Deleted database group <id>` like every
@@ -66,20 +70,23 @@ Source: [[../backlog/db-delete-output-format]]
 - [x] JSON form: `{"deleted": "<id>"}` or `{}`.
 
 ### 5. `dns zone dnssec status` text view drops the DS record
-Source: [[../backlog/dnssec-status-text-output-thin]]
+
+Source: [[backlog/dnssec-status-text-output-thin]]
 
 - [x] Text/table view shows only `id`/`domain`/`enabled` today. When
       enabled, also show DS record, digest, key tag, algorithm, and
       `DsConfigured`. JSON view already has these.
 
 ### 6. `stream library statistics` shows "Engagement Score -1"
-Source: [[../backlog/stream-library-stats-engagement-minus-one]]
+
+Source: [[backlog/stream-library-stats-engagement-minus-one]]
 
 - [x] When the API returns the `-1` "no data" sentinel, render `N/A` in
       text/table mode. Keep the raw `-1` in JSON for machine readers.
 
 ### 7. Dogfooding playbook docs vs. CLI mismatch
-Source: [[../backlog/auth-login-missing-from-cli]]
+
+Source: [[backlog/auth-login-missing-from-cli]]
 
 - [x] Playbook references `hoppy auth login` and "non-default config paths
       via `hoppy auth --help`" — neither exists. Replace the auth section
@@ -112,6 +119,6 @@ The five real bugs ship in iter-27 — see
 
 ## Related
 
-- [[../dogfooding/dogfooding-playbook]]
+- [[dogfooding/dogfooding-playbook]]
 - [[iteration-27-dogfooding-bugfixes]]
-- [[../decision-log]]
+- [[decision-log]]

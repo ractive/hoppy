@@ -17,27 +17,35 @@ type: reference
 Bunny.net is a cloud/edge platform offering the following services:
 
 ### CDN (Pull Zones)
+
 Content delivery with smart caching, edge rules, and real-time analytics. Custom hostnames, SSL certificates, cache optimization, and security features (hotlink protection, token authentication).
 
 ### Edge Storage (Storage Zones)
+
 Object storage with geo-replication. Access via HTTP, FTP, and SDKs. Fastest edge-replicated object storage.
 
 ### Video Streaming (Bunny Stream)
+
 Complete video platform: upload, manage, and deliver videos. Adaptive bitrate streaming, transcoding, DRM protection (MediaCage, FairPlay, Widevine), analytics.
 
 ### DNS
+
 Ultra-fast DNS with scriptable records, DNSSEC, logging, and dynamic routing via JavaScript.
 
 ### Magic Containers
+
 Containerized app deployment across distributed bare-metal servers. Autoscaling, multi-region, persistent volumes, health checks.
 
 ### Edge Scripting
+
 Execute JavaScript/TypeScript at network edges. APIs, middleware, CDN extensions. Webhooks and log forwarding.
 
 ### Bunny Shield
+
 Security stack: WAF, DDoS mitigation, rate limiting, bot detection, upload scanning, ACLs.
 
 ### Bunny Database
+
 Globally distributed libSQL/SQLite database with replication. Two HTTP
 surfaces: the REST control plane at `https://api.bunny.net/database`
 (database/group lifecycle, auth-token minting, config, statistics) and
@@ -46,9 +54,11 @@ the per-database libSQL HTTP data plane at
 [[bunny-database-research]] for the full type and endpoint inventory.
 
 ### Bunny Optimizer
+
 Automatic image compression, dynamic image transformation (resize, crop, color), HTML prerender, watermarking.
 
 ### AI Image Generation
+
 AI-powered image generation with customizable engines and resolutions.
 
 ## Authentication
@@ -81,12 +91,12 @@ Note: Some services (Storage, Stream) have their own separate API keys in additi
 
 | API | Spec URL |
 |-----|----------|
-| Core Platform | https://core-api-public-docs.b-cdn.net/docs/v3/public.json |
+| Core Platform | <https://core-api-public-docs.b-cdn.net/docs/v3/public.json> |
 | Origin Errors | Relative: /api-reference/origin-errors/openapi.json |
 | Storage | Relative: /api-reference/storage/openapi.json |
-| Stream | https://video.bunnycdn.com/openapi/bunnynet-video-api.public.json |
-| Shield | https://api.bunny.net/shield/docs/v1/swagger.json |
-| Edge Scripting | https://core-api-public-docs.b-cdn.net/docs/v3/compute.json |
+| Stream | <https://video.bunnycdn.com/openapi/bunnynet-video-api.public.json> |
+| Shield | <https://api.bunny.net/shield/docs/v1/swagger.json> |
+| Edge Scripting | <https://core-api-public-docs.b-cdn.net/docs/v3/compute.json> |
 
 ### Key Endpoint Groups (Core API)
 
@@ -134,11 +144,12 @@ hoppy stats get --pull-zone-id=123 --date-from=... --date-to=...
 
 ## Documentation
 
-- LLM-friendly docs: https://docs.bunny.net/llms.txt
-- API reference: https://docs.bunny.net/api-reference
-- OpenAPI specs: https://docs.bunny.net/openapi.md
+- LLM-friendly docs: <https://docs.bunny.net/llms.txt>
+- API reference: <https://docs.bunny.net/api-reference>
+- OpenAPI specs: <https://docs.bunny.net/openapi.md>
 
 ## Related
+
 - [[Seed]] — project brief
 - [[api/bunny-api-quirks]] — API quirks discovered during implementation
 - [[api/bunny-api-client-patterns]] — implementation patterns

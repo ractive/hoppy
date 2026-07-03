@@ -16,12 +16,14 @@ branch: iter-8/release
 **Goal:** Everything needed to ship v0.1.0 as a proper open-source release.
 
 ## Foundation
+
 - [x] LICENSE file (MIT)
 - [x] CHANGELOG.md for v0.1.0 (summarize all iterations)
 - [x] Cargo.toml metadata: `repository`, `homepage`, `keywords`, `categories`, `readme`
 - [x] Update CI workflow: trigger on push to main + PRs (not just `workflow_dispatch`), `--workspace` for clippy and test
 
 ## GitHub Actions Release Workflow
+
 - [x] Trigger on tag push matching `v*` (e.g. `v0.1.0`)
 - [x] Build matrix (6 targets):
   - `x86_64-unknown-linux-gnu` (ubuntu-latest, native)
@@ -37,17 +39,20 @@ branch: iter-8/release
 - [x] Pinned versions: cross@0.2.5, cargo-deb@3, cargo-generate-rpm@0.20 (all with --locked)
 
 ## Man Page Generation
+
 - [x] Add `clap_mangen` dependency (xtask crate)
 - [x] xtask generates 159 man pages from clap command tree
 - [x] Bundle in release archives and packages
 
 ## Shell Completions
+
 - [x] Keep stdout approach (`hoppy completions <shell>`) — industry standard
 - [x] Bundle pre-generated completions in release archives
 - [x] Include completions in deb/rpm/Homebrew packages (auto-installed to correct paths)
 - [x] Document redirect commands in README
 
 ## Packaging
+
 - [x] **Homebrew**: `ractive/homebrew-hoppy` tap repo created; formula auto-updated by release workflow
 - [x] **cargo install**: `cargo install --git https://github.com/ractive/hoppy` documented in README
 - [x] **deb**: `cargo-deb` with `[package.metadata.deb]` — completions + man pages as assets
@@ -55,6 +60,7 @@ branch: iter-8/release
 - [ ] **winget**: Submit manifest to `microsoft/winget-pkgs` after first release
 
 ## README Overhaul
+
 - [x] Installation section: Homebrew, cargo install --git, direct download, deb/rpm, build from source
 - [x] Feature overview with service list
 - [x] Usage examples organized by service
@@ -65,6 +71,7 @@ branch: iter-8/release
 - [ ] Contributing section (skipped — not needed for v0.1.0)
 
 ## Not in scope for v0.1.0
+
 - crates.io publishing (requires publishing all 6 sub-crates with proper versioning)
 - Signed binaries / macOS notarization
 - AUR / Nix / Scoop packages
@@ -74,6 +81,7 @@ branch: iter-8/release
 **Deliverable:** Tagged v0.1.0 release with binaries for linux (x86_64, aarch64), macOS (x86_64, aarch64), windows (x86_64, aarch64). Installable via Homebrew, cargo install --git, direct download, deb, rpm, or winget.
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[iterations/iteration-7-cleanup]] — previous iteration
 - [[release/release-setup-checklist]] — one-time release setup steps

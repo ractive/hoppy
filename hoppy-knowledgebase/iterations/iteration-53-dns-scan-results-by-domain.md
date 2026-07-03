@@ -23,7 +23,7 @@ follow-up command. The bunny.net API exposes scan results only by
 zone id (no by-job-id endpoint), so `--domain` is the canonical
 ergonomic fix.
 
-See [[../backlog/dns-scan-results-rejects-domain]].
+See [[backlog/dns-scan-results-rejects-domain]].
 
 ## Scope
 
@@ -79,4 +79,4 @@ See [[../backlog/dns-scan-results-rejects-domain]].
 
 ## Related
 
-- [[../backlog/dns-scan-results-rejects-domain]]
+- [[backlog/dns-scan-results-rejects-domain]]

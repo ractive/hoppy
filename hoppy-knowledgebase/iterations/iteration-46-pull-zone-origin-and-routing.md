@@ -17,7 +17,7 @@ branch: iter-46/pull-zone-origin-and-routing
 ## Why
 
 Third pull-zone bucket. The 🟢 **routing / origin** group from
-[[../research/spec-coverage/pull-zone-buckets]] — denser than
+[[research/spec-coverage/pull-zone-buckets]] — denser than
 iter-44/45 (~25 fields), more numbers and enums than booleans, so
 help-text + value validation work dominates. Adds origin host
 overrides, retry/timeout knobs, origin-shield config, and sticky
@@ -102,4 +102,4 @@ session controls.
 
 - [[iteration-44-pull-zone-security-compliance]]
 - [[iteration-45-pull-zone-vary-and-caching]]
-- [[../research/spec-coverage/pull-zone-buckets]]
+- [[research/spec-coverage/pull-zone-buckets]]

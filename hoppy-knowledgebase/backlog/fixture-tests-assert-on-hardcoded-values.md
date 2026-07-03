@@ -66,9 +66,9 @@ in batches.
 
 ## Related
 
-- [[../iterations/iteration-34-fixture-mapper]] — the tool that surfaced
+- [[iterations/iteration-34-fixture-mapper]] — the tool that surfaced
   this.
-- [[../iterations/iteration-33-fixture-refresh]] — the iter that shipped
+- [[iterations/iteration-33-fixture-refresh]] — the iter that shipped
   the recording plumbing.
 - [[fixture-recording-name-mismatch]] — the iter-34-precursor problem,
   now fixed.

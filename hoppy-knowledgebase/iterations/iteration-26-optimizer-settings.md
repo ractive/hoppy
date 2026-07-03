@@ -18,8 +18,8 @@ branch: iter-26/optimizer-settings
 ## Context
 
 Gap analysis on 2026-05-09 against the Pull Zone schema in:
-- https://core-api-public-docs.b-cdn.net/docs/v3/public.json
-- https://docs.bunny.net/openapi/bunnynet-api-1.json
+- <https://core-api-public-docs.b-cdn.net/docs/v3/public.json>
+- <https://docs.bunny.net/openapi/bunnynet-api-1.json>
 
 found 24 `Optimizer*` fields on `PullZoneModel`, set through the existing pull zone update endpoint. There is no separate `/optimizer/*` write endpoint; the only standalone Optimizer endpoint is read-only statistics at `/pullzone/{id}/optimizer/statistics`, which hoppy already exposes via `pull-zone statistics --type optimizer`.
 
@@ -113,7 +113,7 @@ Add flags to `src/cli.rs` for every writable field above, grouped under a single
 ### Help text
 
 - [x] Group all `--optimizer-*` flags under a clap heading (`#[command(next_help_heading = "Optimizer")]` on a sub-struct, or a manual help section).
-- [x] Add a one-line `long_help` for each non-obvious flag (e.g. `--optimizer-classes` — JSON map of class names to URL params, see https://docs.bunny.net/docs/optimizer-classes).
+- [x] Add a one-line `long_help` for each non-obvious flag (e.g. `--optimizer-classes` — JSON map of class names to URL params, see <https://docs.bunny.net/docs/optimizer-classes>).
 - [x] Cross-reference: `pull-zone statistics --type optimizer` for reading Optimizer usage after enabling it.
 
 ### Documentation
@@ -151,8 +151,8 @@ Add flags to `src/cli.rs` for every writable field above, grouped under a single
 ## Related
 
 - Gap analysis (this conversation, 2026-05-09)
-- Pull Zone schema: https://core-api-public-docs.b-cdn.net/docs/v3/public.json
-- Optimizer docs: https://docs.bunny.net/docs/optimizer
+- Pull Zone schema: <https://core-api-public-docs.b-cdn.net/docs/v3/public.json>
+- Optimizer docs: <https://docs.bunny.net/docs/optimizer>
 - [[iteration-19-pullzone-bugfixes]] (`deserialize_repr_option` helper, ArgGroup pattern)
 - [[api/bunny-api-quirks]]
 - [[decision-log]]

@@ -20,7 +20,7 @@ account isn't on a high-enough tier. Hoppy parses 202 as success
 with no results, so the user sees "No results" instead of the real
 "upgrade required" message that the API gave back.
 
-See [[../backlog/shield-202-error-swallowed]].
+See [[backlog/shield-202-error-swallowed]].
 
 ## Scope
 
@@ -67,6 +67,6 @@ See [[../backlog/shield-202-error-swallowed]].
 
 ## Related
 
-- [[../backlog/shield-202-error-swallowed]]
-- [[../backlog/shield-api-error-mapping]]
-- [[../backlog/debug-flag-omits-request-body]]
+- [[backlog/shield-202-error-swallowed]]
+- [[backlog/shield-api-error-mapping]]
+- [[backlog/debug-flag-omits-request-body]]

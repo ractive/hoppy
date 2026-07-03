@@ -95,6 +95,7 @@ Authentication: `AccessKey` header (personal API key)
 | endpointId | string | Yes |
 
 ### Request Body
+
 None
 
 ### Response
@@ -120,6 +121,7 @@ None
 | appId | string | Yes |
 
 ### Request Body
+
 None
 
 ### Response (200)

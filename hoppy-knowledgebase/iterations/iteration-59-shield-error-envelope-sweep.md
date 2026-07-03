@@ -24,7 +24,7 @@ the structured error key.
 Iter-50 handled the top-level shape; this picks up the `errorResponse`-
 wrapped sub-object that some Shield endpoints use.
 
-See [[../backlog/shield-event-logs-discards-error-body]].
+See [[backlog/shield-event-logs-discards-error-body]].
 
 ## Scope
 
@@ -68,6 +68,6 @@ See [[../backlog/shield-event-logs-discards-error-body]].
 
 ## Related
 
-- [[../backlog/shield-event-logs-discards-error-body]]
-- [[../iterations/iteration-50-shield-202-error-envelope]]
-- [[../dogfooding/session-2026-06-01-round2]]
+- [[backlog/shield-event-logs-discards-error-body]]
+- [[iterations/iteration-50-shield-202-error-envelope]]
+- [[dogfooding/session-2026-06-01-round2]]

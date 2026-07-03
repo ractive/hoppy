@@ -39,6 +39,6 @@ Replace value-coupled assertions with structural checks:
 ## Related
 
 - [[fixture-tests-assert-on-hardcoded-values]] — the original diagnosis
-- [[../iterations/iteration-36-shape-asserts]] — fixed the 4 `bunny-net-api` test files but
+- [[iterations/iteration-36-shape-asserts]] — fixed the 4 `bunny-net-api` test files but
   left CLI tests as out-of-scope
-- [[../dogfooding/dogfooding-playbook]] — "Shape-first asserts in wiremock tests" section
+- [[dogfooding/dogfooding-playbook]] — "Shape-first asserts in wiremock tests" section

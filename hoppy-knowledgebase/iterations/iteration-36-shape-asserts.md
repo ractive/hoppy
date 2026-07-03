@@ -21,7 +21,7 @@ offline tests because they assert on **hand-authored fixture values**
 than on the response *shape*. The refresh tool can't be used as a real
 refresh until these tests are loosened.
 
-See [[../backlog/fixture-tests-assert-on-hardcoded-values]] for the
+See [[backlog/fixture-tests-assert-on-hardcoded-values]] for the
 diagnosis.
 
 ## Target shape
@@ -121,6 +121,6 @@ the same 4 files probably assert on fixture values that haven't drifted
 
 ## Related
 
-- [[../backlog/fixture-tests-assert-on-hardcoded-values]] — the
+- [[backlog/fixture-tests-assert-on-hardcoded-values]] — the
   motivating backlog item.
 - [[iteration-34-fixture-mapper]] — the tool that surfaced this.

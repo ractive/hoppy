@@ -28,7 +28,7 @@ more useful than the broken one we already ship:
 - **Broken upstream**: `container log-forwarding create` returns
   empty-body 400 for every payload variant tried — likely a feature
   gate or undocumented required field. Tracked in
-  [[../backlog/log-forwarding-create-empty-400]]; out of scope here
+  [[backlog/log-forwarding-create-empty-400]]; out of scope here
   except to mark the command as known-broken in the README.
 - **Papercuts**: a few small but visible CLI consistency issues that
   bit during the round.
@@ -94,7 +94,7 @@ serde-default test for the response.
 
 ### 3. Storage-zone create JSON password [2/2]
 
-See [[../backlog/sz-create-json-password-string-literal]].
+See [[backlog/sz-create-json-password-string-literal]].
 
 - [x] Identify where `Password: "string"` is coming from. Hypothesis:
       the create response struct has a `#[serde(default)]` field that
@@ -108,7 +108,7 @@ See [[../backlog/sz-create-json-password-string-literal]].
 
 ### 4. `container log-forwarding` CLI consistency [3/3]
 
-See [[../backlog/log-forwarding-create-empty-400]] §"Smaller related
+See [[backlog/log-forwarding-create-empty-400]] §"Smaller related
 issues".
 
 - [x] `container log-forwarding delete` accepts `--id <id>` as an
@@ -125,7 +125,7 @@ issues".
 
 ### 5. Document `container logs` as known-broken [2/2]
 
-See [[../backlog/log-forwarding-create-empty-400]] for the upstream
+See [[backlog/log-forwarding-create-empty-400]] for the upstream
 investigation.
 
 - [x] Add a `> [!warning]` block at the top of the
@@ -160,15 +160,15 @@ investigation.
   a pull/poll API. A `tail` would need its own bore/tunnel plumbing
   similar to `container logs`. Worthwhile, but separate iteration.
 - **JSON output casing normalisation.** See
-  [[../backlog/json-output-casing-inconsistency]] — three different
+  [[backlog/json-output-casing-inconsistency]] — three different
   casing conventions across surfaces. Larger DX-rewrite scope; not
   bundled here.
 - **`cleanup.sh --yes` implementation.** See
-  [[../backlog/leaked-test-resources-cleanup-script]] — still a
+  [[backlog/leaked-test-resources-cleanup-script]] — still a
   skeleton. The 19 leaked resources from prior live-api runs are
   costing money but cleaning them is its own iteration.
 - **Terraform deliverables.** See
-  [[../research/terraform-provider-ideas]] — strategic, not tactical.
+  [[research/terraform-provider-ideas]] — strategic, not tactical.
 
 ## Risks and mitigations
 
@@ -202,11 +202,11 @@ investigation.
 
 ## Related
 
-- [[../backlog/pull-zone-log-forwarding-fields-missing]] — §1 spec.
-- [[../backlog/sz-create-json-password-string-literal]] — §3 spec.
-- [[../backlog/log-forwarding-create-empty-400]] — §4–§5 context;
+- [[backlog/pull-zone-log-forwarding-fields-missing]] — §1 spec.
+- [[backlog/sz-create-json-password-string-literal]] — §3 spec.
+- [[backlog/log-forwarding-create-empty-400]] — §4–§5 context;
   the broken upstream is tracked there, not "fixed" here.
-- [[../dogfooding/dogfooding-playbook]] — §5 docs target.
+- [[dogfooding/dogfooding-playbook]] — §5 docs target.
 - [[iteration-37-cli-snapshot-filters]] — prior iteration; closed
   the value-coupled-CLI-test loop that this round depended on.
 

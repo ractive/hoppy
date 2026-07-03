@@ -21,6 +21,7 @@ type: research
 The `assert_cmd` crate is the de facto standard for testing Rust CLI binaries end-to-end. It wraps `std::process::Command` with ergonomic assertions.
 
 **Core pattern:**
+
 ```rust
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -87,16 +88,20 @@ fn test_file_processing() {
 `trycmd` enables bulk snapshot testing of CLI commands using either TOML or Markdown files. Inspired by `trybuild` and `cram`.
 
 **TOML format** (`tests/cmd/version.toml`):
+
 ```toml
 bin.name = "my_app"
 args = ["--version"]
 ```
+
 With companion `tests/cmd/version.stdout`:
+
 ```
 my_app 1.0.0
 ```
 
 **Markdown format** (`tests/cmd/basics.trycmd`):
+
 ```
 $ my_app --version
 my_app 1.0.0
@@ -246,6 +251,7 @@ Most popular Rust CLIs (fd, bat, etc.) use some combination of:
 `httpmock` is the only Rust mock crate with built-in record/replay. Two recording strategies:
 
 **Forwarding mode** (easier; requires changing client base URL):
+
 ```rust
 let server = MockServer::start();
 server.forward_to("https://api.real-service.com", |rule| {
@@ -257,6 +263,7 @@ recording.save("my_scenario");
 ```
 
 **Proxy mode** (no URL change needed; client must support proxy config):
+
 ```rust
 let server = MockServer::start();
 server.proxy(|rule| {
@@ -268,6 +275,7 @@ recording.save("my_scenario");
 ```
 
 **Playback:**
+
 ```rust
 let server = MockServer::start();
 server.playback("target/httpmock/recordings/my_scenario_<timestamp>.yaml");
@@ -399,6 +407,7 @@ fn test_list_zones() {
 A Rust tool that converts `cargo test` JSON output to Markdown.
 
 **Usage:**
+
 ```bash
 cargo test -- -Z unstable-options --report-time --format json > test-results.json
 markdown-test-report --input test-results.json --output test-report.md
@@ -414,6 +423,7 @@ markdown-test-report --input test-results.json --output test-report.md
 ### 7.2 Custom Report Generation
 
 For checkbox-style reports, a simple script could parse `cargo test --format json` output and generate:
+
 ```markdown
 ## Test Results
 - [x] test_list_zones (0.12s)
@@ -513,6 +523,7 @@ httpmock = "0.8"
 - [Python CLI Testing (Real Python)](https://realpython.com/python-cli-testing/)
 
 ## Related
+
 - [[iterations/e2e-test-harness-plan]] — plan derived from this research
 - [[iterations/rust-e2e-rewrite-plan]] — rewrite plan
 - [[testing/test-plan-v0.1.0]] — test plan

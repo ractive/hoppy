@@ -21,7 +21,7 @@ Second pull-zone bucket from iter-43's analysis. Combines the
 (16 fields) buckets — they're thematically adjacent (both shape
 cache key + freshness), almost all booleans or simple ints, and
 deliver the biggest user-visible win per PR. See
-[[../research/spec-coverage/pull-zone-buckets]].
+[[research/spec-coverage/pull-zone-buckets]].
 
 ## Scope
 
@@ -93,5 +93,5 @@ In `crates/hoppy-cli/src/cli.rs`, add one flag per new field on
 ## Related
 
 - [[iteration-44-pull-zone-security-compliance]]
-- [[../research/spec-coverage/pull-zone-buckets]]
+- [[research/spec-coverage/pull-zone-buckets]]
 - [[iteration-43-openapi-gap-analysis]]

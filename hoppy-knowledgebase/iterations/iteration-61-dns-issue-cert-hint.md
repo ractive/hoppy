@@ -27,7 +27,7 @@ the runtime error gives no breadcrumb to "you need to delegate the
 zone". Adding a hint converts a confusing dead-end into an actionable
 next step.
 
-See [[../backlog/dns-issue-cert-error-translation]].
+See [[backlog/dns-issue-cert-error-translation]].
 
 ## Scope
 
@@ -64,5 +64,5 @@ See [[../backlog/dns-issue-cert-error-translation]].
 
 ## Related
 
-- [[../backlog/dns-issue-cert-error-translation]]
-- [[../dogfooding/session-2026-06-01-round2]]
+- [[backlog/dns-issue-cert-error-translation]]
+- [[dogfooding/session-2026-06-01-round2]]

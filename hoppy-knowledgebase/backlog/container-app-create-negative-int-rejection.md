@@ -2,7 +2,7 @@
 title: container app create --min -1 fails with "unexpected argument"
 type: backlog
 date: 2026-06-01
-status: done
+status: resolved
 priority: low
 origin: dogfooding-2026-06-01-round2
 tags:

@@ -20,15 +20,19 @@ Authentication: `AccessKey` header with personal API key.
 **GET** `/registries`
 
 ### Path Parameters
+
 None.
 
 ### Query Parameters
+
 None.
 
 ### Request Body
+
 None.
 
 ### Response 200 - ListContainerRegistriesResponse
+
 | Field | Type | Notes |
 |-------|------|-------|
 | items | ContainerRegistry[] | |
@@ -36,11 +40,13 @@ None.
 | cursor | string | nullable |
 
 #### ListMeta
+
 | Field | Type |
 |-------|------|
 | totalItems | integer (int64) |
 
 #### ContainerRegistry
+
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | id | integer (int64) | no | read-only |
@@ -57,6 +63,7 @@ None.
 | lastUpdatedAt | string (date-time) | no | nullable |
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container registries were successfully retrieved | ListContainerRegistriesResponse |
@@ -70,20 +77,25 @@ None.
 **GET** `/registries/{registryId}`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | registryId | integer (int64) | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body
+
 None.
 
 ### Response 200 - ContainerRegistry
+
 Same schema as in List Container Registries above.
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container registry was successfully retrieved | ContainerRegistry |
@@ -98,14 +110,17 @@ Same schema as in List Container Registries above.
 **PUT** `/registries/{registryId}`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | registryId | integer (int64) | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body - ContainerRegistryRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | displayName | string | yes | minLength: 1 |
@@ -113,16 +128,19 @@ None.
 | passwordCredentials | Credentials | no | |
 
 #### RegistryType Enum
+
 - `DockerHub`
 - `GitHub`
 
 #### Credentials
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | userName | string | yes | minLength: 1 |
 | password | string | yes | minLength: 1 |
 
 ### Response 200 - SaveContainerRegistryResult
+
 | Field | Type | Notes |
 |-------|------|-------|
 | id | integer (int64) | nullable |
@@ -130,6 +148,7 @@ None.
 | status | SavedContainerRegistryStatus | enum |
 
 #### SavedContainerRegistryStatus Enum
+
 - `Saved`
 - `SecretsValidationFailed`
 - `UnknownErrorOccured`
@@ -137,6 +156,7 @@ None.
 - `InvalidInput`
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container registry was updated | SaveContainerRegistryResult |
@@ -152,28 +172,34 @@ None.
 **DELETE** `/registries/{registryId}`
 
 ### Path Parameters
+
 | Name | Type | Required |
 |------|------|----------|
 | registryId | integer (int64) | yes |
 
 ### Query Parameters
+
 None.
 
 ### Request Body
+
 None.
 
 ### Response 200 - RemoveContainerRegistryResult
+
 | Field | Type | Notes |
 |-------|------|-------|
 | status | RemoveContainerRegistryResponseStatus | enum |
 | applications | string[] | nullable |
 
 #### RemoveContainerRegistryResponseStatus Enum
+
 - `NotFound`
 - `InUse`
 - `Removed`
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container registry was deleted or conflict returned | RemoveContainerRegistryResult |
@@ -188,23 +214,28 @@ None.
 **POST** `/registries/images`
 
 ### Path Parameters
+
 None.
 
 ### Query Parameters
+
 None.
 
 ### Request Body - ListContainerImagesRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | registryId | string | yes | minLength: 1; values: "dockerhub", "github", or private registry ID |
 
 ### Response 200 - ContainerImage[]
+
 | Field | Type |
 |-------|------|
 | id | string |
 | namespace | string |
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container images were successfully retrieved | ContainerImage[] |
@@ -219,12 +250,15 @@ None.
 **POST** `/registries/tags`
 
 ### Path Parameters
+
 None.
 
 ### Query Parameters
+
 None.
 
 ### Request Body - ListContainerImageTagsRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | registryId | string | yes | minLength: 1; values: "dockerhub", "github", or private registry ID |
@@ -232,11 +266,13 @@ None.
 | imageNamespace | string | yes | min: 1, max: 100 characters |
 
 ### Response 200 - ContainerImageTag[]
+
 | Field | Type |
 |-------|------|
 | name | string |
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container image tags were successfully retrieved | ContainerImageTag[] |
@@ -251,12 +287,15 @@ None.
 **POST** `/registries/digest`
 
 ### Path Parameters
+
 None.
 
 ### Query Parameters
+
 None.
 
 ### Request Body - GetContainerImageDigestByTagRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | registryId | string | yes | minLength: 1; values: "dockerhub", "github", or private registry ID |
@@ -265,6 +304,7 @@ None.
 | tag | string | yes | min: 1, max: 100 characters |
 
 ### Response 200 - ImageTagInfo
+
 | Field | Type |
 |-------|------|
 | imageNamespace | string |
@@ -273,6 +313,7 @@ None.
 | digest | string |
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Container image tag digest retrieved successfully | ImageTagInfo |
@@ -287,12 +328,15 @@ None.
 **POST** `/registries/config-suggestions`
 
 ### Path Parameters
+
 None.
 
 ### Query Parameters
+
 None.
 
 ### Request Body - GetContainerConfigSuggestionsRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | registryId | string | yes | minLength: 1; values: "dockerhub", "github", or private registry ID |
@@ -301,6 +345,7 @@ None.
 | tag | string | yes | min: 1, max: 100 characters |
 
 ### Response 200 - ContainerConfigSuggestions
+
 | Field | Type | Notes |
 |-------|------|-------|
 | endpointSuggestions | EndpointRequest[] | |
@@ -311,6 +356,7 @@ None.
 | registryUrl | string | nullable |
 
 #### EnvironmentVariableSuggestion
+
 | Field | Type |
 |-------|------|
 | name | string |
@@ -321,6 +367,7 @@ None.
 For EndpointRequest and nested types, see the Shared Types section below.
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Configuration suggestions retrieved successfully | ContainerConfigSuggestions |
@@ -335,12 +382,15 @@ For EndpointRequest and nested types, see the Shared Types section below.
 **POST** `/registries/public-images/search`
 
 ### Path Parameters
+
 None.
 
 ### Query Parameters
+
 None.
 
 ### Request Body - SearchPublicContainerImagesRequest
+
 | Field | Type | Required | Constraints |
 |-------|------|----------|-------------|
 | registryId | string | yes | 1-100 characters; values: "dockerhub", "github", or private registry ID |
@@ -349,12 +399,14 @@ None.
 | page | integer | no | 1-100 |
 
 ### Response 200 - ContainerImage[]
+
 | Field | Type |
 |-------|------|
 | id | string |
 | namespace | string |
 
 ### Status Codes
+
 | Code | Description | Response Schema |
 |------|-------------|-----------------|
 | 200 | Successfully retrieved public images | ContainerImage[] |
@@ -367,6 +419,7 @@ None.
 ## Shared Error Types
 
 ### ProblemDetails
+
 | Field | Type | Notes |
 |-------|------|-------|
 | type | string | nullable |
@@ -376,6 +429,7 @@ None.
 | instance | string | nullable |
 
 ### ErrorDetails
+
 | Field | Type | Notes |
 |-------|------|-------|
 | title | string | read-only |
@@ -385,6 +439,7 @@ None.
 | errors | ValidationError[] | nullable, read-only |
 
 ### ValidationError
+
 | Field | Type | Notes |
 |-------|------|-------|
 | field | string | nullable |

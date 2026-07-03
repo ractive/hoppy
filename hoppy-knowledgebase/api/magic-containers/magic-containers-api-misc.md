@@ -21,6 +21,7 @@ Authentication: `AccessKey` header (personal API key)
 **GET** `/limits`
 
 ### Request Body
+
 None
 
 ### Response (200)
@@ -156,6 +157,7 @@ None
 | podId | string | Yes |
 
 ### Request Body
+
 None
 
 ### Response

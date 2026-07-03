@@ -28,7 +28,7 @@ in the playbook (`auth check`) calls `GET /billing` and persists:
 
 This is a security issue: the playbook tells users to commit the
 output, and signed URLs would remain hot until they expire. See
-[[../backlog/record-flag-leaks-billing-pii]].
+[[backlog/record-flag-leaks-billing-pii]].
 
 ## Scope
 
@@ -70,7 +70,7 @@ output, and signed URLs would remain hot until they expire. See
 
 ### 5. Docs
 
-- [x] Update [[../dogfooding/dogfooding-playbook]] to note that
+- [x] Update [[dogfooding/dogfooding-playbook]] to note that
       redaction is on by default and what fields it covers.
 - [x] Add a short note to the recording docs that fixture diffs
       should still be spot-checked before commit.
@@ -92,6 +92,6 @@ output, and signed URLs would remain hot until they expire. See
 
 ## Related
 
-- [[../backlog/record-flag-leaks-billing-pii]]
-- [[../backlog/fixture-recording-name-mismatch]]
-- [[../dogfooding/dogfooding-playbook]]
+- [[backlog/record-flag-leaks-billing-pii]]
+- [[backlog/fixture-recording-name-mismatch]]
+- [[dogfooding/dogfooding-playbook]]

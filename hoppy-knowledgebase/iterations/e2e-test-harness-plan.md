@@ -87,6 +87,7 @@ The CLI currently hardcodes base URLs via `Client::new()`. Each client already h
 | `src/commands/storage.rs` | CoreClient + StorageClient | `BUNNY_API_URL` + `BUNNY_STORAGE_URL` | 2 |
 
 Pattern:
+
 ```rust
 let client = if let Some(url) = auth::get_api_url() {
     CoreClient::with_base_url(auth::get_api_key()?, url).with_debug(debug)
@@ -141,6 +142,7 @@ tests/fixtures/
 **`tools/e2e-report.sh`** — Runs `cargo test --test 'e2e_*'` with `--no-fail-fast` so all results are collected even when some tests fail. Captures plain-text test output, parses `test ... ok` and `test ... FAILED` lines with bash regex, and writes `hoppy-knowledgebase/e2e-test-report.md` with Obsidian-compatible YAML frontmatter and a flat (ungrouped) checkbox list. The report file is gitignored.
 
 Example output:
+
 ```markdown
 - [x] `pull_zone_list_table_output`
 - [x] `pull_zone_list_json_output`
@@ -177,6 +179,7 @@ Example output:
 4. Open report in Obsidian — checkboxes render correctly
 
 ## Related
+
 - [[research/cli-e2e-testing-research]] — research that informed this plan
 - [[iterations/rust-e2e-rewrite-plan]] — subsequent rewrite plan
 - [[testing/test-plan-v0.1.0]] — overall test plan

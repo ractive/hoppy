@@ -22,7 +22,7 @@ order. This breaks deterministic fixture diffs, makes the JSON
 hard to scan by eye, and forces every downstream consumer to
 re-sort.
 
-See [[../backlog/statistics-chart-keys-unordered-json]].
+See [[backlog/statistics-chart-keys-unordered-json]].
 
 ## Scope
 
@@ -64,5 +64,5 @@ See [[../backlog/statistics-chart-keys-unordered-json]].
 
 ## Related
 
-- [[../backlog/statistics-chart-keys-unordered-json]]
-- [[../dogfooding/session-2026-06-01]]
+- [[backlog/statistics-chart-keys-unordered-json]]
+- [[dogfooding/session-2026-06-01]]

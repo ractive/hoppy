@@ -27,7 +27,7 @@ are adjacent to it.
 ## Scope
 
 ### 1. Finish iter-41 §3 — add `--help` text to the three missed commands
-Source: [[../backlog/iter-41-sub-resource-help-incomplete]]
+Source: [[backlog/iter-41-sub-resource-help-incomplete]]
 
 iter-41 §3 committed to documenting the parent-resource arg on four
 sub-resource commands. Only `pull-zone edge-rule list` actually got the
@@ -60,7 +60,8 @@ hoppy dns record list --help           → --zone-id <ZONE_ID>  (no help)
       affected subcommands.
 
 ### 2. Unify parent-resource arg name across sub-resource commands
-Source: [[../backlog/parent-resource-arg-name-inconsistency]]
+
+Source: [[backlog/parent-resource-arg-name-inconsistency]]
 
 Three different names for the same concept (parent resource id):
 
@@ -96,7 +97,8 @@ top-level `--id` unification.
       confirm aliases still work.
 
 ### 3. Table-label vs JSON-key naming mismatch
-Source: [[../backlog/table-label-json-key-case-mismatch]]
+
+Source: [[backlog/table-label-json-key-case-mismatch]]
 
 `hoppy shield waf profiles` (and likely other camelCase-API-backed
 commands) renders table headers in Title-Case while JSON output uses
@@ -149,9 +151,9 @@ gets `null` — they need `.description`.
 
 ## Related
 
-- [[../backlog/iter-41-sub-resource-help-incomplete]]
-- [[../backlog/parent-resource-arg-name-inconsistency]]
-- [[../backlog/table-label-json-key-case-mismatch]]
+- [[backlog/iter-41-sub-resource-help-incomplete]]
+- [[backlog/parent-resource-arg-name-inconsistency]]
+- [[backlog/table-label-json-key-case-mismatch]]
 - [[iteration-40-dogfooding-2026-05-27-fixes]] — top-level `--id` unification
 - [[iteration-41-dogfooding-2026-05-28-polish]] — original (incomplete) §3
 - Dogfooding round: 2026-05-29 (post-iter-41).

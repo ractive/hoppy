@@ -169,6 +169,7 @@ cargo test --features live-api --no-run
 | 18 — Shield Advanced | API Guardian, upload scanning, event logs, WAF review | Medium-Large |
 
 ## Related
+
 - [[Seed]] — original project brief
 - [[testing/test-plan-v0.1.0]] — comprehensive pre-release test plan
 - [[iterations/iteration-1-code-review]] — code review from iter 1

@@ -26,8 +26,8 @@ fix missed:
    (`<empty list>` for `Databases`, `<object: 3 fields>` for
    `PageInfo`) in `--format table`, instead of one row per database.
 
-See [[../backlog/db-config-show-limits-ignore-format]] and
-[[../backlog/db-v2-list-table-placeholders]].
+See [[backlog/db-config-show-limits-ignore-format]] and
+[[backlog/db-v2-list-table-placeholders]].
 
 ## Scope
 
@@ -56,12 +56,12 @@ See [[../backlog/db-config-show-limits-ignore-format]] and
       databases (uses fixtures).
 - [x] Snapshot tests that exercise structural assertions (column
       headers present, row count matches) per the
-      [[../dogfooding/dogfooding-playbook]] drift guidance.
+      [[dogfooding/dogfooding-playbook]] drift guidance.
 
 ## Out of scope
 
 - `db config optimal` — separately broken upstream
-  ([[../backlog/db-config-optimal-single-broken]]).
+  ([[backlog/db-config-optimal-single-broken]]).
 - Adding new columns to the v2 list response.
 
 ## Acceptance Criteria
@@ -77,7 +77,7 @@ See [[../backlog/db-config-show-limits-ignore-format]] and
 
 ## Related
 
-- [[../backlog/db-config-show-limits-ignore-format]]
-- [[../backlog/db-v2-list-table-placeholders]]
-- [[../backlog/db-active-usage-ignores-format]]
-- [[../dogfooding/session-2026-06-01]]
+- [[backlog/db-config-show-limits-ignore-format]]
+- [[backlog/db-v2-list-table-placeholders]]
+- [[backlog/db-active-usage-ignores-format]]
+- [[dogfooding/session-2026-06-01]]

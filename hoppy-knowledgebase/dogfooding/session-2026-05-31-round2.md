@@ -52,26 +52,26 @@ behaviours, and error-mapping quirks.
 
 ## New backlog items filed this round
 
-- **HIGH** [[../backlog/stream-library-api-key-unrecoverable]] —
+- **HIGH** [[backlog/stream-library-api-key-unrecoverable]] —
   `ApiKey`/`ReadOnlyApiKey` are `skip_serializing`, so `--reveal` cannot
   bring them back. A user creating a stream library has no way to use it
   from hoppy alone.
-- **HIGH** [[../backlog/record-flag-leaks-billing-pii]] — `--record` on
+- **HIGH** [[backlog/record-flag-leaks-billing-pii]] — `--record` on
   the canonical first-command (`auth check`) writes payer email,
   payment IDs, balance, and signed invoice URLs straight to disk. The
   playbook tells users to commit these fixtures.
-- **MED** [[../backlog/dns-scan-results-rejects-domain]] — `scan start`
+- **MED** [[backlog/dns-scan-results-rejects-domain]] — `scan start`
   accepts `--id` OR `--domain`; `scan results` only accepts `--id`. The
   pre-zone scan workflow has no follow-up.
-- Updated [[../backlog/db-active-usage-ignores-format]] — broadened from
+- Updated [[backlog/db-active-usage-ignores-format]] — broadened from
   a single command to the whole `db` v2-style family (`db v2 list`,
   `db usage`, `db live` all ignore `--format` and emit snake_case JSON).
 
 ## Confirmed findings from round 1 (still present)
 
-- Geo-zone casing bug ([[../backlog/geo-zone-flags-casing-mismatch]]) —
+- Geo-zone casing bug ([[backlog/geo-zone-flags-casing-mismatch]]) —
   not retested this round, same binary.
-- Shield 202+error swallow ([[../backlog/shield-202-error-swallowed]]) —
+- Shield 202+error swallow ([[backlog/shield-202-error-swallowed]]) —
   not retested.
 
 ## Friction not yet a filed item (judgement calls)
@@ -122,9 +122,9 @@ behaviours, and error-mapping quirks.
    → delete. Variable/secret redaction behaviour is a likely friction
    site.
 3. **Video upload via stream.** Requires the library ApiKey, so blocked
-   on [[../backlog/stream-library-api-key-unrecoverable]] first.
+   on [[backlog/stream-library-api-key-unrecoverable]] first.
 4. **DNSSEC enable→key rotate→disable** on a real domain to verify
-   [[../backlog/dnssec-status-text-output-thin]].
+   [[backlog/dnssec-status-text-output-thin]].
 5. **Container app create with reserved runtime + volume + endpoint
    wiring** end-to-end to exercise the full container CRUD graph and
    the `region optimal` selector.

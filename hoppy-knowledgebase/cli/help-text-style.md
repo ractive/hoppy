@@ -67,7 +67,7 @@ Apart from "no decorative ASCII art":
 
 ## Drill-down hints (deferred)
 
-Hyalo's iter-107 added per-command "drill-down hints": after the human result, the CLI prints `tip: hyalo find --tag X` style next-step suggestions. Hoppy doesn't have this yet — it's a backlog item from iter-23 (see [[../backlog/]]).
+Hyalo's iter-107 added per-command "drill-down hints": after the human result, the CLI prints `tip: hyalo find --tag X` style next-step suggestions. Hoppy doesn't have this yet — it's a backlog item from iter-23 (see [[backlog/drill-down-hints]]).
 
 ## Smell checklist
 
@@ -85,5 +85,5 @@ If a command's `--help` fails any of these, fix it:
 ## Related
 
 - [[command-tree]]
-- [[../decision-log]]
-- [[../iterations/iteration-23-hyalo-best-practices]]
+- [[decision-log]]
+- [[iterations/iteration-23-hyalo-best-practices]]

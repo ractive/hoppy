@@ -471,42 +471,55 @@ No body.
 ### Enums
 
 #### ApplicationStatus
+
 `Unknown`, `Active`, `Progressing`, `Inactive`, `Failing`, `Suspended`
 
 #### ApplicationRuntimeType
+
 `Shared`, `Reserved`
 
 #### EndpointType
+
 `CDN`, `Anycast`, `PublicIp`
 
 #### RegionProvisioningType
+
 `Static`, `Dynamic`
 
 #### ImagePullPolicy
+
 `Always`, `IfNotPresent`
 
 #### Protocol
+
 `Tcp`, `Udp`, `Sctp`
 
 #### AnycastIpProtocolVersion
+
 `IPv4`
 
 #### Grade
+
 `CouldBeBetter`, `NotBad`, `DoingGreat`
 
 #### DeploymentStatus
+
 `Unknown`, `Active`, `Progressing`, `Inactive`, `Failing`
 
 #### PodStatus
+
 `NotScheduled`, `Scheduled`, `Ready`, `Deleting`
 
 #### ContainerStatus
+
 `NotStarted`, `Started`, `Ready`
 
 #### Granularity
+
 `Daily`, `Hourly`, `Minute`
 
 #### HttpStatusCode
+
 `Continue`, `SwitchingProtocols`, `Processing`, `EarlyHints`, `OK`, `Created`, `Accepted`, `NonAuthoritativeInformation`, `NoContent`, `ResetContent`, `PartialContent`, `MultiStatus`, `AlreadyReported`, `IMUsed`, `MultipleChoices`, `MovedPermanently`, `Found`, `SeeOther`, `NotModified`, `UseProxy`, `Unused`, `TemporaryRedirect`, `PermanentRedirect`, `BadRequest`, `Unauthorized`, `PaymentRequired`, `Forbidden`, `NotFound`, `MethodNotAllowed`, `NotAcceptable`, `ProxyAuthenticationRequired`, `RequestTimeout`, `Conflict`, `Gone`, `LengthRequired`, `PreconditionFailed`, `RequestEntityTooLarge`, `RequestUriTooLong`, `UnsupportedMediaType`, `RequestedRangeNotSatisfiable`, `ExpectationFailed`, `MisdirectedRequest`, `UnprocessableEntity`, `Locked`, `FailedDependency`, `UpgradeRequired`, `PreconditionRequired`, `TooManyRequests`, `RequestHeaderFieldsTooLarge`, `UnavailableForLegalReasons`, `InternalServerError`, `NotImplemented`, `BadGateway`, `ServiceUnavailable`, `GatewayTimeout`, `HttpVersionNotSupported`, `VariantAlsoNegotiates`, `InsufficientStorage`, `LoopDetected`, `NotExtended`, `NetworkAuthenticationRequired`
 
 ---
@@ -841,6 +854,7 @@ All fields nullable.
 | id    | string |
 
 ## Related
+
 - [[api/bunny-api-overview]] — overview of all bunny.net APIs
 - [[api/magic-containers/magic-containers-api-endpoints]] — endpoint management
 - [[api/magic-containers/magic-containers-api-autoscaling-regions]] — autoscaling & regions

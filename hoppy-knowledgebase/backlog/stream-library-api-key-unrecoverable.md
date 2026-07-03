@@ -12,7 +12,7 @@ tags:
   - secrets
   - dx
   - blocker
-resolved_in: iter-52
+resolved-in: iter-52
 ---
 
 # Stream `ApiKey` and `ReadOnlyApiKey` cannot be retrieved at all
@@ -46,10 +46,14 @@ dashboard to copy the key by hand.
 LIB_ID=673669
 hoppy stream library get --id $LIB_ID --format json --reveal | jq 'keys'
 # [
-#   "AllowDirectPlay",
-#   "DateCreated",
-#   ...
-#   "VideoCount"
+# "AllowDirectPlay",
+
+# "DateCreated",
+
+# ...
+
+# "VideoCount"
+
 # ]
 # — no "ApiKey", no "ReadOnlyApiKey"
 ```

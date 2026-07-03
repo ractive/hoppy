@@ -591,21 +591,25 @@ All should use wiremock to mock HTTP responses.
 ## Part 8: Test Execution Strategy
 
 ### Phase 1: Automated (Can Run in CI)
+
 - **Help text tests (Part 1):** Build binary, run `--help` for every command, parse output
 - **Error handling (Part 4):** Most testable with wiremock
 - **Output formatting (Part 5):** Snapshot tests against known fixtures
 - **API client tests (Part 6):** Already exist, just run `cargo test`
 
 ### Phase 2: Semi-Automated (Wiremock CLI Tests)
+
 - **Command functional tests (Part 3):** New integration test suite using wiremock
 - **Edge cases (Part 7):** Mix of unit and integration tests
 
 ### Phase 3: Manual / Live API (Optional)
+
 - **Live smoke tests:** Run key commands against real Bunny.net staging/test account
 - **Upload/download tests:** Real file transfers
 - **End-to-end workflows:** Create zone → add record → verify → delete
 
 ### Priority Order
+
 1. Help text accuracy (Part 1) — fast, catches documentation bugs
 2. Missing API client tests (Part 6.2) — fill pull-zone CRUD gap
 3. Global flag tests (Part 2) — ensures consistent UX
@@ -632,6 +636,7 @@ All should use wiremock to mock HTTP responses.
 | **Grand Total** | | **~549 tests** |
 
 ## Related
+
 - [[development-roadmap]] — roadmap and current test architecture
 - [[adding-a-feature]] — feature checklist including test steps
 - [[iterations/rust-e2e-rewrite-plan]] — E2E test architecture plan

@@ -257,29 +257,35 @@ For stream/storage mock tests: must also set service-specific keys to prevent th
 ## Implementation order
 
 ### Phase 1: Infrastructure
+
 1. Add `[features]` and `[dev-dependencies]` to root `Cargo.toml`
 2. Create `tests/support/mod.rs` with helpers
 
 ### Phase 2: First test (template)
+
 3. Create `tests/cli_auth.rs` — simplest, one endpoint
 4. Run `cargo test --test cli_auth` to validate
 5. Run `cargo insta review` to accept snapshots
 
 ### Phase 3: Core services
+
 6. `tests/cli_pull_zone.rs`
 7. `tests/cli_storage_zone.rs`
 8. `tests/cli_storage.rs`
 9. `tests/cli_dns.rs`
 
 ### Phase 4: Additional services
+
 10. `tests/cli_stream.rs`
 11. `tests/cli_script.rs`
 12. `tests/cli_shield.rs`
 
 ### Phase 5: Live tests
+
 13. Add `#[cfg(feature = "live-api")]` modules to each file
 
 ### Phase 6: Cleanup
+
 14. Delete `testbooks/` directory entirely
 15. Update `hoppy-knowledgebase/adding-a-feature.md` (remove Bun references)
 16. Update `hoppy-knowledgebase/development-roadmap.md` (remove Bun sections)
@@ -293,6 +299,7 @@ Some CLI operations need fixtures not yet present:
 - Purge returns 204 (no body needed)
 
 ## Related
+
 - [[iterations/e2e-test-harness-plan]] — original test harness plan this builds on
 - [[research/cli-e2e-testing-research]] — research behind the testing approach
 - [[testing/test-plan-v0.1.0]] — overall test plan

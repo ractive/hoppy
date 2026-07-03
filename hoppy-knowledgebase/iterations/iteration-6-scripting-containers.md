@@ -41,6 +41,7 @@ branch: iter-6/scripting-containers
 **Deliverable:** Deploy and manage edge scripts. Magic Containers API client and CLI commands fully implemented.
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[iterations/iteration-5-shield]] — previous iteration
 - [[api/magic-containers/magic-containers-applications-api]] — Magic Containers API reference

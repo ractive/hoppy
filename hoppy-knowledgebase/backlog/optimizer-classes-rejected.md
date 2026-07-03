@@ -30,7 +30,7 @@ the API wants `"{...}"` (string-escaped).
 
 ## Action items
 
-- Confirm wire format with bunny docs (https://docs.bunny.net/docs/optimizer-classes
+- Confirm wire format with bunny docs (<https://docs.bunny.net/docs/optimizer-classes>
   per the help text).
 - If the API really does want the doubly-encoded form, do the encoding
   client-side so the user passes a normal JSON map.

@@ -20,7 +20,7 @@ library object, but hoppy has no path to view them — not even with
 `--reveal`. Users have to go to the web UI to copy keys they already
 have programmatic access to.
 
-See [[../backlog/stream-library-api-key-unrecoverable]].
+See [[backlog/stream-library-api-key-unrecoverable]].
 
 ## Scope
 
@@ -72,4 +72,4 @@ See [[../backlog/stream-library-api-key-unrecoverable]].
 
 ## Related
 
-- [[../backlog/stream-library-api-key-unrecoverable]]
+- [[backlog/stream-library-api-key-unrecoverable]]

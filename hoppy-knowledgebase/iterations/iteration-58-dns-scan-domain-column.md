@@ -20,7 +20,7 @@ to `dns zone scan results`, the rendered `Domain` column is still
 blank (`-`). We already know the domain — we used it to resolve
 the zone id — so filling the column client-side is a free DX win.
 
-See [[../backlog/dns-scan-results-domain-column-empty]].
+See [[backlog/dns-scan-results-domain-column-empty]].
 
 ## Scope
 
@@ -63,6 +63,6 @@ See [[../backlog/dns-scan-results-domain-column-empty]].
 
 ## Related
 
-- [[../backlog/dns-scan-results-domain-column-empty]]
-- [[../iterations/iteration-53-dns-scan-results-by-domain]]
-- [[../dogfooding/session-2026-06-01]]
+- [[backlog/dns-scan-results-domain-column-empty]]
+- [[iterations/iteration-53-dns-scan-results-by-domain]]
+- [[dogfooding/session-2026-06-01]]

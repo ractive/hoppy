@@ -24,7 +24,8 @@ others were active friction while triaging it.
 ## Scope
 
 ### 1. Log-forwarding hostname silent no-op
-Source: [[../backlog/log-forwarding-hostname-silent-noop]]
+
+Source: [[backlog/log-forwarding-hostname-silent-noop]]
 
 When `LogForwardingEnabled` is `false` on a pull zone, the bunny.net API
 silently ignores `LogForwardingHostname` (and likely `Port` / `Protocol`
@@ -46,11 +47,12 @@ forwards the response unchanged, so the user thinks the update landed.
       reflected in the response body.
 - [x] e2e test: update with hostname-only on a disabled-LFE fixture
       should error out (or warn) — not return success.
-- [x] Update [[../dogfooding/dogfooding-playbook]] if a new pattern
+- [x] Update [[dogfooding/dogfooding-playbook]] if a new pattern
       emerges from the fix.
 
 ### 2. `pull-zone get` table is too wide
-Source: [[../backlog/pull-zone-get-table-too-wide]]
+
+Source: [[backlog/pull-zone-get-table-too-wide]]
 
 `hoppy pull-zone get --id <id>` renders 11 columns side-by-side — wraps
 unreadably on a 120-col terminal. Single-resource gets should pivot to a
@@ -72,7 +74,8 @@ vertical `Field / Value` table like `hoppy auth check`.
       fits on a standard terminal.
 
 ### 3. `--debug` shows response but not request body
-Source: [[../backlog/debug-flag-omits-request-body]]
+
+Source: [[backlog/debug-flag-omits-request-body]]
 
 Today `--debug` prints `>> METHOD URL`, `<< status`, and `<<< response`.
 The request body — the most useful piece for diagnosing "why didn't my
@@ -115,7 +118,7 @@ been faster to localise (CLI bug vs API bug) with the body visible.
 
 ## Related
 
-- [[../backlog/log-forwarding-hostname-silent-noop]]
-- [[../backlog/pull-zone-get-table-too-wide]]
-- [[../backlog/debug-flag-omits-request-body]]
+- [[backlog/log-forwarding-hostname-silent-noop]]
+- [[backlog/pull-zone-get-table-too-wide]]
+- [[backlog/debug-flag-omits-request-body]]
 - Dogfooding round: 2026-05-26 (post-iter-38).

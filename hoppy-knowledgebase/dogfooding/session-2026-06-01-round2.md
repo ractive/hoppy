@@ -57,13 +57,13 @@ All five iterations verified clean.
 
 ## New backlog items filed this round
 
-- **MEDIUM** [[../backlog/shield-event-logs-discards-error-body]] — `errorResponse.message` returned by `/shield/event-logs/.../<date>/` 401 responses is dropped on the floor; the user sees only "401 Unauthorized" instead of "You can only view past 3 days".
-- **MEDIUM** [[../backlog/dns-zone-export-ignores-format]] — `dns zone export --format json` always returns raw BIND text. Should wrap in `{"Bind": "..."}` (or sibling-shaped envelope) for machine consumers.
-- **LOW**    [[../backlog/dns-zone-export-empty-zone-silent]] — Empty zones produce literally no output. At minimum a `;; empty zone <domain>` header.
-- **LOW**    [[../backlog/dns-issue-cert-error-translation]] — Generic `500 ()` for an undelegated zone is the documented expected case. Translate to "Zone is not delegated to bunny.net nameservers — set NS records to <list> and retry".
-- **LOW**    [[../backlog/container-app-create-negative-int-rejection]] — `--min -1` (and similar) fails with clap "unexpected argument" instead of a domain validation. Switch to `allow_hyphen_values` then reject in code with a clear message.
-- **LOW**    [[../backlog/pull-zone-list-missing-all-flag]] — `pull-zone list` (and several other `list` commands) lack the `--all` auto-paginate flag that `shield event-logs` has. Sweep for parity.
-- **LOW**    [[../backlog/pull-zone-create-name-help-empty]] — `--name` flag on `pull-zone create` has an empty help string.
+- **MEDIUM** [[backlog/shield-event-logs-discards-error-body]] — `errorResponse.message` returned by `/shield/event-logs/.../<date>/` 401 responses is dropped on the floor; the user sees only "401 Unauthorized" instead of "You can only view past 3 days".
+- **MEDIUM** [[backlog/dns-zone-export-ignores-format]] — `dns zone export --format json` always returns raw BIND text. Should wrap in `{"Bind": "..."}` (or sibling-shaped envelope) for machine consumers.
+- **LOW**    [[backlog/dns-zone-export-empty-zone-silent]] — Empty zones produce literally no output. At minimum a `;; empty zone <domain>` header.
+- **LOW**    [[backlog/dns-issue-cert-error-translation]] — Generic `500 ()` for an undelegated zone is the documented expected case. Translate to "Zone is not delegated to bunny.net nameservers — set NS records to <list> and retry".
+- **LOW**    [[backlog/container-app-create-negative-int-rejection]] — `--min -1` (and similar) fails with clap "unexpected argument" instead of a domain validation. Switch to `allow_hyphen_values` then reject in code with a clear message.
+- **LOW**    [[backlog/pull-zone-list-missing-all-flag]] — `pull-zone list` (and several other `list` commands) lack the `--all` auto-paginate flag that `shield event-logs` has. Sweep for parity.
+- **LOW**    [[backlog/pull-zone-create-name-help-empty]] — `--name` flag on `pull-zone create` has an empty help string.
 
 ## Notes
 
@@ -78,9 +78,9 @@ All five iterations verified clean.
 ## Related
 
 - [[session-2026-06-01]] — round 1 (the source of iter-54..58)
-- [[../iterations/iteration-54-shield-metrics-flag-parity]]
-- [[../iterations/iteration-55-deterministic-chart-ordering]]
-- [[../iterations/iteration-56-db-format-cleanup]]
-- [[../iterations/iteration-57-quiet-flag-contract]]
-- [[../iterations/iteration-58-dns-scan-domain-column]]
+- [[iterations/iteration-54-shield-metrics-flag-parity]]
+- [[iterations/iteration-55-deterministic-chart-ordering]]
+- [[iterations/iteration-56-db-format-cleanup]]
+- [[iterations/iteration-57-quiet-flag-contract]]
+- [[iterations/iteration-58-dns-scan-domain-column]]
 - [[dogfooding-playbook]]

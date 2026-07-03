@@ -21,7 +21,7 @@ documented as "Suppress non-essential output", but on `auth check`
 (and likely many other read commands) it's a no-op — the full
 table is still printed.
 
-See [[../backlog/quiet-flag-no-op-on-many-commands]].
+See [[backlog/quiet-flag-no-op-on-many-commands]].
 
 ## Scope
 
@@ -84,5 +84,6 @@ See [[../backlog/quiet-flag-no-op-on-many-commands]].
 
 ## Related
 
-- [[../backlog/quiet-flag-no-op-on-many-commands]]
-- [[../dogfooding/session-2026-06-01]]
+- [[backlog/quiet-flag-no-op-on-many-commands]]
+- [[dogfooding/session-2026-06-01]]
+- [[cli/quiet-flag-classification]] — per-subcommand classification recorded during this iteration

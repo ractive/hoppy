@@ -25,7 +25,8 @@ readability win for resources whose response contains nested fields.
 ## Scope
 
 ### 1. Embedded JSON blows out `get` table width
-Source: [[../backlog/get-embedded-json-blows-width]]
+
+Source: [[backlog/get-embedded-json-blows-width]]
 
 iter-39 pivoted single-resource `get` commands to a vertical Field/Value
 table. The pivot is correct for scalar-only resources (`storage-zone get`
@@ -65,7 +66,8 @@ common 120-col case.
       output now fits a 120-col terminal.
 
 ### 2. `shield zone get` uses `--shield-zone-id` instead of `--id`
-Source: [[../backlog/shield-zone-get-id-flag-inconsistent]]
+
+Source: [[backlog/shield-zone-get-id-flag-inconsistent]]
 
 Every other `get` command takes `--id`. `shield zone get` requires
 `--shield-zone-id`. Clap helpfully suggests the right alternative on
@@ -82,7 +84,8 @@ friction.
 - [x] e2e snapshot updates for changed `--help` text.
 
 ### 3. Storage display paths show `zone//path` when --remote-path has leading slash
-Source: [[../backlog/storage-remote-path-double-slash]]
+
+Source: [[backlog/storage-remote-path-double-slash]]
 
 `hoppy storage upload --zone Z --file local --remote-path /foo.txt`
 prints `Uploaded local → Z//foo.txt`. The double slash is just a string
@@ -122,8 +125,8 @@ same, so functionality is unaffected.
 
 ## Related
 
-- [[../backlog/get-embedded-json-blows-width]]
-- [[../backlog/shield-zone-get-id-flag-inconsistent]]
-- [[../backlog/storage-remote-path-double-slash]]
+- [[backlog/get-embedded-json-blows-width]]
+- [[backlog/shield-zone-get-id-flag-inconsistent]]
+- [[backlog/storage-remote-path-double-slash]]
 - [[iteration-39-dogfooding-2026-05-26-fixes]] — original `get` pivot
 - Dogfooding round: 2026-05-27 (post-iter-39).

@@ -10,7 +10,7 @@ resolved-by: "[[iterations/iteration-42-dogfooding-2026-05-29-fixes]]"
 
 # iter-41 #3 missed three of the four examples in its own plan
 
-The iter-41 plan ([[../iterations/iteration-41-dogfooding-2026-05-28-polish]]
+The iter-41 plan ([[iterations/iteration-41-dogfooding-2026-05-28-polish]]
 §3) explicitly listed four sub-resource commands as targets:
 
 ```
@@ -51,7 +51,7 @@ original iter-41 audit clearly missed cases.
 
 ## Related
 
-- [[../iterations/iteration-41-dogfooding-2026-05-28-polish]] — original
+- [[iterations/iteration-41-dogfooding-2026-05-28-polish]] — original
   (incomplete) audit
 - [[parent-resource-arg-name-inconsistency]] — the `--id` vs `--app-id`
   vs `--zone-id` divergence is a separate concern

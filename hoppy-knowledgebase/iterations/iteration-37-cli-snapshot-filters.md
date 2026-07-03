@@ -21,7 +21,7 @@ or `stdout.contains("150000")` style asserts on values that came from
 the hand-authored fixtures. Until these are loosened, `fixture-refresh
 --apply` after a live sweep still breaks the offline suite.
 
-See [[../backlog/cli-snapshot-tests-value-coupled]] for the diagnosis
+See [[backlog/cli-snapshot-tests-value-coupled]] for the diagnosis
 (filed during iter-36).
 
 ## Target shape
@@ -111,6 +111,6 @@ The 10 tests (from iter-36 §6 validation):
 
 ## Related
 
-- [[../backlog/cli-snapshot-tests-value-coupled]] — motivating backlog item.
+- [[backlog/cli-snapshot-tests-value-coupled]] — motivating backlog item.
 - [[iteration-36-shape-asserts]] — first half of the fix (bunny-net-api crate).
 - [[iteration-34-fixture-mapper]] — the tool whose final step this unblocks.

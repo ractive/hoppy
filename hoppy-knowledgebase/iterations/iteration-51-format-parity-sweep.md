@@ -20,11 +20,11 @@ Three separate dogfooding items all point at the same gap: `--format`
 is partially honoured. Bundling them avoids three near-identical PRs.
 
 - `db` v2-style commands ignore `--format` and always print snake_case
-  JSON — see [[../backlog/db-active-usage-ignores-format]].
+  JSON — see [[backlog/db-active-usage-ignores-format]].
 - Mutation subcommands (`create`/`update`/`delete`) always print prose,
-  even with `--format json` — see [[../backlog/mutation-commands-ignore-format-json]].
+  even with `--format json` — see [[backlog/mutation-commands-ignore-format-json]].
 - `container region` renders the same field three ways across
-  `table`/`text`/`json` — see [[../backlog/container-region-format-key-divergence]].
+  `table`/`text`/`json` — see [[backlog/container-region-format-key-divergence]].
 
 Goal: every CLI subcommand honours `--format table|text|json`, and
 field names are consistent between `text` and `json`. Convention:
@@ -82,7 +82,7 @@ PascalCase for non-tabular formats (matches existing `pull-zone get
 
 ## Related
 
-- [[../backlog/db-active-usage-ignores-format]]
-- [[../backlog/mutation-commands-ignore-format-json]]
-- [[../backlog/container-region-format-key-divergence]]
-- [[../backlog/json-output-casing-inconsistency]]
+- [[backlog/db-active-usage-ignores-format]]
+- [[backlog/mutation-commands-ignore-format-json]]
+- [[backlog/container-region-format-key-divergence]]
+- [[backlog/json-output-casing-inconsistency]]

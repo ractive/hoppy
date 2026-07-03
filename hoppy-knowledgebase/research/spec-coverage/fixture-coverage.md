@@ -947,7 +947,6 @@ _None — struct sees every field the API returned._
 
 - `id`
 
-
 ## Takeaways
 
 - **Pull zone fixtures confirm the spec count**: each recorded

@@ -95,6 +95,6 @@ Mirror hyalo's wording (its README reads):
 ## Related
 
 - [[iteration-29-ci-greenify]]
-- [[../decision-log]]
+- [[decision-log]]
 - hyalo's pattern: `aarch64-apple-darwin` only, README points Intel Macs
   to `cargo install`.

@@ -26,7 +26,8 @@ because each is a sub-day fix.
 ## Scope
 
 ### 1. `<1 items>` plural mismatch
-Source: [[../backlog/summary-cell-plural-mismatch]]
+
+Source: [[backlog/summary-cell-plural-mismatch]]
 
 iter-40's array-summary cell renders `<1 items>` for n=1.
 
@@ -38,7 +39,8 @@ iter-40's array-summary cell renders `<1 items>` for n=1.
       is 1 (the dogfooding test zone has exactly this shape).
 
 ### 2. List-table columns overflow on long free-text values
-Source: [[../backlog/list-tables-overflow-on-long-text-columns]]
+
+Source: [[backlog/list-tables-overflow-on-long-text-columns]]
 
 iter-39/40 fixed `get` width. The symmetric problem on `list` is
 unfixed: e.g. `shield waf profiles` renders at 267 chars because the
@@ -64,7 +66,8 @@ unfixed: e.g. `shield waf profiles` renders at 267 chars because the
       fits a 120-col terminal with truncation indicators visible.
 
 ### 3. Sub-resource `--id` args lack help text
-Source: [[../backlog/edge-rule-list-id-no-doc]]
+
+Source: [[backlog/edge-rule-list-id-no-doc]]
 
 `hoppy pull-zone edge-rule list --help` shows `--id <ID>` with no
 description. The user has to guess whether `--id` refers to the pull
@@ -109,9 +112,9 @@ zone or the edge rule. (Convention: parent resource.)
 
 ## Related
 
-- [[../backlog/summary-cell-plural-mismatch]]
-- [[../backlog/list-tables-overflow-on-long-text-columns]]
-- [[../backlog/edge-rule-list-id-no-doc]]
+- [[backlog/summary-cell-plural-mismatch]]
+- [[backlog/list-tables-overflow-on-long-text-columns]]
+- [[backlog/edge-rule-list-id-no-doc]]
 - [[iteration-39-dogfooding-2026-05-26-fixes]] — `get` pivot
 - [[iteration-40-dogfooding-2026-05-27-fixes]] — summary cells
 - Dogfooding round: 2026-05-28 (post-iter-40).

@@ -25,7 +25,7 @@ sees a confusing parse error instead of a domain validation. This
 trip-wire exists on every numeric flag that could plausibly be
 negative.
 
-See [[../backlog/container-app-create-negative-int-rejection]].
+See [[backlog/container-app-create-negative-int-rejection]].
 
 ## Scope
 
@@ -74,8 +74,8 @@ See [[../backlog/container-app-create-negative-int-rejection]].
 
 ## Related
 
-- [[../backlog/container-app-create-negative-int-rejection]]
-- [[../dogfooding/session-2026-06-01-round2]]
+- [[backlog/container-app-create-negative-int-rejection]]
+- [[dogfooding/session-2026-06-01-round2]]
 
 ## Notes (implementation)
 

@@ -26,6 +26,7 @@ Released with Rust 1.85.0 on February 20, 2025. The largest edition to date, wit
 #### Unsafe Tightening
 
 - **`unsafe_op_in_unsafe_fn` warns by default**: Unsafe operations inside `unsafe fn` now require an explicit `unsafe {}` block. Previously, the entire body of an unsafe function was implicitly unsafe.
+
   ```rust
   // BAD (edition 2024 warns):
   unsafe fn do_thing(ptr: *const i32) -> i32 {
@@ -41,6 +42,7 @@ Released with Rust 1.85.0 on February 20, 2025. The largest edition to date, wit
 - **`unsafe extern` blocks**: Extern blocks now require the `unsafe` keyword: `unsafe extern "C" { ... }`.
 
 - **Unsafe attributes**: `#[export_name]`, `#[link_section]`, and `#[no_mangle]` must now be marked `unsafe`:
+
   ```rust
   // BAD (edition 2024 error):
   #[no_mangle]
@@ -135,6 +137,7 @@ Changes to how the never type `!` coerces, affecting fallback behavior in some e
 - No lifetime proliferation that makes APIs hard to use
 
 **Bad patterns:**
+
 ```rust
 // Unnecessary clone to satisfy borrow checker
 let name = self.name.clone();
@@ -147,6 +150,7 @@ do_something(&self.name);
 ### 2.2 Error Handling
 
 **Libraries should use `thiserror`:**
+
 ```rust
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
@@ -162,6 +166,7 @@ pub enum ApiError {
 ```
 
 **Applications should use `anyhow`:**
+
 ```rust
 use anyhow::{Context, Result};
 
@@ -244,6 +249,7 @@ fn create_user(name: UserName, email: Email, role: Role) -> User { ... }
 ```
 
 **Builder Pattern:**
+
 ```rust
 // Good: builder with typestate for required fields
 let config = Config::builder()
@@ -259,6 +265,7 @@ let config = Config::builder()
 
 - **Clone abuse**: `.clone()` on `String`, `Vec<T>`, `HashMap` etc. when borrowing would work
 - **Unnecessary allocations**:
+
   ```rust
   // BAD: allocates on every iteration
   for line in reader.lines() {
@@ -273,9 +280,11 @@ let config = Config::builder()
       buf.clear();
   }
   ```
+
 - **Vec pre-allocation**: Use `Vec::with_capacity(n)` when size is known
 - **String building**: Use `format!()` for simple cases, `String::with_capacity()` + `push_str()` for loops
 - **Iterator misuse**: Prefer lazy iterators over collecting into intermediate `Vec`s
+
   ```rust
   // BAD: unnecessary intermediate collection
   let filtered: Vec<_> = items.iter().filter(|x| x.active).collect();
@@ -287,6 +296,7 @@ let config = Config::builder()
       .map(|x| x.name())
       .collect();
   ```
+
 - **`to_string()` vs `to_owned()`**: Use `.to_owned()` for `&str` -> `String` (avoids formatting machinery)
 - **Box vs inline**: Small types don't benefit from boxing
 - **Arc/Rc cycles**: Use `Weak` to break reference cycles
@@ -296,6 +306,7 @@ let config = Config::builder()
 **Check for:**
 
 - **Blocking in async context**: Never call blocking I/O or `std::thread::sleep` in async code. Use `tokio::spawn_blocking` for blocking operations, `tokio::time::sleep` for delays.
+
   ```rust
   // BAD: blocks the executor thread
   async fn fetch_data() -> Result<Data> {
@@ -311,6 +322,7 @@ let config = Config::builder()
   ```
 
 - **MutexGuard across `.await`**: Never hold a `MutexGuard` (std or tokio) across an `.await` point. Causes deadlocks with single-threaded runtimes, performance issues with multi-threaded.
+
   ```rust
   // BAD: guard held across await
   let guard = mutex.lock().await;
@@ -581,4 +593,5 @@ When reviewing code targeting edition 2024, additionally verify:
 - [Heap Allocations - Rust Performance Book](https://nnethercote.github.io/perf-book/heap-allocations.html)
 
 ## Related
+
 - [[iterations/iteration-1-code-review]] — actual code review using these guidelines

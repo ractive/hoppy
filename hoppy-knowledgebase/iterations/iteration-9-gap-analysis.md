@@ -27,6 +27,7 @@ branch: iter-9/gap-analysis
 **Deliverable:** All API client methods have corresponding CLI commands. No gaps between client crates and CLI layer.
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[iterations/iteration-8-release]] — previous iteration
 - [[testing/test-plan-v0.1.0]] — test plan created during this iteration

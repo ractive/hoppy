@@ -30,6 +30,7 @@ For each affected iteration, three independent signals confirm success:
     2026-05-07T16:31:31Z
     exit_code=0
     ```
+
     Written by `on_exit() { local code=$?; ... case "$code" in 0) kind="done" ;; ... }` (run-iteration.sh:20–36). The trap captures `$?` at script-exit time. `exit_code=0` means the script's `exit 0` line at run-iteration.sh:329 was reached.
 
 2. **Stdout log** — `iter-<N>.log` ends with the literal string `"Iteration <N> completed successfully."` followed by two `OK` lines from `cmux clear-progress` and `cmux clear-status`. The script's tail (lines 308–329) is:
@@ -41,6 +42,7 @@ For each affected iteration, three independent signals confirm success:
     cmux clear-status   "$STATUS_KEY" "${WS_FLAG[@]}" 2>/dev/null || true
     exit 0
     ```
+
     Both cmux teardown calls are `|| true`, so they can't propagate a non-zero exit.
 
 3. **Git state** — the merge commit for `iter-<N>/...` lands on `origin/main`. iter-15 → `c77b1eb`, iter-16 → `48bbdc4`, iter-17 → `ca8655c`.
@@ -72,6 +74,7 @@ This means the false-failed exits are noisy but not harmful — they just produc
     ```bash
     bash -c '<launch>; cat <cache>/iter-<N>-done >/dev/null && exit 0 || exit 1'
     ```
+
     so the wrapper's exit code reflects the sentinel rather than the script's exit. Slightly hacky but eliminates the false-failed signal.
 - **Trap SIGHUP in the script** to swallow the signal before the wrapper sees it. Worth trying if hypothesis 1 is correct.
 

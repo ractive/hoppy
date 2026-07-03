@@ -67,6 +67,7 @@ Three different approaches:
 - stream/compute: `fn auth(&self, rb: RequestBuilder) -> RequestBuilder` (Pattern B — clean decorator)
 
 **Fix:** Adopt Pattern B everywhere:
+
 ```rust
 fn auth(&self, rb: RequestBuilder) -> RequestBuilder {
     rb.header("AccessKey", &self.api_key)
@@ -112,6 +113,7 @@ Re-implements `json_or_error` inline instead of calling it. The comment says "AP
 Adopt stream's approach across all crates — read response text first, then attempt parse. This gives the best diagnostics when the API returns unexpected responses (HTML 503 from proxy, empty body, etc.).
 
 Current stream pattern:
+
 ```rust
 let text = resp.text().await?;
 serde_json::from_str::<T>(&text).context("failed to parse response")
@@ -143,6 +145,7 @@ Response/error handling is ~25 lines per crate. Error types genuinely differ (Ap
 - **No shared crate** for response/error handling
 
 ## Related
+
 - [[development-roadmap]] — iteration 1 in the roadmap
 - [[decision-log]] — decisions that came from this review
 - [[api/bunny-api-client-patterns]] — patterns established after this review

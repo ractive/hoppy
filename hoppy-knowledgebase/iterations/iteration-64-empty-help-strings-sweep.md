@@ -19,7 +19,7 @@ branch: iter-64/empty-help-strings-sweep
 flag on the subcommand does. The empty body reads like a TODO and
 is the kind of thing CI should catch.
 
-See [[../backlog/pull-zone-create-name-help-empty]].
+See [[backlog/pull-zone-create-name-help-empty]].
 
 ## Scope
 
@@ -62,5 +62,5 @@ See [[../backlog/pull-zone-create-name-help-empty]].
 
 ## Related
 
-- [[../backlog/pull-zone-create-name-help-empty]]
-- [[../dogfooding/session-2026-06-01-round2]]
+- [[backlog/pull-zone-create-name-help-empty]]
+- [[dogfooding/session-2026-06-01-round2]]

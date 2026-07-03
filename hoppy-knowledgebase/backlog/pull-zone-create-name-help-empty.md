@@ -18,7 +18,6 @@ $ hoppy pull-zone create --help
 ...
       --name <NAME>
           
-
       --origin-url <ORIGIN_URL>
           HTTP/HTTPS origin URL the Pull Zone fetches from. Mutually exclusive with --storage-zone-id
 ...

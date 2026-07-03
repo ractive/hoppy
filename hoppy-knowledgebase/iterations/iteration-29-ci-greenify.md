@@ -117,4 +117,4 @@ PRs (iter-27, iter-28). Plausible causes:
 
 - [[iteration-27-dogfooding-bugfixes]]
 - [[iteration-28-dogfooding-ux-polish]]
-- [[../decision-log]]
+- [[decision-log]]

@@ -33,12 +33,14 @@ back to "this means I need to delegate".
 
 1. **Translate the 500** — when issue-cert returns a 500 with no
    structured error, append a hint:
+
    ```
    Error: bunny.net API error 500: An error has occurred.
      hint: the zone must be delegated to bunny.net nameservers
            before a certificate can be issued. Set NS records to
            the values from `hoppy dns zone get --id <z>`.
    ```
+
 2. **Pre-flight the delegation** — before calling issue-cert,
    resolve the zone's NS records and compare to bunny.net's. If
    they don't match, fail fast with a clear message and skip the

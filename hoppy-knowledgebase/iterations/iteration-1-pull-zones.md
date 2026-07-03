@@ -4,9 +4,9 @@ type: iteration
 date: 2026-03-18
 tags:
   - iteration
-  - pull-zones
   - core-api
   - first-service
+  - pull-zone
 status: completed
 branch: iter-1/pull-zones
 ---
@@ -32,6 +32,7 @@ branch: iter-1/pull-zones
 **Deliverable:** `BUNNY_API_KEY=xxx hoppy pull-zone list --format json` returns real data.
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[iterations/iteration-1-code-review]] — code review findings from this iteration
 - [[iterations/iteration-0.5-codegen-experiment]] — codegen experiment that preceded this

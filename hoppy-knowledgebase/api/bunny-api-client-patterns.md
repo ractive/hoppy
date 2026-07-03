@@ -77,23 +77,30 @@ The OpenAPI specs mark almost everything as `nullable`, but in practice many fie
 
 **Response types (deserialize):**
 - Fields that are always present in practice: use concrete types with `#[serde(default)]`
+
   ```rust
   pub id: i64,           // always present
   pub name: String,      // always present
   #[serde(default)]
   pub origin_url: String, // always present but serde(default) guards against edge cases
   ```
+
 - Fields that may genuinely be absent: use `Option<T>` with `#[serde(default)]`
+
   ```rust
   #[serde(default)]
   pub storage_zone_id: Option<i64>,
   ```
+
 - Vec fields: use `Vec<T>` with `#[serde(default)]` (never `Option<Vec<T>>`)
+
   ```rust
   #[serde(default)]
   pub hostnames: Vec<HostnameInfo>,
   ```
+
 - For `PaginatedList<T>`, use `#[serde(default = "Vec::new")]` on the `items` field to avoid requiring `T: Default`:
+
   ```rust
   #[serde(default = "Vec::new")]
   pub items: Vec<T>,
@@ -101,10 +108,13 @@ The OpenAPI specs mark almost everything as `nullable`, but in practice many fie
 
 **Request types (serialize):**
 - Required fields: plain types, no `Option`
+
   ```rust
   pub name: String,  // required by API
   ```
+
 - Optional fields: `Option<T>` with `skip_serializing_if`
+
   ```rust
   #[serde(skip_serializing_if = "Option::is_none")]
   pub origin_type: Option<OriginType>,
@@ -113,6 +123,7 @@ The OpenAPI specs mark almost everything as `nullable`, but in practice many fie
 ## 5. Request Body Patterns
 
 ### Create requests: constructor + builder pattern
+
 ```rust
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -135,6 +146,7 @@ impl CreatePullZone {
 ```
 
 ### Update requests: Default + builder pattern
+
 ```rust
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -154,6 +166,7 @@ impl UpdatePullZone {
 ```
 
 ### Named constructors for small request types
+
 ```rust
 impl PurgeCache {
     pub fn all() -> Self { Self::default() }
@@ -166,6 +179,7 @@ impl PurgeCache {
 ## 6. Client Structure
 
 ### One client struct per API, holding reqwest::Client + auth
+
 ```rust
 pub struct BunnyClient {
     http: reqwest::Client,
@@ -175,11 +189,13 @@ pub struct BunnyClient {
 ```
 
 ### Constructors
+
 - `new(api_key)` — production base URL
 - `with_base_url(api_key, url)` — for testing / staging
 - Some crates return `Result` from `new()` (using `Client::builder().build()?`), others use `Client::new()` directly. Prefer `Client::new()` for simplicity unless you need custom builder options.
 
 ### Auth
+
 All bunny.net APIs use the `AccessKey` header. The auth helper pattern varies slightly by crate but the intent is the same:
 
 ```rust
@@ -195,7 +211,9 @@ fn auth(&self, rb: RequestBuilder) -> RequestBuilder {
 Pattern B is more concise. Prefer it for new code.
 
 ### Storage API: different auth model
+
 Storage uses per-zone access keys (not the account API key), and the base URL varies by region:
+
 ```rust
 StorageClient::new("storage", "zone-password")  // region + zone key
 ```
@@ -220,7 +238,9 @@ impl std::error::Error for ApiError {}
 ```
 
 ### Error extraction pattern
+
 Always try to parse structured errors first, fall back to status+body text:
+
 ```rust
 async fn extract_api_error(&self, status: StatusCode, response: Response) -> anyhow::Error {
     let bytes = response.bytes().await.unwrap_or_default();
@@ -234,6 +254,7 @@ async fn extract_api_error(&self, status: StatusCode, response: Response) -> any
 ## 8. Response Handling
 
 ### Two response patterns: JSON body vs empty
+
 ```rust
 // JSON body response
 async fn handle_response<T: DeserializeOwned>(&self, resp: Response) -> Result<T>
@@ -243,7 +264,9 @@ async fn handle_empty_response(&self, resp: Response) -> Result<()>
 ```
 
 ### Shield API: wrapper objects
+
 The Shield API often wraps responses in `{ "data": ..., "error": ... }` envelopes. Create specific wrapper types:
+
 ```rust
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -251,14 +274,18 @@ struct GetShieldZoneResponse {
     data: Option<ShieldZoneResponse>,
 }
 ```
+
 Then unwrap in the client method:
+
 ```rust
 let wrapper: GetShieldZoneResponse = self.handle_response(resp).await?;
 wrapper.data.ok_or_else(|| anyhow!("response contained no data"))
 ```
 
 ### Upsert endpoints: 200 vs 204 split
+
 Some endpoints return 200 with a body on create, 204 with no body on update. Handle both:
+
 ```rust
 if status == StatusCode::NO_CONTENT {
     Ok(placeholder_value)  // caller should re-fetch if full model needed
@@ -270,6 +297,7 @@ if status == StatusCode::NO_CONTENT {
 ## 9. Query Parameters
 
 Build query params conditionally using reqwest's `.query()`:
+
 ```rust
 let mut req = self.auth(self.http.get(&url));
 if let Some(p) = page {
@@ -281,6 +309,7 @@ if let Some(s) = search {
 ```
 
 Or for the Core API pattern, manually build the query string:
+
 ```rust
 let mut params: Vec<(&str, String)> = Vec::new();
 if let Some(p) = page { params.push(("page", p.to_string())); }
@@ -292,6 +321,7 @@ Prefer the reqwest `.query()` approach — it handles URL encoding automatically
 ## 10. Binary Upload
 
 For endpoints accepting `application/octet-stream` (Stream video upload, Storage file upload):
+
 ```rust
 pub async fn upload_video(
     &self,
@@ -342,6 +372,7 @@ Each crate has:
 - `src/lib.rs` — re-exports for ergonomic `use bunny_api_core::BunnyClient` imports
 
 ### Dependencies (shared across all API crates)
+
 ```toml
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
@@ -356,6 +387,7 @@ Storage additionally needs `bytes = "1"`.
 ## 13. Testing Patterns
 
 ### Unit tests for serde round-trips
+
 ```rust
 #[test]
 fn video_status_roundtrip() {
@@ -367,6 +399,7 @@ fn video_status_roundtrip() {
 ```
 
 ### Unit tests for request body serialization
+
 ```rust
 #[test]
 fn update_skips_none_fields() {
@@ -378,6 +411,7 @@ fn update_skips_none_fields() {
 ```
 
 ### Unit tests for client construction
+
 ```rust
 #[test]
 fn new_client_accepts_string_api_key() {
@@ -387,6 +421,7 @@ fn new_client_accepts_string_api_key() {
 ```
 
 ### No live API tests yet
+
 Integration tests against the live API will come in iteration 1. For now, all tests are pure unit tests that don't hit the network.
 
 ## 14. What NOT to Include in API Crates
@@ -398,6 +433,7 @@ Integration tests against the live API will come in iteration 1. For now, all te
 - **Don't model every field** — only include fields the CLI will actually use or display. More can be added incrementally. This keeps the types manageable and avoids over-engineering.
 
 ## Related
+
 - [[api/bunny-api-quirks]] — quirks these patterns address
 - [[api/bunny-api-overview]] — API overview
 - [[iterations/iteration-1-code-review]] — code review that refined these patterns

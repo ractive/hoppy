@@ -74,7 +74,7 @@ type = "date"
 
 [schema.types.backlog.properties.status]
 type = "enum"
-values = ["planned", "in-progress", "completed", "superseded", "wont-do", "deferred", "shelved", "not-a-bug"]
+values = ["planned", "in-progress", "completed", "superseded", "wont-do", "deferred", "shelved", "not-a-bug", "open", "resolved"]
 
 [schema.types.backlog.properties.priority]
 type = "enum"
@@ -84,6 +84,12 @@ values = ["low", "medium", "high", "critical"]
 type = "string"
 
 [schema.types.backlog.properties.blocked-by]
+type = "string"
+
+[schema.types.backlog.properties.resolved-by]
+type = "string"
+
+[schema.types.backlog.properties.resolved-in]
 type = "string"
 
 # General docs — playbooks, guides, command trees
@@ -131,5 +137,5 @@ properties = ["!type"]
 task = "todo"
 
 [views.orphans]
-orphan = true
 fields = ["backlinks"]
+orphan = true

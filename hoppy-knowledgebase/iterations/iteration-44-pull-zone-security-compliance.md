@@ -21,7 +21,7 @@ and the spec. The **security / compliance** bucket is the only one
 that *blocks* PCI/SOC2 use cases (no way today to disable TLS 1.0/1.1,
 verify origin SSL, or configure AWS SigV4 origin signing from
 hoppy). Small, all booleans or short strings, ships as one surgical
-PR. See [[../research/spec-coverage/pull-zone-buckets]] for the full
+PR. See [[research/spec-coverage/pull-zone-buckets]] for the full
 bucket categorisation.
 
 ## Scope
@@ -107,7 +107,7 @@ In `crates/hoppy-cli/src/cli.rs` (around line 412, near
 
 ## Related
 
-- [[../research/spec-coverage/pull-zone-buckets]] — bucket source
+- [[research/spec-coverage/pull-zone-buckets]] — bucket source
 - [[iteration-43-openapi-gap-analysis]] — motivating audit
-- [[../backlog/pull-zone-update-toggle-coverage-gap]] — original
+- [[backlog/pull-zone-update-toggle-coverage-gap]] — original
   dogfooding finding

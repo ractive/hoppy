@@ -15,7 +15,8 @@ Repro:
 hoppy dns zone scan start --id <zone-id>      # status=Pending
 hoppy dns zone scan results --id <zone-id>    # immediately
 # Error: failed to deserialise response body:
-#   invalid type: null, expected a sequence at line 1 column 187
+# invalid type: null, expected a sequence at line 1 column 187
+
 ```
 
 The bunny.net API returns `"Records": null` while `Status` is `Pending` /

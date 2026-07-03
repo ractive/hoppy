@@ -60,10 +60,10 @@ Follow ripgrep/bat pattern:
 Ripgrep uses a nightly compiler for release builds (optimizations), defines TARGET_FLAGS and TARGET_DIR per matrix entry, and packages binaries into tarballs (.tar.gz for Unix, .zip for Windows) with completions and man pages included.
 
 ### References
+
 - [ripgrep release.yml](https://github.com/BurntSushi/ripgrep/blob/master/.github/workflows/release.yml)
 - [actions-rust-cross](https://github.com/houseabsolute/actions-rust-cross)
 - [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild)
-
 
 ## 2. Homebrew Tap
 
@@ -123,10 +123,10 @@ Use a GitHub Actions step in the release workflow that:
 3. Commits and pushes
 
 ### References
+
 - [formulaic](https://github.com/ceejbot/formulaic)
 - [Automating Homebrew Tap Updates](https://builtfast.dev/blog/automating-homebrew-tap-updates-with-github-actions/)
 - [Guide to creating a Homebrew tap](https://kristoffer.dev/blog/guide-to-creating-your-first-homebrew-tap/)
-
 
 ## 3. Windows / winget
 
@@ -146,6 +146,7 @@ Needed files in `manifests/r/ractive/hoppy/0.1.0/`:
 - `ractive.hoppy.locale.en-US.yaml` (default locale)
 
 Key fields in installer manifest:
+
 ```yaml
 PackageIdentifier: ractive.hoppy
 PackageVersion: 0.1.0
@@ -171,9 +172,9 @@ Installers:
 Use `wingetcreate` CLI to generate and validate manifests: `wingetcreate new <url>`
 
 ### References
+
 - [winget-pkgs installer manifest schema](https://github.com/microsoft/winget-pkgs/blob/master/doc/manifest/schema/1.6.0/installer.md)
 - [winget-pkgs repo](https://github.com/microsoft/winget-pkgs)
-
 
 ## 4. Linux Packages (deb/rpm)
 
@@ -182,6 +183,7 @@ Use `wingetcreate` CLI to generate and validate manifests: `wingetcreate new <ur
 Generates .deb packages directly from Cargo.toml metadata.
 
 **Cargo.toml config needed:**
+
 ```toml
 [package.metadata.deb]
 maintainer = "Your Name <email>"
@@ -206,6 +208,7 @@ Build: `cargo deb` (auto-builds release binary + packages)
 Generates .rpm packages. Replaces the deprecated cargo-rpm.
 
 **Cargo.toml config needed:**
+
 ```toml
 [package.metadata.generate-rpm]
 assets = [
@@ -228,10 +231,10 @@ Build: `cargo build --release && cargo generate-rpm`
 Start with .deb only (larger user base). Add .rpm in a follow-up.
 
 ### References
+
 - [cargo-deb](https://github.com/kornelski/cargo-deb)
 - [cargo-generate-rpm](https://crates.io/crates/cargo-generate-rpm)
 - [Guide to deb and rpm for Rust](https://dev.to/mbayoun95/comprehensive-guide-to-generating-deb-and-rpm-packages-for-rust-applications-41h7)
-
 
 ## 5. Shell Completion Installation
 
@@ -270,9 +273,9 @@ hoppy completions fish > ~/.config/fish/completions/hoppy.fish
 - **Release tarballs**: Include completions/ directory with pre-generated files
 
 ### References
+
 - [CLI Shell Completions in Rust](https://kbknapp.dev/shell-completions/)
 - [bat --completion](https://github.com/sharkdp/bat)
-
 
 ## 6. Man Page Generation
 
@@ -295,9 +298,9 @@ hoppy completions fish > ~/.config/fish/completions/hoppy.fish
 - **Recommendation**: Add for v0.1.0 if packaging; skip if only doing GitHub releases. Man pages in tarballs are a nice professional touch (ripgrep does this).
 
 ### References
+
 - [clap_mangen](https://crates.io/crates/clap_mangen)
 - [Rust CLI book: rendering docs](https://rust-cli.github.io/book/in-depth/docs.html)
-
 
 ## 7. cargo install Support
 
@@ -327,6 +330,7 @@ readme = "README.md"
 ### Dual Dependencies
 
 For workspace crates, use both path and version:
+
 ```toml
 bunny-api-core = { version = "0.1.0", path = "crates/bunny-api-core" }
 ```
@@ -338,25 +342,28 @@ If the API crates aren't meant for public consumption, you can:
 - But this requires vendoring or the sub-crates being available
 - Simpler: publish all crates, mark API crates with a note they're internal
 
-
 ## 8. Other v0.1.0 Release Requirements
 
 ### LICENSE File
+
 - Already declared `license = "MIT"` in Cargo.toml
 - Need actual `LICENSE` or `LICENSE-MIT` file in repo root
 - Consider dual license MIT OR Apache-2.0 (Rust ecosystem convention)
 
 ### CHANGELOG
+
 - Create `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/) format
 - Or use [git-cliff](https://github.com/orhun/git-cliff) to auto-generate from conventional commits
 
 ### README.md
+
 - Installation instructions (brew, cargo install, binary download)
 - Quick-start usage examples
 - Feature overview
 - Badge for CI status
 
 ### .github Files
+
 - `CONTRIBUTING.md` (optional for v0.1.0)
 - Issue/PR templates (optional)
 
@@ -386,11 +393,13 @@ If the API crates aren't meant for public consumption, you can:
 9. Submit winget manifest PR (optional, can defer)
 
 ### References
+
 - [sharkdp's release checklist](https://dev.to/sharkdp/my-release-checklist-for-rust-programs-1m33)
 - [Orhun's automated Rust releases](https://blog.orhun.dev/automated-rust-releases/)
 - [Crate release checklist gist](https://gist.github.com/BartMassey/a8bf0d5fee366f55b6ed90c3c55ef20d)
 
 ## Related
+
 - [[release/release-setup-checklist]] — one-time setup steps derived from this research
 - [[development-roadmap]] — iteration 8 (release workflow)
 - [[decision-log]] — release & packaging decisions

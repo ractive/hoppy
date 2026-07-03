@@ -18,7 +18,7 @@ type: research
 
 ### 1. Progenitor (Oxide Computer)
 
-**Repository:** https://github.com/oxidecomputer/progenitor
+**Repository:** <https://github.com/oxidecomputer/progenitor>
 **License:** Apache-2.0 / MIT
 **Maintained:** Yes (actively maintained by Oxide)
 
@@ -47,7 +47,7 @@ type: research
 
 ### 2. OpenAPI Generator (openapi-generator-cli)
 
-**Repository:** https://github.com/OpenAPITools/openapi-generator
+**Repository:** <https://github.com/OpenAPITools/openapi-generator>
 **Maintained:** Yes (large community)
 
 **Features:**
@@ -143,6 +143,7 @@ cargo progenitor \
 - [OpenAPI Generator GitHub](https://github.com/OpenAPITools/openapi-generator)
 
 ## Related
+
 - [[research/hand-written-experiment-results]] — results of hand-written approach
 - [[decision-log]] — decision to use hand-written clients
 - [[Seed]] — original project brief mentioning codegen

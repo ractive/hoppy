@@ -23,7 +23,7 @@ One-time setup steps before the first release.
 - [x] Create public repo `ractive/homebrew-tap` on GitHub
 - [x] Create `Formula/` directory in the tap repo
 - [ ] Create a **fine-grained** GitHub Personal Access Token:
-  1. Go to https://github.com/settings/personal-access-tokens/new
+  1. Go to <https://github.com/settings/personal-access-tokens/new>
   2. Token name: `hoppy-homebrew-tap`
   3. Expiration: 1 year (or custom — you'll need to rotate it)
   4. Resource owner: `ractive`
@@ -33,7 +33,7 @@ One-time setup steps before the first release.
      - Everything else: No access
   7. Click **Generate token** and copy it
 - [ ] Add the token as a repository secret in `ractive/hoppy`:
-  1. Go to https://github.com/ractive/hoppy/settings/secrets/actions
+  1. Go to <https://github.com/ractive/hoppy/settings/secrets/actions>
   2. Click **New repository secret**
   3. Name: `HOMEBREW_TAP_TOKEN`
   4. Value: paste the token
@@ -50,7 +50,7 @@ One-time setup steps before the first release.
 1. Update version in `Cargo.toml` (root package)
 2. Update `CHANGELOG.md` with new section
 3. Commit and push to main
-4. Go to https://github.com/ractive/hoppy/releases/new
+4. Go to <https://github.com/ractive/hoppy/releases/new>
 5. Create a new tag (e.g. `v0.1.0`) targeting `main`
 6. Write release notes (or use "Generate release notes")
 7. Click **Publish release**
@@ -62,6 +62,7 @@ One-time setup steps before the first release.
    - Updates Homebrew tap formula
 
 ## Related
+
 - [[research/release-engineering-research]] — research behind release decisions
 - [[development-roadmap]] — iteration 8 (release workflow)
 - [[decision-log]] — release & packaging decisions

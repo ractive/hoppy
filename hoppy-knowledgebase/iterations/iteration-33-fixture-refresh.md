@@ -132,12 +132,11 @@ contributors don't accidentally regress.
 in this iteration: it requires interactive credentials, real billing,
 and a manual cleanup loop. Tracked for a follow-up dogfooding round.
 
-
 After §1–§4 land and `cargo test --workspace` is green:
 
 - [x] Build release: `cargo build --release`.
 - [x] Pre-flight: `hoppy auth check` against the dedicated test account
-      (see [[../dogfooding/dogfooding-playbook]]). Confirm
+      (see [[dogfooding/dogfooding-playbook]]). Confirm
       `BUNNY_API_KEY` is the test-account key, not production.
 - [x] Manual cleanup pass: run
       `hoppy-knowledgebase/dogfooding/cleanup.sh` (currently a skeleton —
@@ -165,7 +164,7 @@ After §1–§4 land and `cargo test --workspace` is green:
 
 ### 6. Docs [3/3]
 
-- [x] Update [[../dogfooding/dogfooding-playbook]] "live-api feature"
+- [x] Update [[dogfooding/dogfooding-playbook]] "live-api feature"
       section with the `HOPPY_RECORD_DIR` one-liner.
 - [x] Add a short "Refreshing fixtures" section to the playbook (or a
       sibling file `dogfooding/fixture-refresh.md`) describing the full
@@ -216,8 +215,8 @@ After §1–§4 land and `cargo test --workspace` is green:
 - [[e2e-test-harness-plan]] — original E2E plan that called for
   `HOPPY_E2E_LIVE` + record/replay; this iteration retroactively
   closes those open items.
-- [[../dogfooding/dogfooding-playbook]] — the safe-loop the refresh
+- [[dogfooding/dogfooding-playbook]] — the safe-loop the refresh
   round runs inside.
 - [[iteration-32-consolidate-crates]] — last iteration; established the
   consolidated `bunny-net-api` crate that hosts `recording/`.
-- [[../decision-log]] — record/replay framing was an early decision.
+- [[decision-log]] — record/replay framing was an early decision.

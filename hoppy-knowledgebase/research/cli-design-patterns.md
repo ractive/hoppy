@@ -17,30 +17,36 @@ type: research
 ## Command Structure Comparison
 
 ### Azure CLI (az)
+
 ```
 az <group> <subgroup> <command> [--parameters]
 az vm create --resource-group myGroup --name myVM --image Ubuntu2204
 az storage blob list --account-name myaccount --container-name mycontainer
 ```
+
 - Groups/subgroups map to Azure resource types
 - Kebab-case for multi-word groups: `az container-app`, `az cdn endpoint`
 
 ### Google Cloud CLI (gcloud)
+
 ```
 gcloud <group> <subgroup> <command> [--parameters]
 gcloud compute instances create my-instance --zone=us-central1-a
 gcloud dns managed-zones list
 ```
+
 - Similar hierarchical structure
 - Uses `=` for parameter values: `--zone=us-central1-a`
 
 ### AWS CLI
+
 ```
 aws <service> <command> [--parameters]
 aws s3 ls
 aws ec2 describe-instances --instance-ids i-1234567890abcdef0
 aws route53 list-hosted-zones
 ```
+
 - Flatter structure (service + action, no subgroups usually)
 - Verb-noun naming: `describe-instances`, `create-bucket`
 
@@ -53,6 +59,7 @@ hoppy <service> <action> [--parameters]
 ```
 
 Examples:
+
 ```bash
 hoppy pull-zone list
 hoppy pull-zone get --id 123456
@@ -133,6 +140,7 @@ To make the CLI useful for AI agents:
 5. **No interactive prompts** - All input via flags/args, never prompt for input (or use `--yes` to skip confirmation)
 6. **Idempotent operations** where possible
 7. **Error output in JSON** when `--format json` is set:
+
    ```json
    {"error": {"code": "NOT_FOUND", "message": "Pull zone 123 not found"}}
    ```
@@ -140,19 +148,23 @@ To make the CLI useful for AI agents:
 ## Additional UX Patterns
 
 ### Async Operations
+
 - For long-running operations, print a status and return immediately
 - Support `--wait` flag to block until complete
 - Default: return immediately with operation ID
 
 ### Filtering/Querying
+
 - Consider `--query` flag with JMESPath (like az/aws) for filtering JSON output
 - Or simpler `--filter` with key=value matching
 
 ### Confirmation for Destructive Actions
+
 - `delete` commands should require `--yes` or `-y` to skip confirmation
 - When stdout is not a TTY, require `--yes` (no interactive prompt possible)
 
 ### Verbose/Debug Mode
+
 - `--verbose` or `-v` for detailed output
 - `--debug` for HTTP request/response logging (useful for API debugging)
 
@@ -161,12 +173,14 @@ To make the CLI useful for AI agents:
 The [CLI Guidelines](https://clig.dev/) is a comprehensive, community-maintained guide. Key takeaways for hoppy:
 
 ### Core Principles
+
 - **Human-first design** — the CLI is a text-based UI for humans, not just a scripting interface
 - **Composability** — work well with pipes, stdout/stderr, exit codes, plain text or JSON
 - **Consistency** — follow established flag/argument conventions; terminal habits are muscle memory
 - **Robustness** — handle unexpected input gracefully; output something within 100ms
 
 ### Output Rules
+
 - Primary output to **stdout**, logs/errors/status to **stderr**
 - Detect TTY: human-readable tables for interactive use, JSON for pipes
 - Respect `NO_COLOR` env var and `TERM=dumb`
@@ -174,12 +188,14 @@ The [CLI Guidelines](https://clig.dev/) is a comprehensive, community-maintained
 - Show progress indicators for long operations
 
 ### Error Handling
+
 - Rewrite errors for humans with actionable guidance
 - Place most important information at end of output
 - Don't print stack traces by default
 - Group similar errors under explanatory headers
 
 ### Arguments & Flags
+
 - **Prefer flags to positional arguments** for clarity
 - Provide both short (`-h`) and long (`--help`) forms
 - Standard flag names to follow: `--all`, `--debug`, `--force`, `--json`, `--dry-run`, `--no-input`, `--quiet`, `--version`
@@ -188,12 +204,14 @@ The [CLI Guidelines](https://clig.dev/) is a comprehensive, community-maintained
 - Allow order-independent flags
 
 ### Interactivity
+
 - Only prompt when stdin is a TTY
 - Respect `--no-input` / `--yes` flags to disable all prompts
 - Confirm before dangerous actions (delete, overwrite)
 - Ctrl-C must always work
 
 ### Configuration Precedence (highest to lowest)
+
 1. Command-line flags
 2. Environment variables
 3. Project-level config
@@ -201,17 +219,20 @@ The [CLI Guidelines](https://clig.dev/) is a comprehensive, community-maintained
 5. System-wide config
 
 ### Environment Variables
+
 - Uppercase with underscores: `BUNNY_API_KEY`, `HOPPY_OUTPUT_FORMAT`
 - Check standard vars: `NO_COLOR`, `DEBUG`, `HTTP_PROXY`, `TERM`, `PAGER`
 - Read `.env` files when appropriate
 - Note: clig.dev warns against storing secrets in env vars (prone to leakage via logs/child processes) — but for API keys this is the industry standard approach (az, aws, gcloud all do it)
 
 ### Distribution
+
 - Distribute as a **single binary** (perfect fit for Rust)
 - Make uninstallation easy
 - No phoning home without explicit consent
 
 ### Naming
+
 - Simple, memorable, lowercase, short
 - "hoppy" fits well: short, memorable, easy to type
 
@@ -236,6 +257,7 @@ The [CLI Guidelines](https://clig.dev/) is a comprehensive, community-maintained
 - [Make Your CLI a Joy to Use](https://www.caduh.com/blog/make-your-cli-a-joy-to-use)
 
 ## Related
+
 - [[research/rust-cli-best-practices]] — Rust-specific CLI best practices
 - [[Seed]] — project brief with CLI design goals
 - [[decision-log]] — CLI-related decisions

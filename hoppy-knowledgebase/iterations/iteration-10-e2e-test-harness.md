@@ -28,6 +28,7 @@ branch: iter-10/e2e-test-harness
 **Limitations identified:** All tests are isolated mock stubs — no lifecycle coverage (create->use->delete), no live API support despite the flag being scaffolded, no fixture recording. Superseded by iteration 11.
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[iterations/iteration-9-gap-analysis]] — previous iteration
 - [[iterations/e2e-test-harness-plan]] — detailed plan for this iteration

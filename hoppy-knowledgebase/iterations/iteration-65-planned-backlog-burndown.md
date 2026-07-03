@@ -21,13 +21,13 @@ A feasibility re-check of all 13 `status: planned` backlog items (2026-07-03)
 showed 9 were already fixed by iterations 44–64 but never marked resolved.
 The remaining 4 are bundled here:
 
-- [[../backlog/statistics-hourly-table-no-effect]] — `--hourly` changes
+- [[backlog/statistics-hourly-table-no-effect]] — `--hourly` changes
   nothing visible in table output
-- [[../backlog/pull-zone-update-toggle-coverage-gap]] — 29/33 toggles landed
+- [[backlog/pull-zone-update-toggle-coverage-gap]] — 29/33 toggles landed
   in iters 44–47; 4 never landed in any layer
-- [[../backlog/live-dns-scan-flake]] — lifecycle test still requires a
+- [[backlog/live-dns-scan-flake]] — lifecycle test still requires a
   terminal scan state within ~30s
-- [[../backlog/live-stream-collection-401]] — original hypothesis disproven
+- [[backlog/live-stream-collection-401]] — original hypothesis disproven
   (per-library key is already used); real cause undiagnosed
 
 ## Scope
@@ -71,7 +71,7 @@ All four confirmed present in `specs/core-platform.json`.
 ## Out of scope
 
 - Non-toggle pull-zone field gaps (strings/numbers) — see
-  [[../research/spec-coverage/pull-zone]]
+  [[research/spec-coverage/pull-zone]]
 - Rendering per-bucket chart data in table format (hint is good-enough per
   the backlog item)
 

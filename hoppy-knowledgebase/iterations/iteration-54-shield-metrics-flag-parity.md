@@ -21,7 +21,7 @@ ID, except `shield metrics waf-rule`, which uses `--shield-zone-id`.
 The divergence trips users up the first time they reach for the
 sibling pattern.
 
-See [[../backlog/shield-metrics-waf-rule-flag-divergence]].
+See [[backlog/shield-metrics-waf-rule-flag-divergence]].
 
 ## Scope
 
@@ -60,5 +60,5 @@ See [[../backlog/shield-metrics-waf-rule-flag-divergence]].
 
 ## Related
 
-- [[../backlog/shield-metrics-waf-rule-flag-divergence]]
-- [[../dogfooding/session-2026-06-01]]
+- [[backlog/shield-metrics-waf-rule-flag-divergence]]
+- [[dogfooding/session-2026-06-01]]

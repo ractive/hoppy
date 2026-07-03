@@ -12,7 +12,8 @@ origin: dogfooding-2026-05-10
 ```sh
 hoppy db config optimal-single
 # Error: HTTP 400 Bad Request: Failed to deserialize query string:
-#   missing field `cdn_server_token`
+# missing field `cdn_server_token`
+
 ```
 
 Either:

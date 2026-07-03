@@ -23,7 +23,7 @@ wiremock fixtures (`dnszone_get.json`) — a full live sweep wrote 205
 new files and overwrote zero existing ones. The "refresh" mechanism is
 additive, not refreshing.
 
-See [[../backlog/fixture-recording-name-mismatch]] for the full diagnosis.
+See [[backlog/fixture-recording-name-mismatch]] for the full diagnosis.
 
 ## Target shape
 
@@ -96,7 +96,7 @@ git surfaces should be a real API drift.
 ## Outcome (2026-05-14)
 
 - Tool works end-to-end. Live sweep: 255/256 (only the known
-  [[../backlog/live-stream-collection-401]] flake). Mapper dry-run:
+  [[backlog/live-stream-collection-401]] flake). Mapper dry-run:
   202 fixture↔mock mappings scanned, 205 recordings produced,
   **14 drifted, 3 identical, 0 collisions, 188 unmapped**.
 - The "unmapped" set is mostly Magic Containers and shield surfaces that
@@ -108,7 +108,7 @@ git surfaces should be a real API drift.
   (`balance == 42.50`, `id == 1001`) that the live recordings don't
   reproduce.
 - Drift was reverted with `git checkout -- fixtures/`. New backlog item
-  filed: [[../backlog/fixture-tests-assert-on-hardcoded-values]].
+  filed: [[backlog/fixture-tests-assert-on-hardcoded-values]].
 - Iter-34 ships the tool + playbook update. The "commit the drift"
   step is blocked on rewriting those 7 tests to assert on shape rather
   than values — out of scope here.
@@ -147,9 +147,9 @@ git surfaces should be a real API drift.
 
 ## Related
 
-- [[../backlog/fixture-recording-name-mismatch]] — the diagnosis driving
+- [[backlog/fixture-recording-name-mismatch]] — the diagnosis driving
   this iteration.
 - [[iteration-33-fixture-refresh]] — shipped the recording plumbing this
   iteration consumes.
-- [[../dogfooding/dogfooding-playbook]] — the safe loop the dogfooding
+- [[dogfooding/dogfooding-playbook]] — the safe loop the dogfooding
   round runs inside.

@@ -87,6 +87,6 @@ similar all-caps APIs (DNS country codes? CORS region codes?).
 
 ## Related
 
-- iter-47 already fixed [[../iterations/iteration-47-pull-zone-firewall-and-rate-limiting]]
+- iter-47 already fixed [[iterations/iteration-47-pull-zone-firewall-and-rate-limiting]]
   for `BlockedIps` → `BlockedIPs`; this is the same class of bug.
 - [[json-output-casing-inconsistency]]

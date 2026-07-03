@@ -208,6 +208,7 @@ The same drift-coupling problem occurs in CLI e2e tests (`crates/hoppy-cli/tests
    assert!(stdout.contains("Total Bandwidth Used"), "expected bandwidth column");
    assert!(Regex::new(r"Cache Hit Rate\s*\|\s*\d+\.\d+%").unwrap().is_match(&stdout));
    ```
+
    Keep `insta` snapshots only for output whose structure genuinely can't be tested any other way.
 
 2. **`stdout.contains("specific_value")`** — replace with a regex that matches the column header or field name followed by any numeric/string value:
@@ -264,10 +265,10 @@ This is how iterations get fed. The dogfooding session is where the next iterati
 
 These commands are documented as broken as of their listed date. Avoid running them in production or dogfooding sessions until fixed.
 
-- `hoppy container logs` — As of 2026-05-15, may fail at the log-forwarding-create step with an empty-body 400 from the bunny.net API. See [[../backlog/log-forwarding-create-empty-400]].
+- `hoppy container logs` — As of 2026-05-15, may fail at the log-forwarding-create step with an empty-body 400 from the bunny.net API. See [[backlog/log-forwarding-create-empty-400]].
 
 ## Related
 
-- [[../decision-log]] — convention rules
-- [[../iterations/iteration-23-hyalo-best-practices]]
-- [[../iterations/iteration-25-publish]]
+- [[decision-log]] — convention rules
+- [[iterations/iteration-23-hyalo-best-practices]]
+- [[iterations/iteration-25-publish]]

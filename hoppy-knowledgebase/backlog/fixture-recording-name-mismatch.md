@@ -55,5 +55,5 @@ script in `hoppy-knowledgebase/dogfooding/`):
 
 ## Related
 
-- [[../iterations/iteration-33-fixture-refresh]] §5 (this is the §5
+- [[iterations/iteration-33-fixture-refresh]] §5 (this is the §5
   blocker that prevented a true refresh round)

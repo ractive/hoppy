@@ -25,15 +25,20 @@ hoppy db active-usage --format table
 hoppy --format table db active-usage
 # All three print:
 # {
-#   "active_db": 0,
-#   "total_db": 0,
-#   "total_db_size": "0 B"
+# "active_db": 0,
+
+# "total_db": 0,
+
+# "total_db_size": "0 B"
+
 # }
 
 hoppy db v2 list --format table
 # {
-#   "databases": [],
-#   "page_info": { "current_page": 1, "total_items": 0, "has_more_items": false }
+# "databases": [],
+
+# "page_info": { "current_page": 1, "total_items": 0, "has_more_items": false }
+
 # }
 ```
 

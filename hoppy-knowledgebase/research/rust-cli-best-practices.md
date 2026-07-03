@@ -239,5 +239,6 @@ tabled = "0.17"
 - [upload-rust-binary-action](https://github.com/taiki-e/upload-rust-binary-action)
 
 ## Related
+
 - [[research/cli-design-patterns]] — CLI patterns from cloud CLIs
 - [[Seed]] — project brief

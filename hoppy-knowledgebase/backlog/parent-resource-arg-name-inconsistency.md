@@ -52,7 +52,7 @@ but adds friction.
 
 ## Related
 
-- [[../iterations/iteration-40-dogfooding-2026-05-27-fixes]] §2 — chose
+- [[iterations/iteration-40-dogfooding-2026-05-27-fixes]] §2 — chose
   `--id` for top-level commands; this is the symmetric sub-resource
   decision.
 - [[iter-41-sub-resource-help-incomplete]] — the help-text gap on

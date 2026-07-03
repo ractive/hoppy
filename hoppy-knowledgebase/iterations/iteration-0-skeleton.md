@@ -28,6 +28,7 @@ branch: iter-0/skeleton
 **Deliverable:** `hoppy --help` shows the command tree, `hoppy pull-zone list` prints "not implemented yet" cleanly.
 
 ## Related
+
 - [[development-roadmap]] — project roadmap
 - [[Seed]] — original project brief
 - [[research/rust-cli-best-practices]] — CLI best practices research

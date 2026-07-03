@@ -127,10 +127,10 @@ quality-of-life.
 
 ## Related
 
-- [[../research/spec-coverage/pull-zone]] — iter-43 systematic audit
+- [[research/spec-coverage/pull-zone]] — iter-43 systematic audit
   of the `PullZoneModel` ⇄ `PullZone` and `PullZoneSettingsModel` ⇄
   `UpdatePullZone` mappings, with a severity grouping covering all
   missing fields (not only toggles). Confirms this is a struct-level
   gap, not a curated CLI subset.
-- [[../research/spec-coverage/README|Spec coverage index]] — totals
+- [[research/spec-coverage/README|Spec coverage index]] — totals
   across every resource hoppy models.
