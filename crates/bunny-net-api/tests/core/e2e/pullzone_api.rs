@@ -1733,14 +1733,19 @@ fn update_pull_zone_geo_zone_fields_serialise_with_correct_key_names() {
 async fn remaining_toggle_fields_deserialise_from_real_api_key_names() {
     let server = MockServer::start().await;
 
-    // FIXTURE_GET has EnableLogging=true and EnableWebSockets=true (plus
-    // EnableBunnyImageAi=false and EnableExtendedLogging=false); use it as
-    // the response body so we get a realistic round-trip without an inline
-    // JSON blob.
+    // The recorded FIXTURE_GET has EnableLogging=true and EnableWebSockets=true
+    // but EnableBunnyImageAi=false and EnableExtendedLogging=false. A `false`
+    // value can't catch a casing regression (field missing → `#[serde(default)]`
+    // → false looks identical), so flip those two to true in memory: every
+    // assertion below then fails if its wire key stops matching.
+    let mut body: serde_json::Value = serde_json::from_str(FIXTURE_GET).unwrap();
+    body["EnableBunnyImageAi"] = serde_json::Value::Bool(true);
+    body["EnableExtendedLogging"] = serde_json::Value::Bool(true);
+
     Mock::given(method("GET"))
         .and(path("/pullzone/1001"))
         .and(header("AccessKey", "test-api-key"))
-        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(&body))
         .expect(1)
         .mount(&server)
         .await;
@@ -1759,12 +1764,12 @@ async fn remaining_toggle_fields_deserialise_from_real_api_key_names() {
         "enable_web_sockets was false — serde key mismatch (expected EnableWebSockets)"
     );
     assert!(
-        !zone.enable_bunny_image_ai,
-        "enable_bunny_image_ai was true — unexpected fixture value (expected EnableBunnyImageAi=false)"
+        zone.enable_bunny_image_ai,
+        "enable_bunny_image_ai was false — serde key mismatch (expected EnableBunnyImageAi)"
     );
     assert!(
-        !zone.enable_extended_logging,
-        "enable_extended_logging was true — unexpected fixture value (expected EnableExtendedLogging=false)"
+        zone.enable_extended_logging,
+        "enable_extended_logging was false — serde key mismatch (expected EnableExtendedLogging)"
     );
 }
 

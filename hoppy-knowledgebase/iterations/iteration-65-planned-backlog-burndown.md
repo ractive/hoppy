@@ -9,7 +9,7 @@ tags:
   - cli
   - dx
   - live-api
-status: in-progress
+status: completed
 branch: iter-65/planned-backlog-burndown
 ---
 
