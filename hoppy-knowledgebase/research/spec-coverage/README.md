@@ -1,5 +1,5 @@
 ---
-title: "Spec coverage audit — index"
+title: Spec coverage audit — index
 type: research
 date: 2026-05-31
 tags:
@@ -7,6 +7,7 @@ tags:
   - openapi
   - spec-coverage
   - index
+status: reference
 ---
 
 # Spec coverage audit — index

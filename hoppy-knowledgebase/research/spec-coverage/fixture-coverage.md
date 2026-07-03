@@ -1,11 +1,12 @@
 ---
-title: "Fixture coverage audit — recorded API responses vs. structs"
+title: Fixture coverage audit — recorded API responses vs. structs
 type: research
 date: 2026-05-31
 tags:
   - audit
   - fixtures
   - spec-coverage
+status: reference
 ---
 
 # Fixture coverage audit

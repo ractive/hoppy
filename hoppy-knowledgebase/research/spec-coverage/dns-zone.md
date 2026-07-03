@@ -1,11 +1,12 @@
 ---
-title: "Spec coverage audit — dns-zone"
+title: Spec coverage audit — dns-zone
 type: research
 date: 2026-05-31
 tags:
   - audit
   - openapi
   - spec-coverage
+status: reference
 ---
 
 # Spec coverage audit — `dns-zone`

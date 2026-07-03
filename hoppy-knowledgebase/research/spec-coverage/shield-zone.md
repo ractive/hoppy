@@ -1,11 +1,12 @@
 ---
-title: "Spec coverage audit — shield-zone"
+title: Spec coverage audit — shield-zone
 type: research
 date: 2026-05-31
 tags:
   - audit
   - openapi
   - spec-coverage
+status: reference
 ---
 
 # Spec coverage audit — `shield-zone`

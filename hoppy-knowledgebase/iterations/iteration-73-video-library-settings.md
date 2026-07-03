@@ -1,0 +1,83 @@
+---
+title: Iter-73 — video library settings & stream odds-and-ends
+type: iteration
+date: 2026-07-03
+tags:
+  - iteration
+  - api-coverage
+  - stream
+  - video-library
+status: planned
+branch: iter-73/video-library-settings
+priority: 3
+related:
+  - research/api-coverage-gap-analysis-2026-07
+  - research/api-coverage-2026-07/stream
+---
+
+# Iter-73 — video library settings
+
+## Why
+
+Per [[research/api-coverage-2026-07/stream]], Video Library management is
+the weakest domain (5/20 covered): `stream library update` reaches only
+4 body fields while the live API accepts dozens, and referrers,
+watermarks, and languages are unreachable end-to-end.
+
+## Scope
+
+### 1. Full library update surface
+
+- [ ] Extend `UpdateVideoLibrary` + `stream library update` flags beyond
+  Name/AllowDirectPlay/EnableMP4Fallback/HasWatermark: enabled
+  resolutions, output codecs, player config (key color, captions font
+  size, …), `WebhookUrl`, `KeepOriginalFiles`, `AllowEarlyPlay`,
+  `EnableDRM`, transcription defaults (`POST /videolibrary/{id}`)
+- [ ] Field inventory from the live API/dashboard where the spec body is
+  `<unknown>`; document verified fields in the KB
+
+### 2. Referrer allow/block ops (4)
+
+- [ ] `stream library referrer allow` / `block` / `remove-allowed` /
+  `remove-blocked` → `POST /videolibrary/{id}/addAllowedReferrer`,
+  `addBlockedReferrer`, `removeAllowedReferrer`, `removeBlockedReferrer`
+  (mirror the `pull-zone referrer` command shape)
+
+### 3. Watermark
+
+- [ ] `stream library watermark set` → `PUT /videolibrary/{id}/watermark`
+  (image upload; stream the body)
+- [ ] `stream library watermark delete` →
+  `DELETE /videolibrary/{id}/watermark`
+
+### 4. Languages
+
+- [ ] `stream library languages` → `GET /videolibrary/languages`
+
+### 5. Player-facing stream endpoints
+
+- [ ] `GET /OEmbed`, `GET /library/{lib}/videos/{vid}/play`, and
+  `GET .../play/heatmap` → new `stream video` subcommands (oembed,
+  play-data, play-heatmap or similar)
+
+### 6. Video metadata update
+
+- [ ] Add `chapters`, `moments`, `metaTags` to `UpdateVideo` +
+  `stream video update` (nested arrays — JSON file input à la
+  `--config-json` is acceptable)
+
+## Out of scope
+
+- Live-stream thumbnail/watermark ops (`PUT/DELETE
+  /videolibrary/{id}/live/*`, 4 ops) — verify liveness first, backlog
+- `resetApiKey` / `resetReadOnlyApiKey` — done in
+  [[iteration-67-credential-rotation]]
+- TUS resumable upload — [[iteration-77-stream-tus-upload]]
+
+## Acceptance
+
+- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+  clean, `cargo test --workspace --quiet` green
+- [ ] e2e tests cover every new/changed command (`tests/e2e/` pattern)
+- [ ] Help text updated for all new commands/flags
+- [ ] `hyalo lint` clean on touched knowledgebase files

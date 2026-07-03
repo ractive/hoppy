@@ -1,5 +1,5 @@
 ---
-title: "Spec coverage audit — container-app"
+title: Spec coverage audit — container-app
 type: research
 date: 2026-05-31
 tags:
@@ -7,6 +7,7 @@ tags:
   - openapi
   - spec-coverage
   - todo
+status: reference
 ---
 
 # Spec coverage audit — `container-app`

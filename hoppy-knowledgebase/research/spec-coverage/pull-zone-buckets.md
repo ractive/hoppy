@@ -1,5 +1,5 @@
 ---
-title: "Pull-zone update gap — severity buckets"
+title: Pull-zone update gap — severity buckets
 type: research
 date: 2026-05-31
 tags:
@@ -8,6 +8,7 @@ tags:
   - spec-coverage
   - pull-zone
   - planning
+status: reference
 ---
 
 # Pull-zone update gap — severity buckets
