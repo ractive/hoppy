@@ -1,5 +1,5 @@
 ---
-title: `--record` saves live billing/payment PII to fixtures with no redaction warning
+title: "`--record` saves live billing/payment PII to fixtures with no redaction warning"
 type: backlog
 date: 2026-05-31
 status: resolved

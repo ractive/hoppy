@@ -318,6 +318,11 @@ pub async fn handle(
             limit_rate_per_second,
             connection_limit_per_ip_count,
             max_web_socket_connections,
+            // Remaining toggles (iter-65)
+            enable_web_sockets,
+            enable_logging,
+            enable_extended_logging,
+            enable_bunny_image_ai,
         } => {
             // Guard: if any log-forwarding sub-field is being set without also
             // enabling log forwarding in this same call, verify the zone has
@@ -541,6 +546,11 @@ pub async fn handle(
             body.limit_rate_per_second = *limit_rate_per_second;
             body.connection_limit_per_ip_count = *connection_limit_per_ip_count;
             body.max_web_socket_connections = *max_web_socket_connections;
+            // Remaining toggles (iter-65)
+            body.enable_web_sockets = *enable_web_sockets;
+            body.enable_logging = *enable_logging;
+            body.enable_extended_logging = *enable_extended_logging;
+            body.enable_bunny_image_ai = *enable_bunny_image_ai;
             let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format, redact_cfg);
         }

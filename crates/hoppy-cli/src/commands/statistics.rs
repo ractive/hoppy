@@ -54,6 +54,11 @@ pub async fn handle(
             },
         ];
         crate::output::print_data(&rows, format);
+        if hourly {
+            crate::output::hints::tip(
+                "hourly buckets aren't shown in table view — use --format json for the per-hour chart data (e.g. .BandwidthUsedChart)",
+            );
+        }
     }
     Ok(())
 }

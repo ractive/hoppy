@@ -2,7 +2,7 @@
 title: --quiet flag is a no-op on auth check and likely other commands
 type: backlog
 date: 2026-06-01
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-06-01
 tags:

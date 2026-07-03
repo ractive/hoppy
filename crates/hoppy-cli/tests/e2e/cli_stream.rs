@@ -1203,6 +1203,41 @@ fn live_stream_library_lifecycle() {
     });
 }
 
+/// Create a stream collection, retrying a handful of times on HTTP 401.
+///
+/// Immediately after `POST /videolibrary` returns, the new library's
+/// per-library AccessKey is valid against bunny.net's Core API but hasn't
+/// yet propagated to the Stream API (`video.bunnycdn.com`) — requests in
+/// that window come back with a bare `401 Unauthorized`, not a 404 or a
+/// feature-gate error. Verified empirically: 3/3 fresh libraries hit a 401
+/// on the very first collection-create attempt, then succeeded 2-6 seconds
+/// later. This is a real (short-lived) eventual-consistency window on
+/// bunny.net's side, not a client bug — `resolve_stream_client` already
+/// resolves and uses the correct per-library key (see
+/// `hoppy-knowledgebase/backlog/live-stream-collection-401.md`).
+#[cfg(feature = "live-api")]
+#[allow(dead_code)]
+fn create_collection_with_retry(lib_id: &str, name: &str) -> support::LiveResult {
+    const MAX_ATTEMPTS: u32 = 5;
+    let args = [
+        "stream",
+        "collection",
+        "create",
+        "--library-id",
+        lib_id,
+        "--name",
+        name,
+    ];
+    let mut result = support::hoppy_live_json(&args);
+    let mut attempt = 1;
+    while !result.success && result.stderr.contains("401") && attempt < MAX_ATTEMPTS {
+        std::thread::sleep(std::time::Duration::from_secs(u64::from(attempt) * 2));
+        result = support::hoppy_live_json(&args);
+        attempt += 1;
+    }
+    result
+}
+
 #[cfg(feature = "live-api")]
 #[test]
 fn live_stream_collection_lifecycle() {
@@ -1225,16 +1260,8 @@ fn live_stream_collection_lifecycle() {
 
         let col_name = support::unique_name("hoppy-test-col");
 
-        // 2. Create collection
-        let col_create = support::hoppy_live_json(&[
-            "stream",
-            "collection",
-            "create",
-            "--library-id",
-            &lib_id_str,
-            "--name",
-            &col_name,
-        ]);
+        // 2. Create collection (retry on 401 — see create_collection_with_retry)
+        let col_create = create_collection_with_retry(&lib_id_str, &col_name);
         assert!(
             col_create.success,
             "collection create failed — stderr: {}",

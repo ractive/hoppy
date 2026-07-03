@@ -1720,3 +1720,89 @@ fn update_pull_zone_geo_zone_fields_serialise_with_correct_key_names() {
         "stale key EnableGeoZoneAf present"
     );
 }
+
+// ── Remaining toggles regression tests (iter-65) ─────────────────────────────
+
+/// Verify that the last four pull-zone toggles (`EnableBunnyImageAi`,
+/// `EnableLogging`, `EnableExtendedLogging`, `EnableWebSockets`) correctly
+/// deserialise from the real API key names. Default PascalCase conversion of
+/// the snake_case field names already produces the correct wire keys, but a
+/// future rename of any of these fields could silently reintroduce a casing
+/// mismatch that defaults to `false` instead of surfacing the real value.
+#[tokio::test]
+async fn remaining_toggle_fields_deserialise_from_real_api_key_names() {
+    let server = MockServer::start().await;
+
+    // The recorded FIXTURE_GET has EnableLogging=true and EnableWebSockets=true
+    // but EnableBunnyImageAi=false and EnableExtendedLogging=false. A `false`
+    // value can't catch a casing regression (field missing → `#[serde(default)]`
+    // → false looks identical), so flip those two to true in memory: every
+    // assertion below then fails if its wire key stops matching.
+    let mut body: serde_json::Value = serde_json::from_str(FIXTURE_GET).unwrap();
+    body["EnableBunnyImageAi"] = serde_json::Value::Bool(true);
+    body["EnableExtendedLogging"] = serde_json::Value::Bool(true);
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(&body))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(1001)
+        .await
+        .unwrap();
+
+    assert!(
+        zone.enable_logging,
+        "enable_logging was false — serde key mismatch (expected EnableLogging)"
+    );
+    assert!(
+        zone.enable_web_sockets,
+        "enable_web_sockets was false — serde key mismatch (expected EnableWebSockets)"
+    );
+    assert!(
+        zone.enable_bunny_image_ai,
+        "enable_bunny_image_ai was false — serde key mismatch (expected EnableBunnyImageAi)"
+    );
+    assert!(
+        zone.enable_extended_logging,
+        "enable_extended_logging was false — serde key mismatch (expected EnableExtendedLogging)"
+    );
+}
+
+/// Verify that `UpdatePullZone` serialises the remaining toggle fields with
+/// the correct PascalCase key names expected by the bunny.net API.
+#[test]
+fn update_pull_zone_remaining_toggle_fields_serialise_with_correct_key_names() {
+    let body = UpdatePullZone::new()
+        .enable_bunny_image_ai(true)
+        .enable_logging(false)
+        .enable_extended_logging(true)
+        .enable_web_sockets(false);
+
+    let json: serde_json::Value = serde_json::to_value(&body).unwrap();
+
+    assert_eq!(
+        json["EnableBunnyImageAi"],
+        serde_json::Value::Bool(true),
+        "EnableBunnyImageAi key absent or wrong"
+    );
+    assert_eq!(
+        json["EnableLogging"],
+        serde_json::Value::Bool(false),
+        "EnableLogging key absent or wrong"
+    );
+    assert_eq!(
+        json["EnableExtendedLogging"],
+        serde_json::Value::Bool(true),
+        "EnableExtendedLogging key absent or wrong"
+    );
+    assert_eq!(
+        json["EnableWebSockets"],
+        serde_json::Value::Bool(false),
+        "EnableWebSockets key absent or wrong"
+    );
+}

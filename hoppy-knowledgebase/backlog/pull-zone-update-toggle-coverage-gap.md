@@ -2,7 +2,7 @@
 title: "`pull-zone update` is missing 33 toggle/boolean flags from the API surface"
 type: backlog
 date: 2026-05-31
-status: planned
+status: resolved
 priority: medium
 origin: dogfooding-2026-05-31 (post-iter-42)
 ---

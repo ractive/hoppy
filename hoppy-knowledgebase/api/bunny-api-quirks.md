@@ -116,6 +116,16 @@ The Stream API requires a per-library API key (not the account API key). Availab
 
 **Workaround:** Check `BUNNY_STREAM_KEY` env var first, then fall back to fetching the library via Core API to extract `ApiKey`. Same pattern as Storage zones.
 
+## Freshly created library's Stream API key needs a moment to propagate
+
+**Affected endpoints:** All Stream API endpoints, immediately after `POST /videolibrary`
+
+`POST /videolibrary` (Core API) returns the new library's per-library `ApiKey` right away, but that key isn't valid against the Stream API (`video.bunnycdn.com`) for a few seconds afterward. Requests in that window get a bare `401 Unauthorized` (`{"Success":false,"Message":"Authentication has been denied for this request.","StatusCode":401}`), indistinguishable from a real auth failure except by timing.
+
+Verified empirically (2026-07-03): 3/3 fresh libraries hit a 401 on the very first collection-create attempt right after library creation, then succeeded 2-6 seconds later on retry.
+
+**Workaround:** Retry with backoff on 401 for the first Stream API call against a just-created library. See `create_collection_with_retry` in `crates/hoppy-cli/tests/e2e/cli_stream.rs` and [[backlog/live-stream-collection-401]]. Same class of eventual-consistency issue as storage zone propagation (`cli_storage.rs` sleeps 5s after zone create).
+
 ## Video upload is two-step with raw binary PUT
 
 **Affected endpoint:** Video upload
