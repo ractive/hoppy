@@ -32,6 +32,7 @@ pub use types::{
     // API Guardian types
     ApiGuardianEndpoint,
     ApiGuardianEndpointsResponse,
+    ApiGuardianEnumsResponse,
     BlockedLoggedChallengedMetrics,
     BotDetectionConfigurationResponse,
     BotDetectionConfigurationState,

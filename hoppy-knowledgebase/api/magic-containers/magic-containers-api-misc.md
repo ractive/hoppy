@@ -77,6 +77,20 @@ None
 
 ---
 
+## 2b. List Node IPs (Plain)
+
+**GET** `/nodes/plain`
+
+Spec-only endpoint (present in `specs/magic-containers.json`, not yet wired into
+hoppy — flagged in iter-66). Returns the node IP addresses in a plain (non-paginated)
+form, unlike the paginated `/nodes` above.
+
+### Query Parameters
+
+None.
+
+---
+
 ## 3. List Regions
 
 **GET** `/regions`

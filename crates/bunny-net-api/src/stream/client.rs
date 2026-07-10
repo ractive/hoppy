@@ -550,7 +550,9 @@ impl StreamClient {
     /// Add a caption track to a video.
     ///
     /// `srclang` is the BCP 47 language code (e.g. "en", "de", "fr").
-    /// `captions_file` is the SRT subtitle content.
+    /// `captions_file` is the raw SRT/VTT subtitle content; per the spec the API
+    /// expects the file contents Base64-encoded in the `captionsFile` field, so
+    /// this method encodes them for the caller.
     pub async fn add_caption(
         &self,
         library_id: i64,
@@ -558,15 +560,19 @@ impl StreamClient {
         srclang: &str,
         captions_file: &str,
     ) -> Result<StatusMessage> {
+        use base64::Engine as _;
+
         let vid = Self::encode(video_id);
         let lang = Self::encode(srclang);
         let url = format!(
             "{}/library/{library_id}/videos/{vid}/captions/{lang}",
             self.base_url
         );
-        let rb = self
-            .auth(self.http.post(&url))
-            .json(&serde_json::json!({ "CaptionsFile": captions_file }));
+        let encoded = base64::engine::general_purpose::STANDARD.encode(captions_file);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "srclang": srclang,
+            "captionsFile": encoded,
+        }));
         let resp = self.send(rb).await?;
         self.parse_response(resp).await
     }

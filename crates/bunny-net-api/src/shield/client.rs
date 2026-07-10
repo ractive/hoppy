@@ -25,14 +25,14 @@ const PATH_SEGMENT: &AsciiSet = &CONTROLS
     .add(b'&');
 
 use super::types::{
-    AccessListsDetailsResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
-    CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest, CustomAccessList,
-    CustomAccessListResponse, CustomWafRule, GetApiGuardianResponse, GetCustomWafRulesResponse,
-    GetRateLimitRulesResponse, GetShieldZonePullzoneMappingResponse, GetShieldZoneResponse,
-    GetShieldZonesResponse, GetTriggeredRulesResponse, GetWafEngineConfigResponse,
-    GetWafEnumsResponse, GetWafRulesSegmentedByPlanResponse, RateLimitRule,
-    ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse, ShieldMetricsResponse,
-    ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
+    AccessListsDetailsResponse, ApiGuardianEnumsResponse, BotDetectionConfigurationResponse,
+    CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest,
+    CustomAccessList, CustomAccessListResponse, CustomWafRule, GetApiGuardianResponse,
+    GetCustomWafRulesResponse, GetRateLimitRulesResponse, GetShieldZonePullzoneMappingResponse,
+    GetShieldZoneResponse, GetShieldZonesResponse, GetTriggeredRulesResponse,
+    GetWafEngineConfigResponse, GetWafEnumsResponse, GetWafRulesSegmentedByPlanResponse,
+    RateLimitRule, ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse,
+    ShieldMetricsResponse, ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
     ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse, ShieldZoneResponse,
     TriggeredRuleRecommendationResponse, UpdateAccessListConfiguration,
     UpdateApiGuardianEndpointRequest, UpdateApiGuardianEndpointResponse, UpdateApiGuardianRequest,
@@ -771,7 +771,10 @@ impl ShieldClient {
 
     /// Upload a new OpenAPI specification to API Guardian.
     ///
-    /// `POST /shield/shield-zone/{shieldZoneId}/api-guardian`
+    /// `POST /shield/shield-zone/{shieldZoneId}/api-guardian/spec`
+    ///
+    /// The bare `POST .../api-guardian` route was removed by bunny.net; the spec
+    /// upsert now lives under the `/spec` sub-resource.
     pub async fn upload_api_guardian_spec(
         &self,
         shield_zone_id: i64,
@@ -780,7 +783,7 @@ impl ShieldClient {
         let resp = self
             .execute(
                 self.auth(self.client.post(self.url(&format!(
-                    "/shield/shield-zone/{shield_zone_id}/api-guardian"
+                    "/shield/shield-zone/{shield_zone_id}/api-guardian/spec"
                 ))))
                 .json(&body),
             )
@@ -790,7 +793,10 @@ impl ShieldClient {
 
     /// Update the API Guardian configuration by uploading an updated OpenAPI spec.
     ///
-    /// `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian`
+    /// `PATCH /shield/shield-zone/{shieldZoneId}/api-guardian/spec`
+    ///
+    /// The bare `PATCH .../api-guardian` route now updates only the top-level
+    /// config (enabled / execution mode); spec updates moved to `/spec`.
     pub async fn update_api_guardian(
         &self,
         shield_zone_id: i64,
@@ -799,10 +805,28 @@ impl ShieldClient {
         let resp = self
             .execute(
                 self.auth(self.client.patch(self.url(&format!(
-                    "/shield/shield-zone/{shield_zone_id}/api-guardian"
+                    "/shield/shield-zone/{shield_zone_id}/api-guardian/spec"
                 ))))
                 .json(&body),
             )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get all API Guardian enumeration types and their values.
+    ///
+    /// `GET /shield/shield-zone/{shieldZoneId}/api-guardian/enums`
+    ///
+    /// The response is a map of enum-type name to a map of value name to
+    /// value (e.g. `{ "executionMode": { "log": "0", "block": "1" } }`).
+    pub async fn get_api_guardian_enums(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<ApiGuardianEnumsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/shield-zone/{shield_zone_id}/api-guardian/enums"
+            )))))
             .await?;
         self.handle_response(resp).await
     }

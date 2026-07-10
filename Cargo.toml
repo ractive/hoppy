@@ -20,6 +20,7 @@ hoppy-cli = { path = "crates/hoppy-cli", version = "0.3.0" }
 # External dependencies
 anyhow = "1"
 assert_cmd = "2"
+base64 = "0.22"
 bytes = "1"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"

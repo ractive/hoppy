@@ -1,6 +1,6 @@
 use super::support;
 
-use wiremock::matchers::{body_json, header, method, path};
+use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn hoppy_db_cmd(api_key: &str, db_url: &str) -> assert_cmd::Command {
@@ -568,4 +568,111 @@ async fn db_active_usage_format_text_pascal_case_keys() {
     assert!(stdout.contains("ActiveDb\t"), "got: {stdout}");
     assert!(stdout.contains("TotalDb\t"), "got: {stdout}");
     assert!(!stdout.contains("active_db"));
+}
+
+// iter-66: db fork now sends {slug, date}; optimal endpoints require a token
+
+#[tokio::test]
+async fn db_fork_sends_slug_and_date() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/databases/db_01/fork"))
+        .and(body_json(serde_json::json!({
+            "slug": "my-fork",
+            "date": "2026-07-10T12:00:00Z",
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/database_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "db",
+            "fork",
+            "--id",
+            "db_01",
+            "--target",
+            "my-fork",
+            "--date",
+            "2026-07-10T12:00:00Z",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn db_fork_requires_date() {
+    // Missing --date must be a clap usage error (exit 2), no HTTP call.
+    let output = hoppy_db_cmd("test-api-key", "http://127.0.0.1:1")
+        .args(["db", "fork", "--id", "db_01", "--target", "my-fork"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--date"), "got: {stderr}");
+}
+
+#[tokio::test]
+async fn db_config_optimal_sends_cdn_server_token() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/config/optimal"))
+        .and(query_param("cdn_server_token", "tok-abc"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"storage_region":{"id":"eu-west-1","name":"Europe West","group":"EU"},"primary_regions":[],"replica_regions":[]}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["db", "config", "optimal", "--cdn-server-token", "tok-abc"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn db_config_optimal_single_sends_cdn_server_token() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/config/optimal_single"))
+        .and(query_param("cdn_server_token", "tok-xyz"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"storage_region":{"id":"eu-west-1","name":"Europe West","group":"EU"},"region":null}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "db",
+            "config",
+            "optimal-single",
+            "--cdn-server-token",
+            "tok-xyz",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }

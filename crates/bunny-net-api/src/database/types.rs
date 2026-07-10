@@ -221,10 +221,23 @@ pub struct GenerateTokenResponse {
     pub expires_at: Option<String>,
 }
 
+/// Body for `POST /v1/databases/{db_id}/fork`.
+///
+/// The spec requires `{slug, date}` — a point-in-time fork where `date` is an
+/// RFC 3339 / ISO-8601 `date-time` marking the generation to fork from.
+///
+/// `group` is not part of the current spec. It is retained as an optional,
+/// only-serialised-when-present field because older hoppy releases sent it and
+/// the destination group is a natural thing to want to control; the API is
+/// expected to ignore it. See `backlog/db-fork-group-field-drift.md`.
 #[derive(Debug, Clone, Serialize)]
 pub struct ForkDatabasePayload {
     pub slug: String,
-    pub group: String,
+    /// Point-in-time to fork from (RFC 3339 `date-time`).
+    pub date: String,
+    /// Non-spec destination group; sent only when set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

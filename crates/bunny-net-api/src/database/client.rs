@@ -159,15 +159,32 @@ impl DatabaseClient {
         self.parse_response(resp).await
     }
 
-    pub async fn get_optimal(&self) -> Result<OptimalConfigResponse> {
+    /// `GET /v1/config/optimal` — multi-region recommendation.
+    ///
+    /// The spec marks `cdn_server_token` as a required query parameter; omitting
+    /// it makes bunny.net return HTTP 400.
+    pub async fn get_optimal(&self, cdn_server_token: &str) -> Result<OptimalConfigResponse> {
         let url = format!("{}/v1/config/optimal", self.base_url);
-        let resp = self.send(self.auth(self.http.get(&url))).await?;
+        let rb = self
+            .auth(self.http.get(&url))
+            .query(&[("cdn_server_token", cdn_server_token)]);
+        let resp = self.send(rb).await?;
         self.parse_response(resp).await
     }
 
-    pub async fn get_optimal_single(&self) -> Result<OptimalSingleConfigResponse> {
+    /// `GET /v1/config/optimal_single` — single-region recommendation.
+    ///
+    /// Like [`get_optimal`](Self::get_optimal), the spec requires the
+    /// `cdn_server_token` query parameter.
+    pub async fn get_optimal_single(
+        &self,
+        cdn_server_token: &str,
+    ) -> Result<OptimalSingleConfigResponse> {
         let url = format!("{}/v1/config/optimal_single", self.base_url);
-        let resp = self.send(self.auth(self.http.get(&url))).await?;
+        let rb = self
+            .auth(self.http.get(&url))
+            .query(&[("cdn_server_token", cdn_server_token)]);
+        let resp = self.send(rb).await?;
         self.parse_response(resp).await
     }
 

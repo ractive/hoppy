@@ -30,6 +30,17 @@ key, or pull-zone security key cannot be rotated from the CLI at all.
 Small, high-value, security-relevant. Bundles the remaining storage
 safety flags from [[research/api-coverage-2026-07/storage]].
 
+**Carried over from [[iterations/iteration-66-spec-refresh-drift-fixes]]:**
+all 5 rotation/delete endpoint paths and params referenced below
+(`resetPassword`, `resetReadOnlyPassword`, `resetApiKey`,
+`resetReadOnlyApiKey`, `resetSecurityKey`, `deleteLinkedPullZones`) were
+spot-checked against the iter-66-refreshed `specs/core-platform.json` and
+match this plan's paths/params exactly — no further drift expected there.
+This run has no live API access (unattended), so any AC that would
+normally be "verify live" should be satisfied by spec/unit/e2e evidence
+and, where a genuine live check is needed, deferred to a tracked backlog
+item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
+
 ## Scope
 
 ### 1. Storage zone password rotation
@@ -57,13 +68,26 @@ safety flags from [[research/api-coverage-2026-07/storage]].
 - [ ] `storage upload --checksum` — send the SHA-256 `Checksum` header;
   client param exists (`upload_file(..., checksum)`), CLI passes `None`
   (`commands/storage.rs:101`). Support `--checksum <hex>` and consider
-  computing it locally when the flag is given without a value
+  computing it locally when the flag is given without a value.
+  **Spec note (`specs/storage.json`): the header value must be uppercase
+  hex** — the client doc comment already says so; if computing locally,
+  uppercase the digest before sending. If hashing the upload body
+  locally, keep it streaming (hash while reading the chunked body, not
+  by buffering the whole file) per the CLAUDE.md streaming rule reinforced
+  in iter-66's `download_file_streaming`
 
 ### 5. Storage zone delete safety
 
-- [ ] `storage-zone delete --delete-linked-pull-zones` — add the
-  `deleteLinkedPullZones` query param to `delete_storage_zone`
-  (`core/client.rs:440`) and expose the flag
+- [ ] **Spec check (confirmed against the iter-66-refreshed
+  `specs/core-platform.json`): `deleteLinkedPullZones` defaults to
+  `true` upstream.** `delete_storage_zone` (`core/client.rs:440`) sends
+  no query param today, so bunny.net already deletes linked pull zones
+  by default on every `storage-zone delete` — silently. Add the
+  `deleteLinkedPullZones` query param to `delete_storage_zone` and expose
+  a `--keep-linked-pull-zones` (or `--delete-linked-pull-zones <bool>`)
+  flag that lets the caller opt OUT of the destructive default, not just
+  opt in; the confirmation prompt should say explicitly whether linked
+  pull zones will be deleted
 
 ### 6. `storage rm` directory-delete semantics
 

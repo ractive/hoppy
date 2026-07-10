@@ -146,6 +146,49 @@ async fn download_file_returns_bytes() {
 }
 
 #[tokio::test]
+async fn download_file_streaming_writes_to_sink() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/hoppy-test-zone/test-dir/hello.txt"))
+        .and(header("AccessKey", "test-access-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(b"hello world".to_vec()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut sink: Vec<u8> = Vec::new();
+    let written = test_client(&server.uri())
+        .download_file_streaming("hoppy-test-zone", "test-dir", "hello.txt", &mut sink)
+        .await
+        .unwrap();
+
+    assert_eq!(written, 11);
+    assert_eq!(sink, b"hello world");
+}
+
+#[tokio::test]
+async fn download_file_streaming_surfaces_error_status() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/hoppy-test-zone/test-dir/missing.txt"))
+        .respond_with(ResponseTemplate::new(404).set_body_string("Not Found"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut sink: Vec<u8> = Vec::new();
+    let err = test_client(&server.uri())
+        .download_file_streaming("hoppy-test-zone", "test-dir", "missing.txt", &mut sink)
+        .await
+        .unwrap_err();
+
+    assert!(err.to_string().contains("404"), "got: {err}");
+    assert!(sink.is_empty());
+}
+
+#[tokio::test]
 async fn delete_file_success() {
     let server = MockServer::start().await;
 

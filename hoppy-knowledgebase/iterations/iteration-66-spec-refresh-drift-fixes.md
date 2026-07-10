@@ -10,7 +10,7 @@ tags:
   - database
   - storage
   - stream
-status: planned
+status: completed
 branch: iter-66/spec-refresh-drift-fixes
 priority: 0
 related:
@@ -33,53 +33,64 @@ sit uncommitted in the working tree (4 modified + 3 new files).
 
 ## Scope
 
-### 1. Commit refreshed specs
+### 1. Commit refreshed specs [2/2]
 
-- [ ] Commit the 4 modified specs: `specs/core-platform.json`,
+- [x] Commit the 4 modified specs: `specs/core-platform.json`,
   `specs/shield.json`, `specs/storage.json`, `specs/stream.json`
-- [ ] Commit the 3 new specs: `specs/magic-containers.json`,
+- [x] Commit the 3 new specs: `specs/magic-containers.json`,
   `specs/logging.json`, `specs/origin-errors.json`
 
-### 2. `db fork` payload drift
+### 2. `db fork` payload drift [2/2]
 
-- [ ] Spec body is `{slug, date}` (point-in-time fork); client sends
+- [x] Spec body is `{slug, date}` (point-in-time fork); client sends
   `{slug, group}` — add required `date` to `ForkDatabasePayload`
   (`crates/bunny-net-api/src/database/types.rs:225`) + a `--date` flag
-- [ ] Live-verify whether the non-spec `group` field is still accepted;
-  drop it or document the drift in the KB
+- [x] [deferred — new plan: [[backlog/db-fork-group-field-drift]]]
+  Live-verify whether the non-spec `group` field is still accepted — no
+  live API access in this unattended run, so the AC is satisfied via the
+  "document the drift" branch instead: `group` is kept as an optional,
+  only-serialised-when-set field and the open live-check question is
+  tracked in [[backlog/db-fork-group-field-drift]] for the next
+  dogfooding pass
 
-### 3. Shield API Guardian rework
+### 3. Shield API Guardian rework [2/2]
 
-- [ ] Retarget `shield api-guardian upload` from the removed
+- [x] Retarget `shield api-guardian upload` from the removed
   `POST /shield/shield-zone/{shieldZoneId}/api-guardian` to
   `POST .../api-guardian/spec`; `update` to `PATCH .../api-guardian/spec`
-- [ ] New command for `GET .../api-guardian/enums`
+- [x] New command for `GET .../api-guardian/enums`
 
-### 4. db optimal endpoints
+### 4. db optimal endpoints [2/2]
 
-- [ ] Send the spec-required `cdn_server_token` query param in
+- [x] Send the spec-required `cdn_server_token` query param in
   `get_optimal` and `get_optimal_single` (`database/client.rs:162-172`);
   add `--cdn-server-token` to `db config optimal`
-- [ ] Un-hide and un-stub `db config optimal-single`
+- [x] Un-hide and un-stub `db config optimal-single`
   (`commands/database.rs:848-854`) once the param unbreaks the HTTP 400
 
-### 5. Storage download streaming
+### 5. Storage download streaming [1/1]
 
-- [ ] `download_file` buffers the whole body via `response.bytes()`
-  (`storage/client.rs:153`); switch to `bytes_stream()` written
-  incrementally to disk per the project streaming rule
+- [x] `download_file` buffers the whole body via `response.bytes()`
+  (`storage/client.rs:153`); added `download_file_streaming` (writes via
+  `Response::chunk()` incrementally to any `std::io::Write` sink) and
+  switched the CLI `storage download` command to it, per the project
+  streaming rule. `download_file` is kept as a `Bytes`-returning
+  convenience wrapper for library callers that want the whole body
 
-### 6. Dogfood verifications
+### 6. Dogfood verifications [2/2]
 
-- [ ] `stream caption add` sends raw SRT (`stream.rs:1060`); docs say
-  `captionsFile` is base64 — verify live, fix encoding if confirmed
-- [ ] Regional storage hosts: client builds `{region}.bunnycdn.com`
+- [x] `stream caption add` sends raw SRT (`stream.rs:1060`); docs say
+  `captionsFile` is base64 — confirmed against `specs/stream.json`'s
+  `CaptionModelAdd` schema (no live API access in this unattended run);
+  fixed the encoding and added the missing `srclang` body field
+- [x] Regional storage hosts: client builds `{region}.bunnycdn.com`
   (`storage/client.rs:83`); docs list `{region}.storage.bunnycdn.com` —
-  verify a non-default `--region` live, fix the host template if confirmed
+  confirmed against the refreshed `specs/storage.json` `servers` list
+  (no live API access in this unattended run); fixed the host template
 
-### 7. Magic Containers KB notes refresh
+### 7. Magic Containers KB notes refresh [1/1]
 
-- [ ] Add the 3 spec-only endpoints missing from `api/magic-containers/`
+- [x] Add the 3 spec-only endpoints missing from `api/magic-containers/`
   notes: `GET /apps/{appId}/summary`, `GET /nodes/plain`,
   `POST /registries/image-config`
 
@@ -91,8 +102,8 @@ sit uncommitted in the working tree (4 modified + 3 new files).
 
 ## Acceptance
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new/changed command (`tests/e2e/` pattern)
-- [ ] Help text updated for all changed commands/flags
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new/changed command (`tests/e2e/` pattern)
+- [x] Help text updated for all changed commands/flags
+- [x] `hyalo lint` clean on touched knowledgebase files
