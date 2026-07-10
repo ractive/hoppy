@@ -43,7 +43,12 @@ modules. Tiny effort, whole-service coverage win.
   `hoppy logs origin-errors` for origin error logs (naming per the gap
   analysis suggestion; adjust during implementation if the specs
   suggest better verbs)
-- [ ] Sensible date/zone selectors mirroring the spec params
+- [ ] Sensible date/zone selectors mirroring the spec params. If either
+  spec exposes pagination or filter query params, wire them through in
+  full on day one rather than partially — [[iteration-69-filters-pagination-sweep]]
+  found several client methods that had silently dropped params since
+  their original implementation, which then needed a dedicated sweep
+  iteration to fix; cheaper to get complete coverage the first time
 
 ### 4. Streaming download path
 
