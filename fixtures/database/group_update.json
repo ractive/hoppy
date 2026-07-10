@@ -1,0 +1,9 @@
+{
+  "group": {
+    "id": "group_01HX0000000000000000000001",
+    "name": "EU-renamed",
+    "storage_region": "eu-west-1",
+    "primary_regions": ["DE", "FR"],
+    "replicas_regions": ["UK", "NY"]
+  }
+}

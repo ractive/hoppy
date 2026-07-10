@@ -1880,11 +1880,19 @@ pub enum DnsRecordAction {
         /// Tag (for CAA records, e.g. "issue", "issuewild")
         #[arg(long)]
         tag: Option<String>,
+        /// Disable the record without deleting it (true|false)
+        #[arg(long)]
+        disabled: Option<bool>,
         /// Comment
         #[arg(long)]
         comment: Option<String>,
     },
-    /// Update a DNS record
+    /// Update a DNS record.
+    ///
+    /// Every field is optional. Unspecified fields keep their current value:
+    /// the handler reads the record first (via the zone), then patches, so
+    /// `--type` / `--value` no longer have to be re-supplied and SRV/CAA
+    /// fields (`--port` / `--flags` / `--tag`) survive the round-trip.
     Update {
         /// DNS zone ID
         #[arg(long)]
@@ -1894,10 +1902,10 @@ pub enum DnsRecordAction {
         record_id: i64,
         /// Record type (A, AAAA, CNAME, TXT, MX, SRV, CAA, PTR, NS, SVCB, HTTPS, TLSA, Redirect, Flatten, PullZone, Script; case-insensitive)
         #[arg(long, value_name = "TYPE")]
-        r#type: String,
+        r#type: Option<String>,
         /// Record value
         #[arg(long)]
-        value: String,
+        value: Option<String>,
         /// Record name (subdomain)
         #[arg(long)]
         name: Option<String>,
@@ -1910,6 +1918,18 @@ pub enum DnsRecordAction {
         /// Weight
         #[arg(long)]
         weight: Option<i32>,
+        /// Port (for SRV records)
+        #[arg(long)]
+        port: Option<i32>,
+        /// Flags (for CAA records)
+        #[arg(long)]
+        flags: Option<u8>,
+        /// Tag (for CAA records, e.g. "issue", "issuewild")
+        #[arg(long)]
+        tag: Option<String>,
+        /// Disable the record without deleting it (true|false)
+        #[arg(long)]
+        disabled: Option<bool>,
         /// Comment
         #[arg(long)]
         comment: Option<String>,
@@ -2570,6 +2590,9 @@ pub enum ShieldWafAction {
         /// Rule name
         #[arg(long)]
         name: Option<String>,
+        /// Rule description
+        #[arg(long)]
+        description: Option<String>,
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
         #[arg(long)]
         action_type: u8,
@@ -2582,8 +2605,20 @@ pub enum ShieldWafAction {
         /// Value to match against
         #[arg(long)]
         value: Option<String>,
+        /// Transformation type applied before matching (repeatable; 1–21; see docs)
+        #[arg(long = "transformation-type", value_name = "N")]
+        transformation_types: Vec<u8>,
+        /// JSON file supplying the nested `ruleConfiguration` fields
+        /// (`variableTypes`, `transformationTypes`, `chainedRuleConditions`).
+        /// Merged onto the flag-derived config; flags win on conflict.
+        #[arg(long, value_name = "FILE")]
+        config_json: Option<std::path::PathBuf>,
     },
-    /// Update a custom WAF rule
+    /// Update a custom WAF rule.
+    ///
+    /// Every field is optional; unspecified fields keep their current value
+    /// (the handler reads the rule first, then patches). Pass `--config-json`
+    /// to supply the nested `ruleConfiguration` fields.
     UpdateRule {
         /// WAF rule ID
         #[arg(long)]
@@ -2591,6 +2626,29 @@ pub enum ShieldWafAction {
         /// Rule name
         #[arg(long)]
         name: Option<String>,
+        /// Rule description
+        #[arg(long)]
+        description: Option<String>,
+        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
+        #[arg(long)]
+        action_type: Option<u8>,
+        /// Operator type (0–18; same values as `add-rule`)
+        #[arg(long)]
+        operator_type: Option<u8>,
+        /// Severity type (0 = Low, 1 = Medium, 2 = High)
+        #[arg(long)]
+        severity_type: Option<u8>,
+        /// Value to match against
+        #[arg(long)]
+        value: Option<String>,
+        /// Transformation type applied before matching (repeatable; 1–21).
+        /// When supplied, replaces the current transformation list.
+        #[arg(long = "transformation-type", value_name = "N")]
+        transformation_types: Vec<u8>,
+        /// JSON file supplying the nested `ruleConfiguration` fields
+        /// (`variableTypes`, `transformationTypes`, `chainedRuleConditions`).
+        #[arg(long, value_name = "FILE")]
+        config_json: Option<std::path::PathBuf>,
     },
     /// Delete a custom WAF rule
     DeleteRule {
@@ -2739,6 +2797,9 @@ pub enum ShieldRateLimitAction {
         /// Rule name
         #[arg(long)]
         name: Option<String>,
+        /// Rule description
+        #[arg(long)]
+        description: Option<String>,
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
         #[arg(long)]
         action_type: u8,
@@ -2751,6 +2812,9 @@ pub enum ShieldRateLimitAction {
         /// Value to match against
         #[arg(long)]
         value: Option<String>,
+        /// Transformation type applied before matching (repeatable; 1–21)
+        #[arg(long = "transformation-type", value_name = "N")]
+        transformation_types: Vec<u8>,
         /// Number of requests before triggering the rule
         #[arg(long)]
         request_count: i32,
@@ -2763,8 +2827,17 @@ pub enum ShieldRateLimitAction {
         /// Block duration in seconds (30, 60, 300, 900, 1800, 3600)
         #[arg(long)]
         block_time: u16,
+        /// JSON file supplying the nested `ruleConfiguration` fields
+        /// (`variableTypes`, `transformationTypes`, `chainedRuleConditions`).
+        /// Merged onto the flag-derived config; flags win on conflict.
+        #[arg(long, value_name = "FILE")]
+        config_json: Option<std::path::PathBuf>,
     },
-    /// Update a rate limit rule
+    /// Update a rate limit rule.
+    ///
+    /// Every field is optional; unspecified fields keep their current value
+    /// (the handler reads the rule first, then patches). Pass `--config-json`
+    /// to supply the nested `ruleConfiguration` fields.
     Update {
         /// Rate limit rule ID
         #[arg(long)]
@@ -2772,6 +2845,41 @@ pub enum ShieldRateLimitAction {
         /// Rule name
         #[arg(long)]
         name: Option<String>,
+        /// Rule description
+        #[arg(long)]
+        description: Option<String>,
+        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
+        #[arg(long)]
+        action_type: Option<u8>,
+        /// Operator type (0–18; same values as WAF rules)
+        #[arg(long)]
+        operator_type: Option<u8>,
+        /// Severity type (0 = Low, 1 = Medium, 2 = High)
+        #[arg(long)]
+        severity_type: Option<u8>,
+        /// Value to match against
+        #[arg(long)]
+        value: Option<String>,
+        /// Transformation type applied before matching (repeatable; 1–21).
+        /// When supplied, replaces the current transformation list.
+        #[arg(long = "transformation-type", value_name = "N")]
+        transformation_types: Vec<u8>,
+        /// Number of requests before triggering the rule
+        #[arg(long)]
+        request_count: Option<i32>,
+        /// Counter key type (0–7; see `create`)
+        #[arg(long)]
+        counter_key_type: Option<u8>,
+        /// Counting timeframe in seconds (1, 10, 60, 300, 900, 3600)
+        #[arg(long)]
+        timeframe: Option<u16>,
+        /// Block duration in seconds (30, 60, 300, 900, 1800, 3600)
+        #[arg(long)]
+        block_time: Option<u16>,
+        /// JSON file supplying the nested `ruleConfiguration` fields
+        /// (`variableTypes`, `transformationTypes`, `chainedRuleConditions`).
+        #[arg(long, value_name = "FILE")]
+        config_json: Option<std::path::PathBuf>,
     },
     /// Delete a rate limit rule
     Delete {
@@ -4158,6 +4266,22 @@ pub enum DbV2Action {
         #[arg(long = "replicas-region", value_name = "REGION")]
         replicas_regions: Vec<String>,
     },
+    /// Update a database (v2).
+    ///
+    /// long_help: primary-region/replicas-region use compute codes (DE, FR,
+    /// AMS, …). Supplying either flag replaces that whole region list; omit
+    /// both to change nothing.
+    Update {
+        /// Database ID
+        #[arg(long)]
+        id: String,
+        /// Primary region (compute code, repeatable). Replaces the list.
+        #[arg(long = "primary-region", value_name = "REGION")]
+        primary_regions: Vec<String>,
+        /// Replica region (compute code, repeatable). Replaces the list.
+        #[arg(long = "replicas-region", value_name = "REGION")]
+        replicas_regions: Vec<String>,
+    },
     /// Delete a database (v2)
     Delete {
         /// Database ID
@@ -4195,6 +4319,25 @@ pub enum DbGroupAction {
         #[arg(long = "primary-region", value_name = "REGION")]
         primary_regions: Vec<String>,
         /// Replica region (compute code, repeatable). Examples: UK, NY.
+        #[arg(long = "replicas-region", value_name = "REGION")]
+        replicas_regions: Vec<String>,
+    },
+    /// Update a database group.
+    ///
+    /// long_help: display-name renames the group. primary-region/replicas-region
+    /// use compute codes (DE, FR, AMS, …); supplying either flag replaces that
+    /// whole region list. Omit all three flags to change nothing.
+    Update {
+        /// Database group ID
+        #[arg(long)]
+        id: String,
+        /// New display name (max 64 chars)
+        #[arg(long)]
+        display_name: Option<String>,
+        /// Primary region (compute code, repeatable). Replaces the list.
+        #[arg(long = "primary-region", value_name = "REGION")]
+        primary_regions: Vec<String>,
+        /// Replica region (compute code, repeatable). Replaces the list.
         #[arg(long = "replicas-region", value_name = "REGION")]
         replicas_regions: Vec<String>,
     },

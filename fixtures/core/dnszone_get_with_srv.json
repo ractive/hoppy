@@ -1,0 +1,34 @@
+{
+  "Id": 50001,
+  "Domain": "srv-example.test",
+  "Records": [
+    {
+      "Id": 100001,
+      "Type": 8,
+      "Ttl": 3600,
+      "Value": "sip.example.com",
+      "Name": "_sip._tcp",
+      "Weight": 5,
+      "Priority": 10,
+      "Port": 5060,
+      "Flags": 0,
+      "Tag": null,
+      "Accelerated": false,
+      "AcceleratedPullZoneId": 0,
+      "LinkName": null,
+      "Disabled": false,
+      "Comment": "primary SIP endpoint"
+    }
+  ],
+  "DateModified": "2026-07-10T00:00:00",
+  "DateCreated": "2026-07-01T00:00:00",
+  "NameserversDetected": true,
+  "CustomNameserversEnabled": false,
+  "Nameserver1": "kiki.bunny.net",
+  "Nameserver2": "coco.bunny.net",
+  "SoaEmail": "hostmaster@bunny.net",
+  "NameserversNextCheck": "2026-07-11T00:00:00",
+  "LoggingEnabled": false,
+  "LoggingIPAnonymizationEnabled": false,
+  "DnsSecEnabled": false
+}
