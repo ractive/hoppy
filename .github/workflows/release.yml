@@ -42,7 +42,7 @@ jobs:
       - name: Install security tools
         uses: taiki-e/install-action@a1df9120380005ebdc788c62449b841b205541dd # v2
         with:
-          tool: cargo-audit,cargo-deny
+          tool: cargo-audit@0.22.1,cargo-deny@0.19.0
 
       - name: Audit dependencies for known vulnerabilities
         run: cargo audit
@@ -199,7 +199,7 @@ jobs:
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Build release binary
-        run: cargo build --release
+        run: cargo build --release --locked
 
       # cargo-deb and cargo-generate-rpm resolve relative asset paths from
       # the package directory (crates/hoppy-cli/), so completions and man
