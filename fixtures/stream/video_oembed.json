@@ -1,0 +1,13 @@
+{
+  "type": "video",
+  "version": "1.0",
+  "title": "Sample Video",
+  "providerName": "Bunny Stream",
+  "providerUrl": "https://bunny.net",
+  "thumbnailUrl": "https://vz-example.b-cdn.net/aaaabbbb/thumbnail.jpg",
+  "thumbnailWidth": 1280,
+  "thumbnailHeight": 720,
+  "html": "<iframe src=\"https://iframe.mediadelivery.net/embed/10001/aaaabbbb\" loading=\"lazy\"></iframe>",
+  "width": 1280,
+  "height": 720
+}

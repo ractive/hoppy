@@ -45,6 +45,9 @@ const FIXTURE_VIDEO_STORAGE: &str =
     include_str!("../../../../../fixtures/stream/video_storage.json");
 const FIXTURE_VIDEO_RESOLUTIONS_CLEANUP_STATUS: &str =
     include_str!("../../../../../fixtures/stream/video_resolutions_cleanup_status.json");
+const FIXTURE_VIDEO_OEMBED: &str = include_str!("../../../../../fixtures/stream/video_oembed.json");
+const FIXTURE_VIDEO_PLAY_DATA: &str =
+    include_str!("../../../../../fixtures/stream/video_play_data.json");
 
 fn test_client(uri: &str) -> StreamClient {
     StreamClient::new("stream-test-key").with_base_url(uri)
@@ -370,6 +373,53 @@ async fn update_video_sends_correct_body() {
 
     use bunny_net_api::stream::types::UpdateVideo;
     let body = UpdateVideo::new().title("Renamed Video");
+    let status = test_client(&server.uri())
+        .update_video(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", &body)
+        .await
+        .unwrap();
+
+    assert!(status.success);
+}
+
+#[tokio::test]
+async fn update_video_serialises_chapters_moments_meta_tags() {
+    use bunny_net_api::stream::types::{Chapter, MetaTag, Moment, UpdateVideo};
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "Chapters": [{ "title": "Intro", "start": 0, "end": 30 }],
+        "Moments": [{ "label": "Key point", "timestamp": 45 }],
+        "MetaTags": [{ "property": "topic", "value": "demo" }]
+    });
+
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .and(body_json(expected_body))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_VIDEO_UPLOAD_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdateVideo::new()
+        .chapters(vec![Chapter {
+            title: "Intro".to_owned(),
+            start: 0,
+            end: 30,
+        }])
+        .moments(vec![Moment {
+            label: "Key point".to_owned(),
+            timestamp: 45,
+        }])
+        .meta_tags(vec![MetaTag {
+            property: Some("topic".to_owned()),
+            value: Some("demo".to_owned()),
+        }]);
     let status = test_client(&server.uri())
         .update_video(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", &body)
         .await
@@ -1112,4 +1162,148 @@ async fn get_video_storage_size_returns_data() {
         .get("x264-720p")
         .expect("x264-720p should be present");
     assert_eq!(rendition.size, 12345678);
+}
+
+// ---------------------------------------------------------------------------
+// Player-facing endpoints — oEmbed, play data, play heatmap
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn get_oembed_returns_embed_html() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/OEmbed"))
+        .and(header("AccessKey", "stream-test-key"))
+        .and(query_param(
+            "url",
+            "https://iframe.mediadelivery.net/play/10001/aaaabbbb",
+        ))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_OEMBED, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let oembed = test_client(&server.uri())
+        .get_oembed(
+            "https://iframe.mediadelivery.net/play/10001/aaaabbbb",
+            None,
+            None,
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(oembed.kind.as_deref(), Some("video"));
+    assert!(oembed.html.unwrap().contains("iframe"));
+    assert_eq!(oembed.width, Some(1280));
+}
+
+#[tokio::test]
+async fn get_oembed_forwards_max_dimensions() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/OEmbed"))
+        .and(header("AccessKey", "stream-test-key"))
+        .and(query_param("url", "https://example.com/play"))
+        .and(query_param("maxWidth", "640"))
+        .and(query_param("maxHeight", "360"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_OEMBED, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .get_oembed("https://example.com/play", Some(640), Some(360), None, None)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn get_video_play_data_returns_player_urls() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/play",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_PLAY_DATA, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let data = test_client(&server.uri())
+        .get_video_play_data(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee", None, None)
+        .await
+        .unwrap();
+
+    // VideoPlayData is a serde_json::Value passthrough.
+    assert_eq!(
+        data["videoPlaylistUrl"].as_str(),
+        Some("https://vz-example.b-cdn.net/aaaabbbb/playlist.m3u8")
+    );
+    assert_eq!(data["enableDRM"].as_bool(), Some(false));
+}
+
+#[tokio::test]
+async fn get_video_play_data_forwards_token_and_expires() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/play",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .and(query_param("token", "sig123"))
+        .and(query_param("expires", "1893456000"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_PLAY_DATA, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .get_video_play_data(
+            10001,
+            "aaaabbbb-1111-2222-3333-ccccddddeeee",
+            Some("sig123"),
+            Some(1893456000),
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn get_video_play_heatmap_hits_play_heatmap_path() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/play/heatmap",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_VIDEO_HEATMAP, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_video_play_heatmap(10001, "aaaabbbb-1111-2222-3333-ccccddddeeee")
+        .await
+        .unwrap();
+
+    let map = result.heatmap.expect("heatmap should be present");
+    assert_eq!(map.get("0"), Some(&80));
 }

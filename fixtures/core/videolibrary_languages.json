@@ -1,0 +1,20 @@
+[
+  {
+    "Name": "English",
+    "ShortName": "en",
+    "SupportsTranscribing": true,
+    "SupportedForTranscription": true
+  },
+  {
+    "Name": "German",
+    "ShortName": "de",
+    "SupportsTranscribing": true,
+    "SupportedForTranscription": true
+  },
+  {
+    "Name": "Klingon",
+    "ShortName": "tlh",
+    "SupportsTranscribing": false,
+    "SupportedForTranscription": false
+  }
+]

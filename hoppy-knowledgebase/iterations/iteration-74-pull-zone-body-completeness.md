@@ -24,6 +24,18 @@ feature areas — error pages, preloading screen, and the script/container
 wiring that blocks connecting `hoppy script` / `hoppy container` output
 to a zone. Plus two missing endpoints and the new external-DNS cert flow.
 
+**Lesson carried from [[iteration-73-video-library-settings]]**: that
+iteration's field-inventory discipline (diffing the full spec body against
+the CLI arg surface, not just what the handler consumes) again caught
+every gap before review — apply the same rigor per group below (§1-§4),
+confirming each prop is both a struct field *and* a reachable flag before
+ticking the box. Also: `pull-zone update` was already the largest command
+variant in the CLI before this iteration; iter-73 needed
+`#[allow(clippy::large_enum_variant)]` on its own biggest `Update` variant
+once flag count grew similarly, so expect (and pre-emptively allow, with a
+one-line justification comment) the same clippy finding here rather than
+being surprised by it at review time.
+
 ## Scope
 
 All body props below need `UpdatePullZone` struct fields

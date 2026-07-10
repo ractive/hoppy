@@ -15,6 +15,8 @@ const FIXTURE_DRM_STATS: &str =
     include_str!("../../../../../fixtures/core/videolibrary_drm_statistics.json");
 const FIXTURE_TRANSCRIBING_STATS: &str =
     include_str!("../../../../../fixtures/core/videolibrary_transcribing_statistics.json");
+const FIXTURE_LANGUAGES: &str =
+    include_str!("../../../../../fixtures/core/videolibrary_languages.json");
 
 fn test_client(uri: &str) -> CoreClient {
     CoreClient::with_base_url("test-api-key", uri)
@@ -202,6 +204,201 @@ async fn update_video_library_sends_correct_body() {
         .unwrap();
 
     assert!(lib.id > 0);
+}
+
+#[tokio::test]
+async fn update_video_library_serialises_full_settings_body() {
+    let server = MockServer::start().await;
+
+    // Exercise a representative slice of the new settings surface: encoding,
+    // player, webhook, DRM, transcription defaults, and the caption-languages
+    // array. Only fields that were set should appear in the body.
+    let expected_body = serde_json::json!({
+        "EnabledResolutions": "240p,720p,1080p",
+        "OutputCodecs": "x264,vp9",
+        "KeepOriginalFiles": true,
+        "PlayerKeyColor": "#ff8800",
+        "CaptionsFontSize": 18,
+        "WebhookUrl": "https://example.com/hook",
+        "EnableDRM": true,
+        "EnableTranscribing": true,
+        "TranscribingCaptionLanguages": ["en", "de"]
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = UpdateVideoLibrary::new()
+        .enabled_resolutions("240p,720p,1080p")
+        .output_codecs("x264,vp9")
+        .keep_original_files(true)
+        .player_key_color("#ff8800")
+        .captions_font_size(18)
+        .webhook_url("https://example.com/hook")
+        .enable_drm(true)
+        .enable_transcribing(true)
+        .transcribing_caption_languages(vec!["en".to_owned(), "de".to_owned()]);
+
+    test_client(&server.uri())
+        .update_video_library(10001, &body)
+        .await
+        .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// Referrer allow/block
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn add_video_library_allowed_referrer_posts_hostname() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/addAllowedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "example.com" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_video_library_allowed_referrer(10001, "example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn remove_video_library_allowed_referrer_posts_hostname() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/removeAllowedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "example.com" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .remove_video_library_allowed_referrer(10001, "example.com")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn add_video_library_blocked_referrer_posts_hostname() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/addBlockedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "bad.example" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .add_video_library_blocked_referrer(10001, "bad.example")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn remove_video_library_blocked_referrer_posts_hostname() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/removeBlockedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "bad.example" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .remove_video_library_blocked_referrer(10001, "bad.example")
+        .await
+        .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// Watermark
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn set_video_library_watermark_puts_octet_stream() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/videolibrary/10001/watermark"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(header("Content-Type", "application/octet-stream"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let image: Vec<u8> = vec![0x89, 0x50, 0x4e, 0x47];
+    test_client(&server.uri())
+        .set_video_library_watermark(10001, image)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn delete_video_library_watermark_deletes() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("DELETE"))
+        .and(path("/videolibrary/10001/watermark"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .delete_video_library_watermark(10001)
+        .await
+        .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// Languages
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn list_video_library_languages_returns_array() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/languages"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_LANGUAGES, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let langs = test_client(&server.uri())
+        .list_video_library_languages()
+        .await
+        .unwrap();
+
+    assert_eq!(langs.len(), 3);
+    assert_eq!(langs[0].short_name.as_deref(), Some("en"));
+    assert_eq!(langs[0].supports_transcribing, Some(true));
 }
 
 // ---------------------------------------------------------------------------

@@ -2268,6 +2268,7 @@ pub enum StreamAction {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // Update carries the full settings body as Option<T> flags; clap boxes internally
 pub enum StreamLibraryAction {
     /// List video libraries
     ///
@@ -2308,7 +2309,12 @@ pub enum StreamLibraryAction {
         #[arg(long)]
         name: String,
     },
-    /// Update a video library
+    /// Update a video library's settings
+    ///
+    /// Exposes the full `VideoLibraryUpdateModel` settings body: encoding /
+    /// resolution / codec settings, player configuration, webhook, token /
+    /// referrer access control, DRM, and transcription defaults. Only the
+    /// flags you pass are sent — everything else is left untouched.
     Update {
         /// Stream library ID
         #[arg(long)]
@@ -2325,6 +2331,93 @@ pub enum StreamLibraryAction {
         /// Overlay a watermark on encoded video renditions.
         #[arg(long)]
         has_watermark: Option<bool>,
+        /// Comma-separated encoding resolutions (e.g. 240p,360p,480p,720p,1080p).
+        #[arg(long)]
+        enabled_resolutions: Option<String>,
+        /// Output codec configuration (e.g. x264,vp9,hevc,av1).
+        #[arg(long)]
+        output_codecs: Option<String>,
+        /// Keep the original uploaded files after encoding.
+        #[arg(long)]
+        keep_original_files: Option<bool>,
+        /// Enable Just-In-Time encoding for the library.
+        #[arg(long)]
+        jit_encoding_enabled: Option<bool>,
+        /// Allow playback to start before encoding fully completes.
+        #[arg(long)]
+        allow_early_play: Option<bool>,
+        /// Player key color (hex, e.g. #ff8800).
+        #[arg(long)]
+        player_key_color: Option<String>,
+        /// Caption font size in pixels.
+        #[arg(long)]
+        captions_font_size: Option<i32>,
+        /// Caption font color (hex).
+        #[arg(long)]
+        captions_font_color: Option<String>,
+        /// Caption background color/style.
+        #[arg(long)]
+        captions_background: Option<String>,
+        /// Player font family.
+        #[arg(long)]
+        font_family: Option<String>,
+        /// Player UI language (ISO 639-1, e.g. en).
+        #[arg(long)]
+        ui_language: Option<String>,
+        /// Player controls configuration string.
+        #[arg(long)]
+        controls: Option<String>,
+        /// Available playback speeds (comma-separated, e.g. 0.5,1,1.5,2).
+        #[arg(long)]
+        playback_speeds: Option<String>,
+        /// VAST ad tag URL.
+        #[arg(long)]
+        vast_tag_url: Option<String>,
+        /// Custom HTML injected into the player page.
+        #[arg(long)]
+        custom_html: Option<String>,
+        /// Show the engagement heatmap on the player.
+        #[arg(long)]
+        show_heatmap: Option<bool>,
+        /// Remember playback position across sessions.
+        #[arg(long)]
+        remember_player_position: Option<bool>,
+        /// Webhook URL for encoding/status notifications.
+        #[arg(long)]
+        webhook_url: Option<String>,
+        /// Require a signed token to access videos.
+        #[arg(long)]
+        enable_token_authentication: Option<bool>,
+        /// Bind signed tokens to the requester's IP address.
+        #[arg(long)]
+        enable_token_ip_verification: Option<bool>,
+        /// Block requests with no Referer header.
+        #[arg(long)]
+        block_none_referrer: Option<bool>,
+        /// Enable DRM protection for the library.
+        #[arg(long)]
+        enable_drm: Option<bool>,
+        /// Enable automatic transcription by default.
+        #[arg(long)]
+        enable_transcribing: Option<bool>,
+        /// Auto-generate titles from transcription.
+        #[arg(long)]
+        enable_transcribing_title_generation: Option<bool>,
+        /// Auto-generate descriptions from transcription.
+        #[arg(long)]
+        enable_transcribing_description_generation: Option<bool>,
+        /// Auto-generate chapters from transcription.
+        #[arg(long)]
+        enable_transcribing_chapters_generation: Option<bool>,
+        /// Auto-generate highlight moments from transcription.
+        #[arg(long)]
+        enable_transcribing_moments_generation: Option<bool>,
+        /// Caption languages to transcribe into (ISO 639-1, repeatable).
+        #[arg(long = "transcribing-caption-language")]
+        transcribing_caption_languages: Vec<String>,
+        /// Enable AI content tagging.
+        #[arg(long)]
+        enable_content_tagging: Option<bool>,
     },
     /// Delete a video library
     Delete {
@@ -2332,6 +2425,18 @@ pub enum StreamLibraryAction {
         #[arg(long)]
         id: i64,
     },
+    /// Manage allowed / blocked referrers for a video library
+    Referrer {
+        #[command(subcommand)]
+        action: StreamLibraryReferrerAction,
+    },
+    /// Manage the video library watermark image
+    Watermark {
+        #[command(subcommand)]
+        action: StreamLibraryWatermarkAction,
+    },
+    /// List the languages supported for the player / transcription
+    Languages {},
     /// Rotate the API key of a video library.
     ///
     /// The new key is not returned by the reset call; hoppy re-fetches the
@@ -2366,6 +2471,65 @@ pub enum StreamLibraryAction {
         /// Filter by video GUID
         #[arg(long)]
         video_guid: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum StreamLibraryReferrerAction {
+    /// Add a hostname to the allowed-referrer list
+    Allow {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
+        /// Referrer hostname pattern (e.g. example.com or *.example.com)
+        #[arg(long)]
+        value: String,
+    },
+    /// Remove a hostname from the allowed-referrer list
+    RemoveAllowed {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
+        /// Referrer hostname pattern to remove
+        #[arg(long)]
+        value: String,
+    },
+    /// Add a hostname to the blocked-referrer list
+    Block {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
+        /// Referrer hostname pattern (e.g. example.com or *.example.com)
+        #[arg(long)]
+        value: String,
+    },
+    /// Remove a hostname from the blocked-referrer list
+    RemoveBlocked {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
+        /// Referrer hostname pattern to remove
+        #[arg(long)]
+        value: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum StreamLibraryWatermarkAction {
+    /// Upload a watermark image for the library (streamed from disk)
+    Set {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
+        /// Local path to the watermark image file
+        #[arg(long)]
+        file: String,
+    },
+    /// Remove the watermark image from the library
+    Delete {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
     },
 }
 
@@ -2449,7 +2613,14 @@ pub enum StreamVideoAction {
         #[arg(long)]
         generate_moments: Option<bool>,
     },
-    /// Update video title or collection
+    /// Update video title, collection, or metadata (chapters/moments/meta-tags)
+    ///
+    /// Chapters, moments, and meta-tags are nested arrays supplied via a JSON
+    /// file with `--config-json`. The file may contain any of the keys
+    /// `chapters`, `moments`, `metaTags`, e.g.
+    /// `{"chapters":[{"title":"Intro","start":0,"end":30}],
+    /// "moments":[{"label":"Key point","timestamp":45}],
+    /// "metaTags":[{"property":"topic","value":"demo"}]}`.
     Update {
         /// Video library ID
         #[arg(long)]
@@ -2463,6 +2634,9 @@ pub enum StreamVideoAction {
         /// Collection GUID to assign the video to
         #[arg(long)]
         collection_id: Option<String>,
+        /// JSON file with nested chapters / moments / metaTags arrays
+        #[arg(long, value_name = "FILE")]
+        config_json: Option<std::path::PathBuf>,
     },
     /// Fetch (ingest) a video from a remote URL
     Fetch {
@@ -2596,6 +2770,51 @@ pub enum StreamVideoAction {
     },
     /// Show the storage breakdown for a video
     Storage {
+        /// Video library ID
+        #[arg(long)]
+        library_id: i64,
+        /// Video GUID
+        #[arg(long)]
+        video_id: String,
+    },
+    /// Fetch the oEmbed representation of a video
+    Oembed {
+        /// Public direct-play URL of the video
+        #[arg(long)]
+        url: String,
+        /// Video library ID (used to resolve the stream API key)
+        #[arg(long = "id", alias = "library-id", value_name = "ID")]
+        library_id: i64,
+        /// Maximum embed width in pixels
+        #[arg(long)]
+        max_width: Option<i32>,
+        /// Maximum embed height in pixels
+        #[arg(long)]
+        max_height: Option<i32>,
+        /// Signed-URL token (for token-protected libraries)
+        #[arg(long)]
+        token: Option<String>,
+        /// Signed-URL expiry (Unix timestamp)
+        #[arg(long)]
+        expires: Option<i64>,
+    },
+    /// Fetch player-facing play data for a video (player URLs, DRM, captions)
+    PlayData {
+        /// Video library ID
+        #[arg(long)]
+        library_id: i64,
+        /// Video GUID
+        #[arg(long)]
+        video_id: String,
+        /// Signed-URL token (for token-protected libraries)
+        #[arg(long)]
+        token: Option<String>,
+        /// Signed-URL expiry (Unix timestamp)
+        #[arg(long)]
+        expires: Option<i64>,
+    },
+    /// Fetch the player-facing play heatmap for a video
+    PlayHeatmap {
         /// Video library ID
         #[arg(long)]
         library_id: i64,
