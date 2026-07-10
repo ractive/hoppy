@@ -1939,3 +1939,444 @@ async fn shield_api_guardian_enums_text() {
     assert!(stdout.contains("executionMode"), "got: {stdout}");
     assert!(stdout.contains("block"), "got: {stdout}");
 }
+
+// ---------------------------------------------------------------------------
+// iter-72: new-surface commands
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn shield_bot_categorization_list_table() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/bot-categorization"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"categories":[{"category":2,"categoryAction":1,"bots":[{"botId":7,"userAgentMatch":"GPTBot","category":2,"action":1,"isVerifiable":true}]}]}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "shield",
+            "bot-categorization",
+            "list",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("AIScraper"), "got: {stdout}");
+    assert!(stdout.contains("GPTBot"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_bot_categorization_set_bot_sends_action() {
+    use wiremock::matchers::body_string_contains;
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/shield/shield-zone/42/bot-categorization/bots/7"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"action\":2"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"data":{"botId":7,"userAgentMatch":"GPTBot","category":2,"action":2,"isVerifiable":true}}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "bot-categorization",
+            "set-bot",
+            "--id",
+            "42",
+            "--bot-id",
+            "7",
+            "--action",
+            "2",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_bot_categorization_set_category_uses_category_path() {
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(
+            "/shield/shield-zone/42/bot-categorization/categories/2",
+        ))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(r#"{"data":{"category":2,"action":1}}"#, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "bot-categorization",
+            "set-category",
+            "--id",
+            "42",
+            "--category",
+            "2",
+            "--action",
+            "1",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_custom_page_get_prints_html() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/custom-page/block"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw("<html><body>Blocked</body></html>", "text/html"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "custom-page",
+            "get",
+            "--id",
+            "42",
+            "--page-type",
+            "block",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Blocked"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_custom_page_upload_puts_html() {
+    use wiremock::matchers::body_string_contains;
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/shield/shield-zone/42/custom-page/challenge"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("Please wait"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"success":true,"message":"Uploaded"}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let html_path = dir.path().join("challenge.html");
+    std::fs::write(&html_path, "<html><body>Please wait</body></html>").unwrap();
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "custom-page",
+            "upload",
+            "--id",
+            "42",
+            "--page-type",
+            "challenge",
+            "--html-file",
+            html_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_custom_page_delete_calls_delete() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/shield/shield-zone/42/custom-page/block"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(r#"{"success":true}"#, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "custom-page",
+            "delete",
+            "--id",
+            "42",
+            "--page-type",
+            "block",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_metrics_overages_forwards_year_month() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overages/42"))
+        .and(query_param("year", "2026"))
+        .and(query_param("month", "7"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"shieldZoneId":42,"year":2026,"month":7,"totalOverage":100,"totalCleanRequests":5000,"segments":[]}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format", "json", "shield", "metrics", "overages", "--id", "42", "--year", "2026",
+            "--month", "7",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("totalOverage"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_metrics_api_guardian_zone_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/shield-zone/42/api-guardian"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"data":{"totalBlockedRequests":3,"totalRequestsInspected":10}}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "api-guardian",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("totalRequestsInspected"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_metrics_api_guardian_endpoint_uses_endpoint_path() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/shield/metrics/shield-zone/42/api-guardian/endpoint/99",
+        ))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(r#"{"data":{"totalBlockedRequests":1}}"#, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "api-guardian",
+            "--id",
+            "42",
+            "--endpoint-id",
+            "99",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_waf_managed_rules_table() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/rules/42"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"[{"name":"OWASP","ruleset":"core","ruleGroups":[{"id":1,"name":"SQLi","rules":[{"ruleId":"942100","description":"SQL injection"}]}]}]"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "shield",
+            "waf",
+            "managed-rules",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("942100"), "got: {stdout}");
+    assert!(stdout.contains("SQLi"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_waf_enums_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/enums"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(r#"{"data":[]}"#, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "shield", "waf", "enums"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_ddos_enums_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/ddos/enums"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(r#"{"data":[]}"#, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["shield", "ddos-enums"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_access_list_enums_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/access-lists/enums"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"listType":{"ip":"0","country":"1"}}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "access-list",
+            "enums",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("listType"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_zone_update_forwards_waf_rule_lists() {
+    use wiremock::matchers::body_string_contains;
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/shield/shield-zone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains(
+            "\"wafDisabledRules\":[\"942100\",\"942110\"]",
+        ))
+        .and(body_string_contains("\"wafLogOnlyRules\":[\"949110\"]"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/shield_zone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "zone",
+            "update",
+            "--shield-zone-id",
+            "55001",
+            "--waf-disabled-rule",
+            "942100",
+            "--waf-disabled-rule",
+            "942110",
+            "--waf-log-only-rule",
+            "949110",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}

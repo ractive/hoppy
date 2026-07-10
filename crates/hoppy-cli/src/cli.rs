@@ -2766,6 +2766,16 @@ pub enum ShieldAction {
         #[command(subcommand)]
         action: ShieldBotDetectionAction,
     },
+    /// Manage per-bot / per-category bot categorization actions
+    BotCategorization {
+        #[command(subcommand)]
+        action: ShieldBotCategorizationAction,
+    },
+    /// Manage custom response pages (block / challenge HTML)
+    CustomPage {
+        #[command(subcommand)]
+        action: ShieldCustomPageAction,
+    },
     /// View Shield Zone metrics
     Metrics {
         #[command(subcommand)]
@@ -2798,6 +2808,76 @@ pub enum ShieldAction {
     },
     /// Get the mapping of Shield Zones to Pull Zones
     PullzoneMapping,
+    /// Get DDoS enum mappings (resolves raw-integer DDoS flags to names)
+    DdosEnums,
+}
+
+#[derive(Subcommand)]
+pub enum ShieldBotCategorizationAction {
+    /// List bots available for allow/block, grouped by category
+    List {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+    },
+    /// Set (or clear) the action for a single categorised bot
+    SetBot {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+        /// Bot ID (discover via `shield bot-categorization list`)
+        #[arg(long)]
+        bot_id: i64,
+        /// Action (0 = None/clear, 1 = Block, 2 = Allow)
+        #[arg(long)]
+        action: u8,
+    },
+    /// Set (or clear) the action for every bot in a category
+    SetCategory {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+        /// Category (0 = None, 1 = SEO, 2 = AIScraper, 3 = AITool, 4 = Tool, 5 = Ads, 6 = Preview, 7 = Social, 255 = System)
+        #[arg(long)]
+        category: i32,
+        /// Action (0 = None/clear, 1 = Block, 2 = Allow)
+        #[arg(long)]
+        action: u8,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ShieldCustomPageAction {
+    /// Fetch a custom response page's HTML for a Shield Zone
+    Get {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+        /// Page type (e.g. `block`, `challenge`)
+        #[arg(long)]
+        page_type: String,
+    },
+    /// Upload a custom response page's HTML for a Shield Zone
+    Upload {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+        /// Page type (e.g. `block`, `challenge`)
+        #[arg(long)]
+        page_type: String,
+        /// Path to the HTML file to upload
+        #[arg(long, value_name = "FILE")]
+        html_file: std::path::PathBuf,
+    },
+    /// Delete a custom response page for a Shield Zone
+    Delete {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+        /// Page type (e.g. `block`, `challenge`)
+        #[arg(long)]
+        page_type: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -2856,6 +2936,27 @@ pub enum ShieldMetricsAction {
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
+    /// Get the monthly overage report for a Shield Zone
+    Overages {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+        /// Billing year (defaults to the current period)
+        #[arg(long)]
+        year: Option<i32>,
+        /// Billing month, 1-12 (defaults to the current period)
+        #[arg(long, value_parser = clap::value_parser!(i32).range(1..=12))]
+        month: Option<i32>,
+    },
+    /// Get aggregate API Guardian metrics for a Shield Zone
+    ApiGuardian {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+        /// Restrict to a single API Guardian endpoint by its ID
+        #[arg(long)]
+        endpoint_id: Option<i64>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -2910,6 +3011,14 @@ pub enum ShieldZoneAction {
         /// Enable or disable learning mode
         #[arg(long)]
         learning_mode: Option<bool>,
+        /// Rule IDs to fully disable (repeatable). Replaces the current list.
+        /// Discover IDs via `shield waf managed-rules --id <zone>`.
+        #[arg(long = "waf-disabled-rule", value_name = "RULE_ID")]
+        waf_disabled_rules: Vec<String>,
+        /// Rule IDs to run in log-only mode (repeatable). Replaces the current
+        /// list. Discover IDs via `shield waf managed-rules --id <zone>`.
+        #[arg(long = "waf-log-only-rule", value_name = "RULE_ID")]
+        waf_log_only_rules: Vec<String>,
     },
 }
 
@@ -3040,6 +3149,14 @@ pub enum ShieldWafAction {
     PlanSegmentation,
     /// Get WAF engine configuration variables
     EngineConfig,
+    /// List the managed WAF rules available to a Shield Zone (rule-ID discovery)
+    ManagedRules {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+    },
+    /// Get WAF enum mappings (resolves the raw-integer flags to names)
+    Enums,
 }
 
 #[derive(Subcommand)]
@@ -3318,6 +3435,12 @@ pub enum ShieldAccessListAction {
         /// Action (0 = NoAction, 1 = Block, 2 = Allow, 3 = LogOnly, 4 = Challenge, 5 = ChallengeInterstitial)
         #[arg(long)]
         action: Option<u8>,
+    },
+    /// Get the access list enum types and their values for a Shield Zone
+    Enums {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
     },
 }
 

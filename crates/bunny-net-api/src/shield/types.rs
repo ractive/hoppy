@@ -2019,6 +2019,197 @@ pub struct UploadScanningMetricsData {
     pub total_files_scanned: i64,
 }
 
+// ---------------------------------------------------------------------------
+// Bot categorization (iter-72)
+// ---------------------------------------------------------------------------
+
+/// Action applied to a categorised bot (or an entire bot category).
+///
+/// `0 = None` (clear any override), `1 = Block`, `2 = Allow`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum BotCategorizationAction {
+    None = 0,
+    Block = 1,
+    Allow = 2,
+}
+
+/// Bot category grouping. The API models this as an integer; `System` uses the
+/// out-of-band value `255`. We keep the raw integer so unknown categories from
+/// newer API revisions round-trip losslessly rather than failing to deserialise.
+///
+/// Known values: `0 = None`, `1 = SEO`, `2 = AIScraper`, `3 = AITool`,
+/// `4 = Tool`, `5 = Ads`, `6 = Preview`, `7 = Social`, `255 = System`.
+pub type BotCategory = i32;
+
+/// One categorised bot within a [`BotCategorizationGroup`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BotCategorizationDetails {
+    #[serde(default)]
+    pub bot_id: i32,
+    #[serde(default)]
+    pub user_agent_match: Option<String>,
+    #[serde(default)]
+    pub category: BotCategory,
+    pub action: BotCategorizationAction,
+    #[serde(default)]
+    pub is_verifiable: bool,
+}
+
+/// A category and the bots that belong to it, with the category-wide action.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BotCategorizationGroup {
+    #[serde(default)]
+    pub category: BotCategory,
+    pub category_action: BotCategorizationAction,
+    #[serde(default)]
+    pub bots: Option<Vec<BotCategorizationDetails>>,
+}
+
+/// Response for `GET /shield/shield-zone/{shieldZoneId}/bot-categorization`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BotCategorizationListResponse {
+    #[serde(default)]
+    pub categories: Option<Vec<BotCategorizationGroup>>,
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+}
+
+/// Request body for the two bot-categorization `PUT` endpoints.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateBotCategorizationConfigurationRequest {
+    pub action: BotCategorizationAction,
+}
+
+/// The category-and-action pair echoed after setting a whole category's action.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BotCategoryDetails {
+    #[serde(default)]
+    pub category: BotCategory,
+    pub action: BotCategorizationAction,
+}
+
+/// Response for setting the action on a single categorised bot.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateBotCategorizationConfigurationResponse {
+    #[serde(default)]
+    pub data: Option<BotCategorizationDetails>,
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+}
+
+/// Response for setting the action on a whole bot category.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateBotCategoryConfigurationResponse {
+    #[serde(default)]
+    pub data: Option<BotCategoryDetails>,
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+}
+
+// ---------------------------------------------------------------------------
+// Monthly overages metrics (iter-72)
+// ---------------------------------------------------------------------------
+
+/// A single billing segment within a month's overage report.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverageSegment {
+    #[serde(default)]
+    pub period_start: Option<String>,
+    #[serde(default)]
+    pub period_end: Option<String>,
+    #[serde(default)]
+    pub plan_type: Option<ShieldPlanType>,
+    #[serde(default)]
+    pub overage_allowance: i64,
+    #[serde(default)]
+    pub overage: i64,
+}
+
+/// Response for `GET /shield/metrics/overages/{shieldZoneId}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShieldZoneMonthlyOveragesResult {
+    #[serde(default)]
+    pub shield_zone_id: i32,
+    #[serde(default)]
+    pub year: i32,
+    #[serde(default)]
+    pub month: i32,
+    #[serde(default)]
+    pub total_overage: i64,
+    #[serde(default)]
+    pub total_clean_requests: i64,
+    #[serde(default)]
+    pub segments: Option<Vec<OverageSegment>>,
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+}
+
+// ---------------------------------------------------------------------------
+// API Guardian metrics (iter-72)
+// ---------------------------------------------------------------------------
+
+/// Per-endpoint activity counters within the API Guardian 28-day breakdown.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiGuardianEndpointActivity {
+    #[serde(default)]
+    pub blocked_requests: i32,
+    #[serde(default)]
+    pub logged_requests: i32,
+    #[serde(default)]
+    pub rate_limited: i32,
+    #[serde(default)]
+    pub requests_inspected: i32,
+    #[serde(default)]
+    pub failed_request_validation: i32,
+    #[serde(default)]
+    pub failed_authentication_enforcement: i32,
+}
+
+/// Aggregate API Guardian metrics for a Shield Zone (or a single endpoint).
+///
+/// The Shield Zone and per-endpoint metrics share the same shape, so a single
+/// struct serves both `GET /shield/metrics/shield-zone/{id}/api-guardian` and
+/// `.../api-guardian/endpoint/{endpointId}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiGuardianMetrics {
+    #[serde(default)]
+    pub total_blocked_requests: i64,
+    #[serde(default)]
+    pub total_logged_requests: i64,
+    #[serde(default)]
+    pub total_rate_limited: i64,
+    #[serde(default)]
+    pub total_requests_inspected: i64,
+    #[serde(default)]
+    pub total_failed_request_validation: i64,
+    #[serde(default)]
+    pub total_failed_authentication_enforcement: i64,
+    #[serde(default)]
+    pub overview_past_twenty_eight_days: Option<HashMap<String, ApiGuardianEndpointActivity>>,
+}
+
+/// Response for the two API Guardian metrics endpoints.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetApiGuardianMetricsResponse {
+    #[serde(default)]
+    pub data: Option<ApiGuardianMetrics>,
+    #[serde(default)]
+    pub error: Option<GenericRequestResponse>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

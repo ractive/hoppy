@@ -25,24 +25,27 @@ const PATH_SEGMENT: &AsciiSet = &CONTROLS
     .add(b'&');
 
 use super::types::{
-    AccessListsDetailsResponse, ApiGuardianEnumsResponse, BotDetectionConfigurationResponse,
-    CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest,
-    CustomAccessList, CustomAccessListResponse, CustomWafRule, GetApiGuardianResponse,
-    GetCustomWafRulesResponse, GetRateLimitRulesResponse, GetShieldZonePullzoneMappingResponse,
-    GetShieldZoneResponse, GetShieldZonesResponse, GetTriggeredRulesResponse,
-    GetWafEngineConfigResponse, GetWafEnumsResponse, GetWafRulesSegmentedByPlanResponse,
-    RateLimitRule, ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse,
-    ShieldMetricsResponse, ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
-    ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse, ShieldZoneResponse,
+    AccessListsDetailsResponse, ApiGuardianEnumsResponse, BotCategorizationAction,
+    BotCategorizationListResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
+    CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest, CustomAccessList,
+    CustomAccessListResponse, CustomWafRule, GenericRequestResponse, GetApiGuardianMetricsResponse,
+    GetApiGuardianResponse, GetCustomWafRulesResponse, GetRateLimitRulesResponse,
+    GetShieldZonePullzoneMappingResponse, GetShieldZoneResponse, GetShieldZonesResponse,
+    GetTriggeredRulesResponse, GetWafEngineConfigResponse, GetWafEnumsResponse,
+    GetWafRulesSegmentedByPlanResponse, RateLimitRule, ShieldBotDetectionMetricsResponse,
+    ShieldDetailedMetricsResponse, ShieldMetricsResponse, ShieldRateLimitMetricsResponse,
+    ShieldRateLimitsMetricsResponse, ShieldUploadScanningMetricsResponse,
+    ShieldWafRuleMetricsResponse, ShieldZoneMonthlyOveragesResult, ShieldZoneResponse,
     TriggeredRuleRecommendationResponse, UpdateAccessListConfiguration,
     UpdateApiGuardianEndpointRequest, UpdateApiGuardianEndpointResponse, UpdateApiGuardianRequest,
-    UpdateApiGuardianResponse, UpdateBotDetection, UpdateBotDetectionResponse,
-    UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
-    UpdateReviewTriggeredRuleRequest, UpdateReviewTriggeredRuleResponse, UpdateShieldZoneRequest,
-    UpdateUploadScanningConfigurationRequest, UpdateUploadScanningConfigurationResponse,
-    UploadOpenApiSpecificationRequest, UploadOpenApiSpecificationResponse,
-    UploadScanningConfigurationResponse, WafLoggingResponse, WafProfileMinimal,
-    parse_shield_2xx_envelope_error, parse_shield_error,
+    UpdateApiGuardianResponse, UpdateBotCategorizationConfigurationRequest,
+    UpdateBotCategorizationConfigurationResponse, UpdateBotCategoryConfigurationResponse,
+    UpdateBotDetection, UpdateBotDetectionResponse, UpdateCustomAccessList, UpdateCustomWafRule,
+    UpdateRateLimitRule, UpdateReviewTriggeredRuleRequest, UpdateReviewTriggeredRuleResponse,
+    UpdateShieldZoneRequest, UpdateUploadScanningConfigurationRequest,
+    UpdateUploadScanningConfigurationResponse, UploadOpenApiSpecificationRequest,
+    UploadOpenApiSpecificationResponse, UploadScanningConfigurationResponse, WafLoggingResponse,
+    WafProfileMinimal, WafRuleMainGroupModel, parse_shield_2xx_envelope_error, parse_shield_error,
 };
 
 const BASE_URL: &str = "https://api.bunny.net";
@@ -802,6 +805,202 @@ impl ShieldClient {
         self.handle_response(resp).await
     }
 
+    /// Get the monthly overage report for a Shield Zone.
+    ///
+    /// `GET /shield/metrics/overages/{shieldZoneId}`
+    ///
+    /// `year` / `month` select the billing period (month is 1-12); pass `None`
+    /// for either to let the API default to the current period.
+    pub async fn get_metrics_overages(
+        &self,
+        shield_zone_id: i64,
+        year: Option<i32>,
+        month: Option<i32>,
+    ) -> Result<ShieldZoneMonthlyOveragesResult> {
+        let mut req = self.auth(
+            self.client
+                .get(self.url(&format!("/shield/metrics/overages/{shield_zone_id}"))),
+        );
+        if let Some(y) = year {
+            req = req.query(&[("year", y.to_string())]);
+        }
+        if let Some(m) = month {
+            req = req.query(&[("month", m.to_string())]);
+        }
+        let resp = self.execute(req).await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get aggregate API Guardian metrics for a Shield Zone.
+    ///
+    /// `GET /shield/metrics/shield-zone/{shieldZoneId}/api-guardian`
+    pub async fn get_metrics_api_guardian(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<GetApiGuardianMetricsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/metrics/shield-zone/{shield_zone_id}/api-guardian"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get API Guardian metrics for a single endpoint.
+    ///
+    /// `GET /shield/metrics/shield-zone/{shieldZoneId}/api-guardian/endpoint/{endpointId}`
+    pub async fn get_metrics_api_guardian_endpoint(
+        &self,
+        shield_zone_id: i64,
+        endpoint_id: i64,
+    ) -> Result<GetApiGuardianMetricsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/metrics/shield-zone/{shield_zone_id}/api-guardian/endpoint/{endpoint_id}"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Bot categorization (iter-72)
+    // -----------------------------------------------------------------------
+
+    /// List bots available for explicit allow/block on a Shield Zone, grouped
+    /// by category.
+    ///
+    /// `GET /shield/shield-zone/{shieldZoneId}/bot-categorization`
+    pub async fn list_bot_categorizations(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<BotCategorizationListResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/shield-zone/{shield_zone_id}/bot-categorization"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Set (or clear) the action applied to a single categorised bot.
+    ///
+    /// `PUT /shield/shield-zone/{shieldZoneId}/bot-categorization/bots/{botId}`
+    pub async fn set_bot_categorization_action(
+        &self,
+        shield_zone_id: i64,
+        bot_id: i64,
+        action: BotCategorizationAction,
+    ) -> Result<UpdateBotCategorizationConfigurationResponse> {
+        let body = UpdateBotCategorizationConfigurationRequest { action };
+        let resp = self
+            .execute(
+                self.auth(self.client.put(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/bot-categorization/bots/{bot_id}"
+                ))))
+                .json(&body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Set (or clear) the action applied to every bot in a category.
+    ///
+    /// `PUT /shield/shield-zone/{shieldZoneId}/bot-categorization/categories/{category}`
+    pub async fn set_bot_category_action(
+        &self,
+        shield_zone_id: i64,
+        category: i32,
+        action: BotCategorizationAction,
+    ) -> Result<UpdateBotCategoryConfigurationResponse> {
+        let body = UpdateBotCategorizationConfigurationRequest { action };
+        let resp = self
+            .execute(
+                self.auth(self.client.put(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/bot-categorization/categories/{category}"
+                ))))
+                .json(&body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Custom response pages (iter-72)
+    // -----------------------------------------------------------------------
+
+    /// Fetch a custom HTML response page for a Shield Zone.
+    ///
+    /// `GET /shield/shield-zone/{shieldZoneId}/custom-page/{pageType}`
+    ///
+    /// Returns the raw HTML body. `page_type` selects the page (e.g. `block`,
+    /// `challenge`).
+    pub async fn get_custom_page(&self, shield_zone_id: i64, page_type: &str) -> Result<String> {
+        let encoded = utf8_percent_encode(page_type, PATH_SEGMENT).to_string();
+        let resp = self
+            .execute(self.auth(self.client.get(self.url(&format!(
+                "/shield/shield-zone/{shield_zone_id}/custom-page/{encoded}"
+            )))))
+            .await?;
+        let (status, bytes) = self.read_body(resp).await?;
+        if status.is_success() {
+            if let Some(err) = parse_shield_2xx_envelope_error(&bytes) {
+                return Err(err);
+            }
+            // The 200 response is `type: string` — the raw HTML page. It may be
+            // returned bare or as a JSON string; accept either.
+            if let Ok(serde_json::Value::String(s)) = serde_json::from_slice(&bytes) {
+                return Ok(s);
+            }
+            return Ok(String::from_utf8_lossy(&bytes).into_owned());
+        }
+        if let Some(err) = parse_shield_error(&bytes) {
+            return Err(err);
+        }
+        bail!("Shield API returned status {status}");
+    }
+
+    /// Upload a custom HTML response page for a Shield Zone.
+    ///
+    /// `PUT /shield/shield-zone/{shieldZoneId}/custom-page/{pageType}`
+    ///
+    /// `html` is sent as the request body. `page_type` selects the page
+    /// (e.g. `block`, `challenge`).
+    pub async fn upload_custom_page(
+        &self,
+        shield_zone_id: i64,
+        page_type: &str,
+        html: String,
+    ) -> Result<GenericRequestResponse> {
+        let encoded = utf8_percent_encode(page_type, PATH_SEGMENT).to_string();
+        let resp = self
+            .execute(
+                self.auth(self.client.put(self.url(&format!(
+                    "/shield/shield-zone/{shield_zone_id}/custom-page/{encoded}"
+                ))))
+                .header(reqwest::header::CONTENT_TYPE, "text/html")
+                .body(html),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Delete a custom HTML response page for a Shield Zone.
+    ///
+    /// `DELETE /shield/shield-zone/{shieldZoneId}/custom-page/{pageType}`
+    pub async fn delete_custom_page(
+        &self,
+        shield_zone_id: i64,
+        page_type: &str,
+    ) -> Result<GenericRequestResponse> {
+        let encoded = utf8_percent_encode(page_type, PATH_SEGMENT).to_string();
+        let resp = self
+            .execute(self.auth(self.client.delete(self.url(&format!(
+                "/shield/shield-zone/{shield_zone_id}/custom-page/{encoded}"
+            )))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
     // -----------------------------------------------------------------------
     // API Guardian
     // -----------------------------------------------------------------------
@@ -1053,6 +1252,40 @@ impl ShieldClient {
     pub async fn get_ddos_enums(&self) -> Result<GetWafEnumsResponse> {
         let resp = self
             .execute(self.auth(self.client.get(self.url("/shield/ddos/enums"))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// Get WAF enum mappings.
+    ///
+    /// `GET /shield/waf/enums`
+    ///
+    /// Resolves the raw-integer flags used elsewhere in the WAF surface
+    /// (action-type, operator-type, transformation-type, …) to their names.
+    pub async fn get_waf_enums(&self) -> Result<GetWafEnumsResponse> {
+        let resp = self
+            .execute(self.auth(self.client.get(self.url("/shield/waf/enums"))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
+    /// List the managed WAF rules available to a Shield Zone.
+    ///
+    /// `GET /shield/waf/rules/{shieldZoneId}`
+    ///
+    /// This is the rule-ID discovery path: the returned groups expose the rule
+    /// IDs that `--waf-disabled-rules` / `--waf-log-only-rules` accept.
+    pub async fn get_managed_waf_rules(
+        &self,
+        shield_zone_id: i64,
+    ) -> Result<Vec<WafRuleMainGroupModel>> {
+        let resp = self
+            .execute(
+                self.auth(
+                    self.client
+                        .get(self.url(&format!("/shield/waf/rules/{shield_zone_id}"))),
+                ),
+            )
             .await?;
         self.handle_response(resp).await
     }
@@ -1329,5 +1562,246 @@ mod tests {
         let req = rb.build().unwrap();
         let access_key = req.headers().get("AccessKey").unwrap().to_str().unwrap();
         assert_eq!(access_key, "secret-key");
+    }
+
+    // -----------------------------------------------------------------------
+    // iter-72: new-surface endpoints
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn list_bot_categorizations_parses_groups() {
+        let server = MockServer::start().await;
+        let body = r#"{
+            "categories": [
+                {"category": 2, "categoryAction": 1, "bots": [
+                    {"botId": 7, "userAgentMatch": "GPTBot", "category": 2, "action": 1, "isVerifiable": true}
+                ]},
+                {"category": 255, "categoryAction": 0, "bots": []}
+            ],
+            "error": {"success": true}
+        }"#;
+        Mock::given(method("GET"))
+            .and(path("/shield/shield-zone/42/bot-categorization"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client.list_bot_categorizations(42).await.unwrap();
+        let cats = resp.categories.unwrap();
+        assert_eq!(cats.len(), 2);
+        assert_eq!(cats[0].category, 2);
+        assert_eq!(
+            cats[0].category_action,
+            super::BotCategorizationAction::Block
+        );
+        assert_eq!(cats[0].bots.as_ref().unwrap()[0].bot_id, 7);
+        // The out-of-band System category (255) must round-trip.
+        assert_eq!(cats[1].category, 255);
+    }
+
+    #[tokio::test]
+    async fn set_bot_categorization_action_sends_body() {
+        let server = MockServer::start().await;
+        let body = r#"{"data": {"botId": 7, "userAgentMatch": "GPTBot", "category": 2, "action": 2, "isVerifiable": true}}"#;
+        Mock::given(method("PUT"))
+            .and(path("/shield/shield-zone/42/bot-categorization/bots/7"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client
+            .set_bot_categorization_action(42, 7, super::BotCategorizationAction::Allow)
+            .await
+            .unwrap();
+        assert_eq!(
+            resp.data.unwrap().action,
+            super::BotCategorizationAction::Allow
+        );
+    }
+
+    #[tokio::test]
+    async fn set_bot_category_action_uses_category_path() {
+        let server = MockServer::start().await;
+        let body = r#"{"data": {"category": 2, "action": 1}}"#;
+        Mock::given(method("PUT"))
+            .and(path(
+                "/shield/shield-zone/42/bot-categorization/categories/2",
+            ))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client
+            .set_bot_category_action(42, 2, super::BotCategorizationAction::Block)
+            .await
+            .unwrap();
+        assert_eq!(resp.data.unwrap().category, 2);
+    }
+
+    #[tokio::test]
+    async fn get_custom_page_returns_raw_html() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/shield/shield-zone/42/custom-page/block"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_raw("<html><body>Blocked</body></html>", "text/html"),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let html = client.get_custom_page(42, "block").await.unwrap();
+        assert!(html.contains("Blocked"));
+    }
+
+    #[tokio::test]
+    async fn upload_custom_page_puts_html_body() {
+        let server = MockServer::start().await;
+        let body = r#"{"success": true, "message": "Uploaded"}"#;
+        Mock::given(method("PUT"))
+            .and(path("/shield/shield-zone/42/custom-page/challenge"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client
+            .upload_custom_page(42, "challenge", "<html></html>".to_owned())
+            .await
+            .unwrap();
+        assert!(resp.success);
+    }
+
+    #[tokio::test]
+    async fn delete_custom_page_ok() {
+        let server = MockServer::start().await;
+        let body = r#"{"success": true}"#;
+        Mock::given(method("DELETE"))
+            .and(path("/shield/shield-zone/42/custom-page/block"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client.delete_custom_page(42, "block").await.unwrap();
+        assert!(resp.success);
+    }
+
+    #[tokio::test]
+    async fn get_metrics_overages_passes_year_month() {
+        let server = MockServer::start().await;
+        let body = r#"{"shieldZoneId": 42, "year": 2026, "month": 7, "totalOverage": 100, "totalCleanRequests": 5000, "segments": [{"periodStart": "2026-07-01T00:00:00Z", "planType": 2, "overageAllowance": 1000, "overage": 100}]}"#;
+        Mock::given(method("GET"))
+            .and(path("/shield/metrics/overages/42"))
+            .and(wiremock::matchers::query_param("year", "2026"))
+            .and(wiremock::matchers::query_param("month", "7"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client
+            .get_metrics_overages(42, Some(2026), Some(7))
+            .await
+            .unwrap();
+        assert_eq!(resp.total_overage, 100);
+        assert_eq!(resp.segments.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn get_metrics_api_guardian_parses_data() {
+        let server = MockServer::start().await;
+        let body = r#"{"data": {"totalBlockedRequests": 3, "totalLoggedRequests": 1, "totalRateLimited": 0, "totalRequestsInspected": 10, "totalFailedRequestValidation": 2, "totalFailedAuthenticationEnforcement": 1, "overviewPastTwentyEightDays": {"/v1/users": {"blockedRequests": 3, "loggedRequests": 1, "rateLimited": 0, "requestsInspected": 10, "failedRequestValidation": 2, "failedAuthenticationEnforcement": 1}}}}"#;
+        Mock::given(method("GET"))
+            .and(path("/shield/metrics/shield-zone/42/api-guardian"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client.get_metrics_api_guardian(42).await.unwrap();
+        let data = resp.data.unwrap();
+        assert_eq!(data.total_requests_inspected, 10);
+        assert!(
+            data.overview_past_twenty_eight_days
+                .unwrap()
+                .contains_key("/v1/users")
+        );
+    }
+
+    #[tokio::test]
+    async fn get_metrics_api_guardian_endpoint_uses_endpoint_path() {
+        let server = MockServer::start().await;
+        let body = r#"{"data": {"totalBlockedRequests": 1}}"#;
+        Mock::given(method("GET"))
+            .and(path(
+                "/shield/metrics/shield-zone/42/api-guardian/endpoint/99",
+            ))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let resp = client
+            .get_metrics_api_guardian_endpoint(42, 99)
+            .await
+            .unwrap();
+        assert_eq!(resp.data.unwrap().total_blocked_requests, 1);
+    }
+
+    #[tokio::test]
+    async fn get_managed_waf_rules_parses_groups() {
+        let server = MockServer::start().await;
+        let body = r#"[{"name": "OWASP", "ruleset": "core", "ruleGroups": [{"id": 1, "name": "SQLi", "rules": [{"ruleId": "942100", "description": "SQL injection"}]}]}]"#;
+        Mock::given(method("GET"))
+            .and(path("/shield/waf/rules/42"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        let groups = client.get_managed_waf_rules(42).await.unwrap();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].name.as_deref(), Some("OWASP"));
+    }
+
+    #[tokio::test]
+    async fn get_waf_enums_hits_enums_path() {
+        let server = MockServer::start().await;
+        let body = r#"{"data": []}"#;
+        Mock::given(method("GET"))
+            .and(path("/shield/waf/enums"))
+            .and(header("AccessKey", "test-key"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = ShieldClient::with_base_url("test-key", server.uri());
+        assert!(client.get_waf_enums().await.is_ok());
     }
 }
