@@ -1,0 +1,23 @@
+{
+  "Query": "example",
+  "Total": 3,
+  "From": 0,
+  "Size": 10,
+  "SearchResults": [
+    {
+      "Type": "PullZone",
+      "Id": 500123,
+      "Name": "example-cdn"
+    },
+    {
+      "Type": "StorageZone",
+      "Id": 700456,
+      "Name": "example-storage"
+    },
+    {
+      "Type": "DnsZone",
+      "Id": 800789,
+      "Name": "example.com"
+    }
+  ]
+}

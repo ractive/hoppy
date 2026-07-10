@@ -155,6 +155,27 @@ async fn run(cli: Cli) {
             commands::purge::handle(url, *exact_path, *is_async, cli.format, cli.debug, record)
                 .await
         }
+        Commands::Apikey { action } => {
+            commands::account::handle_apikey(action, cli.format, cli.debug, cli.reveal, record)
+                .await
+        }
+        Commands::Billing { action } => {
+            commands::account::handle_billing(action, cli.format, cli.debug, cli.quiet, record)
+                .await
+        }
+        Commands::Region { action } => {
+            commands::account::handle_region(action, cli.format, cli.debug, record).await
+        }
+        Commands::Country { action } => {
+            commands::account::handle_country(action, cli.format, cli.debug, record).await
+        }
+        Commands::Search { query, from, size } => {
+            commands::account::handle_search(query, *from, *size, cli.format, cli.debug, record)
+                .await
+        }
+        Commands::User { action } => {
+            commands::account::handle_user(action, cli.format, cli.debug, record).await
+        }
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();
             generate(*shell, &mut cmd, "hoppy", &mut std::io::stdout());

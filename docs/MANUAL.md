@@ -22,6 +22,7 @@ For a one-line tree of every subcommand, see
 | **Magic Containers** | apps, templates, endpoints, volumes, registries, regions, nodes, pods |
 | **Database (libSQL)** | databases, groups, tokens, ping (data plane), config, statistics |
 | **Auth** | API key validation, billing/account info |
+| **Account & Billing** | API keys, billing summary, payment requests, invoice PDFs, region/country reference data, global search, audit log |
 
 ## CDN Pull Zones
 
@@ -199,6 +200,40 @@ By default, `hoppy db token mint` prints `{ "token": "<set, length=N>", ... }`
 to keep JWTs out of logs and CI output. Use the global `--reveal` flag to opt
 in to the raw token. Slugs are validated locally (`^[a-z][a-z0-9-]{0,23}$`)
 because the bunny API silently 500s on overlong values.
+
+## Account & Billing
+
+```bash
+# API keys — values are redacted by default (pass --reveal to show them)
+hoppy apikey list
+hoppy apikey list --reveal
+
+# Billing summary + payment requests
+hoppy billing summary
+hoppy billing payment-requests
+
+# Invoice PDFs (streamed straight to disk, never buffered whole)
+hoppy billing invoice-pdf --record-id 44001 --output invoice.pdf
+hoppy billing payment-request-pdf --id 90002 --output payment-request.pdf
+
+# Reference data
+hoppy region list          # core CDN edge regions + per-GB pricing
+hoppy country list         # ISO codes valid for pull-zone country blocking
+
+# Global cross-resource search
+hoppy search example --size 20
+
+# Account audit log for a date (ISO 8601)
+hoppy user audit --date 2026-07-01
+hoppy user audit --date 2026-07-01 --resource-type PullZone --order descending
+```
+
+API-key values are redacted (`<set, length=N>`) in table, text, **and** JSON
+output unless `--reveal` is passed, so a `--format json | jq` pipeline never
+leaks a key into a logfile. The two `billing *-pdf` downloads stream the
+response body chunk-by-chunk to the `--output` file. `user audit` paginates
+via a continuation token surfaced in a stderr hint (or the JSON
+`ContinuationToken` field) — pass it back with `--continuation-token`.
 
 ## Global options
 

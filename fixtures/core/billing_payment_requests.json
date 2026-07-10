@@ -1,0 +1,30 @@
+[
+  {
+    "Id": 90001,
+    "Amount": 25.0,
+    "DateGenerated": "2026-06-01T00:00:00Z",
+    "DateDue": "2026-06-15T00:00:00Z",
+    "Description": "Monthly CDN usage",
+    "Paid": true,
+    "DatePaid": "2026-06-10T09:30:00Z",
+    "BillingInvoiceId": 44001,
+    "BillingInvoiceDownloadLink": "https://bunny.net/invoices/44001.pdf",
+    "BankTransferReference": null,
+    "TaxRate": 0.0,
+    "TaxedAmount": 0.0
+  },
+  {
+    "Id": 90002,
+    "Amount": 12.5,
+    "DateGenerated": "2026-07-01T00:00:00Z",
+    "DateDue": "2026-07-15T00:00:00Z",
+    "Description": "Monthly CDN usage",
+    "Paid": false,
+    "DatePaid": null,
+    "BillingInvoiceId": null,
+    "BillingInvoiceDownloadLink": null,
+    "BankTransferReference": "REF-90002",
+    "TaxRate": 0.2,
+    "TaxedAmount": 2.5
+  }
+]

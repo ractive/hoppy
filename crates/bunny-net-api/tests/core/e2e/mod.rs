@@ -1,3 +1,4 @@
+mod account_api;
 mod billing_api;
 mod dns_api;
 mod pullzone_api;

@@ -1,0 +1,12 @@
+[
+  {
+    "PullZoneId": 500123,
+    "MonthlyUsage": 4.7231,
+    "MonthlyBandwidthUsed": 51539607552
+  },
+  {
+    "PullZoneId": 500456,
+    "MonthlyUsage": 0.0125,
+    "MonthlyBandwidthUsed": 134217728
+  }
+]

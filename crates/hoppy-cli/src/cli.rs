@@ -584,6 +584,48 @@ pub enum Commands {
         is_async: bool,
     },
 
+    /// Manage account API keys
+    Apikey {
+        #[command(subcommand)]
+        action: ApikeyAction,
+    },
+
+    /// View billing summary, payment requests, and download invoices
+    Billing {
+        #[command(subcommand)]
+        action: BillingAction,
+    },
+
+    /// List core CDN edge regions and their pricing
+    Region {
+        #[command(subcommand)]
+        action: RegionAction,
+    },
+
+    /// List countries recognised by bunny.net (valid ISO codes)
+    Country {
+        #[command(subcommand)]
+        action: CountryAction,
+    },
+
+    /// Global cross-resource search
+    Search {
+        /// The text to search for across pull zones, storage zones, DNS zones, etc.
+        query: String,
+        /// Result offset (skip this many matches)
+        #[arg(long)]
+        from: Option<i32>,
+        /// Maximum number of results to return
+        #[arg(long)]
+        size: Option<i32>,
+    },
+
+    /// Inspect the account audit log
+    User {
+        #[command(subcommand)]
+        action: UserAction,
+    },
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
@@ -598,6 +640,128 @@ pub enum Commands {
 pub enum AuthAction {
     /// Validate the API key and display account billing info
     Check,
+}
+
+// -- Apikey --
+
+#[derive(Subcommand)]
+pub enum ApikeyAction {
+    /// List the account's API keys.
+    ///
+    /// Key values are redacted by default; pass `--reveal` to show them.
+    List {
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
+        /// Show full key values instead of redacting them.
+        #[arg(long)]
+        reveal: bool,
+    },
+}
+
+// -- Billing --
+
+#[derive(Subcommand)]
+pub enum BillingAction {
+    /// Show the per-pull-zone billing summary for the current month
+    Summary,
+    /// List payment requests (open and settled)
+    PaymentRequests,
+    /// Download a billing-record invoice as a PDF (streamed to a file)
+    InvoicePdf {
+        /// Billing record ID (from `billing summary` / `--format json`)
+        #[arg(long)]
+        record_id: i64,
+        /// Path to write the PDF to
+        #[arg(long)]
+        output: String,
+    },
+    /// Download a payment-request invoice as a PDF (streamed to a file)
+    PaymentRequestPdf {
+        /// Payment request ID (from `billing payment-requests`)
+        #[arg(long)]
+        id: i64,
+        /// Path to write the PDF to
+        #[arg(long)]
+        output: String,
+    },
+}
+
+// -- Region --
+
+#[derive(Subcommand)]
+pub enum RegionAction {
+    /// List core CDN edge regions and their per-gigabyte pricing
+    List,
+}
+
+// -- Country --
+
+#[derive(Subcommand)]
+pub enum CountryAction {
+    /// List countries recognised by bunny.net, with ISO codes and tax info
+    List,
+}
+
+// -- User (audit log) --
+
+/// Sort order for the audit log.
+#[derive(Copy, Clone, ValueEnum)]
+pub enum AuditOrderArg {
+    /// Oldest entries first.
+    Ascending,
+    /// Newest entries first.
+    Descending,
+}
+
+impl From<AuditOrderArg> for bunny_net_api::core::types::AuditLogOrder {
+    fn from(a: AuditOrderArg) -> Self {
+        match a {
+            AuditOrderArg::Ascending => Self::Ascending,
+            AuditOrderArg::Descending => Self::Descending,
+        }
+    }
+}
+
+#[derive(Subcommand)]
+pub enum UserAction {
+    /// Fetch the account audit log for a given date.
+    ///
+    /// EXAMPLES:
+    ///   # All audit entries for one day
+    ///   hoppy user audit --date 2026-07-01
+    ///
+    ///   # Only pull-zone deletions, newest first
+    ///   hoppy user audit --date 2026-07-01 --resource-type PullZone --order descending
+    Audit {
+        /// Date to query (ISO 8601, e.g. 2026-07-01).
+        #[arg(long)]
+        date: String,
+        /// Filter by product area (repeatable).
+        #[arg(long)]
+        product: Vec<String>,
+        /// Filter by resource type (repeatable).
+        #[arg(long)]
+        resource_type: Vec<String>,
+        /// Filter by resource ID (repeatable).
+        #[arg(long)]
+        resource_id: Vec<String>,
+        /// Filter by actor ID (repeatable).
+        #[arg(long)]
+        actor_id: Vec<String>,
+        /// Sort order: ascending or descending.
+        #[arg(long, value_enum)]
+        order: Option<AuditOrderArg>,
+        /// Continuation token from a previous page.
+        #[arg(long)]
+        continuation_token: Option<String>,
+        /// Maximum entries to return.
+        #[arg(long)]
+        limit: Option<i32>,
+    },
 }
 
 // -- Logs --

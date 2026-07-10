@@ -1,5 +1,6 @@
 mod support;
 
+mod cli_account;
 mod cli_auth;
 mod cli_container;
 mod cli_database;
