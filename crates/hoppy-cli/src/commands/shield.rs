@@ -19,9 +19,9 @@ use bunny_net_api::shield::types::{
     UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
     UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
     UpdateUploadScanningConfigurationRequest, UploadOpenApiSpecificationRequest,
-    UploadScanningConfigurationState, UploadScanningScannerMode, WafExecutionMode,
-    WafProfileMinimal, WafRuleActionType, WafRuleConfiguration, WafRuleOperatorType,
-    WafRuleSeverityType,
+    UploadScanningConfigurationState, UploadScanningScannerMode, WafChainedRuleCondition,
+    WafExecutionMode, WafProfileMinimal, WafRuleActionType, WafRuleConfiguration,
+    WafRuleOperatorType, WafRuleSeverityType, WafRuleTransformationType, WafRuleVariableTypes,
 };
 use std::io::{self, BufRead, Write};
 
@@ -549,6 +549,43 @@ fn u16_to_enum<T: serde::de::DeserializeOwned>(n: u16, type_name: &str) -> Resul
         .map_err(|_| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
+/// Convert a repeatable list of `--transformation-type N` values into the
+/// strongly-typed enum vector, validating each entry.
+fn parse_transformation_types(values: &[u8]) -> Result<Vec<WafRuleTransformationType>> {
+    values
+        .iter()
+        .map(|n| u8_to_enum::<WafRuleTransformationType>(*n, "transformation-type"))
+        .collect()
+}
+
+/// Nested `ruleConfiguration` fields supplied via `--config-json <file>`.
+///
+/// Only the free-form / repeated fields that are awkward on the command line
+/// live here; scalar fields stay as flags. Any subset may be present.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RuleConfigJson {
+    #[serde(default)]
+    variable_types: Option<WafRuleVariableTypes>,
+    #[serde(default)]
+    transformation_types: Option<Vec<WafRuleTransformationType>>,
+    #[serde(default)]
+    chained_rule_conditions: Option<Vec<WafChainedRuleCondition>>,
+}
+
+/// Read and parse a `--config-json` file. Returns `Ok(None)` when `path` is
+/// `None` so callers can chain without branching.
+fn load_config_json(path: Option<&std::path::Path>) -> Result<Option<RuleConfigJson>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("reading --config-json file {}", path.display()))?;
+    let cfg: RuleConfigJson = serde_json::from_str(&raw)
+        .with_context(|| format!("parsing --config-json file {}", path.display()))?;
+    Ok(Some(cfg))
+}
+
 // ---------------------------------------------------------------------------
 // Top-level handler
 // ---------------------------------------------------------------------------
@@ -787,24 +824,41 @@ async fn handle_waf(
         ShieldWafAction::AddRule {
             shield_zone_id,
             name,
+            description,
             action_type,
             operator_type,
             severity_type,
             value,
+            transformation_types,
+            config_json,
         } => {
+            let overrides = load_config_json(config_json.as_deref())?;
+            // Flag-supplied transformation types win over the JSON file; fall
+            // back to the file, then to an empty list.
+            let transformation_types = if transformation_types.is_empty() {
+                overrides
+                    .as_ref()
+                    .and_then(|o| o.transformation_types.clone())
+                    .unwrap_or_default()
+            } else {
+                parse_transformation_types(transformation_types)?
+            };
             let config = WafRuleConfiguration {
                 action_type: u8_to_enum::<WafRuleActionType>(*action_type, "action-type")?,
-                variable_types: Some(Default::default()),
+                variable_types: overrides
+                    .as_ref()
+                    .and_then(|o| o.variable_types.clone())
+                    .or_else(|| Some(Default::default())),
                 operator_type: u8_to_enum::<WafRuleOperatorType>(*operator_type, "operator-type")?,
                 severity_type: u8_to_enum::<WafRuleSeverityType>(*severity_type, "severity-type")?,
-                transformation_types: Some(vec![]),
+                transformation_types: Some(transformation_types),
                 value: value.clone(),
-                chained_rule_conditions: None,
+                chained_rule_conditions: overrides.and_then(|o| o.chained_rule_conditions),
             };
             let body = CreateCustomWafRule {
                 shield_zone_id: *shield_zone_id,
                 rule_name: name.clone(),
-                rule_description: Some(String::new()),
+                rule_description: Some(description.clone().unwrap_or_default()),
                 rule_configuration: config,
             };
             let rule = client.create_waf_rule(body).await?;
@@ -818,20 +872,80 @@ async fn handle_waf(
                 output::print_single(&row, format);
             }
         }
-        ShieldWafAction::UpdateRule { id, name } => {
-            if name.is_none() {
-                bail!("at least one update flag is required (--name)");
+        ShieldWafAction::UpdateRule {
+            id,
+            name,
+            description,
+            action_type,
+            operator_type,
+            severity_type,
+            value,
+            transformation_types,
+            config_json,
+        } => {
+            let overrides = load_config_json(config_json.as_deref())?;
+            if name.is_none()
+                && description.is_none()
+                && action_type.is_none()
+                && operator_type.is_none()
+                && severity_type.is_none()
+                && value.is_none()
+                && transformation_types.is_empty()
+                && overrides.is_none()
+            {
+                bail!(
+                    "at least one update flag is required (--name, --description, \
+                     --action-type, --operator-type, --severity-type, --value, \
+                     --transformation-type, --config-json)"
+                );
             }
             // The Shield API requires all fields on PATCH, so fetch current state first.
             let current = client.get_waf_rule(*id).await?;
+            let mut config = current.rule_configuration.unwrap_or(WafRuleConfiguration {
+                action_type: WafRuleActionType::Block,
+                variable_types: Some(Default::default()),
+                operator_type: WafRuleOperatorType::Eq,
+                severity_type: WafRuleSeverityType::Low,
+                transformation_types: Some(vec![]),
+                value: None,
+                chained_rule_conditions: None,
+            });
+            if let Some(v) = action_type {
+                config.action_type = u8_to_enum::<WafRuleActionType>(*v, "action-type")?;
+            }
+            if let Some(v) = operator_type {
+                config.operator_type = u8_to_enum::<WafRuleOperatorType>(*v, "operator-type")?;
+            }
+            if let Some(v) = severity_type {
+                config.severity_type = u8_to_enum::<WafRuleSeverityType>(*v, "severity-type")?;
+            }
+            if let Some(v) = value {
+                config.value = Some(v.clone());
+            }
+            if !transformation_types.is_empty() {
+                config.transformation_types =
+                    Some(parse_transformation_types(transformation_types)?);
+            }
+            if let Some(o) = overrides {
+                if let Some(vt) = o.variable_types {
+                    config.variable_types = Some(vt);
+                }
+                if transformation_types.is_empty()
+                    && let Some(tt) = o.transformation_types
+                {
+                    config.transformation_types = Some(tt);
+                }
+                if let Some(cc) = o.chained_rule_conditions {
+                    config.chained_rule_conditions = Some(cc);
+                }
+            }
             let body = UpdateCustomWafRule {
-                rule_name: if name.is_some() {
-                    name.clone()
-                } else {
-                    current.rule_name
-                },
-                rule_description: current.rule_description.or(Some(String::new())),
-                rule_configuration: current.rule_configuration,
+                rule_name: name.clone().or(current.rule_name),
+                rule_description: description
+                    .clone()
+                    .or(current.rule_description)
+                    .or(Some(String::new())),
+                rule_configuration: Some(config),
             };
             let rule = client.update_waf_rule(*id, body).await?;
             if let OutputFormat::Json = format {
@@ -998,21 +1112,36 @@ async fn handle_rate_limit(
         ShieldRateLimitAction::Create {
             shield_zone_id,
             name,
+            description,
             action_type,
             operator_type,
             severity_type,
             value,
+            transformation_types,
             request_count,
             counter_key_type,
             timeframe,
             block_time,
+            config_json,
         } => {
+            let overrides = load_config_json(config_json.as_deref())?;
+            let transformation_types = if transformation_types.is_empty() {
+                overrides
+                    .as_ref()
+                    .and_then(|o| o.transformation_types.clone())
+                    .unwrap_or_default()
+            } else {
+                parse_transformation_types(transformation_types)?
+            };
             let config = RateLimitRuleConfiguration {
                 action_type: u8_to_enum(*action_type, "action-type")?,
-                variable_types: Some(Default::default()),
+                variable_types: overrides
+                    .as_ref()
+                    .and_then(|o| o.variable_types.clone())
+                    .or_else(|| Some(Default::default())),
                 operator_type: u8_to_enum(*operator_type, "operator-type")?,
                 severity_type: u8_to_enum(*severity_type, "severity-type")?,
-                transformation_types: Some(vec![]),
+                transformation_types: Some(transformation_types),
                 value: value.clone(),
                 request_count: *request_count,
                 counter_key_type: u8_to_enum::<RateLimitCounterKey>(
@@ -1021,12 +1150,12 @@ async fn handle_rate_limit(
                 )?,
                 timeframe: u16_to_enum(*timeframe, "timeframe")?,
                 block_time: u16_to_enum(*block_time, "block-time")?,
-                chained_rule_conditions: None,
+                chained_rule_conditions: overrides.and_then(|o| o.chained_rule_conditions),
             };
             let body = CreateRateLimitRule {
                 shield_zone_id: *shield_zone_id,
                 rule_name: name.clone(),
-                rule_description: Some(String::new()),
+                rule_description: Some(description.clone().unwrap_or_default()),
                 rule_configuration: config,
             };
             let rule = client.create_rate_limit_rule(body).await?;
@@ -1040,20 +1169,96 @@ async fn handle_rate_limit(
                 output::print_single(&row, format);
             }
         }
-        ShieldRateLimitAction::Update { id, name } => {
-            if name.is_none() {
-                bail!("at least one update flag is required (--name)");
+        ShieldRateLimitAction::Update {
+            id,
+            name,
+            description,
+            action_type,
+            operator_type,
+            severity_type,
+            value,
+            transformation_types,
+            request_count,
+            counter_key_type,
+            timeframe,
+            block_time,
+            config_json,
+        } => {
+            let overrides = load_config_json(config_json.as_deref())?;
+            if name.is_none()
+                && description.is_none()
+                && action_type.is_none()
+                && operator_type.is_none()
+                && severity_type.is_none()
+                && value.is_none()
+                && transformation_types.is_empty()
+                && request_count.is_none()
+                && counter_key_type.is_none()
+                && timeframe.is_none()
+                && block_time.is_none()
+                && overrides.is_none()
+            {
+                bail!(
+                    "at least one update flag is required (--name, --description, \
+                     --action-type, --operator-type, --severity-type, --value, \
+                     --transformation-type, --request-count, --counter-key-type, \
+                     --timeframe, --block-time, --config-json)"
+                );
             }
             // The Shield API requires all fields on PATCH, so fetch current state first.
             let current = client.get_rate_limit_rule(*id).await?;
+            let mut config = current
+                .rule_configuration
+                .with_context(|| format!("rate limit rule {id} has no configuration to update"))?;
+            if let Some(v) = action_type {
+                config.action_type = u8_to_enum(*v, "action-type")?;
+            }
+            if let Some(v) = operator_type {
+                config.operator_type = u8_to_enum(*v, "operator-type")?;
+            }
+            if let Some(v) = severity_type {
+                config.severity_type = u8_to_enum(*v, "severity-type")?;
+            }
+            if let Some(v) = value {
+                config.value = Some(v.clone());
+            }
+            if let Some(v) = request_count {
+                config.request_count = *v;
+            }
+            if let Some(v) = counter_key_type {
+                config.counter_key_type =
+                    u8_to_enum::<RateLimitCounterKey>(*v, "counter-key-type")?;
+            }
+            if let Some(v) = timeframe {
+                config.timeframe = u16_to_enum(*v, "timeframe")?;
+            }
+            if let Some(v) = block_time {
+                config.block_time = u16_to_enum(*v, "block-time")?;
+            }
+            if !transformation_types.is_empty() {
+                config.transformation_types =
+                    Some(parse_transformation_types(transformation_types)?);
+            }
+            if let Some(o) = overrides {
+                if let Some(vt) = o.variable_types {
+                    config.variable_types = Some(vt);
+                }
+                if transformation_types.is_empty()
+                    && let Some(tt) = o.transformation_types
+                {
+                    config.transformation_types = Some(tt);
+                }
+                if let Some(cc) = o.chained_rule_conditions {
+                    config.chained_rule_conditions = Some(cc);
+                }
+            }
             let body = UpdateRateLimitRule {
-                rule_name: if name.is_some() {
-                    name.clone()
-                } else {
-                    current.rule_name
-                },
-                rule_description: current.rule_description.or(Some(String::new())),
-                rule_configuration: current.rule_configuration,
+                rule_name: name.clone().or(current.rule_name),
+                rule_description: description
+                    .clone()
+                    .or(current.rule_description)
+                    .or(Some(String::new())),
+                rule_configuration: Some(config),
             };
             let rule = client.update_rate_limit_rule(*id, body).await?;
             if let OutputFormat::Json = format {

@@ -172,6 +172,12 @@ impl CreateDatabaseGroupPayload {
 pub struct UpdateDatabaseGroupPayload {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
+    /// Primary compute region codes (e.g. `DE`, `FR`). Sent only when set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary_regions: Option<Vec<String>>,
+    /// Replica compute region codes (e.g. `UK`, `NY`). Sent only when set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replicas_regions: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -349,8 +355,12 @@ pub struct CreateDatabaseV2Response {
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct UpdateDatabaseV2Payload {
+    /// Primary compute region codes (e.g. `DE`, `FR`). Sent only when set.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub primary_regions: Option<Vec<String>>,
+    /// Replica compute region codes (e.g. `UK`, `NY`). Sent only when set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replicas_regions: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -626,5 +636,49 @@ mod tests {
         let dp: Datapoint = serde_json::from_str(json).unwrap();
         assert_eq!(dp.0, "2026-05-07T00:00:00Z");
         assert!((dp.1 - 1.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn update_group_payload_skips_none_fields() {
+        let body = UpdateDatabaseGroupPayload {
+            display_name: Some("EU".to_owned()),
+            ..Default::default()
+        };
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["display_name"], "EU");
+        assert!(v.get("primary_regions").is_none());
+        assert!(v.get("replicas_regions").is_none());
+    }
+
+    #[test]
+    fn update_group_payload_serialises_regions() {
+        let body = UpdateDatabaseGroupPayload {
+            display_name: None,
+            primary_regions: Some(vec!["DE".to_owned(), "FR".to_owned()]),
+            replicas_regions: Some(vec!["UK".to_owned()]),
+        };
+        let v = serde_json::to_value(&body).unwrap();
+        assert!(v.get("display_name").is_none());
+        assert_eq!(v["primary_regions"], serde_json::json!(["DE", "FR"]));
+        assert_eq!(v["replicas_regions"], serde_json::json!(["UK"]));
+    }
+
+    #[test]
+    fn update_v2_payload_has_no_name_field_and_skips_none() {
+        // The non-spec `name` field was removed in iter-68; the payload now
+        // only carries the spec's region arrays, both skipped when unset.
+        let body = UpdateDatabaseV2Payload::default();
+        let v = serde_json::to_value(&body).unwrap();
+        assert!(v.get("name").is_none(), "name must not be serialised");
+        assert!(v.get("primary_regions").is_none());
+        assert!(v.get("replicas_regions").is_none());
+
+        let body = UpdateDatabaseV2Payload {
+            primary_regions: Some(vec!["DE".to_owned()]),
+            replicas_regions: Some(vec!["UK".to_owned(), "NY".to_owned()]),
+        };
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["primary_regions"], serde_json::json!(["DE"]));
+        assert_eq!(v["replicas_regions"], serde_json::json!(["UK", "NY"]));
     }
 }

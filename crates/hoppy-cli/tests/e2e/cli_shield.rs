@@ -315,6 +315,143 @@ async fn shield_waf_update_rule() {
     assert!(output.status.success());
 }
 
+/// Update-rule now patches the full ruleConfiguration: action/operator/severity/
+/// value/description survive read-modify-write, and the PATCH body must carry
+/// the changed fields.
+#[tokio::test]
+async fn shield_waf_update_rule_full_fields() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/custom-rule/7001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/waf_rule_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/shield/waf/custom-rule/7001"))
+        .and(header("AccessKey", "test-api-key"))
+        // actionType=5 (Allow), new value, and description override.
+        .and(body_string_contains("\"actionType\":5"))
+        .and(body_string_contains("\"value\":\"UNION\""))
+        .and(body_string_contains("\"ruleDescription\":\"tightened\""))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/waf_rule_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "waf",
+            "update-rule",
+            "--id",
+            "7001",
+            "--action-type",
+            "5",
+            "--value",
+            "UNION",
+            "--description",
+            "tightened",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "waf update-rule full-fields failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// `waf update-rule` with no flags must error rather than silently no-op.
+#[tokio::test]
+async fn shield_waf_update_rule_requires_a_flag() {
+    let server = MockServer::start().await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["shield", "waf", "update-rule", "--id", "7001"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("at least one update flag"),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// `waf add-rule --config-json` supplies nested variableTypes /
+/// transformationTypes / chainedRuleConditions from a file.
+#[tokio::test]
+async fn shield_waf_add_rule_config_json() {
+    use wiremock::matchers::body_string_contains;
+
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_path = dir.path().join("cfg.json");
+    std::fs::write(
+        &cfg_path,
+        r#"{"variableTypes":{"REQUEST_URI":""},"transformationTypes":[1,11],"chainedRuleConditions":[{"operatorType":2,"value":"admin"}]}"#,
+    )
+    .unwrap();
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/shield/waf/custom-rule"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"transformationTypes\":[1,11]"))
+        .and(body_string_contains("\"chainedRuleConditions\""))
+        .and(body_string_contains("REQUEST_URI"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/waf_rule_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "waf",
+            "add-rule",
+            "--id",
+            "55001",
+            "--name",
+            "chained",
+            "--action-type",
+            "1",
+            "--operator-type",
+            "2",
+            "--severity-type",
+            "2",
+            "--value",
+            "SELECT",
+            "--config-json",
+            cfg_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "waf add-rule --config-json failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[tokio::test]
 async fn shield_waf_delete_rule() {
     let server = MockServer::start().await;
@@ -495,6 +632,80 @@ async fn shield_rate_limit_update() {
         .unwrap();
 
     assert!(output.status.success());
+}
+
+/// rate-limit update now patches the rate-limit-specific fields too
+/// (requestCount / timeframe / blockTime) via read-modify-write.
+#[tokio::test]
+async fn shield_rate_limit_update_full_fields() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/rate-limit/8001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/rate_limit_rule_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/shield/rate-limit/8001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"requestCount\":100"))
+        .and(body_string_contains("\"timeframe\":900"))
+        .and(body_string_contains("\"blockTime\":1800"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/rate_limit_rule_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "rate-limit",
+            "update",
+            "--id",
+            "8001",
+            "--request-count",
+            "100",
+            "--timeframe",
+            "900",
+            "--block-time",
+            "1800",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "rate-limit update full-fields failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// `rate-limit update` with no flags must error.
+#[tokio::test]
+async fn shield_rate_limit_update_requires_a_flag() {
+    let server = MockServer::start().await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["shield", "rate-limit", "update", "--id", "8001"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("at least one update flag"),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[tokio::test]

@@ -212,6 +212,164 @@ async fn db_group_list_json() {
 }
 
 #[tokio::test]
+async fn db_group_update_display_name() {
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/v1/groups/group_01"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(
+            serde_json::json!({ "display_name": "EU-renamed" }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/group_update.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "db",
+            "group",
+            "update",
+            "--id",
+            "group_01",
+            "--display-name",
+            "EU-renamed",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "group update failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn db_group_update_regions() {
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/v1/groups/group_01"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "primary_regions": ["DE", "FR"],
+            "replicas_regions": ["UK", "NY"]
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/group_update.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "db",
+            "group",
+            "update",
+            "--id",
+            "group_01",
+            "--primary-region",
+            "DE",
+            "--primary-region",
+            "FR",
+            "--replicas-region",
+            "UK",
+            "--replicas-region",
+            "NY",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "group update regions failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn db_group_update_requires_a_flag() {
+    let server = MockServer::start().await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["db", "group", "update", "--id", "group_01"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("at least one update flag"),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn db_v2_update_regions() {
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/v2/databases/db_01"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "primary_regions": ["DE", "FR"],
+            "replicas_regions": ["UK", "NY"]
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/database_update_v2.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "db",
+            "v2",
+            "update",
+            "--id",
+            "db_01",
+            "--primary-region",
+            "DE",
+            "--primary-region",
+            "FR",
+            "--replicas-region",
+            "UK",
+            "--replicas-region",
+            "NY",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "db v2 update failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn db_v2_update_requires_a_flag() {
+    let server = MockServer::start().await;
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args(["db", "v2", "update", "--id", "db_01"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("at least one update flag"),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
 async fn db_config_show_json() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

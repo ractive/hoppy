@@ -447,6 +447,17 @@ async fn dns_record_add_json() {
 #[tokio::test]
 async fn dns_record_update() {
     let server = MockServer::start().await;
+    // The update handler now reads the zone first (read-modify-write).
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_get_with_srv.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
     Mock::given(method("POST"))
         .and(path("/dnszone/50001/records/100001"))
         .and(header("AccessKey", "test-api-key"))
@@ -478,6 +489,110 @@ async fn dns_record_update() {
         .unwrap();
 
     assert!(output.status.success());
+}
+
+/// Partial update must be non-lossy: with only `--ttl` supplied, the handler
+/// reads the current SRV record and re-sends its Type/Value/Port/Weight/Priority
+/// so they survive the round-trip (previously `--type`/`--value` were required
+/// and SRV port/weight were dropped).
+#[tokio::test]
+async fn dns_record_update_partial_preserves_srv_fields() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_get_with_srv.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001/records/100001"))
+        .and(header("AccessKey", "test-api-key"))
+        // Type=8 (SRV), original value/port/weight/priority preserved,
+        // Ttl overridden to the requested 120.
+        .and(body_string_contains("\"Value\":\"sip.example.com\""))
+        .and(body_string_contains("\"Port\":5060"))
+        .and(body_string_contains("\"Weight\":5"))
+        .and(body_string_contains("\"Ttl\":120"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnsrecord_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "record",
+            "update",
+            "--zone-id",
+            "50001",
+            "--record-id",
+            "100001",
+            "--ttl",
+            "120",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "partial update failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// `dns record add --disabled true` must serialise the `Disabled` flag.
+#[tokio::test]
+async fn dns_record_add_disabled() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/dnszone/50001/records"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"Disabled\":true"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnsrecord_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "record",
+            "add",
+            "--zone-id",
+            "50001",
+            "--type",
+            "A",
+            "--value",
+            "192.0.2.1",
+            "--disabled",
+            "true",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "add --disabled failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 // ---------------------------------------------------------------------------

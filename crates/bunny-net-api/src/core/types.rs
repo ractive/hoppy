@@ -3075,6 +3075,8 @@ pub struct AddDnsRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
 }
 
@@ -3090,6 +3092,7 @@ impl AddDnsRecord {
             port: None,
             flags: None,
             tag: None,
+            disabled: None,
             comment: None,
         }
     }
@@ -3137,6 +3140,12 @@ impl AddDnsRecord {
     }
 
     #[must_use]
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = Some(disabled);
+        self
+    }
+
+    #[must_use]
     pub fn comment(mut self, comment: impl Into<String>) -> Self {
         self.comment = Some(comment.into());
         self
@@ -3160,6 +3169,14 @@ pub struct UpdateDnsRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weight: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flags: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
 }
 
@@ -3173,6 +3190,10 @@ impl UpdateDnsRecord {
             ttl: None,
             priority: None,
             weight: None,
+            port: None,
+            flags: None,
+            tag: None,
+            disabled: None,
             comment: None,
         }
     }
@@ -3198,6 +3219,30 @@ impl UpdateDnsRecord {
     #[must_use]
     pub fn weight(mut self, weight: i32) -> Self {
         self.weight = Some(weight);
+        self
+    }
+
+    #[must_use]
+    pub fn port(mut self, port: i32) -> Self {
+        self.port = Some(port);
+        self
+    }
+
+    #[must_use]
+    pub fn flags(mut self, flags: u8) -> Self {
+        self.flags = Some(flags);
+        self
+    }
+
+    #[must_use]
+    pub fn tag(mut self, tag: impl Into<String>) -> Self {
+        self.tag = Some(tag.into());
+        self
+    }
+
+    #[must_use]
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = Some(disabled);
         self
     }
 
@@ -3399,5 +3444,50 @@ mod tests {
         // Serialising twice must produce identical output (determinism check).
         let json2 = serde_json::to_string(&stats).unwrap();
         assert_eq!(json, json2, "Serialisation must be deterministic");
+    }
+
+    /// iter-68: SRV/CAA fields on `UpdateDnsRecord` must round-trip so partial
+    /// updates aren't lossy.
+    #[test]
+    fn update_dns_record_serialises_srv_caa_fields() {
+        let body = UpdateDnsRecord::new(42, DnsRecordType::SRV, "sip.example.com")
+            .port(5060)
+            .weight(5)
+            .priority(10)
+            .flags(0)
+            .tag("issue")
+            .disabled(true);
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["Id"], 42);
+        assert_eq!(v["Value"], "sip.example.com");
+        assert_eq!(v["Port"], 5060);
+        assert_eq!(v["Weight"], 5);
+        assert_eq!(v["Priority"], 10);
+        assert_eq!(v["Flags"], 0);
+        assert_eq!(v["Tag"], "issue");
+        assert_eq!(v["Disabled"], true);
+    }
+
+    /// Unset optional fields on `UpdateDnsRecord` must be omitted, not sent null.
+    #[test]
+    fn update_dns_record_skips_unset_optionals() {
+        let body = UpdateDnsRecord::new(1, DnsRecordType::A, "192.0.2.1");
+        let v = serde_json::to_value(&body).unwrap();
+        assert!(v.get("Port").is_none());
+        assert!(v.get("Flags").is_none());
+        assert!(v.get("Tag").is_none());
+        assert!(v.get("Disabled").is_none());
+    }
+
+    /// `AddDnsRecord` gains an optional `Disabled` flag (iter-68).
+    #[test]
+    fn add_dns_record_disabled_flag() {
+        let body = AddDnsRecord::new(DnsRecordType::A, "192.0.2.1").disabled(true);
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["Disabled"], true);
+
+        let body = AddDnsRecord::new(DnsRecordType::A, "192.0.2.1");
+        let v = serde_json::to_value(&body).unwrap();
+        assert!(v.get("Disabled").is_none());
     }
 }

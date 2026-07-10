@@ -754,6 +754,7 @@ async fn handle_record(
             port,
             flags,
             tag,
+            disabled,
             comment,
         } => {
             let record_type: DnsRecordType = r#type.parse()?;
@@ -779,6 +780,9 @@ async fn handle_record(
             if let Some(t) = tag {
                 body = body.tag(t);
             }
+            if let Some(d) = disabled {
+                body = body.disabled(*d);
+            }
             if let Some(c) = comment {
                 body = body.comment(c);
             }
@@ -801,24 +805,59 @@ async fn handle_record(
             ttl,
             priority,
             weight,
+            port,
+            flags,
+            tag,
+            disabled,
             comment,
         } => {
-            let record_type: DnsRecordType = r#type.parse()?;
+            // Read-modify-write: bunny's record update is not a partial PATCH —
+            // omitted fields are treated as cleared. Fetch the current record
+            // (records are embedded in the zone response) so unspecified flags
+            // keep their existing value and SRV/CAA fields survive the round-trip.
+            let zone = client.get_dns_zone(*zone_id).await?;
+            let current = zone
+                .records
+                .iter()
+                .find(|r| r.id == *record_id)
+                .with_context(|| format!("DNS record {record_id} not found in zone {zone_id}"))?;
+
+            let record_type: DnsRecordType = match r#type {
+                Some(t) => t.parse()?,
+                None => current.record_type.with_context(|| {
+                    format!("DNS record {record_id} has no type; re-specify it with --type")
+                })?,
+            };
+            let value = value.clone().unwrap_or_else(|| current.value.clone());
             let mut body = UpdateDnsRecord::new(*record_id, record_type, value);
-            if let Some(n) = name {
-                body = body.name(n);
+
+            // Name: apply override, else carry the current value (skip empty apex).
+            match name {
+                Some(n) => body = body.name(n),
+                None if !current.name.is_empty() => body = body.name(&current.name),
+                None => {}
             }
-            if let Some(t) = ttl {
-                body = body.ttl(*t);
+            body = body.ttl(ttl.unwrap_or(current.ttl));
+            body = body.priority(priority.unwrap_or(current.priority));
+            body = body.weight(weight.unwrap_or(current.weight));
+            body = body.port(port.unwrap_or(current.port));
+            body = body.flags(flags.unwrap_or(current.flags));
+            match tag {
+                Some(t) => body = body.tag(t),
+                None => {
+                    if let Some(t) = &current.tag {
+                        body = body.tag(t);
+                    }
+                }
             }
-            if let Some(p) = priority {
-                body = body.priority(*p);
-            }
-            if let Some(w) = weight {
-                body = body.weight(*w);
-            }
-            if let Some(c) = comment {
-                body = body.comment(c);
+            body = body.disabled(disabled.unwrap_or(current.disabled));
+            match comment {
+                Some(c) => body = body.comment(c),
+                None => {
+                    if let Some(c) = &current.comment {
+                        body = body.comment(c);
+                    }
+                }
             }
             client
                 .update_dns_record(*zone_id, *record_id, &body)

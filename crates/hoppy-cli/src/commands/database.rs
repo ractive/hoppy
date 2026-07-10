@@ -8,6 +8,7 @@ use bunny_net_api::database::types::{
     GenerateTokenDatabaseGroupPayload, GenerateTokenDatabasePayload,
     GenerateTokenDatabaseV2Payload, LimitsResponse, ListConfigResponse, ListDatabaseV2Response,
     ListVersionsDatabasePayload, PingResult, Region, RestoreVersionDatabasePayload, StorageRegion,
+    UpdateDatabaseGroupPayload, UpdateDatabaseV2Payload,
 };
 
 use crate::auth;
@@ -602,6 +603,25 @@ async fn handle_v2(
                 &format!("Created database (v2) {}", resp.db_id),
             );
         }
+        DbV2Action::Update {
+            id,
+            primary_regions,
+            replicas_regions,
+        } => {
+            if primary_regions.is_empty() && replicas_regions.is_empty() {
+                bail!(
+                    "at least one update flag is required \
+                     (--primary-region or --replicas-region)"
+                );
+            }
+            let body = UpdateDatabaseV2Payload {
+                primary_regions: (!primary_regions.is_empty()).then(|| primary_regions.clone()),
+                replicas_regions: (!replicas_regions.is_empty()).then(|| replicas_regions.clone()),
+            };
+            let resp = client.update_database_v2(id, &body).await?;
+            let row: DatabaseV2Row = (&resp.database).into();
+            output::print_single(&row, format);
+        }
         DbV2Action::Delete { id } => {
             if !confirm_destructive(&format!("Delete database {id} (v2)?"), yes)? {
                 return Ok(());
@@ -650,6 +670,27 @@ async fn handle_group(
                 replicas_regions.clone(),
             );
             let resp = client.create_group(&body).await?;
+            let row: GroupRow = (&resp.group).into();
+            output::print_single(&row, format);
+        }
+        DbGroupAction::Update {
+            id,
+            display_name,
+            primary_regions,
+            replicas_regions,
+        } => {
+            if display_name.is_none() && primary_regions.is_empty() && replicas_regions.is_empty() {
+                bail!(
+                    "at least one update flag is required \
+                     (--display-name, --primary-region or --replicas-region)"
+                );
+            }
+            let body = UpdateDatabaseGroupPayload {
+                display_name: display_name.clone(),
+                primary_regions: (!primary_regions.is_empty()).then(|| primary_regions.clone()),
+                replicas_regions: (!replicas_regions.is_empty()).then(|| replicas_regions.clone()),
+            };
+            let resp = client.update_group(id, &body).await?;
             let row: GroupRow = (&resp.group).into();
             output::print_single(&row, format);
         }
