@@ -423,11 +423,16 @@ pub async fn handle(
                 &format!("Restored database to generation {}", resp.generation),
             );
         }
-        DbAction::Versions { id, limit } => {
+        DbAction::Versions {
+            id,
+            limit,
+            older_than,
+            newer_than,
+        } => {
             let body = ListVersionsDatabasePayload {
                 limit: *limit,
-                older_than: None,
-                newer_than: None,
+                older_than: older_than.clone(),
+                newer_than: newer_than.clone(),
             };
             let resp = client.list_database_versions(id, &body).await?;
             let rows: Vec<GenerationRow> = resp

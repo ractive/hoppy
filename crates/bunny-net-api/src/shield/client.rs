@@ -239,10 +239,22 @@ impl ShieldClient {
     /// List all Shield Zones for the account.
     ///
     /// `GET /shield/shield-zones`
-    pub async fn list_shield_zones(&self) -> Result<GetShieldZonesResponse> {
-        let resp = self
-            .execute(self.auth(self.client.get(self.url("/shield/shield-zones"))))
-            .await?;
+    ///
+    /// `page` is 1-based and `per_page` caps the number of zones returned;
+    /// pass `None` for either to let the API apply its default.
+    pub async fn list_shield_zones(
+        &self,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<GetShieldZonesResponse> {
+        let mut req = self.auth(self.client.get(self.url("/shield/shield-zones")));
+        if let Some(p) = page {
+            req = req.query(&[("page", p.to_string())]);
+        }
+        if let Some(pp) = per_page {
+            req = req.query(&[("perPage", pp.to_string())]);
+        }
+        let resp = self.execute(req).await?;
 
         self.handle_response(resp).await
     }
@@ -306,15 +318,26 @@ impl ShieldClient {
     /// List custom WAF rules for a Shield Zone.
     ///
     /// `GET /shield/waf/custom-rules/{shieldZoneId}`
-    pub async fn list_waf_rules(&self, shield_zone_id: i64) -> Result<Vec<CustomWafRule>> {
-        let resp = self
-            .execute(
-                self.auth(
-                    self.client
-                        .get(self.url(&format!("/shield/waf/custom-rules/{shield_zone_id}"))),
-                ),
-            )
-            .await?;
+    ///
+    /// `page` is 1-based and `per_page` caps the number of rules returned;
+    /// pass `None` for either to let the API apply its default.
+    pub async fn list_waf_rules(
+        &self,
+        shield_zone_id: i64,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<Vec<CustomWafRule>> {
+        let mut req = self.auth(
+            self.client
+                .get(self.url(&format!("/shield/waf/custom-rules/{shield_zone_id}"))),
+        );
+        if let Some(p) = page {
+            req = req.query(&[("page", p.to_string())]);
+        }
+        if let Some(pp) = per_page {
+            req = req.query(&[("perPage", pp.to_string())]);
+        }
+        let resp = self.execute(req).await?;
 
         let response: GetCustomWafRulesResponse = self.handle_response(resp).await?;
         Ok(response.data.unwrap_or_default())
@@ -394,15 +417,26 @@ impl ShieldClient {
     /// List rate limit rules for a Shield Zone.
     ///
     /// `GET /shield/rate-limits/{shieldZoneId}`
-    pub async fn list_rate_limit_rules(&self, shield_zone_id: i64) -> Result<Vec<RateLimitRule>> {
-        let resp = self
-            .execute(
-                self.auth(
-                    self.client
-                        .get(self.url(&format!("/shield/rate-limits/{shield_zone_id}"))),
-                ),
-            )
-            .await?;
+    ///
+    /// `page` is 1-based and `per_page` caps the number of rules returned;
+    /// pass `None` for either to let the API apply its default.
+    pub async fn list_rate_limit_rules(
+        &self,
+        shield_zone_id: i64,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<Vec<RateLimitRule>> {
+        let mut req = self.auth(
+            self.client
+                .get(self.url(&format!("/shield/rate-limits/{shield_zone_id}"))),
+        );
+        if let Some(p) = page {
+            req = req.query(&[("page", p.to_string())]);
+        }
+        if let Some(pp) = per_page {
+            req = req.query(&[("perPage", pp.to_string())]);
+        }
+        let resp = self.execute(req).await?;
 
         let response: GetRateLimitRulesResponse = self.handle_response(resp).await?;
         Ok(response.data.unwrap_or_default())
@@ -662,15 +696,30 @@ impl ShieldClient {
     /// Get detailed metrics for a Shield Zone.
     ///
     /// `GET /shield/metrics/overview/{shieldZoneId}/detailed`
+    ///
+    /// `start_date` / `end_date` bound the time-series window (RFC 3339 or
+    /// `YYYY-MM-DD`), and `resolution` selects the bucket granularity
+    /// (`0`–`6`). Pass `None` for any to let the API apply its default.
     pub async fn get_metrics_detailed(
         &self,
         shield_zone_id: i64,
+        start_date: Option<&str>,
+        end_date: Option<&str>,
+        resolution: Option<u8>,
     ) -> Result<ShieldDetailedMetricsResponse> {
-        let resp = self
-            .execute(self.auth(self.client.get(self.url(&format!(
-                "/shield/metrics/overview/{shield_zone_id}/detailed"
-            )))))
-            .await?;
+        let mut req = self.auth(self.client.get(self.url(&format!(
+            "/shield/metrics/overview/{shield_zone_id}/detailed"
+        ))));
+        if let Some(v) = start_date {
+            req = req.query(&[("startDate", v)]);
+        }
+        if let Some(v) = end_date {
+            req = req.query(&[("endDate", v)]);
+        }
+        if let Some(v) = resolution {
+            req = req.query(&[("resolution", v.to_string())]);
+        }
+        let resp = self.execute(req).await?;
         self.handle_response(resp).await
     }
 
@@ -1166,7 +1215,7 @@ mod tests {
 
         let client = ShieldClient::with_base_url("test-key", server.uri());
         let err = client
-            .list_rate_limit_rules(99)
+            .list_rate_limit_rules(99, None, None)
             .await
             .expect_err("expected error from 202 plan-gate response");
 
@@ -1193,7 +1242,7 @@ mod tests {
         let client = ShieldClient::with_base_url("test-key", server.uri());
         // list_shield_zones returns GetShieldZonesResponse — just check it doesn't
         // return an error (the body may deserialise to a response with empty fields).
-        let result = client.list_shield_zones().await;
+        let result = client.list_shield_zones(None, None).await;
         assert!(
             result.is_ok(),
             "success=true envelope must not return Err: {result:?}"

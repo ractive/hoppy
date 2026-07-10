@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use super::support;
 
 use regex::Regex;
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 static RE_TOTAL_REQUESTS: LazyLock<Regex> =
@@ -178,6 +178,59 @@ async fn hourly_json_has_no_hint() {
     assert!(
         json["BandwidthUsedChart"].is_object(),
         "expected hourly chart data in the JSON payload"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// iter-69: server-zone-id + load* chart selectors
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn statistics_forwards_server_zone_and_load_flags() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("serverZoneId", "42"))
+        .and(query_param("loadErrors", "true"))
+        .and(query_param("loadOriginResponseTimes", "true"))
+        .and(query_param("loadOriginTraffic", "true"))
+        .and(query_param("loadRequestsServed", "true"))
+        .and(query_param("loadBandwidthUsed", "true"))
+        .and(query_param("loadOriginShieldBandwidth", "true"))
+        .and(query_param("loadGeographicTrafficDistribution", "true"))
+        .and(query_param("loadUserBalanceHistory", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/account_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "statistics",
+            "--server-zone-id",
+            "42",
+            "--load-errors",
+            "--load-origin-response-times",
+            "--load-origin-traffic",
+            "--load-requests-served",
+            "--load-bandwidth-used",
+            "--load-origin-shield-bandwidth",
+            "--load-geographic-traffic-distribution",
+            "--load-user-balance-history",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }
 

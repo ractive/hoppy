@@ -230,6 +230,54 @@ impl CreateVideo {
     }
 }
 
+/// Per-upload encoding and AI-generation options for
+/// `PUT /library/{libraryId}/videos/{videoId}`.
+///
+/// Every field is optional; `None` (or `false`) leaves the corresponding
+/// query parameter off the request so the library default applies. The
+/// resolution / codec / language fields are sent verbatim, so callers pass
+/// the API's comma-separated form (e.g. `"720p,1080p"`).
+#[derive(Debug, Clone, Default)]
+pub struct VideoUploadOptions {
+    /// Enable Just-In-Time encoding for this upload.
+    pub jit_enabled: Option<bool>,
+    /// Comma-separated list of resolutions to encode (e.g. `"720p,1080p"`).
+    pub enabled_resolutions: Option<String>,
+    /// Comma-separated list of output codecs (e.g. `"x264,vp9"`).
+    pub enabled_output_codecs: Option<String>,
+    /// Enable automatic transcription for this upload.
+    pub transcribe_enabled: Option<bool>,
+    /// Comma-separated list of transcription target languages (ISO 639-1).
+    pub transcribe_languages: Option<String>,
+    /// Source language of the video (ISO 639-1, e.g. `"en"`).
+    pub source_language: Option<String>,
+    /// Have the API generate a title from the video content.
+    pub generate_title: Option<bool>,
+    /// Have the API generate a description from the video content.
+    pub generate_description: Option<bool>,
+    /// Have the API generate chapters from the video content.
+    pub generate_chapters: Option<bool>,
+    /// Have the API generate highlight moments from the video content.
+    pub generate_moments: Option<bool>,
+}
+
+impl VideoUploadOptions {
+    /// Returns `true` when no option is set, so the caller can skip building
+    /// a query string entirely.
+    pub fn is_empty(&self) -> bool {
+        self.jit_enabled.is_none()
+            && self.enabled_resolutions.is_none()
+            && self.enabled_output_codecs.is_none()
+            && self.transcribe_enabled.is_none()
+            && self.transcribe_languages.is_none()
+            && self.source_language.is_none()
+            && self.generate_title.is_none()
+            && self.generate_description.is_none()
+            && self.generate_chapters.is_none()
+            && self.generate_moments.is_none()
+    }
+}
+
 /// Request body for `POST /library/{id}/videos/{videoId}` — update a video.
 ///
 /// All fields are optional; only non-`None` values are serialised.

@@ -265,12 +265,18 @@ pub async fn handle(
             search,
             page,
             per_page,
+            types,
+            integration_id,
+            include_linked_pullzones,
             all,
         } => {
             handle_list(
                 search.as_deref(),
                 *page,
                 *per_page,
+                types,
+                *integration_id,
+                *include_linked_pullzones,
                 *all,
                 format,
                 debug,
@@ -321,12 +327,14 @@ pub async fn handle(
             date_from,
             date_to,
             hourly,
+            load_latest,
         } => {
             handle_statistics(
                 *id,
                 date_from.as_deref(),
                 date_to.as_deref(),
                 *hourly,
+                *load_latest,
                 format,
                 debug,
                 record,
@@ -358,10 +366,14 @@ pub async fn handle(
 // Script sub-handlers
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_list(
     search: Option<&str>,
     page: Option<i32>,
     per_page: Option<i32>,
+    types: &[i32],
+    integration_id: Option<i64>,
+    include_linked_pullzones: bool,
     all: bool,
     format: OutputFormat,
     debug: bool,
@@ -374,7 +386,14 @@ async fn handle_list(
         let mut accumulated: Vec<EdgeScript> = Vec::new();
         loop {
             let result = c
-                .list_scripts(Some(current_page), Some(AUTO_PER_PAGE), search)
+                .list_scripts(
+                    Some(current_page),
+                    Some(AUTO_PER_PAGE),
+                    search,
+                    types,
+                    integration_id,
+                    include_linked_pullzones,
+                )
                 .await?;
             let has_more = result.has_more_items;
             if let OutputFormat::Json = format {
@@ -402,7 +421,16 @@ async fn handle_list(
             );
         }
     } else {
-        let result = c.list_scripts(page, per_page, search).await?;
+        let result = c
+            .list_scripts(
+                page,
+                per_page,
+                search,
+                types,
+                integration_id,
+                include_linked_pullzones,
+            )
+            .await?;
         if let OutputFormat::Json = format {
             let envelope = PaginatedListJson {
                 items: &result.items,
@@ -918,11 +946,13 @@ async fn handle_secret(
 // Statistics handler
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_statistics(
     id: i64,
     date_from: Option<&str>,
     date_to: Option<&str>,
     hourly: bool,
+    load_latest: bool,
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
@@ -931,7 +961,13 @@ async fn handle_statistics(
     let date_to = crate::date::normalise_datetime_opt(date_to)?;
     let c = client(debug, record)?;
     let stats = c
-        .get_script_statistics(id, date_from.as_deref(), date_to.as_deref(), hourly)
+        .get_script_statistics(
+            id,
+            date_from.as_deref(),
+            date_to.as_deref(),
+            hourly,
+            load_latest,
+        )
         .await?;
     if let OutputFormat::Json = format {
         println!(

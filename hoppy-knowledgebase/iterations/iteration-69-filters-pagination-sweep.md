@@ -9,7 +9,7 @@ tags:
   - script
   - stream
   - statistics
-status: planned
+status: in-progress
 branch: iter-69/filters-pagination-sweep
 priority: 2
 related:
@@ -36,20 +36,20 @@ upload` drops all 10 per-upload encoding params.
 
 ### 1. Shield pagination
 
-- [ ] `--page` / `--per-page` on `shield zone list`
+- [x] `--page` / `--per-page` on `shield zone list`
   (`GET /shield/shield-zones`), `shield waf list-rules`
   (`GET /shield/waf/custom-rules/{shieldZoneId}`), and
   `shield rate-limit list` (`GET /shield/rate-limits/{shieldZoneId}`)
 
 ### 2. Script filters
 
-- [ ] `script list --type` (repeatable), `--integration-id`,
+- [x] `script list --type` (repeatable), `--integration-id`,
   `--include-linked-pullzones` (`GET /compute/script` query params)
-- [ ] `script statistics --load-latest` (`loadLatest` query param)
+- [x] `script statistics --load-latest` (`loadLatest` query param)
 
 ### 3. `hoppy statistics` missing params
 
-- [ ] Add the 9 missing `GET /statistics` query params:
+- [x] Add the 9 missing `GET /statistics` query params:
   `--server-zone-id` plus the 8 `load*` selectors (`loadErrors`,
   `loadOriginResponseTimes`, `loadOriginTraffic`, `loadRequestsServed`,
   `loadBandwidthUsed`, `loadOriginShieldBandwidth`,
@@ -58,27 +58,27 @@ upload` drops all 10 per-upload encoding params.
 
 ### 4. Purge
 
-- [ ] `purge --exact-path` and `purge --async` (`POST /purge`;
+- [x] `purge --exact-path` and `purge --async` (`POST /purge`;
   client hardcodes neither, `core/client.rs:185`)
 
 ### 5. Storage zone list
 
-- [ ] `storage-zone list --include-deleted` (client supports it;
+- [x] `storage-zone list --include-deleted` (client supports it;
   handler passes `None` at `storage_zone.rs:74,108`)
 
 ### 6. DB versions windowing
 
-- [ ] `db versions --older-than` / `--newer-than` (body fields hardcoded
+- [x] `db versions --older-than` / `--newer-than` (body fields hardcoded
   `None` at `commands/database.rs:429-430`)
 
 ### 7. Shield metrics time range
 
-- [ ] `shield metrics detailed --start-date` / `--end-date` /
+- [x] `shield metrics detailed --start-date` / `--end-date` /
   `--resolution` (enum 0–6) — client method currently takes no query args
 
 ### 8. Stream per-upload params
 
-- [ ] Add all 10 `PUT /library/{lib}/videos/{vid}` query params to
+- [x] Add all 10 `PUT /library/{lib}/videos/{vid}` query params to
   `stream video upload`: `jitEnabled`, `enabledResolutions`,
   `enabledOutputCodecs`, `transcribeEnabled`, `transcribeLanguages`,
   `sourceLanguage`, `generateTitle`, `generateDescription`,
@@ -92,8 +92,8 @@ upload` drops all 10 per-upload encoding params.
 
 ## Acceptance
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new/changed command (`tests/e2e/` pattern)
-- [ ] Help text updated for all new flags
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new/changed command (`tests/e2e/` pattern)
+- [x] Help text updated for all new flags
+- [x] `hyalo lint` clean on touched knowledgebase files

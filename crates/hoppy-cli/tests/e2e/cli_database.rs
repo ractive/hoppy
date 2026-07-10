@@ -310,6 +310,49 @@ async fn db_group_update_requires_a_flag() {
 }
 
 #[tokio::test]
+async fn db_versions_forwards_older_and_newer_than() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/databases/db_01/list_versions"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "limit": 5,
+            "older_than": "2026-05-10T00:00:00Z",
+            "newer_than": "2026-05-01T00:00:00Z"
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/list_versions.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "db",
+            "versions",
+            "--id",
+            "db_01",
+            "--limit",
+            "5",
+            "--older-than",
+            "2026-05-10T00:00:00Z",
+            "--newer-than",
+            "2026-05-01T00:00:00Z",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "db versions failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
 async fn db_v2_update_regions() {
     let server = MockServer::start().await;
     Mock::given(method("PATCH"))

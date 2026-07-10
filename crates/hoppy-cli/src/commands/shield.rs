@@ -652,8 +652,8 @@ async fn handle_zone(
     let client = auth::shield_client(debug, record)?;
 
     match action {
-        ShieldZoneAction::List => {
-            let result = client.list_shield_zones().await?;
+        ShieldZoneAction::List { page, per_page } => {
+            let result = client.list_shield_zones(*page, *per_page).await?;
             let zones = result.data.unwrap_or_default();
             if let OutputFormat::Json = format {
                 let page = result.page;
@@ -805,8 +805,14 @@ async fn handle_waf(
                 }
             }
         }
-        ShieldWafAction::ListRules { shield_zone_id } => {
-            let rules = client.list_waf_rules(*shield_zone_id).await?;
+        ShieldWafAction::ListRules {
+            shield_zone_id,
+            page,
+            per_page,
+        } => {
+            let rules = client
+                .list_waf_rules(*shield_zone_id, *page, *per_page)
+                .await?;
             let rows: Vec<WafRuleRow> = rules.iter().map(WafRuleRow::from).collect();
             output::print_data(&rows, format);
         }
@@ -1077,8 +1083,14 @@ async fn handle_rate_limit(
     let client = auth::shield_client(debug, record)?;
 
     match action {
-        ShieldRateLimitAction::List { shield_zone_id } => {
-            let rules = client.list_rate_limit_rules(*shield_zone_id).await?;
+        ShieldRateLimitAction::List {
+            shield_zone_id,
+            page,
+            per_page,
+        } => {
+            let rules = client
+                .list_rate_limit_rules(*shield_zone_id, *page, *per_page)
+                .await?;
             let rows: Vec<RateLimitRuleRow> = rules.iter().map(RateLimitRuleRow::from).collect();
             if let OutputFormat::Table = format {
                 let mut truncated_rows = rows.clone();
@@ -1640,8 +1652,22 @@ async fn handle_metrics(
                 eprintln!("No metrics data available.");
             }
         }
-        ShieldMetricsAction::Detailed { shield_zone_id } => {
-            let metrics = client.get_metrics_detailed(*shield_zone_id).await?;
+        ShieldMetricsAction::Detailed {
+            shield_zone_id,
+            start_date,
+            end_date,
+            resolution,
+        } => {
+            let start_date = date::normalise_datetime_opt(start_date.as_deref())?;
+            let end_date = date::normalise_datetime_opt(end_date.as_deref())?;
+            let metrics = client
+                .get_metrics_detailed(
+                    *shield_zone_id,
+                    start_date.as_deref(),
+                    end_date.as_deref(),
+                    *resolution,
+                )
+                .await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&metrics)
                     .context("failed to serialize to JSON")?;

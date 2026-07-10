@@ -14,7 +14,7 @@ use bunny_net_api::shield::types::{
     ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
     ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse,
 };
-use wiremock::matchers::{body_json, header, method, path};
+use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const FIXTURE_SHIELD_ZONE_GET: &str =
@@ -114,7 +114,7 @@ async fn list_shield_zones_returns_items() {
         .await;
 
     let result = test_client(&server.uri())
-        .list_shield_zones()
+        .list_shield_zones(None, None)
         .await
         .unwrap();
 
@@ -248,7 +248,7 @@ async fn list_waf_rules_returns_items() {
         .await;
 
     let rules = test_client(&server.uri())
-        .list_waf_rules(55001)
+        .list_waf_rules(55001, None, None)
         .await
         .unwrap();
 
@@ -393,7 +393,7 @@ async fn list_rate_limit_rules_returns_items() {
         .await;
 
     let rules = test_client(&server.uri())
-        .list_rate_limit_rules(55001)
+        .list_rate_limit_rules(55001, None, None)
         .await
         .unwrap();
 
@@ -849,7 +849,7 @@ async fn debug_client_works_without_error() {
     // with_debug(true) should not change behaviour — just emit to stderr
     let result = ShieldClient::with_base_url("test-api-key", server.uri())
         .with_debug(true)
-        .list_shield_zones()
+        .list_shield_zones(None, None)
         .await
         .unwrap();
 
@@ -904,7 +904,7 @@ async fn get_metrics_detailed_returns_data() {
         .await;
 
     let result: ShieldDetailedMetricsResponse = test_client(&server.uri())
-        .get_metrics_detailed(55001)
+        .get_metrics_detailed(55001, None, None, None)
         .await
         .unwrap();
 
@@ -926,6 +926,97 @@ async fn get_metrics_detailed_returns_data() {
 
     assert_eq!(data.total_billable_requests_this_month, Some(245678));
     assert_eq!(data.resolution, Some(3));
+}
+
+#[tokio::test]
+async fn get_metrics_detailed_forwards_time_range() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overview/55001/detailed"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("startDate", "2026-01-01"))
+        .and(query_param("endDate", "2026-01-31"))
+        .and(query_param("resolution", "4"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_METRICS_OVERVIEW_DETAILED, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .get_metrics_detailed(55001, Some("2026-01-01"), Some("2026-01-31"), Some(4))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn list_shield_zones_forwards_pagination() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zones"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "2"))
+        .and(query_param("perPage", "25"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_SHIELD_ZONES_LIST, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .list_shield_zones(Some(2), Some(25))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn list_waf_rules_forwards_pagination() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/custom-rules/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "3"))
+        .and(query_param("perPage", "10"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_WAF_RULES_LIST, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .list_waf_rules(55001, Some(3), Some(10))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn list_rate_limit_rules_forwards_pagination() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/shield/rate-limits/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "2"))
+        .and(query_param("perPage", "5"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_RATE_LIMIT_RULES_LIST, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .list_rate_limit_rules(55001, Some(2), Some(5))
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

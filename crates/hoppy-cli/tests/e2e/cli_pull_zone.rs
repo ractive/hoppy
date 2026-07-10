@@ -825,6 +825,33 @@ async fn purge_url_sends_correct_request() {
         .stderr(predicates::str::contains("Purged"));
 }
 
+#[tokio::test]
+async fn purge_url_forwards_exact_path_and_async() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/purge"))
+        .and(header("AccessKey", "test-key"))
+        .and(query_param("url", "https://cdn.example.com/index.html"))
+        .and(query_param("exactPath", "true"))
+        .and(query_param("async", "true"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "purge",
+        "--url",
+        "https://cdn.example.com/index.html",
+        "--exact-path",
+        "--async",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("Purged"));
+}
+
 // ---------------------------------------------------------------------------
 // Pull Zone hostname & SSL E2E tests
 // ---------------------------------------------------------------------------

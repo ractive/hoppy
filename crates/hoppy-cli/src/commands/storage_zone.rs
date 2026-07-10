@@ -61,8 +61,10 @@ pub async fn handle(
             search,
             page,
             per_page,
+            include_deleted,
             all,
         } => {
+            let include_deleted = if *include_deleted { Some(true) } else { None };
             if *all {
                 const AUTO_PER_PAGE: u32 = 1000;
                 let mut current_page: u32 = 1;
@@ -73,7 +75,7 @@ pub async fn handle(
                             Some(current_page),
                             Some(AUTO_PER_PAGE),
                             search.as_deref(),
-                            None,
+                            include_deleted,
                         )
                         .await?;
                     let has_more = result.has_more_items;
@@ -106,7 +108,7 @@ pub async fn handle(
                 }
             } else {
                 let result = client
-                    .list_storage_zones(*page, *per_page, search.as_deref(), None)
+                    .list_storage_zones(*page, *per_page, search.as_deref(), include_deleted)
                     .await?;
                 if let OutputFormat::Json = format {
                     let envelope = PaginatedListJson {

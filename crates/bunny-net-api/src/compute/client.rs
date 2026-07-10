@@ -133,18 +133,36 @@ impl ComputeClient {
     // Scripts
     // -------------------------------------------------------------------------
 
-    /// List all edge scripts on the account, with optional pagination and search.
+    /// List all edge scripts on the account, with optional pagination, search,
+    /// and server-side filters.
+    ///
+    /// `types` filters by script type (repeatable; each value is sent as its
+    /// own `type` query param). `integration_id` restricts the result to a
+    /// single integration, and `include_linked_pullzones` asks the API to
+    /// embed each script's linked Pull Zones in the response.
     pub async fn list_scripts(
         &self,
         page: Option<i32>,
         per_page: Option<i32>,
         search: Option<&str>,
+        types: &[i32],
+        integration_id: Option<i64>,
+        include_linked_pullzones: bool,
     ) -> Result<PaginatedList<EdgeScript>> {
         let mut req = self.auth(self.http.get(self.url("/compute/script")));
         req = req.query(&[("page", page.unwrap_or(1).to_string())]);
         req = req.query(&[("perPage", per_page.unwrap_or(1000).to_string())]);
         if let Some(s) = search {
             req = req.query(&[("search", s)]);
+        }
+        for t in types {
+            req = req.query(&[("type", t.to_string())]);
+        }
+        if let Some(id) = integration_id {
+            req = req.query(&[("integrationId", id.to_string())]);
+        }
+        if include_linked_pullzones {
+            req = req.query(&[("includeLinkedPullZones", "true")]);
         }
         let resp = self.execute(req).await?;
         self.json_or_error(resp).await
@@ -260,12 +278,16 @@ impl ComputeClient {
     // -------------------------------------------------------------------------
 
     /// Get usage statistics for a script. Optionally filter by date range.
+    ///
+    /// Set `load_latest` to have the API return the most recent data point
+    /// even when it falls outside the requested `date_from` / `date_to` window.
     pub async fn get_script_statistics(
         &self,
         id: i64,
         date_from: Option<&str>,
         date_to: Option<&str>,
         hourly: bool,
+        load_latest: bool,
     ) -> Result<EdgeScriptStatistics> {
         let mut req = self.auth(
             self.http
@@ -278,6 +300,9 @@ impl ComputeClient {
             req = req.query(&[("dateTo", dt)]);
         }
         req = req.query(&[("hourly", hourly.to_string())]);
+        if load_latest {
+            req = req.query(&[("loadLatest", "true")]);
+        }
         let resp = self.execute(req).await?;
         self.json_or_error(resp).await
     }

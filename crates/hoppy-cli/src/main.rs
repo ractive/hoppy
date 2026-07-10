@@ -108,24 +108,49 @@ async fn run(cli: Cli) {
             date_from,
             date_to,
             pull_zone,
+            server_zone_id,
             hourly,
+            load_errors,
+            load_origin_response_times,
+            load_origin_traffic,
+            load_requests_served,
+            load_bandwidth_used,
+            load_origin_shield_bandwidth,
+            load_geographic_traffic_distribution,
+            load_user_balance_history,
         } => {
             commands::statistics::handle(
                 cli.format,
                 cli.debug,
                 record,
-                date_from.as_deref(),
-                date_to.as_deref(),
-                *pull_zone,
-                *hourly,
+                commands::statistics::StatisticsArgs {
+                    date_from: date_from.as_deref(),
+                    date_to: date_to.as_deref(),
+                    pull_zone: *pull_zone,
+                    server_zone_id: *server_zone_id,
+                    hourly: *hourly,
+                    load_errors: *load_errors,
+                    load_origin_response_times: *load_origin_response_times,
+                    load_origin_traffic: *load_origin_traffic,
+                    load_requests_served: *load_requests_served,
+                    load_bandwidth_used: *load_bandwidth_used,
+                    load_origin_shield_bandwidth: *load_origin_shield_bandwidth,
+                    load_geographic_traffic_distribution: *load_geographic_traffic_distribution,
+                    load_user_balance_history: *load_user_balance_history,
+                },
             )
             .await
         }
         Commands::VideoLibrary { action } => {
             commands::video_library::handle(action, cli.format, cli.debug, record).await
         }
-        Commands::Purge { url } => {
-            commands::purge::handle(url, cli.format, cli.debug, record).await
+        Commands::Purge {
+            url,
+            exact_path,
+            is_async,
+        } => {
+            commands::purge::handle(url, *exact_path, *is_async, cli.format, cli.debug, record)
+                .await
         }
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();

@@ -14,6 +14,7 @@ use bunny_net_api::stream::types::{Collection, Video};
 use bunny_net_api::stream::{
     CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, SmartGenerateSettings,
     StreamCleanupResolutions, StreamClient, TranscribeSettings, UpdateCollection, UpdateVideo,
+    VideoUploadOptions,
 };
 use std::io::{self, BufRead, Write};
 use tokio_util::io::ReaderStream;
@@ -542,7 +543,29 @@ async fn handle_video(
             file,
             title,
             collection_id,
+            jit_enabled,
+            enabled_resolutions,
+            enabled_output_codecs,
+            transcribe_enabled,
+            transcribe_languages,
+            source_language,
+            generate_title,
+            generate_description,
+            generate_chapters,
+            generate_moments,
         } => {
+            let upload_options = VideoUploadOptions {
+                jit_enabled: *jit_enabled,
+                enabled_resolutions: enabled_resolutions.clone(),
+                enabled_output_codecs: enabled_output_codecs.clone(),
+                transcribe_enabled: *transcribe_enabled,
+                transcribe_languages: transcribe_languages.clone(),
+                source_language: source_language.clone(),
+                generate_title: *generate_title,
+                generate_description: *generate_description,
+                generate_chapters: *generate_chapters,
+                generate_moments: *generate_moments,
+            };
             let stream = resolve_stream_client(*library_id, debug, record).await?;
             let video_title = title.as_deref().unwrap_or_else(|| {
                 std::path::Path::new(file)
@@ -574,7 +597,9 @@ async fn handle_video(
                 reqwest::Body::wrap_stream(ReaderStream::new(fh))
             };
 
-            stream.upload_video(*library_id, &video.guid, body).await?;
+            stream
+                .upload_video(*library_id, &video.guid, body, &upload_options)
+                .await?;
 
             progress::finish_with_message(
                 pb.as_ref(),

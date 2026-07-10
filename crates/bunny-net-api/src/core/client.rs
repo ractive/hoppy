@@ -14,9 +14,9 @@ use super::types::{
     CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord, DnsRecordScanResult,
     DnsRecordScanTrigger, DnsSecDsRecord, DnsZone, DnsZoneStatistics, OptimizerStatistics,
     OriginShieldQueueStatistics, PaginatedList, PullZone, PurgeCache, SafeHopStatistics,
-    StorageZone, StorageZoneStatistics, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
-    UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
-    VideoLibraryTranscribingStatistics,
+    StatisticsQuery, StorageZone, StorageZoneStatistics, TriggerDnsRecordScan, UpdateDnsRecord,
+    UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
+    VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -195,9 +195,19 @@ impl CoreClient {
     /// Purge a single URL from the CDN cache.
     ///
     /// This is a global purge — it does not target a specific Pull Zone.
-    pub async fn purge_url(&self, url: &str) -> Result<()> {
+    ///
+    /// Set `exact_path` to purge only the exact URL rather than treating it as
+    /// a directory prefix, and `is_async` to return immediately without waiting
+    /// for the purge to propagate across the edge.
+    pub async fn purge_url(&self, url: &str, exact_path: bool, is_async: bool) -> Result<()> {
         let endpoint = format!("{}/purge", self.base_url);
-        let rb = self.auth(self.http.post(&endpoint)).query(&[("url", url)]);
+        let mut rb = self.auth(self.http.post(&endpoint)).query(&[("url", url)]);
+        if exact_path {
+            rb = rb.query(&[("exactPath", "true")]);
+        }
+        if is_async {
+            rb = rb.query(&[("async", "true")]);
+        }
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
     }
@@ -804,26 +814,50 @@ impl CoreClient {
     // -----------------------------------------------------------------------
 
     /// Fetch account-level statistics.
-    pub async fn get_statistics(
-        &self,
-        date_from: Option<&str>,
-        date_to: Option<&str>,
-        pull_zone: Option<i64>,
-        hourly: bool,
-    ) -> Result<AccountStatistics> {
+    ///
+    /// See [`StatisticsQuery`] for the full set of filters and chart-series
+    /// selectors accepted by `GET /statistics`.
+    pub async fn get_statistics(&self, query: &StatisticsQuery<'_>) -> Result<AccountStatistics> {
         let url = format!("{}/statistics", self.base_url);
         let mut rb = self.auth(self.http.get(&url));
-        if let Some(v) = date_from {
+        if let Some(v) = query.date_from {
             rb = rb.query(&[("dateFrom", v)]);
         }
-        if let Some(v) = date_to {
+        if let Some(v) = query.date_to {
             rb = rb.query(&[("dateTo", v)]);
         }
-        if let Some(v) = pull_zone {
+        if let Some(v) = query.pull_zone {
             rb = rb.query(&[("pullZone", v.to_string())]);
         }
-        if hourly {
+        if let Some(v) = query.server_zone_id {
+            rb = rb.query(&[("serverZoneId", v.to_string())]);
+        }
+        if query.hourly {
             rb = rb.query(&[("hourly", "true")]);
+        }
+        if query.load_errors {
+            rb = rb.query(&[("loadErrors", "true")]);
+        }
+        if query.load_origin_response_times {
+            rb = rb.query(&[("loadOriginResponseTimes", "true")]);
+        }
+        if query.load_origin_traffic {
+            rb = rb.query(&[("loadOriginTraffic", "true")]);
+        }
+        if query.load_requests_served {
+            rb = rb.query(&[("loadRequestsServed", "true")]);
+        }
+        if query.load_bandwidth_used {
+            rb = rb.query(&[("loadBandwidthUsed", "true")]);
+        }
+        if query.load_origin_shield_bandwidth {
+            rb = rb.query(&[("loadOriginShieldBandwidth", "true")]);
+        }
+        if query.load_geographic_traffic_distribution {
+            rb = rb.query(&[("loadGeographicTrafficDistribution", "true")]);
+        }
+        if query.load_user_balance_history {
+            rb = rb.query(&[("loadUserBalanceHistory", "true")]);
         }
         let response = self.send(rb).await?;
         self.handle_response(response).await
