@@ -261,23 +261,6 @@ pub struct VideoUploadOptions {
     pub generate_moments: Option<bool>,
 }
 
-impl VideoUploadOptions {
-    /// Returns `true` when no option is set, so the caller can skip building
-    /// a query string entirely.
-    pub fn is_empty(&self) -> bool {
-        self.jit_enabled.is_none()
-            && self.enabled_resolutions.is_none()
-            && self.enabled_output_codecs.is_none()
-            && self.transcribe_enabled.is_none()
-            && self.transcribe_languages.is_none()
-            && self.source_language.is_none()
-            && self.generate_title.is_none()
-            && self.generate_description.is_none()
-            && self.generate_chapters.is_none()
-            && self.generate_moments.is_none()
-    }
-}
-
 /// Request body for `POST /library/{id}/videos/{videoId}` — update a video.
 ///
 /// All fields are optional; only non-`None` values are serialised.
