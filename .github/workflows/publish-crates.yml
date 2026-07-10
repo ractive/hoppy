@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   publish:
-    uses: ractive/release-workflows/.github/workflows/publish-crates.yml@v0.1.1
+    uses: ractive/release-workflows/.github/workflows/publish-crates.yml@v0.1.2
     secrets: inherit
     with:
       publish-crates: bunny-net-api,bunny-syslog-receiver,hoppy-cli
