@@ -6,7 +6,7 @@ tags:
   - iteration
   - api-coverage
   - pull-zone
-status: in-progress
+status: completed
 branch: iter-74/pull-zone-body-completeness
 priority: 3
 related:
