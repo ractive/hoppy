@@ -120,8 +120,9 @@ lines in text mode, a `"hints"` array in the JSON envelope). Read and follow the
 concrete next commands to explore deeper. Use `--no-hints` to suppress them, or `--jq` which
 suppresses hints automatically.
 
-Pipe through `--jq` to reshape output into anything — dashboards, burndowns, reports
-(requires JSON format — do not combine with `--format text`):
+Pipe through `--jq` to reshape output into anything — dashboards, burndowns, reports.
+`--jq` requires JSON output; piping naturally produces JSON, so `--jq` works without
+an explicit `--format json` in most contexts:
 
 ```bash
 hyalo find --property status=in-progress --fields tasks \
@@ -129,6 +130,35 @@ hyalo find --property status=in-progress --fields tasks \
 ```
 
 **Run `hyalo --help` and `hyalo <command> --help` to learn the full API.**
+
+## Always run hyalo from the project root
+
+Hyalo reads `dir` from `.hyalo.toml` at the project root, so it already knows where the
+knowledgebase lives. You never need to `cd` anywhere or use absolute paths — and doing so
+is actively wrong.
+
+- **ALWAYS run hyalo from the project root** (the directory that contains `.hyalo.toml`).
+  Never `cd` into the configured `dir` first.
+- **ALWAYS pass `--file` paths relative to the configured `dir`** (e.g.
+  `iterations/iteration-17.md`). Never pass an absolute path.
+
+Worked example:
+
+```bash
+# ✅ Right (from project root — hyalo resolves the path against `dir`)
+hyalo set iterations/iteration-17.md --property status=in-progress
+
+# ❌ Wrong (cd into the configured dir — hyalo gets confused about the vault root)
+cd hoppy-knowledgebase && hyalo set iterations/iteration-17.md --property status=in-progress
+
+# ❌ Wrong (absolute path — bypasses the configured `dir` entirely)
+hyalo set --file /Users/me/proj/hoppy-knowledgebase/iterations/iteration-17.md --property status=in-progress
+```
+
+Hyalo emits a stderr warning when it detects either anti-pattern (running from inside the
+configured `dir`, or being passed an absolute `--file` path). **Treat that warning as a
+correction signal**: stop, move back to the project root, and rewrite the path as a
+vault-relative one before continuing.
 
 ## Setup (run once per project)
 
@@ -148,7 +178,7 @@ ALWAYS run `which hyalo` as your very first step. Do not skip this.
 conversations use hyalo without needing this skill:
 
 ```
-Use `hyalo` CLI (not Read/Grep/Glob) for all markdown knowledgebase operations (frontmatter, tags, tasks, search). Run `hyalo --help` for usage. Use `--format text` for compact LLM-friendly output.
+Use `hyalo` CLI (not Read/Grep/Glob) for all markdown knowledgebase operations (frontmatter, tags, tasks, search). Run `hyalo --help` for usage. Output format auto-detects (text on terminals, json when piped); pass `--format text`/`--format json` to override.
 ```
 
 This one-line instruction saves tokens in every future conversation.
@@ -211,14 +241,16 @@ hyalo read my-note.md --lines 1:20                 # line range (1-based)
 hyalo read my-note.md --frontmatter                # include YAML frontmatter
 ```
 
-Start with `hyalo summary --format text` to orient yourself in a new directory.
+Start with `hyalo summary` to orient yourself in a new directory (text output is the
+default in interactive terminals).
 
 ## Available commands
 
 - **find** — BM25 ranked full-text search (AND, OR, phrase, negation) or regex; filter by property, tag, task status
 - **read** — extract body content, a section, or line range
 - **summary** — compact fixed-size orientation view: file counts, tags, tasks, orphans, dead-ends, links, schema lint count (use `--depth N` to override directory depth)
-- **lint** — validate frontmatter against the `[schema]` in `.hyalo.toml` (read-only); exit 1 when errors found
+- **lint** — validate frontmatter against the `[schema]` and lint markdown body with mdbook-lint MD001..MD059 + HYALO001/002 native rules; supports `--rule`, `--rule-prefix`, `--detailed`, `--max-per-rule`, `--strict` (promotes missing-type and undeclared-property warnings to errors), `--fix`, `--fix-rule`; exit 1 when errors found
+- **lint-rules** — manage which lint rules are enabled and their severity in `.hyalo.toml` (list, show, set, remove)
 - **types** — manage `[schema.types.*]` entries in `.hyalo.toml` (list, show, set, remove)
 - **properties summary** — list property names and types
 - **properties rename** — bulk rename a property key across files (`--from old --to new`)
@@ -239,30 +271,33 @@ Start with `hyalo summary --format text` to orient yourself in a new directory.
 
 ## Schema & Lint
 
-Hyalo supports optional frontmatter schema validation. Define schemas in `.hyalo.toml` under `[schema.*]` sections, then run `hyalo lint` to validate files.
+`hyalo lint` runs two passes in one invocation:
+
+1. **Frontmatter** — validates against the `[schema]` block in `.hyalo.toml`. No-op when no schema is configured.
+2. **Markdown body** — stock mdbook-lint rules (MD001..MD059) plus two HYALO native rules:
+   - **HYALO001** — bare `[]` should be `- [ ]` (autofixable)
+   - **HYALO002** — `status: completed` requires all task checkboxes ticked (fires only when `[schema.types.*].properties.status` is declared as an enum containing `"completed"`)
 
 ```bash
-# Lint the whole vault
-hyalo lint
+hyalo lint                               # whole vault, summary mode
+hyalo lint iterations/iter-42.md         # one file
+hyalo lint --fix --dry-run               # preview autofixes
+hyalo lint --fix                         # apply
+```
 
-# Lint a single file
-hyalo lint iterations/iteration-42-feature.md
+Use `hyalo lint --help` for narrowing flags (`--rule`, `--rule-prefix`, `--detailed`, `--max-per-rule`, `--fix-rule`, etc.). The snapshot index does **not** accelerate the body pass.
 
-# Lint with a glob
-hyalo lint --glob "iterations/*.md"
+**Strict mode:** `hyalo lint --strict` (or `[lint] strict = true` in `.hyalo.toml`)
+promotes the "no `type` property" and "undeclared property in frontmatter" warnings to
+errors, so lint exits non-zero on those cases. Useful in CI and `/hyalo-tidy` to fail
+fast on schema drift.
 
-# Lint only files matching a named type's filename template
-hyalo lint --type iteration
+**Tune which rules run with `hyalo lint-rules`** (list / show / set / remove). Reach for it when a rule is too noisy on your KB style — disable it or change its severity rather than living with the warnings:
 
-# JSON output
-hyalo lint --format json
-
-# Limit output to first N files with violations
-hyalo lint --limit 10
-
-# Auto-fix: defaults, enum typos, date format, type inference, comma-joined tags
-hyalo lint --fix --dry-run
-hyalo lint --fix
+```bash
+hyalo lint-rules list                          # see what's enabled
+hyalo lint-rules set MD013 --enabled false     # turn one off
+hyalo lint-rules set HYALO001 --severity error # promote to error
 ```
 
 Lint also warns about comma-joined tags (e.g. `tags: ["cli,ux"]` instead of two list
@@ -296,7 +331,9 @@ type = "string"
 pattern = "^iter-\\d+/"
 ```
 
-Property types: `string` (optional `pattern` regex), `date` (YYYY-MM-DD), `number`, `boolean`, `list`, `enum` (with `values`).
+Property types: `string` (optional `pattern` regex), `date` (YYYY-MM-DD), `datetime` (YYYY-MM-DDThh:mm:ss), `number`, `boolean`, `list`, `string-list` (optional `item_pattern` regex), `enum` (with `values`).
+
+**`required` empty-value semantics:** a required property whose value is YAML null (`tags: ~`) or an empty array (`tags: []`) is an error (`required property "tags" must not be empty`). Vacuous values convey no information for a required field, so they're treated as semantically equivalent to absent. This fires regardless of declared constraint type. Atomic-typed required properties (`string`, `date`, `number`, ...) only need to be present — an empty string or zero still satisfies them. So `required = ["tags"]` + `type = "list"` is the idiomatic way to enforce non-empty tags; no separate `min_items` knob exists.
 
 When no `[schema]` block exists, lint exits 0 with zero violations (backwards compatible).
 
@@ -338,7 +375,7 @@ They compose: CLI flags passed alongside `--view` extend or override the saved f
 
 **Before constructing a complex `hyalo find`, check if a matching view exists:**
 ```bash
-hyalo views list --format text
+hyalo views list
 ```
 
 **If you run the same multi-filter find command 3+ times, save it as a view:**
@@ -359,14 +396,20 @@ hyalo suggests saving non-trivial queries as views in its hint output — follow
 - `hyalo views remove <name>` — delete a view
 - `hyalo find --view <name> [extra filters...]` — use a view, optionally with overrides
 
-## The --format text flag
+## Output format
 
-Use `--format text` for compact, low-token output designed for LLM consumption — less noise
-than JSON, fewer tokens. Reach for it when orienting yourself or scanning results.
+Output format is auto-detected — `text` for interactive terminals, `json` when piped.
+Pass `--format text` or `--format json` to override, or set a default in `.hyalo.toml`
+(`format = "text"` / `format = "json"`). An explicit `--format` flag always wins.
 
-**`--format text` and `--jq` are mutually exclusive.** `--jq` operates on JSON, so it requires
-the default JSON format. If you need to filter/reshape output, use `--jq` (without `--format text`).
-If you just need a quick readable overview, use `--format text` (without `--jq`).
+`text` is the compact, low-token format designed for LLM consumption — less noise than
+JSON, fewer tokens. Use it when orienting yourself or scanning results.
+
+**`--format text` and `--jq` are mutually exclusive.** `--jq` operates on JSON, so it
+requires JSON output. Piping naturally produces JSON, so `--jq` works without an
+explicit flag in most contexts. If you need to filter/reshape output, just pipe through
+`--jq`. If you want a readable overview, rely on the auto-default (or pass
+`--format text` explicitly when piping to a pager).
 
 ## The backlinks command
 
@@ -385,9 +428,10 @@ hyalo backlinks iterations/iteration-37-bulk-mutations.md
 hyalo backlinks iterations/iteration-37-bulk-mutations.md --format json
 ```
 
-Supports `--format text` (default, compact), `--format json`, and `--limit N` (default: 50,
-use `--limit 0` for all). Useful for impact analysis (what depends on this file?), finding
-orphan pages, and navigating link structure.
+Supports `--format text` (compact), `--format json`, and `--limit N` (default: 50,
+use `--limit 0` for all). Format auto-detects when not passed. Useful for impact
+analysis (what depends on this file?), finding orphan pages, and navigating link
+structure.
 
 ## Default output limits
 
@@ -410,12 +454,12 @@ default_limit = 100   # 0 = unlimited
 queries.** The index makes property/tag queries 10-15x faster (e.g. ~80ms vs ~1.5s on a
 14K-file vault). Without it, every query scans every file from disk.
 
-**Rule of thumb:** run `hyalo summary --format text` first. If it reports more than 500 files,
+**Rule of thumb:** run `hyalo summary` first. If it reports more than 500 files,
 immediately create an index before proceeding with any analysis.
 
 ```bash
 # Step 1: Check vault size
-hyalo summary --format text
+hyalo summary
 
 # Step 2: Create index if >500 files (one scan, reused by all subsequent queries)
 hyalo create-index

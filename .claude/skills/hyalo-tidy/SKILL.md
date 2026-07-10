@@ -38,7 +38,7 @@ Get the lay of the land and create a snapshot index for fast repeated queries.
 
 ```bash
 # 1. High-level overview (baseline for the final health dashboard)
-hyalo summary --format text
+hyalo summary
 
 # 2. Create snapshot index (one scan, reused by all subsequent queries)
 hyalo create-index
@@ -57,7 +57,7 @@ avoid repeated disk scans. For complex reshaping, combine hyalo filtering with `
 
 Also grab the tag vocabulary for inconsistency detection:
 ```bash
-hyalo tags summary --format text --index
+hyalo tags summary --index
 ```
 
 ## Phase 2 — Gather recent signal
@@ -98,8 +98,8 @@ fi
 
 If found, query it with hyalo (memory files are outside the vault, so no --index here):
 ```bash
-hyalo --dir "$MEMORY_DIR" find --property type=project --format text
-hyalo --dir "$MEMORY_DIR" find --property type=feedback --format text
+hyalo --dir "$MEMORY_DIR" find --property type=project
+hyalo --dir "$MEMORY_DIR" find --property type=feedback
 ```
 
 Look for:
@@ -119,13 +119,14 @@ git log --diff-filter=A --name-only --since="4 weeks ago" -- "hoppy-knowledgebas
 All queries below use `--index` — no additional disk scans needed.
 
 ### Schema & lint
-Check if type schemas are defined, and run lint to detect frontmatter violations:
+Check if type schemas are defined, then run lint in strict mode. `hyalo lint` covers
+both frontmatter schema *and* the markdown body (stock mdbook-lint rules + HYALO native
+rules for things like bare `[]` checkboxes and `status: completed` with open tasks).
+`--strict` promotes the "no `type` property" and "undeclared property in frontmatter"
+warnings to errors so a tidy pass fails fast on schema drift:
 ```bash
-# Are any types defined?
-hyalo types list --format text
-
-# Run lint to detect schema violations (missing required, wrong type, bad enum, etc.)
-hyalo lint --format text --index
+hyalo types list
+hyalo lint --strict --index
 ```
 
 If `hyalo types list` returns zero types but files have a `type` property, propose
@@ -134,7 +135,10 @@ values, then suggest `hyalo types set <name> --required ...`
 commands for the user's most common document types. Don't create them unilaterally —
 report the suggestion in Phase 5.
 
-If lint reports fixable violations, note the counts for Phase 4.
+Note the lint summary's per-rule counts. If **one rule dominates the noise** (e.g.
+MD013 line-length on prose-heavy KBs), that's a signal the rule may not fit the KB —
+flag it for Phase 5 as a candidate to disable via `hyalo lint-rules`. Track fixable
+counts for Phase 4.
 
 Lint also validates `[views.*]` in `.hyalo.toml`. A view whose only narrowing key is
 `fields` (display columns, not a filter) is surfaced as a warning — suggest adding an
@@ -144,7 +148,7 @@ one in Phase 5.
 ### Broken links
 ```bash
 # Dry-run shows broken links with proposed fixes and confidence scores
-hyalo links fix --index --format text
+hyalo links fix --index
 ```
 This categorizes links as **fixable** (fuzzy match found) vs **unfixable** (no match).
 Note the counts for the health dashboard. Actual fixes happen in Phase 4.
@@ -201,8 +205,10 @@ abbreviations (`perf`/`performance`). The canonical form should be the one used 
 more files.
 
 ### Task completion vs status mismatch
+The `HYALO002` rule from the lint pass already flags `status: completed` files with
+open tasks (fires only when `[schema.types.*].properties.status` is declared as an enum
+containing `"completed"`). If you want a per-file breakdown with open/total counts, use the view:
 ```bash
-# Completed items with unchecked tasks — systemic or one-off?
 hyalo find --view completed-with-todos --index --jq '.results | map({file, open: ([.tasks[] | select(.status != "x")] | length), total: (.tasks | length)})'
 ```
 If many completed items have unchecked tasks, this is a workflow pattern — note it once
@@ -218,17 +224,19 @@ in-place after each file write, so it stays current for subsequent queries. No n
 drop the index before making changes. Only drop it at the very end (Phase 5).
 
 ### Fix lint violations
-If lint reported fixable violations in Phase 3, auto-fix them:
+If lint reported fixable violations in Phase 3, auto-fix them. `--fix` covers both
+passes — frontmatter (defaults, typos, dates, types) and body (e.g. `HYALO001` bare
+brackets, trailing whitespace). Always preview with `--dry-run` first:
 ```bash
-# Preview what will be fixed
-hyalo lint --fix --dry-run --format text --index
-
-# Apply fixes (inserts defaults, corrects enum typos, normalizes dates, infers types)
-hyalo lint --fix --format text --index
+hyalo lint --fix --dry-run --index
+hyalo lint --fix --index
 ```
 
-Review the dry-run output first. Unfixable violations (e.g. missing required properties
-without defaults) are reported in Phase 5 for human attention.
+If you only want to fix specific rules (e.g. body fixes only, leaving frontmatter
+alone), use `--fix-rule` or `--rule-prefix HYALO` — see `hyalo lint --help`.
+
+Unfixable violations (missing required properties, open tasks under `HYALO002`) are
+reported in Phase 5 for human attention.
 
 ### Fix broken links
 Use `hyalo links fix` to auto-repair broken links. It uses fuzzy matching to find the
@@ -236,10 +244,10 @@ correct target (handles moves to `done/`, case changes, extension mismatches, et
 
 ```bash
 # Preview what will be fixed
-hyalo links fix --format text --index
+hyalo links fix --index
 
 # Apply fixes
-hyalo links fix --apply --format text --index
+hyalo links fix --apply --index
 ```
 
 Review the dry-run output first. For any links it can't resolve (reported as unfixable),
@@ -291,10 +299,14 @@ One line per change with reasoning:
 Things you detected but couldn't (or shouldn't) fix unilaterally. Keep it concise —
 one line per issue with enough context to act on.
 
+If a single lint rule produced an outsized share of the noise (or if a rule fired only
+on legitimate exceptions), suggest tuning it via `hyalo lint-rules` rather than
+silently leaving the warnings in place.
+
 ### KB health dashboard
-Re-run `hyalo summary --format text` (fresh scan after mutations — no `--index`) and
-compare with Phase 1 baseline. Report the delta: statuses changed, links fixed, tags
-normalized, files moved.
+Re-run `hyalo summary` (fresh scan after mutations — no `--index`) and compare with
+Phase 1 baseline. Report the delta: statuses changed, links fixed, tags normalized,
+files moved.
 
 ## Ground rules
 

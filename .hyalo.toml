@@ -3,88 +3,21 @@ dir = "hoppy-knowledgebase"
 [schema.default]
 required = ["title", "type"]
 
-# Iteration plans — one per branch, used to track scoped work
-[schema.types.iteration]
-required = ["title", "type", "date", "status", "branch", "tags"]
-filename-template = "iterations/iteration-{n}-{slug}.md"
-
-[schema.types.iteration.defaults]
-status = "planned"
-date = "$today"
-type = "iteration"
-
-[schema.types.iteration.properties.status]
-type = "enum"
-values = ["planned", "in-progress", "completed", "superseded", "shelved", "deferred"]
-
-[schema.types.iteration.properties.branch]
-type = "string"
-pattern = "^iter-\\d+(\\.\\d+)?[a-z]*/"
-
-[schema.types.iteration.properties.date]
-type = "date"
-
-[schema.types.iteration.properties.tags]
-type = "list"
-
-[schema.types.iteration.properties.priority]
-type = "number"
-
-[schema.types.iteration.properties.related]
-type = "list"
-
-[schema.types.iteration.properties.supersedes]
-type = "string"
-
-[schema.types.iteration.properties.superseded-by]
-type = "string"
-
-[schema.types.iteration.properties.depends-on]
-type = "string"
-
-# Research notes — investigations, gap analyses, evaluations
-[schema.types.research]
-required = ["title", "type", "date", "status"]
-
-[schema.types.research.properties.date]
-type = "date"
-
-[schema.types.research.properties.status]
-type = "enum"
-values = ["active", "archived", "reference", "completed", "superseded"]
-
-[schema.types.research.properties.related]
-type = "list"
-
-[schema.types.research.properties.supersedes]
-type = "string"
-
-[schema.types.research.properties.source]
-type = "string"
-
-[schema.types.research.properties.origin]
-type = "string"
-
-# Backlog items — friction points, deferred work, follow-ups
 [schema.types.backlog]
 required = ["title", "type", "date", "status"]
+
+[schema.types.backlog.properties.blocked-by]
+type = "string"
 
 [schema.types.backlog.properties.date]
 type = "date"
 
-[schema.types.backlog.properties.status]
-type = "enum"
-values = ["planned", "in-progress", "completed", "superseded", "wont-do", "deferred", "shelved", "not-a-bug", "open", "resolved"]
+[schema.types.backlog.properties.origin]
+type = "string"
 
 [schema.types.backlog.properties.priority]
 type = "enum"
 values = ["low", "medium", "high", "critical"]
-
-[schema.types.backlog.properties.origin]
-type = "string"
-
-[schema.types.backlog.properties.blocked-by]
-type = "string"
 
 [schema.types.backlog.properties.resolved-by]
 type = "string"
@@ -92,7 +25,20 @@ type = "string"
 [schema.types.backlog.properties.resolved-in]
 type = "string"
 
-# General docs — playbooks, guides, command trees
+[schema.types.backlog.properties.status]
+type = "enum"
+values = ["planned", "in-progress", "completed", "superseded", "wont-do", "deferred", "shelved", "not-a-bug", "open", "resolved"]
+
+[schema.types.decision]
+required = ["title", "type", "date", "status"]
+
+[schema.types.decision.properties.date]
+type = "date"
+
+[schema.types.decision.properties.status]
+type = "enum"
+values = ["active", "archived", "reference"]
+
 [schema.types.docs]
 required = ["title", "type", "date", "status"]
 
@@ -103,24 +49,65 @@ type = "date"
 type = "enum"
 values = ["active", "archived", "draft"]
 
-# Decision log entries
-[schema.types.decision]
-required = ["title", "type", "date", "status"]
+[schema.types.iteration]
+filename-template = "iterations/iteration-{n}-{slug}.md"
+required = ["title", "type", "date", "status", "branch", "tags"]
 
-[schema.types.decision.properties.status]
-type = "enum"
-values = ["active", "archived", "reference"]
+[schema.types.iteration.defaults]
+date = "$today"
+status = "planned"
+type = "iteration"
 
-[schema.types.decision.properties.date]
+[schema.types.iteration.properties.branch]
+pattern = '^iter-\d+(\.\d+)?[a-z]*/'
+type = "string"
+
+[schema.types.iteration.properties.date]
 type = "date"
 
-# Saved views — useful greps for working the knowledgebase
-[views.planned]
-properties = ["status=planned"]
+[schema.types.iteration.properties.depends-on]
+type = "string"
 
-[views.stale-in-progress]
-fields = ["tasks"]
-properties = ["status=in-progress"]
+[schema.types.iteration.properties.priority]
+type = "number"
+
+[schema.types.iteration.properties.related]
+type = "list"
+
+[schema.types.iteration.properties.status]
+type = "enum"
+values = ["planned", "in-progress", "completed", "superseded", "shelved", "deferred"]
+
+[schema.types.iteration.properties.superseded-by]
+type = "string"
+
+[schema.types.iteration.properties.supersedes]
+type = "string"
+
+[schema.types.iteration.properties.tags]
+type = "list"
+
+[schema.types.research]
+required = ["title", "type", "date", "status"]
+
+[schema.types.research.properties.date]
+type = "date"
+
+[schema.types.research.properties.origin]
+type = "string"
+
+[schema.types.research.properties.related]
+type = "list"
+
+[schema.types.research.properties.source]
+type = "string"
+
+[schema.types.research.properties.status]
+type = "enum"
+values = ["active", "archived", "reference", "completed", "superseded"]
+
+[schema.types.research.properties.supersedes]
+type = "string"
 
 [views.completed-with-todos]
 fields = ["tasks"]
@@ -139,3 +126,10 @@ task = "todo"
 [views.orphans]
 fields = ["backlinks"]
 orphan = true
+
+[views.planned]
+properties = ["status=planned"]
+
+[views.stale-in-progress]
+fields = ["tasks"]
+properties = ["status=in-progress"]
