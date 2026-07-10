@@ -168,6 +168,21 @@ impl ContainersClient {
         self.handle_response(resp).await
     }
 
+    /// Get an application usage summary.
+    ///
+    /// `GET /apps/{appId}/summary`
+    ///
+    /// The bunny.net spec documents this operation ("Get Application Usage
+    /// Summary") without a response schema, so the raw JSON is returned as a
+    /// [`serde_json::Value`] rather than a typed struct. Live-verify the shape
+    /// before adding a typed model (see api-coverage research §4.5).
+    pub async fn get_application_summary(&self, app_id: &str) -> Result<serde_json::Value> {
+        let resp = self
+            .execute(self.auth(self.http.get(self.url(&format!("/apps/{app_id}/summary")))))
+            .await?;
+        self.handle_response(resp).await
+    }
+
     /// Get application statistics (time-series charts).
     ///
     /// `GET /apps/{appId}/statistics`
@@ -722,6 +737,27 @@ impl ContainersClient {
         self.handle_response(resp).await
     }
 
+    /// Get the image configuration (labels, exposed ports, entrypoint) for a
+    /// container image tag.
+    ///
+    /// `POST /registries/image-config`
+    ///
+    /// The bunny.net spec documents this operation without a response schema,
+    /// so the raw JSON is returned as a [`serde_json::Value`]. Live-verify the
+    /// shape before adding a typed model.
+    pub async fn get_image_config(
+        &self,
+        body: &GetContainerImageDigestRequest,
+    ) -> Result<serde_json::Value> {
+        let resp = self
+            .execute(
+                self.auth(self.http.post(self.url("/registries/image-config")))
+                    .json(body),
+            )
+            .await?;
+        self.handle_response(resp).await
+    }
+
     /// List tags for a container image.
     ///
     /// `POST /registries/tags`
@@ -840,6 +876,20 @@ impl ContainersClient {
             req = req.query(&[("limit", l.to_string())]);
         }
         let resp = self.execute(req).await?;
+        self.handle_response(resp).await
+    }
+
+    /// List node IP addresses in plain form.
+    ///
+    /// `GET /nodes/plain`
+    ///
+    /// This spec-only operation has no documented response schema, so the raw
+    /// JSON is returned as a [`serde_json::Value`]. Live-verify before adding a
+    /// typed model.
+    pub async fn list_nodes_plain(&self) -> Result<serde_json::Value> {
+        let resp = self
+            .execute(self.auth(self.http.get(self.url("/nodes/plain"))))
+            .await?;
         self.handle_response(resp).await
     }
 

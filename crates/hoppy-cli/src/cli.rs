@@ -4534,6 +4534,11 @@ pub enum ContainerAppAction {
         /// via a follow-up `template env --replace-all` after creation.
         #[arg(long = "env")]
         env: Vec<String>,
+        /// Declare a persistent volume as NAME:SIZE_GB (e.g. `data:10`).
+        /// Repeatable. Volumes can only be created here or in `app update` —
+        /// mount them with `template add --volume-mount NAME:/path`.
+        #[arg(long = "volume", value_name = "NAME:SIZE_GB")]
+        volumes: Vec<String>,
         /// Return only `{"id": "..."}` (legacy behaviour). By default the
         /// full application document is returned for `--format json`.
         #[arg(long)]
@@ -4556,6 +4561,17 @@ pub enum ContainerAppAction {
         /// New maximum instances
         #[arg(long)]
         max: Option<i32>,
+        /// Declare a persistent volume as NAME:SIZE_GB (e.g. `data:10`).
+        /// Repeatable. Sent as the full `volumes` array on PATCH — pass every
+        /// volume you want to keep, as omitted volumes may be dropped.
+        #[arg(long = "volume", value_name = "NAME:SIZE_GB")]
+        volumes: Vec<String>,
+    },
+    /// Show an application usage summary (raw JSON; schema-less upstream)
+    Summary {
+        /// Container app ID
+        #[arg(long)]
+        id: String,
     },
     /// Deploy an application
     Deploy {
@@ -4685,6 +4701,38 @@ pub enum ContainerTemplateAction {
         /// Registry ID
         #[arg(long)]
         registry_id: String,
+        /// Pin the image to a content digest (e.g. `sha256:abcd…`)
+        #[arg(long)]
+        image_digest: Option<String>,
+        /// Image pull policy: `Always` or `IfNotPresent`
+        #[arg(long)]
+        pull_policy: Option<String>,
+        /// Entrypoint command (single string form)
+        #[arg(long)]
+        command: Option<String>,
+        /// Entrypoint command as an argv array element. Repeatable — overrides
+        /// `--command` when provided.
+        #[arg(long = "command-array")]
+        command_array: Vec<String>,
+        /// Entrypoint arguments (single string form)
+        #[arg(long)]
+        arguments: Option<String>,
+        /// Entrypoint argument as an array element. Repeatable — overrides
+        /// `--arguments` when provided.
+        #[arg(long = "arguments-array")]
+        arguments_array: Vec<String>,
+        /// Working directory for the entrypoint
+        #[arg(long)]
+        working_directory: Option<String>,
+        /// Path to a JSON file describing health probes (startup/readiness/
+        /// liveness). See `hoppy container template add --help` for the shape.
+        #[arg(long = "probes-json", value_name = "FILE")]
+        probes_json: Option<String>,
+        /// Mount a volume as NAME:MOUNT_PATH (e.g. `data:/var/lib/data`).
+        /// Repeatable. The volume must exist (create it via `app create
+        /// --volume` or `app update --volume`).
+        #[arg(long = "volume-mount", value_name = "NAME:MOUNT_PATH")]
+        volume_mounts: Vec<String>,
     },
     /// Update a container template
     Update {
@@ -4709,6 +4757,37 @@ pub enum ContainerTemplateAction {
         /// New registry ID
         #[arg(long)]
         registry_id: Option<String>,
+        /// Pin the image to a content digest (e.g. `sha256:abcd…`)
+        #[arg(long)]
+        image_digest: Option<String>,
+        /// Image pull policy: `Always` or `IfNotPresent`
+        #[arg(long)]
+        pull_policy: Option<String>,
+        /// Entrypoint command (single string form)
+        #[arg(long)]
+        command: Option<String>,
+        /// Entrypoint command as an argv array element. Repeatable — overrides
+        /// `--command` when provided.
+        #[arg(long = "command-array")]
+        command_array: Vec<String>,
+        /// Entrypoint arguments (single string form)
+        #[arg(long)]
+        arguments: Option<String>,
+        /// Entrypoint argument as an array element. Repeatable — overrides
+        /// `--arguments` when provided.
+        #[arg(long = "arguments-array")]
+        arguments_array: Vec<String>,
+        /// Working directory for the entrypoint
+        #[arg(long)]
+        working_directory: Option<String>,
+        /// Path to a JSON file describing health probes (startup/readiness/
+        /// liveness).
+        #[arg(long = "probes-json", value_name = "FILE")]
+        probes_json: Option<String>,
+        /// Mount a volume as NAME:MOUNT_PATH (e.g. `data:/var/lib/data`).
+        /// Repeatable. Sent as the full `volumeMounts` array on PATCH.
+        #[arg(long = "volume-mount", value_name = "NAME:MOUNT_PATH")]
+        volume_mounts: Vec<String>,
     },
     /// Delete a container template
     Delete {
@@ -4795,18 +4874,40 @@ pub enum ContainerEndpointAction {
         /// Display name for the endpoint
         #[arg(long)]
         name: String,
-        /// Container port to expose
-        #[arg(long)]
-        container_port: i32,
-        /// Publicly exposed port
+        /// Container port to expose (single mapping). Use `--port-mapping`
+        /// instead to declare several mappings on an anycast endpoint.
+        #[arg(long, required_unless_present = "port_mappings")]
+        container_port: Option<i32>,
+        /// Publicly exposed port (pairs with `--container-port`)
         #[arg(long)]
         exposed_port: Option<i32>,
+        /// Port mapping as CONTAINER[:EXPOSED[:PROTO,...]] (e.g.
+        /// `8080:80:Tcp` or `53::Udp`). Repeatable — anycast endpoints accept
+        /// several; CDN accepts exactly one. Protocols: Tcp, Udp, Sctp.
+        #[arg(long = "port-mapping", value_name = "CONTAINER[:EXPOSED[:PROTO]]")]
+        port_mappings: Vec<String>,
         /// Use CDN endpoint type
         #[arg(long, conflicts_with = "anycast")]
         cdn: bool,
         /// Use Anycast endpoint type
         #[arg(long, conflicts_with = "cdn")]
         anycast: bool,
+        /// Enable SSL on a CDN endpoint (default: leave unset)
+        #[arg(long)]
+        ssl: bool,
+        /// Attach the endpoint to an existing Pull Zone by ID (CDN only)
+        #[arg(long)]
+        pull_zone_id: Option<i32>,
+        /// Enable sticky sessions (CDN only). Pair with `--sticky-header`.
+        #[arg(long)]
+        sticky: bool,
+        /// Sticky-session header to hash on (1-3, required when `--sticky`).
+        /// Repeatable.
+        #[arg(long = "sticky-header")]
+        sticky_headers: Vec<String>,
+        /// Sticky-session cookie name (CDN only)
+        #[arg(long)]
+        sticky_cookie: Option<String>,
     },
     /// Update an endpoint
     Update {
@@ -4819,18 +4920,38 @@ pub enum ContainerEndpointAction {
         /// Display name for the endpoint
         #[arg(long)]
         name: String,
-        /// Container port
-        #[arg(long)]
-        container_port: i32,
-        /// Publicly exposed port
+        /// Container port (single mapping). Use `--port-mapping` for several.
+        #[arg(long, required_unless_present = "port_mappings")]
+        container_port: Option<i32>,
+        /// Publicly exposed port (pairs with `--container-port`)
         #[arg(long)]
         exposed_port: Option<i32>,
+        /// Port mapping as CONTAINER[:EXPOSED[:PROTO,...]] (e.g.
+        /// `8080:80:Tcp`). Repeatable — anycast accepts several, CDN one.
+        #[arg(long = "port-mapping", value_name = "CONTAINER[:EXPOSED[:PROTO]]")]
+        port_mappings: Vec<String>,
         /// Use CDN endpoint type
         #[arg(long, conflicts_with = "anycast")]
         cdn: bool,
         /// Use Anycast endpoint type
         #[arg(long, conflicts_with = "cdn")]
         anycast: bool,
+        /// Enable SSL on a CDN endpoint (default: leave unset)
+        #[arg(long)]
+        ssl: bool,
+        /// Attach the endpoint to an existing Pull Zone by ID (CDN only)
+        #[arg(long)]
+        pull_zone_id: Option<i32>,
+        /// Enable sticky sessions (CDN only). Pair with `--sticky-header`.
+        #[arg(long)]
+        sticky: bool,
+        /// Sticky-session header to hash on (1-3, required when `--sticky`).
+        /// Repeatable.
+        #[arg(long = "sticky-header")]
+        sticky_headers: Vec<String>,
+        /// Sticky-session cookie name (CDN only)
+        #[arg(long)]
+        sticky_cookie: Option<String>,
     },
     /// Delete an endpoint
     Delete {
@@ -4944,6 +5065,27 @@ pub enum ContainerRegistryAction {
         #[arg(long)]
         id: i64,
     },
+    /// List container images in a registry
+    Images {
+        /// Registry ID
+        #[arg(long)]
+        registry_id: String,
+    },
+    /// Get the image configuration for a tag (raw JSON; schema-less upstream)
+    ImageConfig {
+        /// Registry ID
+        #[arg(long)]
+        registry_id: String,
+        /// Image name
+        #[arg(long)]
+        image_name: String,
+        /// Image namespace
+        #[arg(long)]
+        image_namespace: String,
+        /// Image tag
+        #[arg(long)]
+        tag: String,
+    },
     /// List tags for a container image
     ImageTags {
         /// Registry ID
@@ -5035,6 +5177,8 @@ pub enum ContainerNodeAction {
         #[arg(long)]
         all: bool,
     },
+    /// List node IP addresses in plain form (`GET /nodes/plain`, raw JSON)
+    Ips,
 }
 
 #[derive(Subcommand)]

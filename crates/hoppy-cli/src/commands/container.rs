@@ -10,13 +10,15 @@ use anyhow::{Context, Result, bail};
 use bunny_net_api::containers::{
     AddApplicationRequest, AddContainerRequest, AnycastEndpointRequest, AnycastIpProtocolVersion,
     AppListItem, AutoscalingSettings, CdnEndpointRequest, ContainerConfigSuggestions,
-    ContainerImage, ContainerImageTag, ContainerPortMappingRequest, ContainerRegistryRequest,
-    ContainersClient, CursorList, EndpointListItem, EndpointRequest, ErrorDetails,
-    GetContainerConfigSuggestionsRequest, GetContainerImageDigestRequest, Granularity,
-    ImageTagInfo, ListContainerImageTagsRequest, LogForwardingConfiguration, LogForwardingRequest,
-    LogForwardingType, PatchApplicationRequest, PatchContainerRequest, PatchVolumeRequest,
-    ProblemDetails, Region, RegionSettings, RegistryCredentials,
-    SearchPublicContainerImagesRequest, SyslogFormat, UpdateRegionSettingsRequest,
+    ContainerEntryPoint, ContainerImage, ContainerImageTag, ContainerPortMappingRequest,
+    ContainerProbes, ContainerRegistryRequest, ContainersClient, CursorList, EndpointListItem,
+    EndpointRequest, ErrorDetails, GetContainerConfigSuggestionsRequest,
+    GetContainerImageDigestRequest, Granularity, ImagePullPolicy, ImageTagInfo,
+    ListContainerImageTagsRequest, ListContainerImagesRequest, LogForwardingConfiguration,
+    LogForwardingRequest, LogForwardingType, PatchApplicationRequest, PatchContainerRequest,
+    PatchVolumeRequest, ProblemDetails, Protocol, Region, RegionSettings, RegistryCredentials,
+    SearchPublicContainerImagesRequest, StickySessionSettings, SyslogFormat,
+    UpdateRegionSettingsRequest, VolumeMountRequest, VolumeRequest,
 };
 use bunny_syslog_receiver::{
     BoreTunnel, LocalListener, LogEvent, NoopTunnel, Severity, StaticTunnel, Tunnel, spawn_receiver,
@@ -480,6 +482,219 @@ fn parse_env_pairs(pairs: &[String]) -> Result<HashMap<String, String>> {
     Ok(map)
 }
 
+/// Parse `NAME:SIZE_GB` volume specs into request bodies. Size must be a
+/// positive integer number of gigabytes.
+fn parse_volumes(specs: &[String]) -> Result<Vec<VolumeRequest>> {
+    specs
+        .iter()
+        .map(|spec| {
+            let (name, size_str) = spec.split_once(':').ok_or_else(|| {
+                anyhow::anyhow!("volume '{spec}' is not in NAME:SIZE_GB format (e.g. data:10)")
+            })?;
+            if name.is_empty() {
+                bail!("volume '{spec}' has an empty name");
+            }
+            let size: i32 = size_str
+                .parse()
+                .map_err(|_| anyhow::anyhow!("volume '{spec}': size must be an integer (GB)"))?;
+            if size <= 0 {
+                bail!("volume '{spec}': size must be a positive integer (GB)");
+            }
+            Ok(VolumeRequest {
+                name: name.to_owned(),
+                size,
+            })
+        })
+        .collect()
+}
+
+/// Parse `NAME:MOUNT_PATH` volume-mount specs. Splits on the first colon so
+/// absolute mount paths (which contain no colon) are preserved verbatim.
+fn parse_volume_mounts(specs: &[String]) -> Result<Vec<VolumeMountRequest>> {
+    specs
+        .iter()
+        .map(|spec| {
+            let (name, path) = spec.split_once(':').ok_or_else(|| {
+                anyhow::anyhow!(
+                    "volume mount '{spec}' is not in NAME:MOUNT_PATH format (e.g. data:/var/lib/data)"
+                )
+            })?;
+            if name.is_empty() || path.is_empty() {
+                bail!("volume mount '{spec}' needs both a name and a mount path");
+            }
+            Ok(VolumeMountRequest {
+                name: name.to_owned(),
+                mount_path: path.to_owned(),
+            })
+        })
+        .collect()
+}
+
+/// Parse an image pull policy string (`Always` / `IfNotPresent`,
+/// case-insensitive).
+fn parse_pull_policy(s: &str) -> Result<ImagePullPolicy> {
+    match s.to_lowercase().as_str() {
+        "always" => Ok(ImagePullPolicy::Always),
+        "ifnotpresent" => Ok(ImagePullPolicy::IfNotPresent),
+        other => bail!("invalid pull-policy '{other}': must be Always or IfNotPresent"),
+    }
+}
+
+/// Parse a network protocol string (`Tcp` / `Udp` / `Sctp`, case-insensitive).
+fn parse_protocol(s: &str) -> Result<Protocol> {
+    match s.to_lowercase().as_str() {
+        "tcp" => Ok(Protocol::Tcp),
+        "udp" => Ok(Protocol::Udp),
+        "sctp" => Ok(Protocol::Sctp),
+        other => bail!("invalid protocol '{other}': must be Tcp, Udp, or Sctp"),
+    }
+}
+
+/// Parse a `CONTAINER[:EXPOSED[:PROTO,...]]` port-mapping spec.
+///
+/// - `8080`            → container 8080, no exposed port, no protocols
+/// - `8080:80`         → container 8080, exposed 80
+/// - `8080:80:Tcp,Udp` → container 8080, exposed 80, protocols [Tcp, Udp]
+/// - `53::Udp`         → container 53, no exposed port, protocol [Udp]
+fn parse_port_mapping(spec: &str) -> Result<ContainerPortMappingRequest> {
+    let mut parts = spec.splitn(3, ':');
+    let container_str = parts
+        .next()
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("port mapping '{spec}' is missing a container port"))?;
+    let container_port: i32 = container_str
+        .parse()
+        .map_err(|_| anyhow::anyhow!("port mapping '{spec}': container port must be an integer"))?;
+    let exposed_port = match parts.next() {
+        Some(s) if !s.is_empty() => Some(s.parse::<i32>().map_err(|_| {
+            anyhow::anyhow!("port mapping '{spec}': exposed port must be an integer")
+        })?),
+        _ => None,
+    };
+    let protocols = match parts.next() {
+        Some(s) if !s.is_empty() => {
+            let protos = s
+                .split(',')
+                .map(str::trim)
+                .filter(|p| !p.is_empty())
+                .map(parse_protocol)
+                .collect::<Result<Vec<_>>>()?;
+            if protos.is_empty() {
+                None
+            } else {
+                Some(protos)
+            }
+        }
+        _ => None,
+    };
+    Ok(ContainerPortMappingRequest {
+        container_port,
+        exposed_port,
+        protocols,
+    })
+}
+
+/// Build the list of port mappings for an endpoint from either the granular
+/// `--port-mapping` specs or the legacy `--container-port`/`--exposed-port`
+/// pair. Exactly one source must be present (clap enforces at least one via
+/// `required_unless_present`).
+fn resolve_port_mappings(
+    container_port: Option<i32>,
+    exposed_port: Option<i32>,
+    port_mappings: &[String],
+) -> Result<Vec<ContainerPortMappingRequest>> {
+    if !port_mappings.is_empty() {
+        if container_port.is_some() {
+            bail!("use either --container-port or --port-mapping, not both");
+        }
+        port_mappings
+            .iter()
+            .map(|s| parse_port_mapping(s))
+            .collect()
+    } else {
+        let cp = container_port
+            .ok_or_else(|| anyhow::anyhow!("--container-port or --port-mapping is required"))?;
+        Ok(vec![ContainerPortMappingRequest {
+            container_port: cp,
+            exposed_port,
+            protocols: None,
+        }])
+    }
+}
+
+/// Build a `ContainerEntryPoint` from the CLI flags, returning `None` when no
+/// entrypoint flag was supplied. Array forms take precedence over the string
+/// forms when both are given for the same field.
+fn build_entry_point(
+    command: &Option<String>,
+    command_array: &[String],
+    arguments: &Option<String>,
+    arguments_array: &[String],
+    working_directory: &Option<String>,
+) -> Option<ContainerEntryPoint> {
+    if command.is_none()
+        && command_array.is_empty()
+        && arguments.is_none()
+        && arguments_array.is_empty()
+        && working_directory.is_none()
+    {
+        return None;
+    }
+    Some(ContainerEntryPoint {
+        command: if command_array.is_empty() {
+            command.clone()
+        } else {
+            None
+        },
+        command_array: if command_array.is_empty() {
+            None
+        } else {
+            Some(command_array.to_vec())
+        },
+        arguments: if arguments_array.is_empty() {
+            arguments.clone()
+        } else {
+            None
+        },
+        arguments_array: if arguments_array.is_empty() {
+            None
+        } else {
+            Some(arguments_array.to_vec())
+        },
+        working_directory: working_directory.clone(),
+    })
+}
+
+/// Load and parse a `--probes-json` file into a `ContainerProbes`.
+fn load_probes(path: &str) -> Result<ContainerProbes> {
+    let contents = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read probes JSON file '{path}'"))?;
+    serde_json::from_str(&contents)
+        .with_context(|| format!("failed to parse probes JSON file '{path}'"))
+}
+
+/// Build the optional sticky-session settings block for a CDN endpoint.
+fn build_sticky_sessions(
+    sticky: bool,
+    sticky_headers: &[String],
+    sticky_cookie: &Option<String>,
+) -> Result<Option<StickySessionSettings>> {
+    if !sticky && sticky_headers.is_empty() && sticky_cookie.is_none() {
+        return Ok(None);
+    }
+    if sticky && sticky_headers.is_empty() {
+        bail!("--sticky requires at least one --sticky-header (1-3 allowed)");
+    }
+    if sticky_headers.len() > 3 {
+        bail!("--sticky-header accepts at most 3 headers");
+    }
+    Ok(Some(StickySessionSettings {
+        session_headers: sticky_headers.to_vec(),
+        enabled: Some(sticky),
+        cookie_name: sticky_cookie.clone(),
+    }))
+}
+
 /// Walk the error chain looking for a structured 404 from the containers client.
 /// Falls back to checking the rendered message if no typed error matches.
 fn is_not_found_error(e: &anyhow::Error) -> bool {
@@ -707,6 +922,14 @@ async fn handle_app(
                 output::print_single_vertical_with_cmd(&app, format, redact, Some(&cmd));
             }
         }
+        ContainerAppAction::Summary { id } => {
+            // Schema-less upstream operation — emit the raw JSON verbatim.
+            let summary = c.get_application_summary(id).await?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&summary).context("failed to serialize to JSON")?
+            );
+        }
         ContainerAppAction::Create {
             name,
             runtime_type,
@@ -718,6 +941,7 @@ async fn handle_app(
             image_tag,
             registry_id,
             env,
+            volumes,
             minimal,
         } => {
             let has_image = image_name.is_some()
@@ -756,6 +980,11 @@ async fn handle_app(
                          must all be provided together"
                 ),
             };
+            let volume_reqs = if volumes.is_empty() {
+                None
+            } else {
+                Some(parse_volumes(volumes)?)
+            };
             let body = AddApplicationRequest {
                 name: name.clone(),
                 runtime_type: runtime_type.parse().map_err(anyhow::Error::msg)?,
@@ -770,7 +999,7 @@ async fn handle_app(
                 termination_grace_period_seconds: None,
                 repository_settings: None,
                 container_templates,
-                volumes: None,
+                volumes: volume_reqs,
             };
             let resp = c.add_application(&body).await?;
 
@@ -840,12 +1069,24 @@ async fn handle_app(
             runtime_type,
             min,
             max,
+            volumes,
         } => {
-            if name.is_none() && runtime_type.is_none() && min.is_none() && max.is_none() {
+            if name.is_none()
+                && runtime_type.is_none()
+                && min.is_none()
+                && max.is_none()
+                && volumes.is_empty()
+            {
                 bail!(
-                    "at least one update flag is required (--name, --runtime-type, --min, --max)"
+                    "at least one update flag is required \
+                     (--name, --runtime-type, --min, --max, --volume)"
                 );
             }
+            let volume_reqs = if volumes.is_empty() {
+                None
+            } else {
+                Some(parse_volumes(volumes)?)
+            };
             let auto_scaling = if min.is_some() || max.is_some() {
                 // Fetch current values for the fields not being changed
                 let current = c.get_application(id).await?;
@@ -874,6 +1115,7 @@ async fn handle_app(
                     .map(|s| s.parse().map_err(anyhow::Error::msg))
                     .transpose()?,
                 auto_scaling,
+                volumes: volume_reqs,
                 ..Default::default()
             };
             let resp = c.patch_application(id, &body).await?;
@@ -1225,7 +1467,30 @@ async fn handle_template(
             image_namespace,
             image_tag,
             registry_id,
+            image_digest,
+            pull_policy,
+            command,
+            command_array,
+            arguments,
+            arguments_array,
+            working_directory,
+            probes_json,
+            volume_mounts,
         } => {
+            let entry_point = build_entry_point(
+                command,
+                command_array,
+                arguments,
+                arguments_array,
+                working_directory,
+            );
+            let probes = probes_json.as_deref().map(load_probes).transpose()?;
+            let pull = pull_policy.as_deref().map(parse_pull_policy).transpose()?;
+            let mounts = if volume_mounts.is_empty() {
+                None
+            } else {
+                Some(parse_volume_mounts(volume_mounts)?)
+            };
             let body = AddContainerRequest {
                 name: name.clone(),
                 image_name: image_name.clone(),
@@ -1233,13 +1498,13 @@ async fn handle_template(
                 image_tag: image_tag.clone(),
                 image_registry_id: registry_id.clone(),
                 image: None,
-                image_digest: None,
-                image_pull_policy: None,
-                entry_point: None,
-                probes: None,
+                image_digest: image_digest.clone(),
+                image_pull_policy: pull,
+                entry_point,
+                probes,
                 environment_variables: None,
                 endpoints: None,
-                volume_mounts: None,
+                volume_mounts: mounts,
             };
             let tmpl = c.add_container(app_id, &body).await?;
             if let OutputFormat::Json = format {
@@ -1257,12 +1522,40 @@ async fn handle_template(
             image_name,
             image_namespace,
             registry_id,
+            image_digest,
+            pull_policy,
+            command,
+            command_array,
+            arguments,
+            arguments_array,
+            working_directory,
+            probes_json,
+            volume_mounts,
         } => {
+            let entry_point = build_entry_point(
+                command,
+                command_array,
+                arguments,
+                arguments_array,
+                working_directory,
+            );
+            let probes = probes_json.as_deref().map(load_probes).transpose()?;
+            let pull = pull_policy.as_deref().map(parse_pull_policy).transpose()?;
+            let mounts = if volume_mounts.is_empty() {
+                None
+            } else {
+                Some(parse_volume_mounts(volume_mounts)?)
+            };
             if name.is_none()
                 && image_tag.is_none()
                 && image_name.is_none()
                 && image_namespace.is_none()
                 && registry_id.is_none()
+                && image_digest.is_none()
+                && pull.is_none()
+                && entry_point.is_none()
+                && probes.is_none()
+                && mounts.is_none()
             {
                 bail!("at least one update flag is required");
             }
@@ -1272,6 +1565,11 @@ async fn handle_template(
                 image_name: image_name.clone(),
                 image_namespace: image_namespace.clone(),
                 image_registry_id: registry_id.clone(),
+                image_digest: image_digest.clone(),
+                image_pull_policy: pull,
+                entry_point,
+                probes,
+                volume_mounts: mounts,
                 ..Default::default()
             };
             let tmpl = c.patch_container(app_id, container_id, &body).await?;
@@ -1532,52 +1830,70 @@ fn report_env_result(
 // Endpoint sub-handlers
 // ---------------------------------------------------------------------------
 
-fn build_endpoint_request(
-    name: &str,
-    container_port: i32,
+/// Options captured from the endpoint add/update flags. Grouped into a struct
+/// to keep `build_endpoint_request` under the clippy argument-count limit.
+struct EndpointOpts<'a> {
+    name: &'a str,
+    container_port: Option<i32>,
     exposed_port: Option<i32>,
+    port_mappings: &'a [String],
+    /// Explicit `--cdn` selector. CDN is also the default when neither `--cdn`
+    /// nor `--anycast` is passed, so this only matters for readability / future
+    /// divergence; the request builder treats "not anycast" as CDN.
+    #[allow(dead_code)]
     cdn: bool,
     anycast: bool,
-) -> Result<EndpointRequest> {
-    let port_mapping = ContainerPortMappingRequest {
-        container_port,
-        exposed_port,
-        protocols: None,
-    };
+    ssl: bool,
+    pull_zone_id: Option<i32>,
+    sticky: bool,
+    sticky_headers: &'a [String],
+    sticky_cookie: &'a Option<String>,
+}
 
-    if cdn {
-        Ok(EndpointRequest {
-            display_name: name.to_owned(),
-            cdn: Some(CdnEndpointRequest {
-                is_ssl_enabled: None,
-                sticky_sessions: None,
-                pull_zone_id: None,
-                port_mappings: Some(vec![port_mapping]),
-            }),
-            anycast: None,
-        })
-    } else if anycast {
-        Ok(EndpointRequest {
-            display_name: name.to_owned(),
+fn build_endpoint_request(opts: &EndpointOpts<'_>) -> Result<EndpointRequest> {
+    let mappings =
+        resolve_port_mappings(opts.container_port, opts.exposed_port, opts.port_mappings)?;
+
+    if opts.anycast {
+        // Anycast endpoints ignore CDN-only options; reject them loudly so an
+        // operator doesn't think SSL / sticky sessions took effect.
+        if opts.ssl || opts.pull_zone_id.is_some() || opts.sticky || !opts.sticky_headers.is_empty()
+        {
+            bail!(
+                "--ssl / --pull-zone-id / --sticky* are CDN-only options and \
+                 cannot be combined with --anycast"
+            );
+        }
+        return Ok(EndpointRequest {
+            display_name: opts.name.to_owned(),
             cdn: None,
             anycast: Some(AnycastEndpointRequest {
                 protocol_version: AnycastIpProtocolVersion::IPv4,
-                port_mappings: vec![port_mapping],
+                port_mappings: mappings,
             }),
-        })
-    } else {
-        // Default: CDN
-        Ok(EndpointRequest {
-            display_name: name.to_owned(),
-            cdn: Some(CdnEndpointRequest {
-                is_ssl_enabled: None,
-                sticky_sessions: None,
-                pull_zone_id: None,
-                port_mappings: Some(vec![port_mapping]),
-            }),
-            anycast: None,
-        })
+        });
     }
+
+    // Default (and explicit --cdn): CDN endpoint. CDN accepts exactly one
+    // port mapping.
+    if mappings.len() > 1 {
+        bail!(
+            "CDN endpoints accept exactly one port mapping; pass a single \
+             --port-mapping (or --container-port), or use --anycast for several"
+        );
+    }
+    let sticky_sessions =
+        build_sticky_sessions(opts.sticky, opts.sticky_headers, opts.sticky_cookie)?;
+    Ok(EndpointRequest {
+        display_name: opts.name.to_owned(),
+        cdn: Some(CdnEndpointRequest {
+            is_ssl_enabled: if opts.ssl { Some(true) } else { None },
+            sticky_sessions,
+            pull_zone_id: opts.pull_zone_id,
+            port_mappings: Some(mappings),
+        }),
+        anycast: None,
+    })
 }
 
 async fn handle_endpoint(
@@ -1607,11 +1923,28 @@ async fn handle_endpoint(
             name,
             container_port,
             exposed_port,
+            port_mappings,
             cdn,
             anycast,
+            ssl,
+            pull_zone_id,
+            sticky,
+            sticky_headers,
+            sticky_cookie,
         } => {
-            let body =
-                build_endpoint_request(name, *container_port, *exposed_port, *cdn, *anycast)?;
+            let body = build_endpoint_request(&EndpointOpts {
+                name,
+                container_port: *container_port,
+                exposed_port: *exposed_port,
+                port_mappings,
+                cdn: *cdn,
+                anycast: *anycast,
+                ssl: *ssl,
+                pull_zone_id: *pull_zone_id,
+                sticky: *sticky,
+                sticky_headers,
+                sticky_cookie,
+            })?;
             let resp = c.add_endpoint(app_id, container_id, &body).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -1634,11 +1967,28 @@ async fn handle_endpoint(
             name,
             container_port,
             exposed_port,
+            port_mappings,
             cdn,
             anycast,
+            ssl,
+            pull_zone_id,
+            sticky,
+            sticky_headers,
+            sticky_cookie,
         } => {
-            let body =
-                build_endpoint_request(name, *container_port, *exposed_port, *cdn, *anycast)?;
+            let body = build_endpoint_request(&EndpointOpts {
+                name,
+                container_port: *container_port,
+                exposed_port: *exposed_port,
+                port_mappings,
+                cdn: *cdn,
+                anycast: *anycast,
+                ssl: *ssl,
+                pull_zone_id: *pull_zone_id,
+                sticky: *sticky,
+                sticky_headers,
+                sticky_cookie,
+            })?;
             c.update_endpoint(app_id, endpoint_id, &body).await?;
             output::print_mutation_result(
                 format,
@@ -1909,6 +2259,40 @@ async fn handle_registry(
                 &format!("Deleted registry (status: {:?})", resp.status),
             );
         }
+        ContainerRegistryAction::Images { registry_id } => {
+            let body = ListContainerImagesRequest {
+                registry_id: registry_id.clone(),
+            };
+            let images = c.list_container_images(&body).await?;
+            if let OutputFormat::Json = format {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&images).context("failed to serialize to JSON")?
+                );
+            } else {
+                let rows: Vec<PublicImageRow> = images.iter().map(PublicImageRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        ContainerRegistryAction::ImageConfig {
+            registry_id,
+            image_name,
+            image_namespace,
+            tag,
+        } => {
+            let body = GetContainerImageDigestRequest {
+                registry_id: registry_id.clone(),
+                image_name: image_name.clone(),
+                image_namespace: image_namespace.clone(),
+                tag: tag.clone(),
+            };
+            // Schema-less upstream operation — emit the raw JSON verbatim.
+            let config = c.get_image_config(&body).await?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&config).context("failed to serialize to JSON")?
+            );
+        }
         ContainerRegistryAction::ImageTags {
             registry_id,
             image_name,
@@ -2131,6 +2515,14 @@ async fn handle_node(
                     }
                 }
             }
+        }
+        ContainerNodeAction::Ips => {
+            // Schema-less upstream operation — emit the raw JSON verbatim.
+            let ips = c.list_nodes_plain().await?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&ips).context("failed to serialize to JSON")?
+            );
         }
     }
     Ok(())
@@ -2585,4 +2977,149 @@ async fn handle_logs(
 
     // Propagate any stream error after cleanup.
     stream_result
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests — pure parsing helpers (iter-76)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_volumes_ok() {
+        let v = parse_volumes(&["data:10".to_owned(), "cache:5".to_owned()]).unwrap();
+        assert_eq!(v.len(), 2);
+        assert_eq!(v[0].name, "data");
+        assert_eq!(v[0].size, 10);
+        assert_eq!(v[1].size, 5);
+    }
+
+    #[test]
+    fn parse_volumes_rejects_bad_specs() {
+        assert!(parse_volumes(&["data".to_owned()]).is_err());
+        assert!(parse_volumes(&["data:0".to_owned()]).is_err());
+        assert!(parse_volumes(&["data:-1".to_owned()]).is_err());
+        assert!(parse_volumes(&["data:big".to_owned()]).is_err());
+        assert!(parse_volumes(&[":10".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn parse_volume_mounts_preserves_paths() {
+        let m = parse_volume_mounts(&["data:/var/lib/data".to_owned()]).unwrap();
+        assert_eq!(m[0].name, "data");
+        assert_eq!(m[0].mount_path, "/var/lib/data");
+    }
+
+    #[test]
+    fn parse_volume_mounts_rejects_incomplete() {
+        assert!(parse_volume_mounts(&["data".to_owned()]).is_err());
+        assert!(parse_volume_mounts(&["data:".to_owned()]).is_err());
+    }
+
+    #[test]
+    fn parse_pull_policy_case_insensitive() {
+        assert_eq!(
+            parse_pull_policy("always").unwrap(),
+            ImagePullPolicy::Always
+        );
+        assert_eq!(
+            parse_pull_policy("IfNotPresent").unwrap(),
+            ImagePullPolicy::IfNotPresent
+        );
+        assert!(parse_pull_policy("never").is_err());
+    }
+
+    #[test]
+    fn parse_protocol_case_insensitive() {
+        assert_eq!(parse_protocol("tcp").unwrap(), Protocol::Tcp);
+        assert_eq!(parse_protocol("UDP").unwrap(), Protocol::Udp);
+        assert_eq!(parse_protocol("Sctp").unwrap(), Protocol::Sctp);
+        assert!(parse_protocol("http").is_err());
+    }
+
+    #[test]
+    fn parse_port_mapping_forms() {
+        let m = parse_port_mapping("8080").unwrap();
+        assert_eq!(m.container_port, 8080);
+        assert!(m.exposed_port.is_none());
+        assert!(m.protocols.is_none());
+
+        let m = parse_port_mapping("8080:80").unwrap();
+        assert_eq!(m.exposed_port, Some(80));
+
+        let m = parse_port_mapping("8080:80:Tcp,Udp").unwrap();
+        assert_eq!(m.protocols.as_ref().unwrap().len(), 2);
+
+        let m = parse_port_mapping("53::Udp").unwrap();
+        assert!(m.exposed_port.is_none());
+        assert_eq!(m.protocols.as_ref().unwrap()[0], Protocol::Udp);
+    }
+
+    #[test]
+    fn parse_port_mapping_rejects_bad() {
+        assert!(parse_port_mapping("").is_err());
+        assert!(parse_port_mapping("abc").is_err());
+        assert!(parse_port_mapping("80:xx").is_err());
+        assert!(parse_port_mapping("80:80:Http").is_err());
+    }
+
+    #[test]
+    fn build_entry_point_none_when_empty() {
+        assert!(build_entry_point(&None, &[], &None, &[], &None).is_none());
+    }
+
+    #[test]
+    fn build_entry_point_array_wins_over_string() {
+        let ep = build_entry_point(
+            &Some("ignored".to_owned()),
+            &["/bin/sh".to_owned()],
+            &None,
+            &[],
+            &None,
+        )
+        .unwrap();
+        assert!(ep.command.is_none());
+        assert_eq!(ep.command_array.unwrap(), vec!["/bin/sh".to_owned()]);
+    }
+
+    #[test]
+    fn build_sticky_sessions_rules() {
+        // No flags → None.
+        assert!(build_sticky_sessions(false, &[], &None).unwrap().is_none());
+        // --sticky without header → error.
+        assert!(build_sticky_sessions(true, &[], &None).is_err());
+        // Too many headers → error.
+        let four = vec![
+            "a".to_owned(),
+            "b".to_owned(),
+            "c".to_owned(),
+            "d".to_owned(),
+        ];
+        assert!(build_sticky_sessions(true, &four, &None).is_err());
+        // Valid.
+        let s = build_sticky_sessions(true, &["X-User".to_owned()], &Some("sid".to_owned()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(s.enabled, Some(true));
+        assert_eq!(s.cookie_name, Some("sid".to_owned()));
+    }
+
+    #[test]
+    fn resolve_port_mappings_legacy_and_granular() {
+        // Legacy single mapping.
+        let m = resolve_port_mappings(Some(80), Some(8080), &[]).unwrap();
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].container_port, 80);
+        assert_eq!(m[0].exposed_port, Some(8080));
+
+        // Granular list.
+        let m =
+            resolve_port_mappings(None, None, &["80:80".to_owned(), "443:443".to_owned()]).unwrap();
+        assert_eq!(m.len(), 2);
+
+        // Both forms → error.
+        assert!(resolve_port_mappings(Some(80), None, &["80".to_owned()]).is_err());
+    }
 }
