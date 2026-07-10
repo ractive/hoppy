@@ -115,8 +115,10 @@ writing any fixture to disk. The following are masked automatically:
 - **Field-name patterns** (case-insensitive substring): `email`, `payer`,
   `payment`, `balance`, `charges`, `recharge`, `invoice`, `downloadurl`,
   `apikey`, `accesskey`, `signingkey`, `signingsecret`, `secret`, `token`,
-  `password`, `deploymentkey`, `amount`, `author`, `firstname`, `lastname`,
-  `fullname` — plus a bare `Key` as an exact field name
+  `password`, `deploymentkey`, `amount`, `firstname`, `lastname`,
+  `fullname`, and `author` (person-name fields — authorization-family
+  fields like `authorizationConfiguration` are explicitly excluded) — plus
+  a bare `Key` as an exact field name
   (`GET /apikey` returns the account key under exactly that name; substrings
   like `KeyId`/`errorKey` stay readable).
 - **Value patterns**: URLs containing `?token=`, `&token=`, `signature=`, or

@@ -20,8 +20,10 @@ const SENSITIVE_KEY_PATTERNS: &[&str] = &[
     "amount",
     // Person-name fields: `Author` on compute releases carries the account
     // holder's real display name. Deliberately not plain "name" — that would
-    // nuke resource names (`Name`, `Hostname`) that fixtures need.
-    "author",
+    // nuke resource names (`Name`, `Hostname`) that fixtures need. "author"
+    // is handled separately in `is_sensitive_key` so that authorization-family
+    // fields (`authorizationConfiguration`, `validateAuthorization`) stay
+    // readable.
     "firstname",
     "lastname",
     "fullname",
@@ -35,7 +37,9 @@ const SENSITIVE_KEY_PATTERNS: &[&str] = &[
 /// `KeyId` or `errorKey` stay readable.
 pub fn is_sensitive_key(key: &str) -> bool {
     let lower = key.to_lowercase();
-    lower == "key" || SENSITIVE_KEY_PATTERNS.iter().any(|pat| lower.contains(pat))
+    lower == "key"
+        || (lower.contains("author") && !lower.contains("authoriz"))
+        || SENSITIVE_KEY_PATTERNS.iter().any(|pat| lower.contains(pat))
 }
 
 /// Returns `true` when the string value itself looks sensitive:
@@ -251,6 +255,23 @@ mod tests {
         assert_eq!(result["FirstName"], "<redacted>");
         assert_eq!(result["Name"], "hoppy-test-zone");
         assert_eq!(result["DefaultHostname"], "zone.b-cdn.net");
+    }
+
+    #[test]
+    fn authorization_family_fields_not_redacted() {
+        // "author" must not swallow authorization-family config fields
+        // (real fields on the Shield API Guardian surface).
+        let result = redacted(json!({
+            "authorizationConfiguration": "{\"type\":\"bearer\"}",
+            "validateAuthorization": "strict",
+            "UnauthorizedReason": "expired"
+        }));
+        assert_eq!(
+            result["authorizationConfiguration"],
+            "{\"type\":\"bearer\"}"
+        );
+        assert_eq!(result["validateAuthorization"], "strict");
+        assert_eq!(result["UnauthorizedReason"], "expired");
     }
 
     #[test]
