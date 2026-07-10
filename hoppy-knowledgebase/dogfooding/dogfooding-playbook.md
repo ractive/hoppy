@@ -58,16 +58,24 @@ Why: the cleanup script greps for `hoppy-test-` and refuses to touch anything th
 
 If a `live-api` test fails halfway and leaks a resource, the cleanup script (next section) is your fallback.
 
-### Refreshing fixtures
+### API drift radar (was: "Refreshing fixtures")
 
-**Two-step process** — record into a scratch directory first, then map the recordings
-back to the hand-authored descriptive fixtures with `fixture-refresh`.
+**Fixtures are test contracts, not mirrors of production.** The wiremock
+tests pin fixture values by design, so recorded live responses must never
+overwrite them (decision 2026-07-10, see [[decision-log]]; the old
+`fixture-refresh --apply` was removed in iter-78 after 36 of 38 applied
+files had to be reverted). Recordings are *observations*: their value is
+the **diff** against the contracts — unmodeled API fields, missing
+fixtures, redaction leaks.
+
+The full procedure is encoded in the `/api-drift-sweep` skill
+(`.claude/skills/api-drift-sweep/`). In short:
 
 **Step 1 — record fresh responses into a scratch directory:**
 
 ```sh
 SCRATCH="$(pwd)/fixtures-recorded"
-HOPPY_RECORD_DIR="$SCRATCH" BUNNY_API_KEY=<live> \
+HOPPY_RECORD_DIR="$SCRATCH" BUNNY_API_KEY="$TEST_BUNNY_API_KEY" \
     cargo test --workspace --features live-api -- --test-threads=1
 ```
 
@@ -75,37 +83,40 @@ HOPPY_RECORD_DIR="$SCRATCH" BUNNY_API_KEY=<live> \
   `GET_billing.json`, `PUT_dnszone_50001.json`.
 - `--test-threads=1` is required so two tests don't race on the same filename.
 - Recording is idempotent: identical bytes are skipped silently.
+- Offline wiremock tests never record (`hoppy_cmd()` strips the env var),
+  so the scratch dir holds only real live-API responses.
 
-**Step 2 — preview drift, then apply:**
+**Step 2 — generate the read-only report:**
 
 ```sh
-# Dry-run: see what would change
-cargo run --bin fixture-refresh -- --recorded fixtures-recorded
-
-# Apply: overwrite descriptive fixtures that drifted
-cargo run --bin fixture-refresh -- --recorded fixtures-recorded --apply
+cargo run --release --bin fixture-refresh -- \
+    --recorded fixtures-recorded --shape-report --out drift-report.md
 ```
 
-The tool scans `crates/**/tests/**/*.rs` to build a mapping of
-`fixtures/<domain>/<name>.json → (HTTP method, path)`, then matches each
-recording file by method + path-shape (numeric IDs in the recording match any
-numeric ID in the fixture path). Output:
+The tool scans `crates/**/tests/**/*.rs` to map
+`fixtures/<domain>/<name>.json → (HTTP method, path)`, matches recordings
+by method + path-shape, and reports (never writes to `fixtures/`):
 
-- `drift: <fixture> (Δ N bytes)` — content changed
-- `collision: <recording> → [cand1, cand2]` — ambiguous; resolve manually
-- `unmapped: <recording>` — no descriptive fixture references this endpoint
+- **Shape drift** — key paths + types added/removed per endpoint, with
+  date-keyed chart noise filtered out
+- **Leak audit** — email/account-key/secret-shaped values that escaped
+  redaction (extra account-specific regexes via git-ignored
+  `.hoppy-leak-patterns`); any hit means fix `recording/redact.rs` first
+- `unmapped:` — endpoints the live tests hit with no descriptive fixture
+- `collision:` — ambiguous recording→fixture matches
 
-**Step 3 — verify:**
+Exit codes: `0` clean, `1` drift, `2` leaks.
 
-1. Run `git diff -- fixtures/` and spot-check changed fixtures. Even though
-   `--record` redacts PII by default (see below), always do a manual diff review
-   before committing fixture changes.
-2. Look for account-specific leakage: account IDs, `LastUpdated` timestamps,
-   per-account hostnames. Redacted fields (balance, email, tokens, etc.) will show
-   `"<redacted>"` or `0` — that is expected.
-3. Re-run `cargo test --workspace --quiet` to confirm the offline suite still passes.
-4. Commit the drift together with the iteration change that drove it.
-5. Clean up the scratch directory: `rm -rf fixtures-recorded`
+**Step 3 — act on it:**
+
+1. File the report as a dated KB research note
+   (`research/api-shape-drift-<date>.md`) with iteration candidates.
+2. Fixture/type/test updates happen **only inside an iteration** that
+   changes all three together. To hand-craft a *new* fixture, `--record` a
+   single command and crop the payload (see [[adding-a-feature]]).
+3. `cargo test --workspace --quiet` must still be green and
+   `git status -- fixtures/` clean — the sweep changes nothing.
+4. Clean up the scratch directory: `rm -rf fixtures-recorded`
 
 #### PII redaction in `--record` fixtures
 

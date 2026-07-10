@@ -11,6 +11,7 @@ const SENSITIVE_KEY_PATTERNS: &[&str] = &[
     "downloadurl",
     "apikey",
     "accesskey",
+    "securitykey",
     "signingkey",
     "signingsecret",
     "secret",
@@ -157,6 +158,12 @@ mod tests {
             ("AWSSigningKey", json!("AKIA...")),
             ("AWSSigningSecret", json!("secret")),
             ("Amount", json!(2.24)),
+            // Pull zone URL-auth signing secret (found live by the iter-78
+            // leak audit).
+            (
+                "ZoneSecurityKey",
+                json!("7ddb2cac-63f5-46c0-beed-f6566e0f6a07"),
+            ),
         ];
         for (key, val) in cases {
             let result = redacted(json!({ key: val }));
