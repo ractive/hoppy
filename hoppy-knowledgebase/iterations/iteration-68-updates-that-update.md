@@ -29,6 +29,16 @@ update` only rename (delete + recreate is the only way to change a rule),
 `dns record update` is lossy for SRV/CAA, and `db group update` /
 `db v2 update` don't exist at all.
 
+**Note from iter-67:** that run was unattended with no live API access;
+any AC written as "verify live" had to be satisfied by spec/unit/e2e
+evidence instead, deferring genuine live checks to a tracked backlog item
+(see iter-66's `db-fork-group-field-drift` for the pattern). The same
+constraint likely applies here — assume no live API access unless proven
+otherwise at run time. Scope item 6 below ("live-verify") should default
+to the spec-driven fallback (drop the non-spec field) rather than block
+on a live check that may not be available; if it can't be verified live,
+file the open question as a backlog item instead of leaving it dangling.
+
 ## Scope
 
 ### 1. Shield `waf update-rule` full field set

@@ -256,7 +256,7 @@ impl StorageClient {
         Ok(())
     }
 
-    /// Deletes a file (or directory and all its contents) at the given path.
+    /// Deletes a single file at the given path.
     pub async fn delete_file(
         &self,
         storage_zone_name: &str,
@@ -264,6 +264,31 @@ impl StorageClient {
         file_name: &str,
     ) -> Result<()> {
         let url = self.file_url(storage_zone_name, path, file_name);
+        let rb = self.http.delete(&url).header("AccessKey", &self.access_key);
+        let response = self.send(rb).await?;
+        let (status, bytes) = self.read_body(response).await?;
+
+        if !status.is_success() {
+            return Err(self.extract_error(status, &bytes));
+        }
+
+        Ok(())
+    }
+
+    /// Recursively deletes a directory and all of its contents.
+    ///
+    /// The bunny.net Edge Storage API distinguishes a file delete from a
+    /// directory delete by the **trailing slash** on the URL: a `DELETE` on
+    /// `{zone}/{path}/` removes the directory and everything beneath it. This
+    /// uses the trailing-slash listing URL form (see [`listing_url`]) so the
+    /// slash is preserved even when the caller's `path` had it trimmed.
+    ///
+    /// `path` is the directory path relative to the zone root (no leading or
+    /// trailing slash needed, e.g. `"images/2024"`). Passing an empty string
+    /// would target the zone root, which the API rejects, so callers should
+    /// guard against that.
+    pub async fn delete_directory(&self, storage_zone_name: &str, path: &str) -> Result<()> {
+        let url = self.listing_url(storage_zone_name, path);
         let rb = self.http.delete(&url).header("AccessKey", &self.access_key);
         let response = self.send(rb).await?;
         let (status, bytes) = self.read_body(response).await?;

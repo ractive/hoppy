@@ -630,6 +630,103 @@ async fn pull_zone_delete() {
 }
 
 #[tokio::test]
+async fn pull_zone_reset_security_key_refetches_and_hides_key() {
+    let server = MockServer::start().await;
+    // The reset POST returns 204 with no body.
+    Mock::given(method("POST"))
+        .and(path("/pullzone/5857627/resetSecurityKey"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    // hoppy re-fetches the zone afterwards.
+    Mock::given(method("GET"))
+        .and(path("/pullzone/5857627"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--yes",
+            "--format",
+            "json",
+            "pull-zone",
+            "reset-security-key",
+            "--id",
+            "5857627",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // ZoneSecurityKey is skip_serializing — the raw key must never appear
+    // without --reveal.
+    assert!(
+        !stdout.contains("REDACTED-SECURITY-KEY"),
+        "raw security key leaked without --reveal: {stdout}"
+    );
+}
+
+#[tokio::test]
+async fn pull_zone_reset_security_key_reveals_new_key() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/5857627/resetSecurityKey"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/5857627"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--reveal",
+            "--yes",
+            "--format",
+            "json",
+            "pull-zone",
+            "reset-security-key",
+            "--id",
+            "5857627",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("REDACTED-SECURITY-KEY"),
+        "--reveal should surface the new ZoneSecurityKey, got: {stdout}"
+    );
+}
+
+#[tokio::test]
 async fn pull_zone_purge() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))

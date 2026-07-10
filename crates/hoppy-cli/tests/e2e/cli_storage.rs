@@ -161,6 +161,199 @@ async fn storage_rm() {
 }
 
 #[tokio::test]
+async fn storage_upload_computes_checksum_locally() {
+    // Bare `--checksum` (no value) must compute the SHA-256 locally and send it
+    // uppercased in the `Checksum` header.
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/my-zone/test-dir/hello.txt"))
+        .and(header("AccessKey", "mock-storage-key"))
+        .and(header(
+            "Checksum",
+            "83DC13CAF98C33CBE4A90BDDCDE1BF519B6F26267C74E1298FD41688B16901EB",
+        ))
+        .respond_with(ResponseTemplate::new(201).set_body_raw(
+            support::fixture("storage/storage_upload_success.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let temp_path = std::env::temp_dir().join("hoppy-test-upload-checksum.txt");
+    std::fs::write(&temp_path, b"hello world content").unwrap();
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        Some(&server.uri()),
+        None,
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "storage",
+        "upload",
+        "--zone",
+        "my-zone",
+        "--remote-path",
+        "/test-dir/hello.txt",
+        "--file",
+        temp_path.to_str().unwrap(),
+        "--checksum",
+    ])
+    .output()
+    .unwrap();
+
+    let _ = std::fs::remove_file(&temp_path);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn storage_upload_accepts_supplied_checksum_uppercased() {
+    // `--checksum <lowercase hex>` must be uppercased before being sent.
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/my-zone/test-dir/hello.txt"))
+        .and(header("AccessKey", "mock-storage-key"))
+        .and(header(
+            "Checksum",
+            "83DC13CAF98C33CBE4A90BDDCDE1BF519B6F26267C74E1298FD41688B16901EB",
+        ))
+        .respond_with(ResponseTemplate::new(201).set_body_raw(
+            support::fixture("storage/storage_upload_success.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let temp_path = std::env::temp_dir().join("hoppy-test-upload-supplied-checksum.txt");
+    std::fs::write(&temp_path, b"hello world content").unwrap();
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        Some(&server.uri()),
+        None,
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "storage",
+        "upload",
+        "--zone",
+        "my-zone",
+        "--remote-path",
+        "/test-dir/hello.txt",
+        "--file",
+        temp_path.to_str().unwrap(),
+        "--checksum",
+        "83dc13caf98c33cbe4a90bddcde1bf519b6f26267c74e1298fd41688b16901eb",
+    ])
+    .output()
+    .unwrap();
+
+    let _ = std::fs::remove_file(&temp_path);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn storage_upload_rejects_invalid_checksum() {
+    let temp_path = std::env::temp_dir().join("hoppy-test-upload-bad-checksum.txt");
+    std::fs::write(&temp_path, b"hello world content").unwrap();
+
+    // No server needed — validation fails before any request.
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        "http://127.0.0.1:1",
+        Some("http://127.0.0.1:1"),
+        None,
+        None,
+    )
+    .args([
+        "storage",
+        "upload",
+        "--zone",
+        "my-zone",
+        "--remote-path",
+        "/test-dir/hello.txt",
+        "--file",
+        temp_path.to_str().unwrap(),
+        "--checksum",
+        "not-a-valid-sha256",
+    ])
+    .output()
+    .unwrap();
+
+    let _ = std::fs::remove_file(&temp_path);
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("invalid --checksum"),
+        "expected a checksum validation error, got: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn storage_rm_directory_recursive() {
+    // A trailing slash targets the directory listing URL for a recursive delete.
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/my-zone/test-dir/"))
+        .and(header("AccessKey", "mock-storage-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("storage/storage_delete_success.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        Some(&server.uri()),
+        None,
+        None,
+    )
+    .args([
+        "--yes",
+        "--format",
+        "json",
+        "storage",
+        "rm",
+        "--zone",
+        "my-zone",
+        "--remote-path",
+        "test-dir/",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("storage-directory"),
+        "expected a directory delete result, got: {stdout}"
+    );
+}
+
+#[tokio::test]
 async fn storage_download() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

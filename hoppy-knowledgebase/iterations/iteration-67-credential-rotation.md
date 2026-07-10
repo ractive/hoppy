@@ -9,7 +9,7 @@ tags:
   - storage
   - stream
   - pull-zone
-status: planned
+status: completed
 branch: iter-67/credential-rotation
 priority: 1
 depends-on: iter-66/spec-refresh-drift-fixes
@@ -43,29 +43,29 @@ item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
 
 ## Scope
 
-### 1. Storage zone password rotation
+### 1. Storage zone password rotation [3/3]
 
-- [ ] `storage-zone reset-password` → `POST /storagezone/{id}/resetPassword`
-- [ ] `storage-zone reset-read-only-password` →
+- [x] `storage-zone reset-password` → `POST /storagezone/{id}/resetPassword`
+- [x] `storage-zone reset-read-only-password` →
   `POST /storagezone/resetReadOnlyPassword?id=` (note: id is a query param)
-- [ ] Confirmation prompt + `-y`; new secrets redacted unless `--reveal`
+- [x] Confirmation prompt + `-y`; new secrets redacted unless `--reveal`
 
-### 2. Video library key rotation
+### 2. Video library key rotation [3/3]
 
-- [ ] `stream library reset-api-key` → `POST /videolibrary/{id}/resetApiKey`
-- [ ] `stream library reset-read-only-api-key` →
+- [x] `stream library reset-api-key` → `POST /videolibrary/{id}/resetApiKey`
+- [x] `stream library reset-read-only-api-key` →
   `POST /videolibrary/{id}/resetReadOnlyApiKey`
-- [ ] Same confirm/redact pattern as storage-zone
+- [x] Same confirm/redact pattern as storage-zone
 
-### 3. Pull-zone security key rotation
+### 3. Pull-zone security key rotation [1/1]
 
-- [ ] `pull-zone reset-security-key` →
+- [x] `pull-zone reset-security-key` →
   `POST /pullzone/{id}/resetSecurityKey` (completes the half-covered
   `--zone-security-enabled` story)
 
-### 4. Storage upload integrity
+### 4. Storage upload integrity [1/1]
 
-- [ ] `storage upload --checksum` — send the SHA-256 `Checksum` header;
+- [x] `storage upload --checksum` — send the SHA-256 `Checksum` header;
   client param exists (`upload_file(..., checksum)`), CLI passes `None`
   (`commands/storage.rs:101`). Support `--checksum <hex>` and consider
   computing it locally when the flag is given without a value.
@@ -76,9 +76,9 @@ item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
   by buffering the whole file) per the CLAUDE.md streaming rule reinforced
   in iter-66's `download_file_streaming`
 
-### 5. Storage zone delete safety
+### 5. Storage zone delete safety [1/1]
 
-- [ ] **Spec check (confirmed against the iter-66-refreshed
+- [x] **Spec check (confirmed against the iter-66-refreshed
   `specs/core-platform.json`): `deleteLinkedPullZones` defaults to
   `true` upstream.** `delete_storage_zone` (`core/client.rs:440`) sends
   no query param today, so bunny.net already deletes linked pull zones
@@ -89,22 +89,22 @@ item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
   opt in; the confirmation prompt should say explicitly whether linked
   pull zones will be deleted
 
-### 6. `storage rm` directory-delete semantics
+### 6. `storage rm` directory-delete semantics [2/2]
 
-- [ ] Preserve the trailing slash so `storage rm --remote-path images/`
+- [x] Preserve the trailing slash so `storage rm --remote-path images/`
   targets the directory URL form (recursive delete); today
   `split_remote_path` trims it and `file_url` never re-adds it
-- [ ] Distinct confirmation wording for recursive directory deletes
+- [x] Distinct confirmation wording for recursive directory deletes
 
 ## Out of scope
 
 - Access-key selection (using `ReadOnlyPassword` for read-only ops) —
   file as backlog if friction shows up during dogfooding
 
-## Acceptance
+## Acceptance [4/4]
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new/changed command (`tests/e2e/` pattern)
-- [ ] Help text updated for all new commands/flags
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new/changed command (`tests/e2e/` pattern)
+- [x] Help text updated for all new commands/flags
+- [x] `hyalo lint` clean on touched knowledgebase files

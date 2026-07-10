@@ -209,6 +209,55 @@ async fn delete_file_success() {
 }
 
 #[tokio::test]
+async fn delete_directory_targets_trailing_slash_url() {
+    let server = MockServer::start().await;
+
+    // A recursive directory delete must hit the trailing-slash listing URL.
+    Mock::given(method("DELETE"))
+        .and(path("/hoppy-test-zone/test-dir/"))
+        .and(header("AccessKey", "test-access-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_DELETE_SUCCESS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .delete_directory("hoppy-test-zone", "test-dir")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn upload_file_sends_checksum_header() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("PUT"))
+        .and(path("/hoppy-test-zone/test-dir/hello.txt"))
+        .and(header("AccessKey", "test-access-key"))
+        .and(header(
+            "Checksum",
+            "83DC13CAF98C33CBE4A90BDDCDE1BF519B6F26267C74E1298FD41688B16901EB",
+        ))
+        .respond_with(ResponseTemplate::new(201))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .upload_file(
+            "hoppy-test-zone",
+            "test-dir",
+            "hello.txt",
+            b"hello world content".to_vec(),
+            Some("83DC13CAF98C33CBE4A90BDDCDE1BF519B6F26267C74E1298FD41688B16901EB"),
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn unauthorized_returns_error() {
     let server = MockServer::start().await;
 
