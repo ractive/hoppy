@@ -6,7 +6,7 @@ tags:
   - iteration
   - api-coverage
   - logging
-status: planned
+status: in-progress
 branch: iter-70/log-retrieval-services
 priority: 2
 related:
@@ -24,44 +24,50 @@ modules. Tiny effort, whole-service coverage win.
 
 ## Scope
 
-### 1. `logging` API module
+### 1. `logging` API module [1/1]
 
-- [ ] New feature-gated module `crates/bunny-net-api/src/logging/`
+- [x] New feature-gated module `crates/bunny-net-api/src/logging/`
   covering both ops in `specs/logging.json` (pull-zone access log
   retrieval); declare the `logging` feature in
   `crates/bunny-net-api/Cargo.toml`, add `pub mod logging;` to `lib.rs`
 
-### 2. `origin_errors` API module
+### 2. `origin_errors` API module [1/1]
 
-- [ ] New feature-gated module `crates/bunny-net-api/src/origin_errors/`
+- [x] New feature-gated module `crates/bunny-net-api/src/origin_errors/`
   covering the single op in `specs/origin-errors.json`; same feature +
   `lib.rs` wiring pattern
 
-### 3. CLI command group
+### 3. CLI command group [2/2]
 
-- [ ] New `hoppy logs` group: `hoppy logs pull-zone` for access logs and
+- [x] New `hoppy logs` group: `hoppy logs pull-zone` for access logs and
   `hoppy logs origin-errors` for origin error logs (naming per the gap
   analysis suggestion; adjust during implementation if the specs
   suggest better verbs)
-- [ ] Sensible date/zone selectors mirroring the spec params. If either
+- [x] Sensible date/zone selectors mirroring the spec params. If either
   spec exposes pagination or filter query params, wire them through in
   full on day one rather than partially — [[iteration-69-filters-pagination-sweep]]
   found several client methods that had silently dropped params since
   their original implementation, which then needed a dedicated sweep
-  iteration to fix; cheaper to get complete coverage the first time
+  iteration to fix; cheaper to get complete coverage the first time.
+  Initial PR only wired `--start`/`--end` through to the v1 legacy
+  endpoint's CLI surface, dropping `sort`/`status`/`search`/`download`
+  even though `LegacyLogParams` and the client already modeled all six
+  — caught and fixed in PR review (added `--legacy-sort`,
+  `--legacy-download`, and reused `--status`/`--search` for the legacy
+  path), with e2e coverage forwarding all six params
 
-### 4. Streaming download path
+### 4. Streaming download path [1/1]
 
-- [ ] Log bodies can be arbitrarily large — stream via `bytes_stream()`
+- [x] Log bodies can be arbitrarily large — stream via `bytes_stream()`
   to stdout or `--output <file>`, never buffer whole payloads
   (project performance rule)
 
-### 5. Tests & fixtures
+### 5. Tests & fixtures [3/3]
 
-- [ ] Wiremock unit tests for both clients
-- [ ] e2e tests in `tests/e2e/` (new `mod` in `tests/e2e/mod.rs`,
+- [x] Wiremock unit tests for both clients
+- [x] e2e tests in `tests/e2e/` (new `mod` in `tests/e2e/mod.rs`,
   not top-level files)
-- [ ] Record fixtures under `fixtures/logging/` /
+- [x] Record fixtures under `fixtures/logging/` /
   `fixtures/origin-errors/` if live access is available
 
 ## Out of scope
@@ -70,10 +76,10 @@ modules. Tiny effort, whole-service coverage win.
   `pull-zone update --log-forwarding-*` and `container log-forwarding`)
 - Log parsing/analytics — retrieval only
 
-## Acceptance
+## Acceptance [4/4]
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new command (`tests/e2e/` pattern)
-- [ ] Help text present for the new `logs` group and subcommands
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new command (`tests/e2e/` pattern)
+- [x] Help text present for the new `logs` group and subcommands
+- [x] `hyalo lint` clean on touched knowledgebase files

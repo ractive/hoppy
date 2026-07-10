@@ -42,6 +42,8 @@ pub fn hoppy_cmd() -> Command {
     cmd.env_remove("BUNNY_CONTAINERS_URL");
     cmd.env_remove("BUNNY_STORAGE_KEY");
     cmd.env_remove("BUNNY_STREAM_KEY");
+    cmd.env_remove("BUNNY_LOGGING_URL");
+    cmd.env_remove("BUNNY_ORIGIN_ERRORS_URL");
     cmd
 }
 

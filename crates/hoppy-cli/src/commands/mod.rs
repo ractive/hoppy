@@ -2,6 +2,7 @@ pub mod auth;
 pub mod container;
 pub mod database;
 pub mod dns;
+pub mod logs;
 pub mod pull_zone;
 pub mod purge;
 pub mod script;
