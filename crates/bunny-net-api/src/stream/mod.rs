@@ -24,11 +24,13 @@
 //! ```
 
 pub mod client;
+pub mod tus;
 pub mod types;
 
 // Flatten the most-used items into the crate root for ergonomic imports.
 pub use client::StreamCleanupResolutions;
 pub use client::StreamClient;
+pub use tus::{DEFAULT_CHUNK_SIZE, TusUploadResult, TusUploader};
 pub use types::{
     Caption, Chapter, CodecRenditionSize, Collection, CreateCollection, CreateVideo,
     EncoderOutputCodec, FetchVideo, MetaTag, Moment, PaginatedList, ResolutionReference,

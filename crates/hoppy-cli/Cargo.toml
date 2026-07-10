@@ -35,7 +35,7 @@ sha2.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 anyhow.workspace = true
 tabled.workspace = true
-tokio = { workspace = true, features = ["fs", "signal"] }
+tokio = { workspace = true, features = ["fs", "signal", "io-util", "time"] }
 indicatif.workspace = true
 tokio-util.workspace = true
 console.workspace = true

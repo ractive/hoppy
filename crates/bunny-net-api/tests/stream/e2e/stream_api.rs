@@ -1307,3 +1307,180 @@ async fn get_video_play_heatmap_hits_play_heatmap_path() {
     let map = result.heatmap.expect("heatmap should be present");
     assert_eq!(map.get("0"), Some(&80));
 }
+
+// ---------------------------------------------------------------------------
+// TUS resumable upload
+// ---------------------------------------------------------------------------
+
+use bunny_net_api::stream::TusUploader;
+
+fn tus_uploader(uri: &str) -> TusUploader {
+    TusUploader::new(10001, "stream-test-key", "vid-guid-0001")
+        .with_base_url(uri)
+        .with_chunk_size(4)
+}
+
+#[tokio::test]
+async fn tus_create_returns_location() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/tusupload"))
+        .and(header("Tus-Resumable", "1.0.0"))
+        .and(header("Upload-Length", "10"))
+        .and(header("LibraryId", "10001"))
+        .and(header("VideoId", "vid-guid-0001"))
+        .respond_with(
+            ResponseTemplate::new(201).insert_header("Location", "/tusupload/session-abc"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let location = tus_uploader(&server.uri())
+        .create(10, "My Video", &VideoUploadOptions::default())
+        .await
+        .unwrap();
+
+    assert_eq!(location, format!("{}/tusupload/session-abc", server.uri()));
+}
+
+#[tokio::test]
+async fn tus_offset_probe_reads_header() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-abc"))
+        .and(header("Tus-Resumable", "1.0.0"))
+        .respond_with(ResponseTemplate::new(200).insert_header("Upload-Offset", "8"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let offset = tus_uploader(&server.uri())
+        .offset(&format!("{}/tusupload/session-abc", server.uri()))
+        .await
+        .unwrap();
+
+    assert_eq!(offset, 8);
+}
+
+#[tokio::test]
+async fn tus_offset_probe_gone_errors() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-abc"))
+        .respond_with(ResponseTemplate::new(410))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err = tus_uploader(&server.uri())
+        .offset(&format!("{}/tusupload/session-abc", server.uri()))
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("no longer exists"));
+}
+
+#[tokio::test]
+async fn tus_upload_reader_patches_all_chunks_from_zero() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    let server = MockServer::start().await;
+    // chunk_size=4, total=10 -> chunks at offsets 0,4,8 (4,4,2 bytes)
+    let served = Arc::new(AtomicU64::new(0));
+
+    // Each PATCH advances the offset; the mock echoes back offset+len.
+    // wiremock can't compute dynamically, so mount three specific mocks.
+    for (off, len) in [(0u64, 4u64), (4, 4), (8, 2)] {
+        Mock::given(method("PATCH"))
+            .and(path("/tusupload/session-abc"))
+            .and(header("Content-Type", "application/offset+octet-stream"))
+            .and(header("Upload-Offset", off.to_string().as_str()))
+            .respond_with(
+                ResponseTemplate::new(204)
+                    .insert_header("Upload-Offset", (off + len).to_string().as_str()),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+    }
+
+    let data = vec![7u8; 10];
+    let mut reader = std::io::Cursor::new(data);
+    let progress = served.clone();
+    let result = tus_uploader(&server.uri())
+        .upload_reader(
+            &format!("{}/tusupload/session-abc", server.uri()),
+            &mut reader,
+            0,
+            10,
+            |o| {
+                progress.store(o, Ordering::SeqCst);
+            },
+        )
+        .await
+        .unwrap();
+
+    assert!(result.complete);
+    assert_eq!(result.uploaded, 10);
+    assert_eq!(served.load(Ordering::SeqCst), 10);
+}
+
+#[tokio::test]
+async fn tus_upload_reader_resumes_from_offset() {
+    let server = MockServer::start().await;
+    // Resume from offset 8: only one 2-byte chunk should be sent.
+    Mock::given(method("PATCH"))
+        .and(path("/tusupload/session-abc"))
+        .and(header("Upload-Offset", "8"))
+        .respond_with(ResponseTemplate::new(204).insert_header("Upload-Offset", "10"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // The reader must already be positioned at offset 8; simulate with a
+    // 2-byte remaining tail.
+    let mut reader = std::io::Cursor::new(vec![7u8; 2]);
+    let result = tus_uploader(&server.uri())
+        .upload_reader(
+            &format!("{}/tusupload/session-abc", server.uri()),
+            &mut reader,
+            8,
+            10,
+            |_| {},
+        )
+        .await
+        .unwrap();
+
+    assert!(result.complete);
+    assert_eq!(result.uploaded, 10);
+}
+
+#[tokio::test]
+async fn tus_upload_reader_errors_on_offset_mismatch() {
+    let server = MockServer::start().await;
+    // Server lies about the resulting offset -> uploader must error out.
+    Mock::given(method("PATCH"))
+        .and(path("/tusupload/session-abc"))
+        .and(header("Upload-Offset", "0"))
+        .respond_with(ResponseTemplate::new(204).insert_header("Upload-Offset", "99"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut reader = std::io::Cursor::new(vec![7u8; 4]);
+    let err = tus_uploader(&server.uri())
+        .upload_reader(
+            &format!("{}/tusupload/session-abc", server.uri()),
+            &mut reader,
+            0,
+            4,
+            |_| {},
+        )
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("reported offset 99"));
+}

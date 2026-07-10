@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - stream
   - upload
-status: planned
+status: in-progress
 branch: iter-77/stream-tus-upload
 priority: 4
 related:
@@ -52,31 +52,31 @@ reason.
 
 ### 1. TUS protocol client
 
-- [ ] Implement a TUS 1.0 client in `crates/bunny-net-api/src/stream/`
+- [x] Implement a TUS 1.0 client in `crates/bunny-net-api/src/stream/`
   (or a `tus` submodule): creation request, `HEAD` offset probe,
   `PATCH` chunk upload with `Upload-Offset` handling, per
   `docs.bunny.net/stream/tus-resumable-uploads` (docs-only, no
   OpenAPI spec)
-- [ ] Signature-based auth (library ID + API key + expiry hash) as the
+- [x] Signature-based auth (library ID + API key + expiry hash) as the
   docs describe; pre-signed metadata headers for library/video IDs
-- [ ] Chunked streaming reads — never buffer the whole file (project
+- [x] Chunked streaming reads — never buffer the whole file (project
   performance rule)
 
 ### 2. CLI surface
 
-- [ ] `stream video upload --resumable` (or a dedicated subcommand if
+- [x] `stream video upload --resumable` (or a dedicated subcommand if
   flag semantics get muddy) — reuse the existing create-then-upload
   composite shape
-- [ ] Retry with backoff on transient failures; resume from the server
+- [x] Retry with backoff on transient failures; resume from the server
   offset after interruption
-- [ ] Offset/session persistence on disk so a re-run resumes an
+- [x] Offset/session persistence on disk so a re-run resumes an
   interrupted upload; state file location must be Windows/Linux/macOS
   safe (`std::path::PathBuf`, no Unix-only assumptions)
-- [ ] Progress bar consistent with the existing PUT upload path
+- [x] Progress bar consistent with the existing PUT upload path
 
 ### 3. Per-upload params integration
 
-- [ ] The per-upload params from
+- [x] The per-upload params from
   [[iteration-69-filters-pagination-sweep]] (`jitEnabled`,
   `enabledResolutions`, `enabledOutputCodecs`, `transcribe*`,
   `generate*`, `sourceLanguage`) must also apply on the TUS path
@@ -84,9 +84,9 @@ reason.
 
 ### 4. Tests
 
-- [ ] Unit tests against a wiremock/minimal TUS server: offset resume,
+- [x] Unit tests against a wiremock/minimal TUS server: offset resume,
   mid-upload interruption, checksum of assembled payload
-- [ ] e2e test for the new flag surface (`tests/e2e/` pattern)
+- [x] e2e test for the new flag surface (`tests/e2e/` pattern)
 - [ ] Live dogfood with a large file + forced interruption; note
   friction in the KB
 
@@ -98,9 +98,40 @@ reason.
 
 ## Acceptance
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover the new/changed upload commands (`tests/e2e/` pattern)
+- [x] e2e tests cover the new/changed upload commands (`tests/e2e/` pattern)
 - [ ] Interrupted-then-resumed upload verified live (dogfooding playbook)
-- [ ] Help text updated for the resumable upload surface
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] Help text updated for the resumable upload surface
+- [x] `hyalo lint` clean on touched knowledgebase files
+
+## Implementation notes
+
+Shipped:
+
+- `crates/bunny-net-api/src/stream/tus.rs` — TUS 1.0 client (`TusUploader`):
+  presigned `AuthorizationSignature` = hex SHA-256 of
+  `library_id + api_key + expiration + video_id`; `POST /tusupload` creation
+  with `Upload-Metadata` header (per-upload params base64-encoded, mirroring
+  the PUT query params), `HEAD` offset probe, chunked `PATCH`
+  (`application/offset+octet-stream`) streaming one `chunk_size` window at a
+  time via `AsyncReadExt` — never buffers the whole file. `sha2`/`tokio` are
+  gated behind the existing `stream` Cargo feature; no `hex` dependency (hex
+  encoding is a small local helper).
+- `crates/hoppy-cli/src/commands/stream_tus.rs` — orchestration:
+  JSON session persistence keyed on `library_id`+abs file path (state file in
+  `--state-dir` or a `hoppy-tus` temp subdir, `PathBuf`-based, cross-platform),
+  retry with exponential backoff that re-probes the server offset between
+  attempts, and a progress bar consistent with the PUT path. Session file is
+  removed on success; a server-side-expired session is transparently recreated.
+- CLI: `stream video upload --resumable [--chunk-size <bytes>] [--state-dir <dir>]`.
+- Tests: 8 API unit + 6 API wiremock e2e (create/offset/gone/full/resume/mismatch),
+  6 CLI unit (session filename/dir/roundtrip/garbage) + 2 CLI e2e
+  (full run cleans up state; resume-from-offset sends only the tail).
+
+Deferred (require a live bunny.net account — cannot run unattended):
+
+- Live dogfood of a large file with a forced interruption (Scope §4, third item).
+- Acceptance: "interrupted-then-resumed upload verified live". The resume path
+  is covered by the offset-3 wiremock and CLI e2e tests, but a real large-file
+  interruption over the wire is left for a dogfooding pass.
