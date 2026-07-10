@@ -4,7 +4,7 @@ use crate::cli::{
     PullZoneReferrerAction,
 };
 use crate::date;
-use crate::output::{self, PaginatedListJson};
+use crate::output::{self, AvailabilityRow, PaginatedListJson};
 use crate::redact::RedactConfig;
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
@@ -169,6 +169,31 @@ pub async fn handle(
         PullZoneAction::Get { id } => {
             let pz = client.get_pull_zone(*id).await?;
             print_pull_zone(&pz, format, redact_cfg);
+        }
+        PullZoneAction::Count => {
+            let count = client.count_pull_zones().await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&count).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct Row {
+                    #[tabled(rename = "Count")]
+                    count: i32,
+                }
+                output::print_single(&Row { count: count.count }, format);
+            }
+        }
+        PullZoneAction::Check { name } => {
+            let availability = client.check_pull_zone_availability(name).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&availability)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                output::print_single(&AvailabilityRow::new(name, availability.available), format);
+            }
         }
         PullZoneAction::Create {
             name,

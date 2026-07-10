@@ -749,6 +749,14 @@ pub enum PullZoneAction {
         #[arg(long)]
         id: i64,
     },
+    /// Count the total number of pull zones on the account.
+    Count,
+    /// Check whether a pull zone name is available before creating it.
+    Check {
+        /// Pull zone name to check
+        #[arg(long)]
+        name: String,
+    },
     /// Create a new pull zone.
     ///
     /// Exactly one of --origin-url or --storage-zone-id must be supplied.
@@ -1661,6 +1669,14 @@ pub enum StorageZoneAction {
         #[arg(long)]
         id: i64,
     },
+    /// Check whether a storage zone name is available before creating it.
+    Check {
+        /// Storage zone name to check
+        #[arg(long)]
+        name: String,
+    },
+    /// List the storage regions available for creating storage zones.
+    Regions,
     /// Create a new storage zone.
     ///
     /// EXAMPLES:
@@ -1744,6 +1760,21 @@ pub enum StorageZoneAction {
         /// End date (YYYY-MM-DD)
         #[arg(long)]
         date_to: Option<String>,
+    },
+    /// Get egress statistics for a storage zone (per-protocol totals + charts).
+    Egress {
+        /// Storage zone ID
+        #[arg(long)]
+        id: i64,
+        /// Start date (YYYY-MM-DD)
+        #[arg(long)]
+        date_from: Option<String>,
+        /// End date (YYYY-MM-DD)
+        #[arg(long)]
+        date_to: Option<String>,
+        /// Return per-hour buckets instead of the coarser default granularity.
+        #[arg(long)]
+        hourly: bool,
     },
 }
 
@@ -1894,12 +1925,23 @@ pub enum DnsZoneAction {
         /// Enable IP anonymization in logs
         #[arg(long)]
         logging_ip_anonymization_enabled: Option<bool>,
+        /// Last-octet anonymization mode when IP anonymization is enabled:
+        /// `one-digit` (replace last octet with a single digit) or `drop`
+        /// (remove the last octet entirely).
+        #[arg(long, value_name = "MODE")]
+        log_anonymization_type: Option<String>,
     },
     /// Delete a DNS zone
     Delete {
         /// DNS zone ID
         #[arg(long)]
         id: i64,
+    },
+    /// Check whether a domain is available as a DNS zone before creating it.
+    Check {
+        /// Domain name to check (e.g. example.com)
+        #[arg(long)]
+        domain: String,
     },
     /// Get statistics for a DNS zone
     Statistics {
@@ -2018,11 +2060,22 @@ pub enum DnsScanAction {
 
 #[derive(Subcommand)]
 pub enum DnsRecordAction {
-    /// List records in a DNS zone
+    /// List records in a DNS zone.
+    ///
+    /// Backed by the dedicated `GET /dnszone/{id}/records` endpoint (paginated).
     List {
         /// DNS zone ID
         #[arg(long = "id", alias = "zone-id", value_name = "ID")]
         zone_id: i64,
+        /// Page number (1-based)
+        #[arg(long, conflicts_with = "all")]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long, conflicts_with = "all")]
+        per_page: Option<u32>,
+        /// Automatically paginate through all available pages
+        #[arg(long)]
+        all: bool,
     },
     /// Add a DNS record.
     ///
@@ -2031,11 +2084,14 @@ pub enum DnsRecordAction {
     ///   hoppy dns record add --id 50001 --type CNAME --name www --value example.com
     ///   hoppy dns record add --id 50001 --type MX    --value mail.example.com --priority 10
     ///   hoppy dns record add --id 50001 --type CAA   --value letsencrypt.org --tag issue --flags 0
+    ///   hoppy dns record add --id 50001 --type PullZone --value @ --pull-zone-id 1234
+    ///   hoppy dns record add --id 50001 --type A --value 192.0.2.1 \
+    ///     --smart-routing-type geolocation --geolocation-latitude 51.5 --geolocation-longitude -0.1
     ///
-    /// Tip: for Magic-Container-backed Pull Zones, use a `CNAME` record
-    /// pointing at the `b-cdn.net` hostname instead of `--type PullZone`
-    /// (the latter only accepts standard, non-managed Pull Zone IDs and
-    /// will return "pull zone ID is not valid" otherwise).
+    /// Linked records: `--type PullZone` needs `--pull-zone-id`, `--type
+    /// Script` needs `--script-id`. Smart routing (`--smart-routing-type`),
+    /// health monitoring (`--monitor-type`), and geolocation/latency targeting
+    /// are configured with the matching flags below.
     Add {
         /// DNS zone ID
         #[arg(long = "id", alias = "zone-id", value_name = "ID")]
@@ -2071,6 +2127,33 @@ pub enum DnsRecordAction {
         /// Tag (for CAA records, e.g. "issue", "issuewild")
         #[arg(long)]
         tag: Option<String>,
+        /// Linked Pull Zone ID (for --type PullZone records)
+        #[arg(long)]
+        pull_zone_id: Option<i64>,
+        /// Linked Edge Script ID (for --type Script records)
+        #[arg(long)]
+        script_id: Option<i64>,
+        /// Enable acceleration through the linked Pull Zone (true|false)
+        #[arg(long)]
+        accelerated: Option<bool>,
+        /// Smart-routing mode: none, latency, or geolocation
+        #[arg(long, value_name = "MODE")]
+        smart_routing_type: Option<String>,
+        /// Health-monitor mode: none, ping, http, or monitor
+        #[arg(long, value_name = "MODE")]
+        monitor_type: Option<String>,
+        /// Latitude for geolocation smart routing (negative values allowed)
+        #[arg(long, allow_hyphen_values = true)]
+        geolocation_latitude: Option<f64>,
+        /// Longitude for geolocation smart routing (negative values allowed)
+        #[arg(long, allow_hyphen_values = true)]
+        geolocation_longitude: Option<f64>,
+        /// Latency-zone identifier for latency smart routing
+        #[arg(long)]
+        latency_zone: Option<String>,
+        /// Automatically issue a TLS certificate for this record (true|false)
+        #[arg(long)]
+        auto_ssl_issuance: Option<bool>,
         /// Disable the record without deleting it (true|false)
         #[arg(long)]
         disabled: Option<bool>,
@@ -2118,6 +2201,33 @@ pub enum DnsRecordAction {
         /// Tag (for CAA records, e.g. "issue", "issuewild")
         #[arg(long)]
         tag: Option<String>,
+        /// Linked Pull Zone ID (for PullZone records)
+        #[arg(long)]
+        pull_zone_id: Option<i64>,
+        /// Linked Edge Script ID (for Script records)
+        #[arg(long)]
+        script_id: Option<i64>,
+        /// Enable acceleration through the linked Pull Zone (true|false)
+        #[arg(long)]
+        accelerated: Option<bool>,
+        /// Smart-routing mode: none, latency, or geolocation
+        #[arg(long, value_name = "MODE")]
+        smart_routing_type: Option<String>,
+        /// Health-monitor mode: none, ping, http, or monitor
+        #[arg(long, value_name = "MODE")]
+        monitor_type: Option<String>,
+        /// Latitude for geolocation smart routing (negative values allowed)
+        #[arg(long, allow_hyphen_values = true)]
+        geolocation_latitude: Option<f64>,
+        /// Longitude for geolocation smart routing (negative values allowed)
+        #[arg(long, allow_hyphen_values = true)]
+        geolocation_longitude: Option<f64>,
+        /// Latency-zone identifier for latency smart routing
+        #[arg(long)]
+        latency_zone: Option<String>,
+        /// Automatically issue a TLS certificate for this record (true|false)
+        #[arg(long)]
+        auto_ssl_issuance: Option<bool>,
         /// Disable the record without deleting it (true|false)
         #[arg(long)]
         disabled: Option<bool>,

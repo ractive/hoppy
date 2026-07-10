@@ -1,5 +1,5 @@
 ---
-source: tests/e2e/cli_dns.rs
+source: crates/hoppy-cli/tests/e2e/cli_dns.rs
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 {
@@ -17,5 +17,14 @@ expression: "String::from_utf8_lossy(&output.stdout)"
   "AcceleratedPullZoneId": 0,
   "LinkName": null,
   "Disabled": false,
-  "Comment": null
+  "Comment": null,
+  "PullZoneId": 0,
+  "ScriptId": 0,
+  "SmartRoutingType": null,
+  "MonitorType": null,
+  "MonitorStatus": null,
+  "GeolocationLatitude": 0.0,
+  "GeolocationLongitude": 0.0,
+  "LatencyZone": null,
+  "AutoSslIssuance": false
 }

@@ -27,6 +27,17 @@ new and all missing. Also resolves the reverse drift flagged in
 [[research/api-coverage-2026-07/shield]] §3 and wires the three
 client-ready enums endpoints.
 
+**Lesson carried from [[iteration-71-dns-completeness]]**: that iteration's
+own carried lesson (diff the full spec field/param list against the CLI
+arg surface before calling a section done, not just against what the
+handler consumes) paid off — all 6 scope sections landed with no gaps
+found in review. Apply the same discipline here, especially for §4
+(`ShieldZoneRequest` already models `--waf-disabled-rules` /
+`--waf-log-only-rules` — confirm no other modeled-but-unexposed fields
+exist on that struct before marking §4 done) and §5's drift
+investigation (verify against the live API, don't guess from the spec
+diff alone).
+
 ## Scope
 
 ### 1. Bot categorization

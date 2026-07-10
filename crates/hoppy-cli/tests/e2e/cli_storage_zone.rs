@@ -654,3 +654,124 @@ async fn storage_zone_delete_default_format_keeps_prose() {
         "stderr: {stderr}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// iter-71 — storage-zone check / regions / egress
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn storage_zone_check_json() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/storagezone/checkavailability"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"Name\":\"my-assets\""))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/zone_availability.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "storage-zone",
+            "check",
+            "--name",
+            "my-assets",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
+    assert_eq!(json["Available"], true);
+}
+
+#[tokio::test]
+async fn storage_zone_regions_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/regions"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_regions.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "storage-zone", "regions"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
+    let regions = json.as_array().expect("array of regions");
+    assert_eq!(regions.len(), 3);
+    assert_eq!(regions[0]["Id"], "DE");
+}
+
+#[tokio::test]
+async fn storage_zone_egress_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9001/statistics/egress"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_egress_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "storage-zone", "egress", "--id", "9001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
+    assert_eq!(json["TotalEgress"], 3600);
+    assert_eq!(json["HttpEgressTotal"], 3000);
+}
+
+#[tokio::test]
+async fn storage_zone_egress_table() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9001/statistics/egress"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_egress_statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "storage-zone",
+            "egress",
+            "--id",
+            "9001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Protocol"), "expected Protocol column");
+    assert!(stdout.contains("Total"), "expected Total row");
+}

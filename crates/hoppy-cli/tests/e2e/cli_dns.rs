@@ -360,12 +360,13 @@ async fn dns_zone_delete() {
 
 #[tokio::test]
 async fn dns_record_list_json() {
+    // `dns record list` is backed by the dedicated paginated records endpoint.
     let server = MockServer::start().await;
     Mock::given(method("GET"))
-        .and(path("/dnszone/50001"))
+        .and(path("/dnszone/50001/records"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(
-            support::fixture("core/dnszone_get.json"),
+            support::fixture("core/dnszone_records_paginated.json"),
             "application/json",
         ))
         .expect(1)
@@ -403,6 +404,42 @@ async fn dns_record_list_json() {
         records[0]["Value"].is_string(),
         "expected record Value to be a string"
     );
+}
+
+#[tokio::test]
+async fn dns_record_list_all_paginates() {
+    // `--all` should auto-paginate the dedicated records endpoint.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/dnszone/50001/records"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_records_paginated.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "record",
+            "list",
+            "--zone-id",
+            "50001",
+            "--all",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    let records = json.as_array().expect("array of records");
+    assert_eq!(records.len(), 2, "expected both records accumulated");
 }
 
 #[tokio::test]
@@ -1797,4 +1834,218 @@ async fn dns_zone_export_text_snapshot_matches_bind() {
         format!("{fixture}\n")
     };
     assert_eq!(stdout, expected);
+}
+
+// ---------------------------------------------------------------------------
+// iter-71 — smart routing / linked records / zone availability
+// ---------------------------------------------------------------------------
+
+/// `dns record add` with smart-routing + geolocation flags must serialise the
+/// SmartRoutingType/GeolocationLatitude/GeolocationLongitude fields.
+#[tokio::test]
+async fn dns_record_add_smart_routing_geo() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/dnszone/50001/records"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"SmartRoutingType\":2"))
+        .and(body_string_contains("\"GeolocationLatitude\":51.5"))
+        .and(body_string_contains("\"GeolocationLongitude\":-0.1"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnsrecord_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "record",
+            "add",
+            "--zone-id",
+            "50001",
+            "--type",
+            "A",
+            "--value",
+            "192.0.2.1",
+            "--smart-routing-type",
+            "geolocation",
+            "--geolocation-latitude",
+            "51.5",
+            // Negative coordinate passed in the natural spaced form — works
+            // because the geolocation args set `allow_hyphen_values`.
+            "--geolocation-longitude",
+            "-0.1",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "add failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// `dns record add --type PullZone --pull-zone-id` must serialise PullZoneId,
+/// which previously had no flag at all.
+#[tokio::test]
+async fn dns_record_add_linked_pull_zone() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/dnszone/50001/records"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"PullZoneId\":1234"))
+        .and(body_string_contains("\"MonitorType\":1"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnsrecord_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "record",
+            "add",
+            "--zone-id",
+            "50001",
+            "--type",
+            "PullZone",
+            "--value",
+            "@",
+            "--pull-zone-id",
+            "1234",
+            "--monitor-type",
+            "ping",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "add failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// An invalid `--smart-routing-type` value must be rejected with a helpful
+/// error before any HTTP request is made.
+#[tokio::test]
+async fn dns_record_add_invalid_smart_routing_type_errors() {
+    let server = MockServer::start().await;
+    // No mock mounted — the command must fail before hitting the network.
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "dns",
+            "record",
+            "add",
+            "--zone-id",
+            "50001",
+            "--type",
+            "A",
+            "--value",
+            "192.0.2.1",
+            "--smart-routing-type",
+            "bogus",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("unknown smart routing type"),
+        "expected smart-routing parse error, got: {stderr}"
+    );
+}
+
+/// `dns zone check --domain` posts to /dnszone/checkavailability and prints the
+/// availability result.
+#[tokio::test]
+async fn dns_zone_check_available() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/checkavailability"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"Name\":\"example.com\""))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/zone_availability.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "zone",
+            "check",
+            "--domain",
+            "example.com",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
+    assert_eq!(json["Available"], true);
+}
+
+/// `dns zone update --log-anonymization-type drop` must serialise the enum as
+/// its integer discriminant (Drop = 1).
+#[tokio::test]
+async fn dns_zone_update_log_anonymization_type() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/dnszone/50001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"LogAnonymizationType\":1"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/dnszone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "dns",
+            "zone",
+            "update",
+            "--id",
+            "50001",
+            "--log-anonymization-type",
+            "drop",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "update failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }

@@ -2,12 +2,13 @@ use crate::auth;
 use crate::cli::{
     DnsAction, DnsDnssecAction, DnsRecordAction, DnsScanAction, DnsZoneAction, OutputFormat,
 };
-use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
+use crate::output::{self, AvailabilityRow, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
-    AddDnsRecord, ApiError, CreateDnsZone, DnsDiscoveredRecord, DnsRecord, DnsRecordScanResult,
-    DnsRecordType, DnsSecDsRecord, DnsZone, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
+    AddDnsRecord, ApiError, CreateDnsZone, DnsDiscoveredRecord, DnsMonitoringType, DnsRecord,
+    DnsRecordScanResult, DnsRecordType, DnsSecDsRecord, DnsSmartRoutingType, DnsZone,
+    LogAnonymizationType, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone,
 };
 use std::io::{self, BufRead, Read, Write};
 
@@ -322,6 +323,7 @@ async fn handle_zone(
             soa_email,
             logging_enabled,
             logging_ip_anonymization_enabled,
+            log_anonymization_type,
         } => {
             if custom_nameservers_enabled.is_none()
                 && nameserver1.is_none()
@@ -329,9 +331,10 @@ async fn handle_zone(
                 && soa_email.is_none()
                 && logging_enabled.is_none()
                 && logging_ip_anonymization_enabled.is_none()
+                && log_anonymization_type.is_none()
             {
                 bail!(
-                    "at least one update flag is required (--custom-nameservers-enabled, --nameserver1, --nameserver2, --soa-email, --logging-enabled, or --logging-ip-anonymization-enabled)"
+                    "at least one update flag is required (--custom-nameservers-enabled, --nameserver1, --nameserver2, --soa-email, --logging-enabled, --logging-ip-anonymization-enabled, or --log-anonymization-type)"
                 );
             }
             let mut body = UpdateDnsZone::new();
@@ -353,8 +356,25 @@ async fn handle_zone(
             if let Some(v) = logging_ip_anonymization_enabled {
                 body = body.logging_ip_anonymization_enabled(*v);
             }
+            if let Some(v) = log_anonymization_type {
+                let parsed: LogAnonymizationType = v.parse().map_err(anyhow::Error::msg)?;
+                body = body.log_anonymization_type(parsed);
+            }
             let zone = client.update_dns_zone(*id, &body).await?;
             print_dns_zone(&zone, format);
+        }
+        DnsZoneAction::Check { domain } => {
+            let availability = client.check_dns_zone_availability(domain).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&availability)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                output::print_single(
+                    &AvailabilityRow::new(domain, availability.available),
+                    format,
+                );
+            }
         }
         DnsZoneAction::Delete { id } => {
             if !yes {
@@ -715,15 +735,41 @@ async fn handle_record(
     yes: bool,
 ) -> Result<()> {
     match action {
-        DnsRecordAction::List { zone_id } => {
-            // Records are embedded in the zone response
-            let zone = client.get_dns_zone(*zone_id).await?;
+        DnsRecordAction::List {
+            zone_id,
+            page,
+            per_page,
+            all,
+        } => {
+            // Backed by the dedicated GET /dnszone/{id}/records endpoint.
+            let records = if *all {
+                const AUTO_PER_PAGE: u32 = 1000;
+                let mut current_page: u32 = 1;
+                let mut accumulated: Vec<DnsRecord> = Vec::new();
+                loop {
+                    let result = client
+                        .list_dns_zone_records(*zone_id, Some(current_page), Some(AUTO_PER_PAGE))
+                        .await?;
+                    let has_more = result.has_more_items;
+                    accumulated.extend(result.items);
+                    if !has_more {
+                        break;
+                    }
+                    current_page += 1;
+                }
+                accumulated
+            } else {
+                client
+                    .list_dns_zone_records(*zone_id, *page, *per_page)
+                    .await?
+                    .items
+            };
             if let OutputFormat::Json = format {
-                let json = serde_json::to_string_pretty(&zone.records)
-                    .expect("failed to serialize to JSON");
+                let json = serde_json::to_string_pretty(&records)
+                    .context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
-                let rows: Vec<DnsRecordRow> = zone.records.iter().map(DnsRecordRow::from).collect();
+                let rows: Vec<DnsRecordRow> = records.iter().map(DnsRecordRow::from).collect();
                 if let OutputFormat::Table = format {
                     let mut truncated_rows = rows.clone();
                     let mut any_truncated = false;
@@ -754,6 +800,15 @@ async fn handle_record(
             port,
             flags,
             tag,
+            pull_zone_id,
+            script_id,
+            accelerated,
+            smart_routing_type,
+            monitor_type,
+            geolocation_latitude,
+            geolocation_longitude,
+            latency_zone,
+            auto_ssl_issuance,
             disabled,
             comment,
         } => {
@@ -779,6 +834,35 @@ async fn handle_record(
             }
             if let Some(t) = tag {
                 body = body.tag(t);
+            }
+            if let Some(id) = pull_zone_id {
+                body = body.pull_zone_id(*id);
+            }
+            if let Some(id) = script_id {
+                body = body.script_id(*id);
+            }
+            if let Some(a) = accelerated {
+                body = body.accelerated(*a);
+            }
+            if let Some(s) = smart_routing_type {
+                let parsed: DnsSmartRoutingType = s.parse().map_err(anyhow::Error::msg)?;
+                body = body.smart_routing_type(parsed);
+            }
+            if let Some(m) = monitor_type {
+                let parsed: DnsMonitoringType = m.parse().map_err(anyhow::Error::msg)?;
+                body = body.monitor_type(parsed);
+            }
+            if let Some(lat) = geolocation_latitude {
+                body = body.geolocation_latitude(*lat);
+            }
+            if let Some(lon) = geolocation_longitude {
+                body = body.geolocation_longitude(*lon);
+            }
+            if let Some(z) = latency_zone {
+                body = body.latency_zone(z);
+            }
+            if let Some(a) = auto_ssl_issuance {
+                body = body.auto_ssl_issuance(*a);
             }
             if let Some(d) = disabled {
                 body = body.disabled(*d);
@@ -808,6 +892,15 @@ async fn handle_record(
             port,
             flags,
             tag,
+            pull_zone_id,
+            script_id,
+            accelerated,
+            smart_routing_type,
+            monitor_type,
+            geolocation_latitude,
+            geolocation_longitude,
+            latency_zone,
+            auto_ssl_issuance,
             disabled,
             comment,
         } => {
@@ -859,6 +952,58 @@ async fn handle_record(
                     }
                 }
             }
+
+            // Linked / smart-routing fields: apply the override when supplied,
+            // otherwise carry the record's existing value so the round-trip is
+            // non-lossy (bunny treats omitted fields as cleared).
+            match (pull_zone_id, current.pull_zone_id) {
+                (Some(id), _) => body = body.pull_zone_id(*id),
+                (None, cur) if cur != 0 => body = body.pull_zone_id(cur),
+                (None, _) => {}
+            }
+            match (script_id, current.script_id) {
+                (Some(id), _) => body = body.script_id(*id),
+                (None, cur) if cur != 0 => body = body.script_id(cur),
+                (None, _) => {}
+            }
+            body = body.accelerated(accelerated.unwrap_or(current.accelerated));
+            match smart_routing_type {
+                Some(s) => {
+                    let parsed: DnsSmartRoutingType = s.parse().map_err(anyhow::Error::msg)?;
+                    body = body.smart_routing_type(parsed);
+                }
+                None => {
+                    if let Some(s) = current.smart_routing_type {
+                        body = body.smart_routing_type(s);
+                    }
+                }
+            }
+            match monitor_type {
+                Some(m) => {
+                    let parsed: DnsMonitoringType = m.parse().map_err(anyhow::Error::msg)?;
+                    body = body.monitor_type(parsed);
+                }
+                None => {
+                    if let Some(m) = current.monitor_type {
+                        body = body.monitor_type(m);
+                    }
+                }
+            }
+            body = body
+                .geolocation_latitude(geolocation_latitude.unwrap_or(current.geolocation_latitude));
+            body = body.geolocation_longitude(
+                geolocation_longitude.unwrap_or(current.geolocation_longitude),
+            );
+            match latency_zone {
+                Some(z) => body = body.latency_zone(z),
+                None => {
+                    if let Some(z) = &current.latency_zone {
+                        body = body.latency_zone(z);
+                    }
+                }
+            }
+            body = body.auto_ssl_issuance(auto_ssl_issuance.unwrap_or(current.auto_ssl_issuance));
+
             client
                 .update_dns_record(*zone_id, *record_id, &body)
                 .await?;

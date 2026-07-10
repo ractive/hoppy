@@ -8,7 +8,7 @@ tags:
   - dns
   - pull-zone
   - storage-zone
-status: planned
+status: completed
 branch: iter-71/dns-completeness
 priority: 2
 depends-on: iter-66/spec-refresh-drift-fixes
@@ -41,41 +41,41 @@ function consumes.
 
 ## Scope
 
-### 1. Smart routing / monitoring / geo record fields
+### 1. Smart routing / monitoring / geo record fields [1/1]
 
-- [ ] Add `SmartRoutingType`, `MonitorType`, `LatencyZone`,
+- [x] Add `SmartRoutingType`, `MonitorType`, `LatencyZone`,
   `GeolocationLatitude`, `GeolocationLongitude` to `AddDnsRecord`
   (`core/types.rs:3059-3079`) and `UpdateDnsRecord`, with flags on
   `dns record add` / `update`
 
-### 2. Linked-record fields
+### 2. Linked-record fields [1/1]
 
-- [ ] Add `PullZoneId`, `ScriptId`, `Accelerated`, `AutoSslIssuance`
+- [x] Add `PullZoneId`, `ScriptId`, `Accelerated`, `AutoSslIssuance`
   to both record bodies + flags — makes `--type PullZone` / `Script`
   functional and removes the CNAME-workaround help text
 
-### 3. Zone-level field
+### 3. Zone-level field [1/1]
 
-- [ ] `dns zone update --log-anonymization-type` — add
+- [x] `dns zone update --log-anonymization-type` — add
   `LogAnonymizationType` (enum) to `UpdateDnsZone`
 
-### 4. New records endpoint
+### 4. New records endpoint [1/1]
 
-- [ ] `GET /dnszone/{zoneId}/records` (new in July spec) — back
+- [x] `GET /dnszone/{zoneId}/records` (new in July spec) — back
   `dns record list` with the dedicated endpoint instead of projecting
   `Records` out of `GET /dnszone/{id}`
 
-### 5. checkavailability endpoints (all three in one go)
+### 5. checkavailability endpoints (all three in one go) [3/3]
 
-- [ ] `dns zone check --domain` → `POST /dnszone/checkavailability`
-- [ ] `pull-zone check --name` → `POST /pullzone/checkavailability`
-- [ ] `storage-zone check --name` → `POST /storagezone/checkavailability`
+- [x] `dns zone check --domain` → `POST /dnszone/checkavailability`
+- [x] `pull-zone check --name` → `POST /pullzone/checkavailability`
+- [x] `storage-zone check --name` → `POST /storagezone/checkavailability`
 
-### 6. New core-platform reference/statistics ops
+### 6. New core-platform reference/statistics ops [3/3]
 
-- [ ] `pull-zone count` → `GET /pullzone/count`
-- [ ] `storage-zone regions` → `GET /storagezone/regions`
-- [ ] `storage-zone statistics --egress` (or `storage-zone egress`) →
+- [x] `pull-zone count` → `GET /pullzone/count`
+- [x] `storage-zone regions` → `GET /storagezone/regions`
+- [x] `storage-zone statistics --egress` (or `storage-zone egress`) →
   `GET /storagezone/{id}/statistics/egress`
 
 ## Out of scope
@@ -85,10 +85,10 @@ function consumes.
   create (`zone import` covers bulk-load)
 - External-DNS certificate flow — [[iteration-74-pull-zone-body-completeness]]
 
-## Acceptance
+## Acceptance [4/4]
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new/changed command (`tests/e2e/` pattern)
-- [ ] Help text updated (drop the PullZone/Script CNAME-workaround note)
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new/changed command (`tests/e2e/` pattern)
+- [x] Help text updated (drop the PullZone/Script CNAME-workaround note)
+- [x] `hyalo lint` clean on touched knowledgebase files

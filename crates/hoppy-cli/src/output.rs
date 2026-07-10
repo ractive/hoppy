@@ -14,6 +14,26 @@ pub struct PaginatedListJson<'a, T> {
     pub has_more_items: bool,
 }
 
+/// Table/text row for a `checkavailability` preflight result. Shared by
+/// `dns zone check`, `pull-zone check`, and `storage-zone check` so each
+/// command doesn't redeclare the same two-field struct.
+#[derive(Serialize, Tabled)]
+pub struct AvailabilityRow {
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Available")]
+    available: bool,
+}
+
+impl AvailabilityRow {
+    pub fn new(name: &str, available: bool) -> Self {
+        Self {
+            name: name.to_owned(),
+            available,
+        }
+    }
+}
+
 /// Print data in the requested format to stdout.
 pub fn print_data<T: Serialize + Tabled>(items: &[T], format: OutputFormat) {
     match format {
