@@ -222,6 +222,105 @@ async fn stream_library_delete() {
     assert!(output.status.success());
 }
 
+#[tokio::test]
+async fn stream_library_reset_api_key_refetches_and_redacts() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/resetApiKey"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/10001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/videolibrary_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--yes",
+            "--format",
+            "json",
+            "stream",
+            "library",
+            "reset-api-key",
+            "--id",
+            "10001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("REDACTED-STREAM-API-KEY"),
+        "raw api key leaked into default output: {stdout}"
+    );
+    assert!(
+        stdout.contains("<set, length="),
+        "expected redacted placeholder, got: {stdout}"
+    );
+}
+
+#[tokio::test]
+async fn stream_library_reset_read_only_api_key_reveals_when_requested() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/resetReadOnlyApiKey"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/10001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/videolibrary_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--reveal",
+            "--yes",
+            "--format",
+            "json",
+            "stream",
+            "library",
+            "reset-read-only-api-key",
+            "--id",
+            "10001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("REDACTED-STREAM-READONLY-KEY"),
+        "--reveal should surface the raw read-only key, got: {stdout}"
+    );
+}
+
 /// `stream library get` without `--reveal` redacts ApiKey / ReadOnlyApiKey
 /// in JSON and never leaks the raw token to stdout.
 #[tokio::test]

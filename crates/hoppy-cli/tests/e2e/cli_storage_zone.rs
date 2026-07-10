@@ -1,6 +1,6 @@
 use super::support;
 
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
@@ -290,6 +290,161 @@ async fn storage_zone_delete() {
         .unwrap();
 
     assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn storage_zone_delete_defaults_to_removing_linked_pull_zones() {
+    // Without --keep-linked-pull-zones, hoppy must send the explicit
+    // deleteLinkedPullZones=true so the destructive default is on the record.
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("deleteLinkedPullZones", "true"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--yes", "storage-zone", "delete", "--id", "9001"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn storage_zone_delete_keep_linked_pull_zones_opts_out() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("deleteLinkedPullZones", "false"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--yes",
+            "storage-zone",
+            "delete",
+            "--id",
+            "9001",
+            "--keep-linked-pull-zones",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("linked pull zones kept"),
+        "expected keep-linked note in prose, got: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn storage_zone_reset_password_refetches_and_redacts() {
+    let server = MockServer::start().await;
+    // The reset POST returns 204 with no body.
+    Mock::given(method("POST"))
+        .and(path("/storagezone/9001/resetPassword"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    // hoppy then re-fetches the zone to surface the new credential.
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--yes",
+            "--format",
+            "json",
+            "storage-zone",
+            "reset-password",
+            "--id",
+            "9001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("redacted-storage-password"),
+        "raw password leaked into default output: {stdout}"
+    );
+    assert!(
+        stdout.contains("<set, length="),
+        "expected redacted placeholder, got: {stdout}"
+    );
+}
+
+#[tokio::test]
+async fn storage_zone_reset_read_only_password_uses_query_id_and_reveals() {
+    let server = MockServer::start().await;
+    // Read-only reset takes id as a QUERY param, not a path segment.
+    Mock::given(method("POST"))
+        .and(path("/storagezone/resetReadOnlyPassword"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("id", "9001"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--reveal",
+            "--yes",
+            "--format",
+            "json",
+            "storage-zone",
+            "reset-read-only-password",
+            "--id",
+            "9001",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("redacted-readonly-password"),
+        "--reveal should surface the raw read-only password, got: {stdout}"
+    );
 }
 
 #[tokio::test]

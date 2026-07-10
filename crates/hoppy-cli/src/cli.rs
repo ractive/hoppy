@@ -1154,6 +1154,17 @@ pub enum PullZoneAction {
         #[arg(long)]
         id: i64,
     },
+    /// Rotate the token-authentication security key of a pull zone.
+    ///
+    /// This invalidates every URL currently signed with the old
+    /// `ZoneSecurityKey`. The new key is not returned by the reset call; hoppy
+    /// re-fetches the zone and prints it, redacted unless the global `--reveal`
+    /// flag is set.
+    ResetSecurityKey {
+        /// Pull zone ID
+        #[arg(long)]
+        id: i64,
+    },
     /// Purge pull zone cache
     Purge {
         /// Pull zone ID
@@ -1500,8 +1511,33 @@ pub enum StorageZoneAction {
         #[arg(long)]
         origin_url: Option<String>,
     },
-    /// Delete a storage zone
+    /// Delete a storage zone.
+    ///
+    /// WARNING: by default bunny.net also deletes every pull zone linked to this
+    /// storage zone. Pass `--keep-linked-pull-zones` to keep them.
     Delete {
+        /// Storage zone ID
+        #[arg(long)]
+        id: i64,
+        /// Keep pull zones linked to this storage zone instead of deleting them.
+        ///
+        /// The upstream default deletes linked pull zones; this flag opts out.
+        #[arg(long)]
+        keep_linked_pull_zones: bool,
+    },
+    /// Rotate the primary password (access key) of a storage zone.
+    ///
+    /// The new password is not returned by the reset call; hoppy re-fetches the
+    /// zone and prints it, redacted unless the global `--reveal` flag is set.
+    ResetPassword {
+        /// Storage zone ID
+        #[arg(long)]
+        id: i64,
+    },
+    /// Rotate the read-only password of a storage zone.
+    ///
+    /// The new password is redacted unless the global `--reveal` flag is set.
+    ResetReadOnlyPassword {
         /// Storage zone ID
         #[arg(long)]
         id: i64,
@@ -1524,7 +1560,15 @@ pub enum StorageZoneAction {
 
 #[derive(Subcommand)]
 pub enum StorageAction {
-    /// Upload a file
+    /// Upload a file.
+    ///
+    /// EXAMPLES:
+    ///   # Upload with an integrity checksum computed locally
+    ///   hoppy storage upload --zone my-zone --remote-path a.bin --file ./a.bin --checksum
+    ///
+    ///   # Upload with a pre-computed SHA-256 (any case; sent uppercase)
+    ///   hoppy storage upload --zone my-zone --remote-path a.bin --file ./a.bin \
+    ///     --checksum 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
     Upload {
         /// Storage zone name
         #[arg(long)]
@@ -1538,6 +1582,13 @@ pub enum StorageAction {
         /// Storage region hostname prefix (e.g. storage, la, sg, syd)
         #[arg(long, default_value = "storage")]
         region: String,
+        /// Send a SHA-256 `Checksum` header so the server verifies integrity.
+        ///
+        /// Pass `--checksum <hex>` to supply a pre-computed digest (case-insensitive;
+        /// it is uppercased before sending), or bare `--checksum` to compute the
+        /// digest locally by streaming over the file.
+        #[arg(long, num_args = 0..=1, default_missing_value = "")]
+        checksum: Option<String>,
     },
     /// Download a file
     Download {
@@ -1566,12 +1617,16 @@ pub enum StorageAction {
         #[arg(long, default_value = "storage")]
         region: String,
     },
-    /// Delete a file
+    /// Delete a file, or a whole directory (recursively).
+    ///
+    /// A `--remote-path` with a trailing slash (e.g. `images/`) targets the
+    /// directory URL form and recursively deletes the directory and everything
+    /// under it. Without a trailing slash the path is treated as a single file.
     Rm {
         /// Storage zone name
         #[arg(long)]
         zone: String,
-        /// Remote path (e.g. images/photo.jpg)
+        /// Remote path. Trailing slash (e.g. `images/`) = recursive directory delete.
         #[arg(long)]
         remote_path: String,
         /// Storage region hostname prefix (e.g. storage, la, sg, syd)
@@ -1952,6 +2007,23 @@ pub enum StreamLibraryAction {
     },
     /// Delete a video library
     Delete {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
+    },
+    /// Rotate the API key of a video library.
+    ///
+    /// The new key is not returned by the reset call; hoppy re-fetches the
+    /// library and prints it, redacted unless the global `--reveal` flag is set.
+    ResetApiKey {
+        /// Stream library ID
+        #[arg(long)]
+        id: i64,
+    },
+    /// Rotate the read-only API key of a video library.
+    ///
+    /// The new key is redacted unless the global `--reveal` flag is set.
+    ResetReadOnlyApiKey {
         /// Stream library ID
         #[arg(long)]
         id: i64,

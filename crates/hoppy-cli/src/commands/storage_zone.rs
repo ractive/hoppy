@@ -4,6 +4,7 @@ use crate::date;
 use crate::output::{self, PaginatedListJson};
 use crate::redact::{RedactConfig, redact_secrets_in_json};
 use anyhow::{Context, Result, bail};
+use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
 use std::io::{self, BufRead, Write};
 
@@ -192,9 +193,19 @@ pub async fn handle(
                 &format!("Updated storage zone {id}"),
             );
         }
-        StorageZoneAction::Delete { id } => {
+        StorageZoneAction::Delete {
+            id,
+            keep_linked_pull_zones,
+        } => {
+            // Upstream default deletes linked pull zones; `Some(false)` opts out.
+            let delete_linked = !*keep_linked_pull_zones;
             if !yes {
-                eprint!("Delete storage zone {id}? [y/N] ");
+                let linked_note = if delete_linked {
+                    " and ALL linked pull zones"
+                } else {
+                    " (linked pull zones will be kept)"
+                };
+                eprint!("Delete storage zone {id}{linked_note}? [y/N] ");
                 io::stderr().flush()?;
                 let mut line = String::new();
                 io::stdin().lock().read_line(&mut line)?;
@@ -204,14 +215,27 @@ pub async fn handle(
                     return Ok(());
                 }
             }
-            client.delete_storage_zone(*id).await?;
+            client.delete_storage_zone(*id, Some(delete_linked)).await?;
             output::print_mutation_result(
                 format,
                 "delete",
                 "storage-zone",
-                serde_json::json!({ "Id": id }),
-                &format!("Deleted storage zone {id}"),
+                serde_json::json!({ "Id": id, "DeletedLinkedPullZones": delete_linked }),
+                &format!(
+                    "Deleted storage zone {id}{}",
+                    if delete_linked {
+                        " and its linked pull zones"
+                    } else {
+                        " (linked pull zones kept)"
+                    }
+                ),
             );
+        }
+        StorageZoneAction::ResetPassword { id } => {
+            reset_password(&client, format, yes, redact_cfg, *id, false).await?;
+        }
+        StorageZoneAction::ResetReadOnlyPassword { id } => {
+            reset_password(&client, format, yes, redact_cfg, *id, true).await?;
         }
         StorageZoneAction::Statistics {
             id,
@@ -253,4 +277,54 @@ pub async fn handle(
 fn print_storage_zone(sz: &StorageZone, format: OutputFormat, redact_cfg: &RedactConfig) {
     let cmd = format!("storage-zone get --id {}", sz.id);
     output::print_single_vertical_with_cmd(sz, format, redact_cfg, Some(&cmd));
+}
+
+/// Confirm, rotate a storage-zone password, then re-fetch and display the zone.
+///
+/// The reset endpoints return `204 No Content` — the new secret is never echoed
+/// by the API, so we re-fetch the zone to surface it. The password is redacted
+/// unless the user passed the global `--reveal` flag.
+async fn reset_password(
+    client: &CoreClient,
+    format: OutputFormat,
+    yes: bool,
+    redact_cfg: &RedactConfig,
+    id: i64,
+    read_only: bool,
+) -> Result<()> {
+    let label = if read_only {
+        "read-only password"
+    } else {
+        "primary password"
+    };
+    if !yes {
+        eprint!(
+            "Rotate the {label} for storage zone {id}? This invalidates the current credential. [y/N] "
+        );
+        io::stderr().flush()?;
+        let mut line = String::new();
+        io::stdin().lock().read_line(&mut line)?;
+        let answer = line.trim().to_lowercase();
+        if answer != "y" && answer != "yes" {
+            eprintln!("Aborted.");
+            return Ok(());
+        }
+    }
+    if read_only {
+        client.reset_storage_zone_read_only_password(id).await?;
+    } else {
+        client.reset_storage_zone_password(id).await?;
+    }
+    // Re-fetch so the freshly-generated secret can be shown.
+    let sz = client.get_storage_zone(id).await.with_context(|| {
+        format!(
+            "{label} for storage zone {id} was rotated but the credential re-fetch failed — \
+             run `hoppy storage-zone get --id {id}` to retrieve it"
+        )
+    })?;
+    if !matches!(format, OutputFormat::Json) {
+        eprintln!("Rotated {label} for storage zone {id}.");
+    }
+    print_storage_zone(&sz, format, redact_cfg);
+    Ok(())
 }

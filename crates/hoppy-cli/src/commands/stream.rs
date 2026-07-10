@@ -8,6 +8,7 @@ use crate::output::{self, PaginatedListJson};
 use crate::progress;
 use crate::redact::{RedactConfig, placeholder, redact_secrets_in_json};
 use anyhow::{Context as _, Result, bail};
+use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
 use bunny_net_api::stream::types::{Collection, Video};
 use bunny_net_api::stream::{
@@ -345,6 +346,12 @@ async fn handle_library(
                 serde_json::json!({}),
                 &format!("Deleted video library {id}"),
             );
+        }
+        StreamLibraryAction::ResetApiKey { id } => {
+            reset_library_key(&core, format, yes, redact_cfg, *id, false).await?;
+        }
+        StreamLibraryAction::ResetReadOnlyApiKey { id } => {
+            reset_library_key(&core, format, yes, redact_cfg, *id, true).await?;
         }
         StreamLibraryAction::Statistics {
             id,
@@ -1283,4 +1290,54 @@ fn print_library(lib: &VideoLibrary, format: OutputFormat, redact_cfg: &RedactCo
         let detail = VideoLibraryDetail::from_library(lib, redact_cfg);
         output::print_single(&detail, format);
     }
+}
+
+/// Confirm, rotate a video-library API key, then re-fetch and display the library.
+///
+/// The reset endpoints return `204 No Content` — the new key is never echoed by
+/// the API, so we re-fetch the library to surface it. The key is redacted unless
+/// the user passed the global `--reveal` flag.
+async fn reset_library_key(
+    core: &CoreClient,
+    format: OutputFormat,
+    yes: bool,
+    redact_cfg: &RedactConfig,
+    id: i64,
+    read_only: bool,
+) -> Result<()> {
+    let label = if read_only {
+        "read-only API key"
+    } else {
+        "API key"
+    };
+    if !yes {
+        eprint!(
+            "Rotate the {label} for video library {id}? This invalidates the current key. [y/N] "
+        );
+        io::stderr().flush()?;
+        let mut line = String::new();
+        io::stdin().lock().read_line(&mut line)?;
+        let answer = line.trim().to_lowercase();
+        if answer != "y" && answer != "yes" {
+            eprintln!("Aborted.");
+            return Ok(());
+        }
+    }
+    if read_only {
+        core.reset_video_library_read_only_api_key(id).await?;
+    } else {
+        core.reset_video_library_api_key(id).await?;
+    }
+    // Re-fetch so the freshly-generated key can be shown.
+    let lib = core.get_video_library(id).await.with_context(|| {
+        format!(
+            "{label} for video library {id} was rotated but the credential re-fetch failed — \
+             run `hoppy stream library get --id {id}` to retrieve it"
+        )
+    })?;
+    if !matches!(format, OutputFormat::Json) {
+        eprintln!("Rotated {label} for video library {id}.");
+    }
+    print_library(&lib, format, redact_cfg);
+    Ok(())
 }

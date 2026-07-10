@@ -223,7 +223,66 @@ async fn delete_storage_zone_success() {
         .await;
 
     test_client(&server.uri())
-        .delete_storage_zone(9001)
+        .delete_storage_zone(9001, None)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn delete_storage_zone_opts_out_of_linked_pull_zone_deletion() {
+    let server = MockServer::start().await;
+
+    // `Some(false)` must send `deleteLinkedPullZones=false` so the caller can
+    // opt OUT of the destructive upstream default.
+    Mock::given(method("DELETE"))
+        .and(path("/storagezone/9001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("deleteLinkedPullZones", "false"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .delete_storage_zone(9001, Some(false))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn reset_storage_zone_password_posts_to_path() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/storagezone/9001/resetPassword"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .reset_storage_zone_password(9001)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn reset_storage_zone_read_only_password_sends_id_as_query() {
+    let server = MockServer::start().await;
+
+    // This endpoint takes the id as a query param, NOT a path segment.
+    Mock::given(method("POST"))
+        .and(path("/storagezone/resetReadOnlyPassword"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("id", "9001"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .reset_storage_zone_read_only_password(9001)
         .await
         .unwrap();
 }

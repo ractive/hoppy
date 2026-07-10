@@ -168,6 +168,19 @@ impl CoreClient {
         self.handle_empty_response(response).await
     }
 
+    /// Rotate the token-authentication security key of a Pull Zone.
+    ///
+    /// This is the key used to sign token-authenticated URLs when
+    /// `ZoneSecurityEnabled` is on. The API returns `204 No Content` without
+    /// echoing the new key; call [`get_pull_zone`](Self::get_pull_zone)
+    /// afterwards to read the freshly-generated `ZoneSecurityKey`.
+    pub async fn reset_pull_zone_security_key(&self, id: i64) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/resetSecurityKey", self.base_url);
+        let rb = self.auth(self.http.post(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
     /// Purge the cache for a Pull Zone.
     ///
     /// Pass [`PurgeCache::all()`] to purge everything, or
@@ -437,9 +450,49 @@ impl CoreClient {
     }
 
     /// Delete a Storage Zone permanently.
-    pub async fn delete_storage_zone(&self, id: i64) -> Result<()> {
+    ///
+    /// `delete_linked_pull_zones` controls the destructive `deleteLinkedPullZones`
+    /// query parameter. **The upstream default is `true`** — omitting the param
+    /// (i.e. passing `None`) makes bunny.net delete every pull zone linked to the
+    /// storage zone. Pass `Some(false)` to keep the linked pull zones, or
+    /// `Some(true)` to be explicit about the destructive behaviour. The value is
+    /// always sent when provided so the intent is recorded in the request.
+    pub async fn delete_storage_zone(
+        &self,
+        id: i64,
+        delete_linked_pull_zones: Option<bool>,
+    ) -> Result<()> {
         let url = format!("{}/storagezone/{id}", self.base_url);
-        let rb = self.auth(self.http.delete(&url));
+        let mut rb = self.auth(self.http.delete(&url));
+        if let Some(delete_linked) = delete_linked_pull_zones {
+            rb = rb.query(&[("deleteLinkedPullZones", delete_linked.to_string())]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Rotate the primary password (access key) of a Storage Zone.
+    ///
+    /// The API returns `204 No Content` and does **not** echo the new password;
+    /// call [`get_storage_zone`](Self::get_storage_zone) afterwards to read the
+    /// freshly-generated credential.
+    pub async fn reset_storage_zone_password(&self, id: i64) -> Result<()> {
+        let url = format!("{}/storagezone/{id}/resetPassword", self.base_url);
+        let rb = self.auth(self.http.post(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Rotate the read-only password of a Storage Zone.
+    ///
+    /// Note: unlike the primary reset, this endpoint takes the storage zone `id`
+    /// as a **query parameter** (`?id=`), not a path segment. The API returns
+    /// `204 No Content`; re-fetch the zone to read the new read-only password.
+    pub async fn reset_storage_zone_read_only_password(&self, id: i64) -> Result<()> {
+        let url = format!("{}/storagezone/resetReadOnlyPassword", self.base_url);
+        let rb = self
+            .auth(self.http.post(&url))
+            .query(&[("id", id.to_string())]);
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
     }
@@ -704,6 +757,29 @@ impl CoreClient {
     pub async fn delete_video_library(&self, id: i64) -> Result<()> {
         let url = format!("{}/videolibrary/{id}", self.base_url);
         let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Rotate the API key of a Video Library.
+    ///
+    /// The API returns `204 No Content` without echoing the new key; call
+    /// [`get_video_library`](Self::get_video_library) afterwards to read the
+    /// freshly-generated `ApiKey`.
+    pub async fn reset_video_library_api_key(&self, id: i64) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/resetApiKey", self.base_url);
+        let rb = self.auth(self.http.post(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Rotate the read-only API key of a Video Library.
+    ///
+    /// The API returns `204 No Content`; re-fetch the library to read the new
+    /// `ReadOnlyApiKey`.
+    pub async fn reset_video_library_read_only_api_key(&self, id: i64) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/resetReadOnlyApiKey", self.base_url);
+        let rb = self.auth(self.http.post(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
     }

@@ -240,6 +240,23 @@ async fn purge_url_sends_url_as_query_param() {
         .unwrap();
 }
 
+#[tokio::test]
+async fn reset_pull_zone_security_key_posts_to_path() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/resetSecurityKey"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .reset_pull_zone_security_key(1001)
+        .await
+        .unwrap();
+}
+
 // ---------------------------------------------------------------------------
 // Pull Zone hostname & SSL tests
 // ---------------------------------------------------------------------------

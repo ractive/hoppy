@@ -72,9 +72,25 @@ pub async fn handle(
             remote_path,
             file,
             region,
+            checksum,
         } => {
             let client = build_storage_client(zone, region, debug, record).await?;
             let (dir, name) = split_remote_path(remote_path)?;
+
+            // Resolve the optional integrity checksum. `--checksum <hex>` supplies
+            // a pre-computed digest (uppercased before sending). Bare `--checksum`
+            // (empty string via default_missing_value) computes the SHA-256 by
+            // streaming over the file so we never buffer the whole payload.
+            let checksum_hex: Option<String> = match checksum {
+                None => None,
+                Some(hex) if hex.is_empty() => {
+                    let digest = sha256_file_hex(file)
+                        .await
+                        .with_context(|| format!("computing SHA-256 checksum for: {file}"))?;
+                    Some(digest)
+                }
+                Some(hex) => Some(normalise_checksum(hex)?),
+            };
 
             // Open the file and get its size for the progress bar.
             let fh = fs::File::open(file)
@@ -98,7 +114,9 @@ pub async fn handle(
                 reqwest::Body::wrap_stream(ReaderStream::new(fh))
             };
 
-            client.upload_file(zone, dir, name, body, None).await?;
+            client
+                .upload_file(zone, dir, name, body, checksum_hex.as_deref())
+                .await?;
 
             progress::finish_with_message(pb.as_ref(), format!("Uploaded {file}"));
 
@@ -163,9 +181,19 @@ pub async fn handle(
             remote_path,
             region,
         } => {
+            // A trailing slash means "delete this directory recursively". We must
+            // detect it BEFORE trimming, because the directory-vs-file distinction
+            // is encoded in that slash.
+            let is_directory = remote_path.trim_start_matches('/').ends_with('/');
             let display_path = remote_path.trim_start_matches('/');
             if !yes {
-                eprint!("Delete {zone}/{display_path}? [y/N] ");
+                if is_directory {
+                    eprint!(
+                        "Recursively delete directory {zone}/{display_path} and ALL its contents? [y/N] "
+                    );
+                } else {
+                    eprint!("Delete {zone}/{display_path}? [y/N] ");
+                }
                 io::stderr().flush()?;
                 let mut line = String::new();
                 io::stdin().lock().read_line(&mut line)?;
@@ -176,15 +204,30 @@ pub async fn handle(
                 }
             }
             let client = build_storage_client(zone, region, debug, record).await?;
-            let (dir, name) = split_remote_path(remote_path)?;
-            client.delete_file(zone, dir, name).await?;
-            output::print_mutation_result(
-                format,
-                "delete",
-                "storage-object",
-                serde_json::json!({ "Path": format!("{zone}/{display_path}") }),
-                &format!("Deleted {zone}/{display_path}"),
-            );
+            if is_directory {
+                let dir = remote_path.trim_matches('/');
+                if dir.is_empty() {
+                    bail!("remote_path must name a directory (refusing to delete the zone root)");
+                }
+                client.delete_directory(zone, dir).await?;
+                output::print_mutation_result(
+                    format,
+                    "delete",
+                    "storage-directory",
+                    serde_json::json!({ "Path": format!("{zone}/{display_path}") }),
+                    &format!("Recursively deleted directory {zone}/{display_path}"),
+                );
+            } else {
+                let (dir, name) = split_remote_path(remote_path)?;
+                client.delete_file(zone, dir, name).await?;
+                output::print_mutation_result(
+                    format,
+                    "delete",
+                    "storage-object",
+                    serde_json::json!({ "Path": format!("{zone}/{display_path}") }),
+                    &format!("Deleted {zone}/{display_path}"),
+                );
+            }
         }
     }
 
@@ -208,6 +251,52 @@ fn split_remote_path(remote_path: &str) -> Result<(&str, &str)> {
         Some(idx) => Ok((&path[..idx], &path[idx + 1..])),
         None => Ok(("", path)),
     }
+}
+
+/// Validate a user-supplied SHA-256 checksum and normalise it to uppercase hex.
+///
+/// The bunny.net Storage API requires the `Checksum` header value to be
+/// uppercase hex. A SHA-256 digest is exactly 64 hex characters.
+fn normalise_checksum(raw: &str) -> Result<String> {
+    let trimmed = raw.trim();
+    if trimmed.len() != 64 || !trimmed.chars().all(|c| c.is_ascii_hexdigit()) {
+        bail!(
+            "invalid --checksum: expected a 64-character hex SHA-256 digest, got {} characters",
+            trimmed.len()
+        );
+    }
+    Ok(trimmed.to_ascii_uppercase())
+}
+
+/// Compute the SHA-256 of a local file as uppercase hex, streaming over the
+/// file in fixed-size chunks so the whole payload is never buffered in memory.
+async fn sha256_file_hex(path: &str) -> Result<String> {
+    use sha2::{Digest, Sha256};
+    use tokio::io::AsyncReadExt;
+
+    let mut file = fs::File::open(path)
+        .await
+        .with_context(|| format!("opening local file: {path}"))?;
+    let mut hasher = Sha256::new();
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        let read = file
+            .read(&mut buf)
+            .await
+            .with_context(|| format!("reading file for checksum: {path}"))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buf[..read]);
+    }
+    let digest = hasher.finalize();
+    // Uppercase hex as required by the Storage API `Checksum` header.
+    let mut out = String::with_capacity(64);
+    for byte in digest {
+        use std::fmt::Write as _;
+        write!(&mut out, "{byte:02X}").expect("writing to String never fails");
+    }
+    Ok(out)
 }
 
 /// Resolve the storage access key and build a `StorageClient`.
@@ -256,4 +345,48 @@ async fn build_storage_client(
         client = client.with_record(dir);
     }
     Ok(client)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalise_checksum_uppercases_valid_digest() {
+        let lower = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+        let out = normalise_checksum(lower).unwrap();
+        assert_eq!(out, lower.to_ascii_uppercase());
+        assert_eq!(out.len(), 64);
+    }
+
+    #[test]
+    fn normalise_checksum_trims_whitespace() {
+        let padded = "  9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08  ";
+        assert!(normalise_checksum(padded).is_ok());
+    }
+
+    #[test]
+    fn normalise_checksum_rejects_wrong_length() {
+        assert!(normalise_checksum("abc123").is_err());
+    }
+
+    #[test]
+    fn normalise_checksum_rejects_non_hex() {
+        // 64 chars but contains 'z'.
+        let bad = "z".repeat(64);
+        assert!(normalise_checksum(&bad).is_err());
+    }
+
+    #[tokio::test]
+    async fn sha256_file_hex_matches_known_vector() {
+        // SHA-256 of the ASCII string "abc".
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("abc.txt");
+        std::fs::write(&path, b"abc").unwrap();
+        let digest = sha256_file_hex(path.to_str().unwrap()).await.unwrap();
+        assert_eq!(
+            digest,
+            "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
+        );
+    }
 }

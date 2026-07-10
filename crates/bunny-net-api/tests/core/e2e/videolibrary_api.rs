@@ -226,6 +226,42 @@ async fn delete_video_library_success() {
         .unwrap();
 }
 
+#[tokio::test]
+async fn reset_video_library_api_key_posts_to_path() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/resetApiKey"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .reset_video_library_api_key(10001)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn reset_video_library_read_only_api_key_posts_to_path() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/resetReadOnlyApiKey"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .reset_video_library_read_only_api_key(10001)
+        .await
+        .unwrap();
+}
+
 // ---------------------------------------------------------------------------
 // Error handling
 // ---------------------------------------------------------------------------

@@ -575,6 +575,51 @@ pub async fn handle(
                 &format!("Deleted pull zone {id}"),
             );
         }
+        PullZoneAction::ResetSecurityKey { id } => {
+            if !yes {
+                eprint!(
+                    "Rotate the token-authentication security key for pull zone {id}? \
+                     This invalidates every URL currently signed with the old key. [y/N] "
+                );
+                io::stderr().flush()?;
+                let mut line = String::new();
+                io::stdin().lock().read_line(&mut line)?;
+                let answer = line.trim().to_lowercase();
+                if answer != "y" && answer != "yes" {
+                    eprintln!("Aborted.");
+                    return Ok(());
+                }
+            }
+            client.reset_pull_zone_security_key(*id).await?;
+            // Re-fetch so the freshly-generated key is available. `ZoneSecurityKey`
+            // is `skip_serializing`, so it never appears in normal output; when the
+            // user opts in with `--reveal` we surface the new key explicitly.
+            let pz = client.get_pull_zone(*id).await.with_context(|| {
+                format!(
+                    "security key for pull zone {id} was rotated but the re-fetch failed — \
+                     run `hoppy pull-zone get --id {id}` to confirm"
+                )
+            })?;
+            if !matches!(format, OutputFormat::Json) {
+                eprintln!("Rotated security key for pull zone {id}.");
+            }
+            print_pull_zone(&pz, format, redact_cfg);
+            if redact_cfg.reveal_all && !pz.zone_security_key.is_empty() {
+                match format {
+                    OutputFormat::Json => {
+                        let json = serde_json::to_string_pretty(&serde_json::json!({
+                            "Id": id,
+                            "ZoneSecurityKey": pz.zone_security_key,
+                        }))
+                        .context("failed to serialize security key to JSON")?;
+                        println!("{json}");
+                    }
+                    _ => {
+                        println!("ZoneSecurityKey: {}", pz.zone_security_key);
+                    }
+                }
+            }
+        }
         PullZoneAction::Purge { id, cache_tag } => {
             let body = match cache_tag {
                 Some(tag) => PurgeCache::by_tag(tag),
