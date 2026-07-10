@@ -16,6 +16,15 @@ related:
 
 # Iter-76 — containers polish
 
+> [!note] Carried forward from iter-75
+> Iter-75 (account/billing) shipped clean with no spillover into this
+> scope — no shared code paths, no API quirks discovered that affect
+> containers. One reusable pattern worth reusing here: the streamed
+> binary-download helper (`CoreClient::stream_to_writer`, added in
+> iter-75 for invoice PDFs) is the template to follow if any iter-76
+> endpoint needs to stream a binary body — don't buffer whole payloads
+> (project streaming rule). No other scope changes needed.
+
 ## Why
 
 Per [[research/api-coverage-2026-07/containers]], the volume lifecycle is
