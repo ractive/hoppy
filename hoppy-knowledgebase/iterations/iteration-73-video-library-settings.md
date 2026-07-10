@@ -7,12 +7,13 @@ tags:
   - api-coverage
   - stream
   - video-library
-status: in-progress
+status: completed
 branch: iter-73/video-library-settings
 priority: 3
 related:
   - research/api-coverage-gap-analysis-2026-07
   - research/api-coverage-2026-07/stream
+pr: https://github.com/ractive/hoppy/pull/84
 ---
 
 # Iter-73 — video library settings
