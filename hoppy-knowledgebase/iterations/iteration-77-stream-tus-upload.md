@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - stream
   - upload
-status: in-progress
+status: completed
 branch: iter-77/stream-tus-upload
 priority: 4
 related:
@@ -50,7 +50,7 @@ reason.
 
 ## Scope
 
-### 1. TUS protocol client
+### 1. TUS protocol client [3/3]
 
 - [x] Implement a TUS 1.0 client in `crates/bunny-net-api/src/stream/`
   (or a `tus` submodule): creation request, `HEAD` offset probe,
@@ -62,7 +62,7 @@ reason.
 - [x] Chunked streaming reads — never buffer the whole file (project
   performance rule)
 
-### 2. CLI surface
+### 2. CLI surface [4/4]
 
 - [x] `stream video upload --resumable` (or a dedicated subcommand if
   flag semantics get muddy) — reuse the existing create-then-upload
@@ -74,7 +74,7 @@ reason.
   safe (`std::path::PathBuf`, no Unix-only assumptions)
 - [x] Progress bar consistent with the existing PUT upload path
 
-### 3. Per-upload params integration
+### 3. Per-upload params integration [1/1]
 
 - [x] The per-upload params from
   [[iteration-69-filters-pagination-sweep]] (`jitEnabled`,
@@ -82,13 +82,13 @@ reason.
   `generate*`, `sourceLanguage`) must also apply on the TUS path
   (metadata headers) — same flags, both transports
 
-### 4. Tests
+### 4. Tests [2/3]
 
 - [x] Unit tests against a wiremock/minimal TUS server: offset resume,
   mid-upload interruption, checksum of assembled payload
 - [x] e2e test for the new flag surface (`tests/e2e/` pattern)
 - [ ] Live dogfood with a large file + forced interruption; note
-  friction in the KB
+  friction in the KB — deferred, requires a real bunny.net account
 
 ## Out of scope
 
@@ -126,8 +126,23 @@ Shipped:
   removed on success; a server-side-expired session is transparently recreated.
 - CLI: `stream video upload --resumable [--chunk-size <bytes>] [--state-dir <dir>]`.
 - Tests: 8 API unit + 6 API wiremock e2e (create/offset/gone/full/resume/mismatch),
-  6 CLI unit (session filename/dir/roundtrip/garbage) + 2 CLI e2e
-  (full run cleans up state; resume-from-offset sends only the tail).
+  6 CLI unit (session filename/dir/roundtrip/garbage) + 3 CLI e2e
+  (full run cleans up state; resume-from-offset sends only the tail;
+  cross-invocation resume — see review fix below).
+
+**Review fix (post-merge-review, same PR):** the original cut always called
+`create_video` before checking for a persisted session, so every re-run of
+`--resumable` got a fresh video GUID that could never match the GUID stored
+in the previous session file — cross-invocation resume (the headline
+behavior) was dead on arrival. Fixed by adding
+`stream_tus::find_resumable_session` to look up a still-valid session
+(`library_id` + absolute file path + file length) *before* deciding whether
+to create a new video; the CLI now reuses the prior video via `get_video`
+when a session is found. Added
+`stream_video_upload_resumable_second_invocation_reuses_video`, an e2e test
+that drives two separate `hoppy` process invocations against the same state
+dir and asserts the video-create endpoint fires exactly once — confirmed it
+fails against the pre-fix code and passes against the fix.
 
 Deferred (require a live bunny.net account — cannot run unattended):
 
