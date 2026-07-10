@@ -17,6 +17,28 @@ related:
 
 # Iter-77 — stream TUS resumable upload
 
+> [!note] Carried forward from iter-76
+> Iter-76 (containers polish) shipped clean — no shared code paths with
+> Stream, no blocking API quirks. Two reusable patterns worth keeping in
+> mind here, both from [[decision-log]]:
+> - **Escape hatch for deep/uncertain schemas**: iter-76 used a
+>   `--probes-json <file>` flag instead of ~40 individual flags for a
+>   deeply nested schema. TUS's per-upload params (§3) list is already
+>   large (`jitEnabled`, `enabledResolutions`, `enabledOutputCodecs`,
+>   `transcribe*`, `generate*`, `sourceLanguage`) — if the metadata-header
+>   encoding turns out to be as deep/uncertain as containers' probes,
+>   prefer a similar file-based escape hatch over a flag explosion rather
+>   than guessing at full flag mapping up front.
+> - **Docs-only / schema-less surfaces get raw passthrough, not guessed
+>   types**: iter-76 returned `serde_json::Value` verbatim for endpoints
+>   the spec left schema-less, deferring typed models to live
+>   verification. TUS here is docs-only entirely (no OpenAPI spec at
+>   all) — resist the urge to over-type the TUS creation/offset
+>   responses; verify shapes live before locking in structs, same
+>   caution as api-coverage research §4.5.
+>
+> No scope changes needed — the plan below already reflects these.
+
 ## Why
 
 Per [[research/api-coverage-2026-07/stream]] §4, bunny Stream supports
