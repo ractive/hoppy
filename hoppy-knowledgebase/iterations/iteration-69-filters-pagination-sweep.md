@@ -9,7 +9,7 @@ tags:
   - script
   - stream
   - statistics
-status: in-progress
+status: completed
 branch: iter-69/filters-pagination-sweep
 priority: 2
 related:
