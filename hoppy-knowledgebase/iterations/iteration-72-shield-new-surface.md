@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - shield
   - waf
-status: in-progress
+status: completed
 branch: iter-72/shield-new-surface
 priority: 3
 depends-on: iter-66/spec-refresh-drift-fixes
