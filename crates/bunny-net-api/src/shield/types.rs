@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -1473,7 +1473,14 @@ pub struct GetApiGuardianResponse {
     pub data: Option<ApiGuardianEndpointsResponse>,
 }
 
-/// Request body for POST /shield/shield-zone/{shieldZoneId}/api-guardian
+/// Response for `GET /shield/shield-zone/{shieldZoneId}/api-guardian/enums`.
+///
+/// A map of enum-type name to a map of value name to value. Ordered maps keep
+/// the rendered output deterministic. Example:
+/// `{ "executionMode": { "log": "0", "block": "1" } }`.
+pub type ApiGuardianEnumsResponse = BTreeMap<String, BTreeMap<String, String>>;
+
+/// Request body for POST /shield/shield-zone/{shieldZoneId}/api-guardian/spec
 /// (upload a new OpenAPI specification).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

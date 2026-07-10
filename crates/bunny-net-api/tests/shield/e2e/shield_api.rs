@@ -1099,7 +1099,7 @@ async fn upload_api_guardian_spec_returns_endpoints() {
     let server = MockServer::start().await;
 
     Mock::given(method("POST"))
-        .and(path("/shield/shield-zone/42/api-guardian"))
+        .and(path("/shield/shield-zone/42/api-guardian/spec"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -1129,7 +1129,7 @@ async fn update_api_guardian_returns_endpoints() {
     let server = MockServer::start().await;
 
     Mock::given(method("PATCH"))
-        .and(path("/shield/shield-zone/42/api-guardian"))
+        .and(path("/shield/shield-zone/42/api-guardian/spec"))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -1152,6 +1152,29 @@ async fn update_api_guardian_returns_endpoints() {
     let endpoints = data.endpoints.unwrap();
     assert_eq!(endpoints.len(), 1);
     assert_eq!(endpoints[0].validate_response_body_schema, Some(true));
+}
+
+#[tokio::test]
+async fn get_api_guardian_enums_returns_nested_map() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/api-guardian/enums"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"executionMode":{"log":"0","block":"1"},"bodyLimitAction":{"allow":"0"}}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .get_api_guardian_enums(42)
+        .await
+        .unwrap();
+
+    assert_eq!(result["executionMode"]["block"], "1");
+    assert_eq!(result["bodyLimitAction"]["allow"], "0");
 }
 
 #[tokio::test]

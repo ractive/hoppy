@@ -580,11 +580,22 @@ async fn delete_collection_success() {
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn add_caption_sends_correct_request() {
+async fn add_caption_base64_encodes_body() {
+    use base64::Engine as _;
+
+    let srt = "1\n00:00:00,000 --> 00:00:05,000\nHello";
+    let expected = base64::engine::general_purpose::STANDARD.encode(srt);
+
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/library/1001/videos/abc-123/captions/en"))
         .and(header("AccessKey", "stream-test-key"))
+        // Per the spec the SRT contents must be sent Base64-encoded in the
+        // `captionsFile` field, alongside the `srclang` shortcode.
+        .and(body_json(serde_json::json!({
+            "srclang": "en",
+            "captionsFile": expected,
+        })))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(FIXTURE_CAPTION_ADD, "application/json"),
         )
@@ -593,12 +604,7 @@ async fn add_caption_sends_correct_request() {
         .await;
 
     let result = test_client(&server.uri())
-        .add_caption(
-            1001,
-            "abc-123",
-            "en",
-            "1\n00:00:00,000 --> 00:00:05,000\nHello",
-        )
+        .add_caption(1001, "abc-123", "en", srt)
         .await
         .unwrap();
     assert!(result.success);

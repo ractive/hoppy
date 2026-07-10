@@ -377,21 +377,20 @@ pub async fn handle(
                 &format!("Deleted database {}", resp.database),
             );
         }
-        DbAction::Fork { id, target, group } => {
+        DbAction::Fork {
+            id,
+            target,
+            date,
+            group,
+        } => {
             validate_slug(target)?;
-            // Resolve a default group if the user didn't pass one.
-            let group_id = if let Some(g) = group {
-                g.clone()
-            } else {
-                let src = client.get_database(id).await?;
-                src.database.group_id
-            };
             let resp = client
                 .fork_database(
                     id,
                     &ForkDatabasePayload {
                         slug: target.clone(),
-                        group: group_id,
+                        date: date.clone(),
+                        group: group.clone(),
                     },
                 )
                 .await?;
@@ -841,16 +840,13 @@ async fn handle_config(
                 }
             }
         }
-        DbConfigAction::Optimal => {
-            let resp = client.get_optimal().await?;
+        DbConfigAction::Optimal { cdn_server_token } => {
+            let resp = client.get_optimal(cdn_server_token).await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
-        DbConfigAction::OptimalSingle => {
-            anyhow::bail!(
-                "`db config optimal-single` is broken upstream (bunny.net returns HTTP 400 \
-                 — missing field `cdn_server_token`). The subcommand is hidden until upstream \
-                 fixes the route."
-            );
+        DbConfigAction::OptimalSingle { cdn_server_token } => {
+            let resp = client.get_optimal_single(cdn_server_token).await?;
+            println!("{}", serde_json::to_string_pretty(&resp)?);
         }
     }
     Ok(())

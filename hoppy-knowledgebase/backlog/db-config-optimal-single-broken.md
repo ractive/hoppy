@@ -5,6 +5,7 @@ date: 2026-05-10
 status: completed
 priority: low
 origin: dogfooding-2026-05-10
+resolved-by: iteration-66-spec-refresh-drift-fixes
 ---
 
 # `db config optimal-single` looks broken
@@ -31,3 +32,13 @@ top-level help, so this might be in the same bucket. Decide whether to:
 2. Fix the call signature.
 
 Either way, drop the user a clearer error than the deserialize complaint.
+
+## Resolution (iter-66)
+
+Fixed in [[iterations/iteration-66-spec-refresh-drift-fixes]]. The spec marks
+`cdn_server_token` as a **required query parameter** on both `/v1/config/optimal`
+and `/v1/config/optimal_single`. hoppy now:
+
+- Sends `cdn_server_token` on `get_optimal` and `get_optimal_single`.
+- Exposes `--cdn-server-token` on `db config optimal` and un-hid
+  `db config optimal-single` (was gated behind a stub error).

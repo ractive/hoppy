@@ -2567,6 +2567,12 @@ pub enum ShieldApiGuardianAction {
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
     },
+    /// Get the API Guardian enumeration types and their values
+    Enums {
+        /// Shield zone ID
+        #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
+        shield_zone_id: i64,
+    },
     /// Upload a new OpenAPI specification to API Guardian
     Upload {
         /// Shield zone ID
@@ -3942,7 +3948,12 @@ Hoppy validates locally before the API call."
         /// New slug for the fork
         #[arg(long)]
         target: String,
-        /// Destination group (defaults to the source's group)
+        /// Point-in-time to fork from (RFC 3339 date-time, e.g.
+        /// 2026-07-10T12:00:00Z). Required by the API for a point-in-time fork.
+        #[arg(long)]
+        date: String,
+        /// Non-spec destination group; sent only when provided. The current API
+        /// ignores it — see backlog/db-fork-group-field-drift.
         #[arg(long)]
         group: Option<String>,
     },
@@ -4225,10 +4236,19 @@ pub enum DbConfigAction {
     /// Show account database limits
     Limits,
     /// Get the optimal multi-region recommendation for the user
-    Optimal,
-    /// Get the optimal single-region recommendation (broken upstream — hidden)
-    #[command(hide = true)]
-    OptimalSingle,
+    Optimal {
+        /// CDN server token (required by the API; without it the endpoint
+        /// returns HTTP 400)
+        #[arg(long)]
+        cdn_server_token: String,
+    },
+    /// Get the optimal single-region recommendation for the user
+    OptimalSingle {
+        /// CDN server token (required by the API; without it the endpoint
+        /// returns HTTP 400)
+        #[arg(long)]
+        cdn_server_token: String,
+    },
 }
 
 /// Token scope for `db token mint` and `db group generate-keys`.

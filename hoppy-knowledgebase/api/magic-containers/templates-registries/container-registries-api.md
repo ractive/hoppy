@@ -416,6 +416,25 @@ None.
 
 ---
 
+## 10. Get Image Config
+
+**POST** `/registries/image-config`
+
+Spec-only endpoint (present in `specs/magic-containers.json`, not yet wired into
+hoppy — flagged in iter-66). Resolves the exposed ports / image config for a
+container image in a registry.
+
+### Request Body - ListContainerImageExposedPortsRequest
+
+| Field          | Type   | Required | Notes                                              |
+|----------------|--------|----------|----------------------------------------------------|
+| registryId     | string | Yes      | `"dockerhub"`, `"github"`, or a private registry ID |
+| imageNamespace | string | Yes      | Max 100 chars                                      |
+| imageName      | string | Yes      | Max 100 chars                                      |
+| tag            | string | Yes      | Max 100 chars                                      |
+
+---
+
 ## Shared Error Types
 
 ### ProblemDetails

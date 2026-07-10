@@ -1,7 +1,7 @@
 use bunny_net_api::database::DatabaseClient;
 use bunny_net_api::database::types::{
-    Authorization, CreateDatabaseGroupPayload, CreateDatabasePayload, GenerateTokenDatabasePayload,
-    LiveStatus,
+    Authorization, CreateDatabaseGroupPayload, CreateDatabasePayload, ForkDatabasePayload,
+    GenerateTokenDatabasePayload, LiveStatus,
 };
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -462,4 +462,116 @@ async fn ping_returns_error_on_401() {
     let result = test_client(&server.uri()).ping(&url, "bad-token").await;
     assert!(!result.ok);
     assert!(result.error.unwrap().contains("401"));
+}
+
+// ---------------------------------------------------------------------------
+// Fork (point-in-time) — payload must be {slug, date}
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn fork_database_sends_slug_and_date() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/databases/db_01HX0000000000000000000001/fork"))
+        .and(header("AccessKey", "db-test-key"))
+        .and(body_json(serde_json::json!({
+            "slug": "my-fork",
+            "date": "2026-07-10T12:00:00Z",
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_DB_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let resp = test_client(&server.uri())
+        .fork_database(
+            "db_01HX0000000000000000000001",
+            &ForkDatabasePayload {
+                slug: "my-fork".to_owned(),
+                date: "2026-07-10T12:00:00Z".to_owned(),
+                group: None,
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.database.id, "db_01HX0000000000000000000001");
+}
+
+#[tokio::test]
+async fn fork_database_serialises_group_only_when_present() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/databases/db_01HX0000000000000000000001/fork"))
+        .and(body_json(serde_json::json!({
+            "slug": "my-fork",
+            "date": "2026-07-10T12:00:00Z",
+            "group": "group_02",
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_DB_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    test_client(&server.uri())
+        .fork_database(
+            "db_01HX0000000000000000000001",
+            &ForkDatabasePayload {
+                slug: "my-fork".to_owned(),
+                date: "2026-07-10T12:00:00Z".to_owned(),
+                group: Some("group_02".to_owned()),
+            },
+        )
+        .await
+        .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// Optimal endpoints — cdn_server_token is a required query param
+// ---------------------------------------------------------------------------
+
+const FIXTURE_OPTIMAL: &str = r#"{
+  "storage_region": {"id": "eu-west-1", "name": "Europe West", "group": "EU"},
+  "primary_regions": [],
+  "replica_regions": []
+}"#;
+
+const FIXTURE_OPTIMAL_SINGLE: &str = r#"{
+  "storage_region": {"id": "eu-west-1", "name": "Europe West", "group": "EU"},
+  "region": null
+}"#;
+
+#[tokio::test]
+async fn get_optimal_sends_cdn_server_token() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/config/optimal"))
+        .and(query_param("cdn_server_token", "cdn-tok-1"))
+        .and(header("AccessKey", "db-test-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_OPTIMAL, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let resp = test_client(&server.uri())
+        .get_optimal("cdn-tok-1")
+        .await
+        .unwrap();
+    assert_eq!(resp.storage_region.id, "eu-west-1");
+}
+
+#[tokio::test]
+async fn get_optimal_single_sends_cdn_server_token() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/config/optimal_single"))
+        .and(query_param("cdn_server_token", "cdn-tok-2"))
+        .and(header("AccessKey", "db-test-key"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_OPTIMAL_SINGLE, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    let resp = test_client(&server.uri())
+        .get_optimal_single("cdn-tok-2")
+        .await
+        .unwrap();
+    assert_eq!(resp.storage_region.id, "eu-west-1");
 }

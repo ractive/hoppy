@@ -315,6 +315,18 @@ impl From<&bunny_net_api::shield::types::ApiGuardianEndpoint> for ApiGuardianEnd
     }
 }
 
+/// One row of the API Guardian enums table: an enum type, a value name and its
+/// underlying value.
+#[derive(serde::Serialize, tabled::Tabled)]
+struct ApiGuardianEnumRow {
+    #[tabled(rename = "Enum")]
+    enum_type: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Value")]
+    value: String,
+}
+
 // ---------------------------------------------------------------------------
 // Display rows — Upload Scanning
 // ---------------------------------------------------------------------------
@@ -1676,6 +1688,26 @@ async fn handle_api_guardian(
                 let endpoints = result.data.and_then(|d| d.endpoints).unwrap_or_default();
                 let rows: Vec<ApiGuardianEndpointRow> =
                     endpoints.iter().map(ApiGuardianEndpointRow::from).collect();
+                output::print_data(&rows, format);
+            }
+        }
+        ShieldApiGuardianAction::Enums { shield_zone_id } => {
+            let result = client.get_api_guardian_enums(*shield_zone_id).await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let rows: Vec<ApiGuardianEnumRow> = result
+                    .iter()
+                    .flat_map(|(enum_type, values)| {
+                        values.iter().map(move |(name, value)| ApiGuardianEnumRow {
+                            enum_type: enum_type.clone(),
+                            name: name.clone(),
+                            value: value.clone(),
+                        })
+                    })
+                    .collect();
                 output::print_data(&rows, format);
             }
         }

@@ -80,7 +80,15 @@ impl StorageClient {
                 VALID_REGIONS.join(", ")
             );
         }
-        let base_url = format!("https://{region}.bunnycdn.com");
+        // The default Falkenstein region is served from the bare
+        // `storage.bunnycdn.com`; every other region is a `{region}.` prefix on
+        // that same `storage.bunnycdn.com` host (e.g. `la.storage.bunnycdn.com`),
+        // NOT `{region}.bunnycdn.com`. See specs/storage.json `servers`.
+        let base_url = if region == "storage" {
+            "https://storage.bunnycdn.com".to_owned()
+        } else {
+            format!("https://{region}.storage.bunnycdn.com")
+        };
         Ok(Self {
             http: reqwest::Client::new(),
             base_url,
@@ -157,6 +165,58 @@ impl StorageClient {
         }
 
         Ok(bytes)
+    }
+
+    /// Downloads a single file, streaming the response body into `writer`
+    /// chunk-by-chunk instead of buffering the whole payload in memory.
+    ///
+    /// Returns the total number of bytes written. Use this for large blobs and
+    /// for writing straight to disk; [`download_file`](Self::download_file) is
+    /// the convenience wrapper that collects everything into `Bytes`.
+    ///
+    /// `writer` is a synchronous [`std::io::Write`] (e.g. a `File` or a locked
+    /// stdout handle). Each downloaded chunk is written as it arrives, so peak
+    /// memory stays bounded by the chunk size rather than the file size.
+    ///
+    /// On a non-success status the (small) error body is buffered so the usual
+    /// [`StorageError`] can be parsed and surfaced.
+    pub async fn download_file_streaming<W>(
+        &self,
+        storage_zone_name: &str,
+        path: &str,
+        file_name: &str,
+        writer: &mut W,
+    ) -> Result<u64>
+    where
+        W: std::io::Write,
+    {
+        let url = self.file_url(storage_zone_name, path, file_name);
+        let rb = self.http.get(&url).header("AccessKey", &self.access_key);
+        let mut response = self.send(rb).await?;
+
+        let status = response.status();
+        if self.debug {
+            eprintln!("<< {status}");
+        }
+        if !status.is_success() {
+            // Error bodies are small — buffer to parse the structured error.
+            let (status, bytes) = self.read_body(response).await?;
+            return Err(self.extract_error(status, &bytes));
+        }
+
+        let mut total: u64 = 0;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .context("failed to read response chunk")?
+        {
+            writer
+                .write_all(&chunk)
+                .context("failed to write downloaded chunk")?;
+            total += chunk.len() as u64;
+        }
+        writer.flush().context("failed to flush writer")?;
+        Ok(total)
     }
 
     /// Uploads a file to the given path.
@@ -312,6 +372,26 @@ mod tests {
                 StorageClient::new(region, "key").is_ok(),
                 "expected region {region:?} to be accepted"
             );
+        }
+    }
+
+    #[test]
+    fn default_region_uses_bare_storage_host() {
+        let c = StorageClient::new("storage", "key").unwrap();
+        assert_eq!(c.base_url, "https://storage.bunnycdn.com");
+    }
+
+    #[test]
+    fn non_default_region_uses_storage_subdomain() {
+        // A non-default region must resolve to `{region}.storage.bunnycdn.com`,
+        // NOT `{region}.bunnycdn.com` (the latter does not exist).
+        for &(region, host) in &[
+            ("la", "https://la.storage.bunnycdn.com"),
+            ("uk", "https://uk.storage.bunnycdn.com"),
+            ("syd", "https://syd.storage.bunnycdn.com"),
+        ] {
+            let c = StorageClient::new(region, "key").unwrap();
+            assert_eq!(c.base_url, host, "wrong host for region {region:?}");
         }
     }
 

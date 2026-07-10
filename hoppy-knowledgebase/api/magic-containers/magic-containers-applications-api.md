@@ -176,6 +176,26 @@ None.
 
 ---
 
+## 2b. Get Application Usage Summary
+
+**Method:** `GET`
+**Path:** `/apps/{appId}/summary`
+
+Spec-only endpoint (present in `specs/magic-containers.json`, not yet wired into
+hoppy — flagged in iter-66). Returns a usage summary for the application.
+
+### Path Parameters
+
+| Parameter | Type   | Required |
+|-----------|--------|----------|
+| appId     | string | Yes      |
+
+### Request Body
+
+None.
+
+---
+
 ## 3. Get Application Statistics
 
 **Method:** `GET`

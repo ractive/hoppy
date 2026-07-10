@@ -128,28 +128,32 @@ pub async fn handle(
 
             let pb = progress::spinner(format!("Downloading {zone}/{display_path}..."), quiet);
 
-            let bytes = client.download_file(zone, dir, name).await?;
-
+            // Stream the body straight to the sink instead of buffering the
+            // whole file in memory.
             match file {
                 Some(path) => {
-                    fs::write(path, &bytes)
-                        .await
-                        .with_context(|| format!("writing output file: {path}"))?;
+                    let mut out = std::fs::File::create(path)
+                        .with_context(|| format!("creating output file: {path}"))?;
+                    let written = client
+                        .download_file_streaming(zone, dir, name, &mut out)
+                        .await?;
                     progress::finish_with_message(
                         pb.as_ref(),
-                        format!("Downloaded {zone}/{display_path} ({} bytes)", bytes.len()),
+                        format!("Downloaded {zone}/{display_path} ({written} bytes)"),
                     );
                     if pb.is_none() && !quiet {
-                        eprintln!("Saved to {path} ({} bytes)", bytes.len());
+                        eprintln!("Saved to {path} ({written} bytes)");
                     }
                 }
                 None => {
-                    io::stdout()
-                        .write_all(&bytes)
-                        .context("writing to stdout")?;
+                    let stdout = io::stdout();
+                    let mut handle = stdout.lock();
+                    let written = client
+                        .download_file_streaming(zone, dir, name, &mut handle)
+                        .await?;
                     progress::finish_with_message(
                         pb.as_ref(),
-                        format!("Downloaded {zone}/{display_path} ({} bytes)", bytes.len()),
+                        format!("Downloaded {zone}/{display_path} ({written} bytes)"),
                     );
                 }
             }

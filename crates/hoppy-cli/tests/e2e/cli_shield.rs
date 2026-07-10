@@ -1509,3 +1509,73 @@ async fn shield_metrics_upload_scanning_json() {
     assert!(output.status.success());
     let _json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
 }
+
+// iter-66: API Guardian enums command
+
+#[tokio::test]
+async fn shield_api_guardian_enums_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/api-guardian/enums"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"executionMode":{"log":"0","block":"1"}}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "api-guardian",
+            "enums",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("invalid JSON");
+    assert_eq!(json["executionMode"]["block"], "1");
+}
+
+#[tokio::test]
+async fn shield_api_guardian_enums_text() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zone/42/api-guardian/enums"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"executionMode":{"log":"0","block":"1"}}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "text",
+            "shield",
+            "api-guardian",
+            "enums",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("executionMode"), "got: {stdout}");
+    assert!(stdout.contains("block"), "got: {stdout}");
+}
