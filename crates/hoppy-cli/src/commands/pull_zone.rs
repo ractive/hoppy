@@ -10,9 +10,10 @@ use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
-    LogAnonymizationType, MatchingType, OptimizerWatermarkPosition, PermaCacheType, PullZone,
-    PullZoneLogForwarderProtocolType, PullZoneTierType, PullZoneType, PurgeCache,
-    ShieldDDosProtectionType, StickySessionType, TriggerType, UpdatePullZone,
+    EdgeScriptExecutionPhase, ExternalDnsCertificateRecord, LogAnonymizationType, MatchingType,
+    OptimizerWatermarkPosition, PermaCacheType, PreloadingScreenTheme, PullZone,
+    PullZoneLogForwarderProtocolType, PullZonePrivateKeyType, PullZoneTierType, PullZoneType,
+    PurgeCache, ShieldDDosProtectionType, StickySessionType, TriggerType, UpdatePullZone,
 };
 use std::io::{self, BufRead, Write};
 
@@ -348,6 +349,27 @@ pub async fn handle(
             enable_logging,
             enable_extended_logging,
             enable_bunny_image_ai,
+            // Error pages (iter-74)
+            error_page_enable_custom_code,
+            error_page_custom_code,
+            error_page_enable_statuspage_widget,
+            error_page_statuspage_code,
+            error_page_whitelabel,
+            // Preloading screen (iter-74)
+            preloading_screen_enabled,
+            preloading_screen_code,
+            preloading_screen_logo_url,
+            preloading_screen_show_on_first_visit,
+            preloading_screen_theme,
+            preloading_screen_code_enabled,
+            preloading_screen_delay,
+            // Edge / middleware scripting (iter-74)
+            edge_script_id,
+            middleware_script_id,
+            edge_script_execution_phase,
+            // Magic Containers origin (iter-74)
+            magic_containers_app_id,
+            magic_containers_endpoint_id,
         } => {
             // Guard: if any log-forwarding sub-field is being set without also
             // enabling log forwarding in this same call, verify the zone has
@@ -576,6 +598,43 @@ pub async fn handle(
             body.enable_logging = *enable_logging;
             body.enable_extended_logging = *enable_extended_logging;
             body.enable_bunny_image_ai = *enable_bunny_image_ai;
+            // Error pages (iter-74)
+            body.error_page_enable_custom_code = *error_page_enable_custom_code;
+            if let Some(v) = error_page_custom_code {
+                body = body.error_page_custom_code(v.as_str());
+            }
+            body.error_page_enable_statuspage_widget = *error_page_enable_statuspage_widget;
+            if let Some(v) = error_page_statuspage_code {
+                body = body.error_page_statuspage_code(v.as_str());
+            }
+            body.error_page_whitelabel = *error_page_whitelabel;
+            // Preloading screen (iter-74)
+            body.preloading_screen_enabled = *preloading_screen_enabled;
+            if let Some(v) = preloading_screen_code {
+                body = body.preloading_screen_code(v.as_str());
+            }
+            if let Some(v) = preloading_screen_logo_url {
+                body = body.preloading_screen_logo_url(v.as_str());
+            }
+            body.preloading_screen_show_on_first_visit = *preloading_screen_show_on_first_visit;
+            if let Some(t) = preloading_screen_theme {
+                body = body.preloading_screen_theme(PreloadingScreenTheme::from(*t));
+            }
+            body.preloading_screen_code_enabled = *preloading_screen_code_enabled;
+            body.preloading_screen_delay = *preloading_screen_delay;
+            // Edge / middleware scripting (iter-74)
+            body.edge_script_id = *edge_script_id;
+            body.middleware_script_id = *middleware_script_id;
+            if let Some(p) = edge_script_execution_phase {
+                body = body.edge_script_execution_phase(EdgeScriptExecutionPhase::from(*p));
+            }
+            // Magic Containers origin (iter-74)
+            if let Some(v) = magic_containers_app_id {
+                body = body.magic_containers_app_id(v.as_str());
+            }
+            if let Some(v) = magic_containers_endpoint_id {
+                body = body.magic_containers_endpoint_id(v.as_str());
+            }
             let pz = client.update_pull_zone(*id, &body).await?;
             print_pull_zone(&pz, format, redact_cfg);
         }
@@ -853,8 +912,73 @@ async fn handle_hostname(
                 &format!("Removed certificate for {hostname} on pull zone {id}"),
             );
         }
+        PullZoneHostnameAction::UpdateKeyType {
+            id,
+            hostname,
+            key_type,
+        } => {
+            let kt = PullZonePrivateKeyType::from(*key_type);
+            client.update_private_key_type(*id, hostname, kt).await?;
+            output::print_mutation_result(
+                format,
+                "update-key-type",
+                "hostname",
+                serde_json::json!({ "KeyType": kt.to_string() }),
+                &format!("Set {kt} private key for {hostname} on pull zone {id}"),
+            );
+        }
+        PullZoneHostnameAction::RequestExternalCert { hostname } => {
+            let records = client.request_external_dns_certificate(hostname).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&records)
+                    .context("failed to serialize DNS validation records to JSON")?;
+                println!("{json}");
+            } else {
+                let rows: Vec<ExternalDnsRecordRow> =
+                    records.iter().map(ExternalDnsRecordRow::from).collect();
+                output::print_data(&rows, format);
+                eprintln!(
+                    "\nPublish the record(s) above at your DNS provider, then run:\n  \
+                     hoppy pull-zone hostname complete-external-cert --hostname {hostname}"
+                );
+            }
+        }
+        PullZoneHostnameAction::CompleteExternalCert { hostname } => {
+            client.complete_external_dns_certificate(hostname).await?;
+            output::print_mutation_result(
+                format,
+                "complete-external-cert",
+                "hostname",
+                serde_json::json!({}),
+                &format!("Completed external-DNS certificate for {hostname}"),
+            );
+        }
     }
     Ok(())
+}
+
+/// Table row for the DNS validation records returned by `request-external-cert`.
+#[derive(serde::Serialize, tabled::Tabled)]
+struct ExternalDnsRecordRow {
+    #[tabled(rename = "Hostname")]
+    hostname: String,
+    #[tabled(rename = "Type")]
+    record_type: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "Value")]
+    value: String,
+}
+
+impl From<&ExternalDnsCertificateRecord> for ExternalDnsRecordRow {
+    fn from(r: &ExternalDnsCertificateRecord) -> Self {
+        Self {
+            hostname: r.hostname.clone().unwrap_or_default(),
+            record_type: r.record_type.clone().unwrap_or_default(),
+            name: r.name.clone().unwrap_or_default(),
+            value: r.value.clone().unwrap_or_default(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

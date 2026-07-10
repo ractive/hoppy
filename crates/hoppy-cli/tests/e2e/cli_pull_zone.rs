@@ -993,6 +993,92 @@ async fn pull_zone_hostname_remove_cert() {
         .stderr(predicates::str::contains("Removed certificate"));
 }
 
+#[tokio::test]
+async fn pull_zone_hostname_update_key_type_ec() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/updatePrivateKeyType"))
+        .and(header("AccessKey", "test-key"))
+        .and(body_json(
+            serde_json::json!({ "Hostname": "cdn.example.com", "UseEcKey": true }),
+        ))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "update-key-type",
+        "--id",
+        "1001",
+        "--hostname",
+        "cdn.example.com",
+        "--key-type",
+        "ec",
+    ]);
+    cmd.assert()
+        .success()
+        .stderr(predicates::str::contains("ec private key"));
+}
+
+#[tokio::test]
+async fn pull_zone_hostname_request_external_cert_prints_records() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/requestExternalDnsCertificate"))
+        .and(header("AccessKey", "test-key"))
+        .and(query_param("hostname", "cdn.example.com"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {
+                "Hostname": "cdn.example.com",
+                "Type": "CNAME",
+                "Name": "_acme-challenge.cdn.example.com",
+                "Value": "validate.bunny.net"
+            }
+        ])))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "request-external-cert",
+        "--hostname",
+        "cdn.example.com",
+    ]);
+    cmd.assert()
+        .success()
+        .stdout(predicates::str::contains("validate.bunny.net"))
+        .stderr(predicates::str::contains("complete-external-cert"));
+}
+
+#[tokio::test]
+async fn pull_zone_hostname_complete_external_cert() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/completeExternalDnsCertificate"))
+        .and(header("AccessKey", "test-key"))
+        .and(query_param("hostname", "cdn.example.com"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let mut cmd = support::hoppy_mock_cmd("test-key", &server.uri());
+    cmd.args([
+        "pull-zone",
+        "hostname",
+        "complete-external-cert",
+        "--hostname",
+        "cdn.example.com",
+    ]);
+    cmd.assert().success().stderr(predicates::str::contains(
+        "Completed external-DNS certificate",
+    ));
+}
+
 // ---------------------------------------------------------------------------
 // Pull Zone access-control (referrer / IP) E2E tests
 // ---------------------------------------------------------------------------
@@ -1974,6 +2060,77 @@ async fn pull_zone_update_optimizer_settings() {
             "80",
             "--optimizer-watermark-position",
             "center",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// iter-74: the error-page, preloading-screen, scripting and Magic Containers
+/// flags map to the exact PascalCase body keys (integer enums serialised as
+/// their discriminants).
+#[tokio::test]
+async fn pull_zone_update_iter74_body_completeness_flags() {
+    let server = MockServer::start().await;
+
+    let expected_body = serde_json::json!({
+        "ErrorPageEnableCustomCode": true,
+        "ErrorPageWhitelabel": true,
+        "PreloadingScreenEnabled": true,
+        "PreloadingScreenTheme": 1,
+        "PreloadingScreenDelay": 1500,
+        "EdgeScriptId": 42,
+        "MiddlewareScriptId": 99,
+        "EdgeScriptExecutionPhase": 1,
+        "MagicContainersAppId": "app-abc",
+        "MagicContainersEndpointId": "ep-xyz"
+    });
+
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(expected_body))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "update",
+            "--id",
+            "1001",
+            "--error-page-enable-custom-code",
+            "true",
+            "--error-page-whitelabel",
+            "true",
+            "--preloading-screen-enabled",
+            "true",
+            "--preloading-screen-theme",
+            "light",
+            "--preloading-screen-delay",
+            "1500",
+            "--edge-script-id",
+            "42",
+            "--middleware-script-id",
+            "99",
+            "--edge-script-execution-phase",
+            "on-response",
+            "--magic-containers-app-id",
+            "app-abc",
+            "--magic-containers-endpoint-id",
+            "ep-xyz",
         ])
         .output()
         .unwrap();

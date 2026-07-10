@@ -12,12 +12,13 @@ use crate::recording::{capture_request, maybe_record_response};
 use super::types::{
     AccountStatistics, AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone,
     CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord, DnsRecordScanResult,
-    DnsRecordScanTrigger, DnsSecDsRecord, DnsZone, DnsZoneStatistics, OptimizerStatistics,
-    OriginShieldQueueStatistics, PaginatedList, PullZone, PullZoneCount, PurgeCache,
-    SafeHopStatistics, StatisticsQuery, StorageRegion, StorageZone, StorageZoneEgressStatistics,
-    StorageZoneStatistics, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone,
-    UpdateStorageZone, UpdateVideoLibrary, VideoLanguage, VideoLibrary, VideoLibraryDrmStatistics,
-    VideoLibraryTranscribingStatistics, ZoneAvailability,
+    DnsRecordScanTrigger, DnsSecDsRecord, DnsZone, DnsZoneStatistics, ExternalDnsCertificateRecord,
+    OptimizerStatistics, OriginShieldQueueStatistics, PaginatedList, PullZone, PullZoneCount,
+    PullZonePrivateKeyType, PurgeCache, SafeHopStatistics, StatisticsQuery, StorageRegion,
+    StorageZone, StorageZoneEgressStatistics, StorageZoneStatistics, TriggerDnsRecordScan,
+    UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary,
+    VideoLanguage, VideoLibrary, VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics,
+    ZoneAvailability,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -307,6 +308,57 @@ impl CoreClient {
         let rb = self.auth(self.http.delete(&url)).json(&serde_json::json!({
             "Hostname": hostname
         }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Switch the private-key algorithm (RSA/EC) of a Pull Zone hostname's
+    /// certificate.
+    ///
+    /// Backs `POST /pullzone/{id}/updatePrivateKeyType`. The wire body carries
+    /// `UseEcKey` — `true` requests an elliptic-curve key, `false` an RSA key.
+    pub async fn update_private_key_type(
+        &self,
+        id: i64,
+        hostname: &str,
+        key_type: PullZonePrivateKeyType,
+    ) -> Result<()> {
+        let url = format!("{}/pullzone/{id}/updatePrivateKeyType", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname,
+            "UseEcKey": key_type.use_ec_key()
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Request an SSL certificate for a hostname whose DNS is hosted outside
+    /// bunny.net.
+    ///
+    /// Backs `POST /pullzone/requestExternalDnsCertificate`. Returns the DNS
+    /// validation records the caller must publish at their external DNS provider
+    /// before calling [`Self::complete_external_dns_certificate`].
+    pub async fn request_external_dns_certificate(
+        &self,
+        hostname: &str,
+    ) -> Result<Vec<ExternalDnsCertificateRecord>> {
+        let url = format!("{}/pullzone/requestExternalDnsCertificate", self.base_url);
+        let rb = self
+            .auth(self.http.post(&url))
+            .query(&[("hostname", hostname)]);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Complete external-DNS certificate issuance once the validation records
+    /// from [`Self::request_external_dns_certificate`] have been published.
+    ///
+    /// Backs `POST /pullzone/completeExternalDnsCertificate`.
+    pub async fn complete_external_dns_certificate(&self, hostname: &str) -> Result<()> {
+        let url = format!("{}/pullzone/completeExternalDnsCertificate", self.base_url);
+        let rb = self
+            .auth(self.http.post(&url))
+            .query(&[("hostname", hostname)]);
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
     }

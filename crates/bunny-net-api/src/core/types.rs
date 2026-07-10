@@ -524,6 +524,127 @@ impl std::str::FromStr for ShieldDDosProtectionType {
     }
 }
 
+/// Execution phase an attached Edge Script runs in.
+///
+/// Spec: `EdgeScriptExecutionPhase` — the point in the request lifecycle where
+/// the script bound via `EdgeScriptId` executes. Serialised as the integer
+/// discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum EdgeScriptExecutionPhase {
+    /// Run the script while the request is being processed (default).
+    OnRequest = 0,
+    /// Run the script while the response is being processed.
+    OnResponse = 1,
+}
+
+impl std::fmt::Display for EdgeScriptExecutionPhase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::OnRequest => "on-request",
+            Self::OnResponse => "on-response",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for EdgeScriptExecutionPhase {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "on-request" | "OnRequest" => Ok(Self::OnRequest),
+            "on-response" | "OnResponse" => Ok(Self::OnResponse),
+            _ => Err(format!(
+                "unknown edge-script execution phase: {s:?}; expected one of: on-request, on-response"
+            )),
+        }
+    }
+}
+
+/// Colour theme of the Pull Zone preloading (loading) screen.
+///
+/// Spec: `PreloadingScreenTheme` — `0 = Dark`, `1 = Light`. Serialised as the
+/// integer discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum PreloadingScreenTheme {
+    /// Dark preloading screen (default).
+    Dark = 0,
+    /// Light preloading screen.
+    Light = 1,
+}
+
+impl std::fmt::Display for PreloadingScreenTheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Dark => "dark",
+            Self::Light => "light",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for PreloadingScreenTheme {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "dark" | "Dark" => Ok(Self::Dark),
+            "light" | "Light" => Ok(Self::Light),
+            _ => Err(format!(
+                "unknown preloading-screen theme: {s:?}; expected one of: dark, light"
+            )),
+        }
+    }
+}
+
+/// Private-key algorithm used for a Pull Zone hostname's SSL certificate.
+///
+/// Backs `POST /pullzone/{id}/updatePrivateKeyType`. Bunny.net toggles between
+/// an RSA (2048-bit) key and an EC (elliptic-curve) key; the wire body uses a
+/// boolean `UseEcKey`, so this enum is a friendly CLI value rather than a
+/// `Serialize_repr` type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PullZonePrivateKeyType {
+    /// RSA 2048-bit private key (`UseEcKey = false`).
+    Rsa,
+    /// Elliptic-curve private key (`UseEcKey = true`).
+    Ec,
+}
+
+impl PullZonePrivateKeyType {
+    /// Value sent as the `UseEcKey` boolean in the request body.
+    #[must_use]
+    pub fn use_ec_key(self) -> bool {
+        matches!(self, Self::Ec)
+    }
+}
+
+impl std::fmt::Display for PullZonePrivateKeyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Rsa => "rsa",
+            Self::Ec => "ec",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for PullZonePrivateKeyType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "rsa" | "RSA" | "Rsa" => Ok(Self::Rsa),
+            "ec" | "EC" | "Ec" => Ok(Self::Ec),
+            _ => Err(format!(
+                "unknown private key type: {s:?}; expected one of: rsa, ec"
+            )),
+        }
+    }
+}
+
 /// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
 ///
 /// Bunny.net may add new protocols in future API versions. The
@@ -998,6 +1119,48 @@ pub struct PullZone {
     pub enable_extended_logging: bool,
     #[serde(default)]
     pub enable_web_sockets: bool,
+
+    // Error pages (iter-74)
+    #[serde(default)]
+    pub error_page_enable_custom_code: bool,
+    #[serde(default)]
+    pub error_page_custom_code: Option<String>,
+    #[serde(default)]
+    pub error_page_enable_statuspage_widget: bool,
+    #[serde(default)]
+    pub error_page_statuspage_code: Option<String>,
+    #[serde(default)]
+    pub error_page_whitelabel: bool,
+
+    // Preloading screen (iter-74)
+    #[serde(default)]
+    pub preloading_screen_enabled: bool,
+    #[serde(default)]
+    pub preloading_screen_code: Option<String>,
+    #[serde(default)]
+    pub preloading_screen_logo_url: Option<String>,
+    #[serde(default)]
+    pub preloading_screen_show_on_first_visit: bool,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub preloading_screen_theme: Option<PreloadingScreenTheme>,
+    #[serde(default)]
+    pub preloading_screen_code_enabled: bool,
+    #[serde(default)]
+    pub preloading_screen_delay: Option<i32>,
+
+    // Edge / middleware scripting (iter-74)
+    #[serde(default)]
+    pub edge_script_id: Option<i64>,
+    #[serde(default)]
+    pub middleware_script_id: Option<i64>,
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub edge_script_execution_phase: Option<EdgeScriptExecutionPhase>,
+
+    // Magic Containers origin (iter-74)
+    #[serde(default)]
+    pub magic_containers_app_id: Option<String>,
+    #[serde(default)]
+    pub magic_containers_endpoint_id: Option<String>,
 }
 
 /// Generic paginated list response returned by the bunny.net API.
@@ -1460,6 +1623,50 @@ pub struct UpdatePullZone {
     pub enable_extended_logging: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enable_web_sockets: Option<bool>,
+
+    // Error pages (iter-74)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_page_enable_custom_code: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_page_custom_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_page_enable_statuspage_widget: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_page_statuspage_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_page_whitelabel: Option<bool>,
+
+    // Preloading screen (iter-74)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preloading_screen_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preloading_screen_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preloading_screen_logo_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preloading_screen_show_on_first_visit: Option<bool>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preloading_screen_theme: Option<PreloadingScreenTheme>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preloading_screen_code_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preloading_screen_delay: Option<i32>,
+
+    // Edge / middleware scripting (iter-74)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edge_script_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub middleware_script_id: Option<i64>,
+    /// Serialises as an integer via `Serialize_repr`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edge_script_execution_phase: Option<EdgeScriptExecutionPhase>,
+
+    // Magic Containers origin (iter-74)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub magic_containers_app_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub magic_containers_endpoint_id: Option<String>,
 }
 
 impl UpdatePullZone {
@@ -2237,6 +2444,140 @@ impl UpdatePullZone {
         self.enable_web_sockets = Some(v);
         self
     }
+
+    // ── Error pages (iter-74) ────────────────────────────────────────────────
+
+    #[must_use]
+    pub fn error_page_enable_custom_code(mut self, v: bool) -> Self {
+        self.error_page_enable_custom_code = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn error_page_custom_code(mut self, v: impl Into<String>) -> Self {
+        self.error_page_custom_code = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn error_page_enable_statuspage_widget(mut self, v: bool) -> Self {
+        self.error_page_enable_statuspage_widget = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn error_page_statuspage_code(mut self, v: impl Into<String>) -> Self {
+        self.error_page_statuspage_code = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn error_page_whitelabel(mut self, v: bool) -> Self {
+        self.error_page_whitelabel = Some(v);
+        self
+    }
+
+    // ── Preloading screen (iter-74) ──────────────────────────────────────────
+
+    #[must_use]
+    pub fn preloading_screen_enabled(mut self, v: bool) -> Self {
+        self.preloading_screen_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn preloading_screen_code(mut self, v: impl Into<String>) -> Self {
+        self.preloading_screen_code = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn preloading_screen_logo_url(mut self, v: impl Into<String>) -> Self {
+        self.preloading_screen_logo_url = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn preloading_screen_show_on_first_visit(mut self, v: bool) -> Self {
+        self.preloading_screen_show_on_first_visit = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn preloading_screen_theme(mut self, v: PreloadingScreenTheme) -> Self {
+        self.preloading_screen_theme = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn preloading_screen_code_enabled(mut self, v: bool) -> Self {
+        self.preloading_screen_code_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn preloading_screen_delay(mut self, v: i32) -> Self {
+        self.preloading_screen_delay = Some(v);
+        self
+    }
+
+    // ── Edge / middleware scripting (iter-74) ────────────────────────────────
+
+    #[must_use]
+    pub fn edge_script_id(mut self, v: i64) -> Self {
+        self.edge_script_id = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn middleware_script_id(mut self, v: i64) -> Self {
+        self.middleware_script_id = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn edge_script_execution_phase(mut self, v: EdgeScriptExecutionPhase) -> Self {
+        self.edge_script_execution_phase = Some(v);
+        self
+    }
+
+    // ── Magic Containers origin (iter-74) ────────────────────────────────────
+
+    #[must_use]
+    pub fn magic_containers_app_id(mut self, v: impl Into<String>) -> Self {
+        self.magic_containers_app_id = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn magic_containers_endpoint_id(mut self, v: impl Into<String>) -> Self {
+        self.magic_containers_endpoint_id = Some(v.into());
+        self
+    }
+}
+
+/// A single DNS validation record returned by
+/// `POST /pullzone/requestExternalDnsCertificate`.
+///
+/// The caller must publish each of these records at their external DNS provider
+/// before calling `completeExternalDnsCertificate`. Fields are optional because
+/// the exact payload shape varies by validation method (CNAME vs TXT); unknown
+/// or absent keys deserialise to `None` rather than failing the response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ExternalDnsCertificateRecord {
+    /// The hostname the validation record applies to.
+    #[serde(default)]
+    pub hostname: Option<String>,
+    /// DNS record type to create (e.g. `CNAME`, `TXT`).
+    #[serde(default, rename = "Type")]
+    pub record_type: Option<String>,
+    /// The DNS record name to create.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// The value the DNS record must resolve to.
+    #[serde(default)]
+    pub value: Option<String>,
 }
 
 /// Request body for `POST /pullzone/{id}/edgerules/addOrUpdate`.
@@ -4286,5 +4627,63 @@ mod tests {
         assert_eq!(s.s3_egress_total, 500);
         assert_eq!(s.total_egress, 3600);
         assert_eq!(s.ftp_egress_total, 0);
+    }
+
+    /// iter-74: the new integer-enum types round-trip through their integer
+    /// discriminants on the wire.
+    #[test]
+    fn iter74_repr_enums_serialize_as_integers() {
+        assert_eq!(
+            serde_json::to_value(EdgeScriptExecutionPhase::OnRequest).unwrap(),
+            serde_json::json!(0)
+        );
+        assert_eq!(
+            serde_json::to_value(EdgeScriptExecutionPhase::OnResponse).unwrap(),
+            serde_json::json!(1)
+        );
+        assert_eq!(
+            serde_json::to_value(PreloadingScreenTheme::Dark).unwrap(),
+            serde_json::json!(0)
+        );
+        assert_eq!(
+            serde_json::to_value(PreloadingScreenTheme::Light).unwrap(),
+            serde_json::json!(1)
+        );
+    }
+
+    /// iter-74: CLI-facing enums parse from both kebab-case and PascalCase, and
+    /// reject unknown values with a helpful message.
+    #[test]
+    fn iter74_enum_from_str_round_trips() {
+        assert_eq!(
+            "on-request".parse::<EdgeScriptExecutionPhase>().unwrap(),
+            EdgeScriptExecutionPhase::OnRequest
+        );
+        assert_eq!(
+            "OnResponse".parse::<EdgeScriptExecutionPhase>().unwrap(),
+            EdgeScriptExecutionPhase::OnResponse
+        );
+        assert_eq!(
+            "light".parse::<PreloadingScreenTheme>().unwrap(),
+            PreloadingScreenTheme::Light
+        );
+        assert_eq!(
+            "rsa".parse::<PullZonePrivateKeyType>().unwrap(),
+            PullZonePrivateKeyType::Rsa
+        );
+        assert_eq!(
+            "EC".parse::<PullZonePrivateKeyType>().unwrap(),
+            PullZonePrivateKeyType::Ec
+        );
+        assert!("bogus".parse::<PreloadingScreenTheme>().is_err());
+        assert!("bogus".parse::<PullZonePrivateKeyType>().is_err());
+    }
+
+    /// iter-74: `PullZonePrivateKeyType::use_ec_key` maps EC→true, RSA→false so
+    /// the `updatePrivateKeyType` body is correct.
+    #[test]
+    fn private_key_type_use_ec_key_flag() {
+        assert!(PullZonePrivateKeyType::Ec.use_ec_key());
+        assert!(!PullZonePrivateKeyType::Rsa.use_ec_key());
     }
 }

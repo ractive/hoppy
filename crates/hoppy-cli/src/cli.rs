@@ -1,7 +1,7 @@
 use bunny_net_api::core::types::{
-    LogAnonymizationType, OptimizerWatermarkPosition, PermaCacheType,
-    PullZoneLogForwarderProtocolType, PullZoneTierType, ShieldDDosProtectionType,
-    StickySessionType,
+    EdgeScriptExecutionPhase, LogAnonymizationType, OptimizerWatermarkPosition, PermaCacheType,
+    PreloadingScreenTheme, PullZoneLogForwarderProtocolType, PullZonePrivateKeyType,
+    PullZoneTierType, ShieldDDosProtectionType, StickySessionType,
 };
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
@@ -355,6 +355,61 @@ impl From<ShieldDDosProtectionTypeArg> for ShieldDDosProtectionType {
             ShieldDDosProtectionTypeArg::DetectOnly => Self::DetectOnly,
             ShieldDDosProtectionTypeArg::ActiveStandard => Self::ActiveStandard,
             ShieldDDosProtectionTypeArg::ActiveAggressive => Self::ActiveAggressive,
+        }
+    }
+}
+
+/// Execution phase for an attached edge script (`EdgeScriptExecutionPhase`).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum EdgeScriptExecutionPhaseArg {
+    /// Run the script while the request is processed (value 0).
+    OnRequest,
+    /// Run the script while the response is processed (value 1).
+    OnResponse,
+}
+
+impl From<EdgeScriptExecutionPhaseArg> for EdgeScriptExecutionPhase {
+    fn from(a: EdgeScriptExecutionPhaseArg) -> Self {
+        match a {
+            EdgeScriptExecutionPhaseArg::OnRequest => Self::OnRequest,
+            EdgeScriptExecutionPhaseArg::OnResponse => Self::OnResponse,
+        }
+    }
+}
+
+/// Colour theme of the preloading screen (`PreloadingScreenTheme`).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum PreloadingScreenThemeArg {
+    /// Dark preloading screen (value 0).
+    Dark,
+    /// Light preloading screen (value 1).
+    Light,
+}
+
+impl From<PreloadingScreenThemeArg> for PreloadingScreenTheme {
+    fn from(a: PreloadingScreenThemeArg) -> Self {
+        match a {
+            PreloadingScreenThemeArg::Dark => Self::Dark,
+            PreloadingScreenThemeArg::Light => Self::Light,
+        }
+    }
+}
+
+/// Private-key algorithm for a hostname's SSL certificate
+/// (`updatePrivateKeyType`).
+#[derive(Copy, Clone, ValueEnum)]
+pub enum PullZonePrivateKeyTypeArg {
+    /// RSA 2048-bit private key.
+    Rsa,
+    /// Elliptic-curve private key.
+    Ec,
+}
+
+impl From<PullZonePrivateKeyTypeArg> for PullZonePrivateKeyType {
+    fn from(a: PullZonePrivateKeyTypeArg) -> Self {
+        match a {
+            PullZonePrivateKeyTypeArg::Rsa => Self::Rsa,
+            PullZonePrivateKeyTypeArg::Ec => Self::Ec,
         }
     }
 }
@@ -1343,6 +1398,74 @@ pub enum PullZoneAction {
         /// Enable Bunny Image AI processing for this pull zone.
         #[arg(long, action = clap::ArgAction::Set, help_heading = "Optimizer")]
         enable_bunny_image_ai: Option<bool>,
+
+        // ── Error pages (iter-74) ────────────────────────────────────────────
+        /// Serve a custom HTML error page (set the markup with --error-page-custom-code).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Error pages")]
+        error_page_enable_custom_code: Option<bool>,
+        /// Custom HTML shown for error responses when custom code is enabled.
+        #[arg(long, value_name = "HTML", help_heading = "Error pages")]
+        error_page_custom_code: Option<String>,
+        /// Embed an Atlassian Statuspage widget on error pages (set --error-page-statuspage-code).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Error pages")]
+        error_page_enable_statuspage_widget: Option<bool>,
+        /// Statuspage.io page code used by the error-page widget.
+        #[arg(long, value_name = "CODE", help_heading = "Error pages")]
+        error_page_statuspage_code: Option<String>,
+        /// Hide bunny.net branding on default error pages (white-label).
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Error pages")]
+        error_page_whitelabel: Option<bool>,
+
+        // ── Preloading screen (iter-74) ──────────────────────────────────────
+        /// Show a preloading (loading) screen while the page loads.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Preloading screen")]
+        preloading_screen_enabled: Option<bool>,
+        /// Custom HTML/JS for the preloading screen (requires --preloading-screen-code-enabled).
+        #[arg(long, value_name = "HTML", help_heading = "Preloading screen")]
+        preloading_screen_code: Option<String>,
+        /// Logo image URL shown on the preloading screen.
+        #[arg(long, value_name = "URL", help_heading = "Preloading screen")]
+        preloading_screen_logo_url: Option<String>,
+        /// Show the preloading screen only on a visitor's first visit.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Preloading screen")]
+        preloading_screen_show_on_first_visit: Option<bool>,
+        /// Preloading screen colour theme: dark, light.
+        #[arg(long, value_name = "THEME", help_heading = "Preloading screen")]
+        preloading_screen_theme: Option<PreloadingScreenThemeArg>,
+        /// Use the custom --preloading-screen-code instead of the built-in screen.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "Preloading screen")]
+        preloading_screen_code_enabled: Option<bool>,
+        /// Delay in milliseconds before the preloading screen is shown.
+        #[arg(
+            long,
+            value_name = "MS",
+            value_parser = clap::value_parser!(i32).range(0..),
+            help_heading = "Preloading screen"
+        )]
+        preloading_screen_delay: Option<i32>,
+
+        // ── Edge / middleware scripting (iter-74) ────────────────────────────
+        /// Attach an edge script by ID (from `hoppy script list`). Use -1 to detach.
+        #[arg(long, value_name = "ID", help_heading = "Scripting")]
+        edge_script_id: Option<i64>,
+        /// Attach a middleware script by ID (from `hoppy script list`). Use -1 to detach.
+        #[arg(long, value_name = "ID", help_heading = "Scripting")]
+        middleware_script_id: Option<i64>,
+        /// Lifecycle phase the edge script runs in: on-request, on-response.
+        #[arg(long, value_name = "PHASE", help_heading = "Scripting")]
+        edge_script_execution_phase: Option<EdgeScriptExecutionPhaseArg>,
+
+        // ── Magic Containers origin (iter-74) ────────────────────────────────
+        /// Point the origin at a Magic Containers app ID (from `hoppy container app list`).
+        #[arg(long, value_name = "APP_ID", help_heading = "Magic Containers origin")]
+        magic_containers_app_id: Option<String>,
+        /// Magic Containers endpoint ID to route to (from `hoppy container endpoint list`).
+        #[arg(
+            long,
+            value_name = "ENDPOINT_ID",
+            help_heading = "Magic Containers origin"
+        )]
+        magic_containers_endpoint_id: Option<String>,
     },
     /// Delete a pull zone
     Delete {
@@ -1636,6 +1759,45 @@ pub enum PullZoneHostnameAction {
         #[arg(long)]
         id: i64,
         /// Hostname to remove the certificate from
+        #[arg(long)]
+        hostname: String,
+    },
+    /// Switch the private-key algorithm (RSA or EC) of a hostname's certificate
+    UpdateKeyType {
+        /// Pull zone ID
+        #[arg(long)]
+        id: i64,
+        /// Hostname whose certificate key type is being changed
+        #[arg(long)]
+        hostname: String,
+        /// Private-key algorithm: rsa (2048-bit) or ec (elliptic curve)
+        #[arg(long, value_name = "TYPE")]
+        key_type: PullZonePrivateKeyTypeArg,
+    },
+    /// Request an SSL certificate for a hostname whose DNS is hosted outside bunny.net.
+    ///
+    /// This is step 1 of a two-step flow. It returns the DNS validation records
+    /// you must publish at your external DNS provider. Once those records are
+    /// live, run `complete-external-cert` for the same hostname to finish
+    /// issuance.
+    ///
+    /// EXAMPLES:
+    ///   # 1. Request the certificate and read the validation records
+    ///   hoppy pull-zone hostname request-external-cert --hostname cdn.example.com
+    ///
+    ///   # 2. After publishing the records at your DNS provider, complete it
+    ///   hoppy pull-zone hostname complete-external-cert --hostname cdn.example.com
+    RequestExternalCert {
+        /// Hostname to request the external-DNS certificate for
+        #[arg(long)]
+        hostname: String,
+    },
+    /// Complete external-DNS certificate issuance after publishing the validation records.
+    ///
+    /// Run this only after the DNS records returned by `request-external-cert`
+    /// have propagated at your external DNS provider.
+    CompleteExternalCert {
+        /// Hostname to complete the external-DNS certificate for
         #[arg(long)]
         hostname: String,
     },
