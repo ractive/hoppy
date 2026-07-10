@@ -113,10 +113,21 @@ numeric ID in the fixture path). Output:
 writing any fixture to disk. The following are masked automatically:
 
 - **Field-name patterns** (case-insensitive substring): `email`, `payer`,
-  `paymentid`, `balance`, `charges`, `recharge`, `invoice`, `downloadurl`,
-  `apikey`, `accesskey`, `token`, `password`.
+  `payment`, `balance`, `charges`, `recharge`, `invoice`, `downloadurl`,
+  `apikey`, `accesskey`, `signingkey`, `signingsecret`, `secret`, `token`,
+  `password`, `deploymentkey`, `amount`, `author`, `firstname`, `lastname`,
+  `fullname` — plus a bare `Key` as an exact field name
+  (`GET /apikey` returns the account key under exactly that name; substrings
+  like `KeyId`/`errorKey` stay readable).
 - **Value patterns**: URLs containing `?token=`, `&token=`, `signature=`, or
-  `expires=`; JWT-shaped strings (three base64url segments).
+  `expires=`; JWT-shaped strings (`eyJ`-prefixed, three base64url segments —
+  the prefix requirement keeps three-label hostnames like `kiki.bunny.net`
+  and version strings like `1.2.3` readable); bunny.net account API keys
+  (two concatenated UUIDs, 72 chars) under any field name.
+
+Offline wiremock e2e tests never record: the `hoppy_cmd()` test helper strips
+`HOPPY_RECORD_DIR`/`HOPPY_NO_REDACT` so a workspace-wide recording sweep only
+captures real live-API responses, not mock echoes.
 
 String values become `"<redacted>"`; numbers become `0`; booleans and array/object
 structure are preserved so fixture diffs remain meaningful.

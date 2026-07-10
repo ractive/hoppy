@@ -16,19 +16,34 @@ const SENSITIVE_KEY_PATTERNS: &[&str] = &[
     "secret",
     "token",
     "password",
+    "deploymentkey",
+    "amount",
+    // Person-name fields: `Author` on compute releases carries the account
+    // holder's real display name. Deliberately not plain "name" — that would
+    // nuke resource names (`Name`, `Hostname`) that fixtures need.
+    "author",
+    "firstname",
+    "lastname",
+    "fullname",
 ];
 
 /// Returns `true` when the object key suggests a sensitive value.
+///
+/// A bare `Key` (exact match, case-insensitive) is treated as sensitive too:
+/// `GET /apikey` returns the account API key under exactly that name. The
+/// substring patterns deliberately exclude plain "key" so identifiers like
+/// `KeyId` or `errorKey` stay readable.
 pub fn is_sensitive_key(key: &str) -> bool {
     let lower = key.to_lowercase();
-    SENSITIVE_KEY_PATTERNS.iter().any(|pat| lower.contains(pat))
+    lower == "key" || SENSITIVE_KEY_PATTERNS.iter().any(|pat| lower.contains(pat))
 }
 
 /// Returns `true` when the string value itself looks sensitive:
 /// - A URL carrying `?token=`, `&token=`, `signature=`, or `expires=`
-/// - A JWT (three base64url-ish segments separated by `.`)
+/// - A JWT (`eyJ`-prefixed, three base64url-ish segments separated by `.`)
+/// - A bunny.net account API key (two concatenated UUIDs, 72 chars)
 pub fn is_sensitive_value(value: &str) -> bool {
-    is_signed_url(value) || is_jwt(value)
+    is_signed_url(value) || is_jwt(value) || is_account_api_key(value)
 }
 
 fn is_signed_url(s: &str) -> bool {
@@ -39,7 +54,13 @@ fn is_signed_url(s: &str) -> bool {
 }
 
 fn is_jwt(s: &str) -> bool {
-    // A JWT has exactly two dots splitting three non-empty, base64url-ish segments.
+    // A JWT has exactly two dots splitting three non-empty, base64url-ish
+    // segments. Require the standard `eyJ` header prefix (base64url of `{"`)
+    // so three-label hostnames ("kiki.bunny.net") and version strings
+    // ("1.2.3") don't false-positive.
+    if !s.starts_with("eyJ") {
+        return false;
+    }
     let parts: Vec<&str> = s.splitn(4, '.').collect();
     if parts.len() != 3 {
         return false;
@@ -50,6 +71,20 @@ fn is_jwt(s: &str) -> bool {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'=')
     })
+}
+
+/// bunny.net account API keys are two concatenated UUIDs (72 chars).
+fn is_account_api_key(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    bytes.len() == 72 && is_uuid(&bytes[..36]) && is_uuid(&bytes[36..])
+}
+
+fn is_uuid(bytes: &[u8]) -> bool {
+    bytes.len() == 36
+        && bytes.iter().enumerate().all(|(i, b)| match i {
+            8 | 13 | 18 | 23 => *b == b'-',
+            _ => b.is_ascii_hexdigit(),
+        })
 }
 
 /// Recursively redact sensitive fields and values in a `serde_json::Value`.
@@ -117,6 +152,7 @@ mod tests {
             ("AutomaticPaymentIdentifier", json!("auto_pm_xyz")),
             ("AWSSigningKey", json!("AKIA...")),
             ("AWSSigningSecret", json!("secret")),
+            ("Amount", json!(2.24)),
         ];
         for (key, val) in cases {
             let result = redacted(json!({ key: val }));
@@ -171,6 +207,69 @@ mod tests {
     fn plain_url_not_redacted() {
         let result = redacted(json!({ "website": "https://example.com/page" }));
         assert_eq!(result["website"], "https://example.com/page");
+    }
+
+    #[test]
+    fn bare_key_field_is_redacted() {
+        // GET /apikey returns the account API key under exactly "Key".
+        let result = redacted(json!({ "Key": "eda66cfe-8fd7-4040-997f-77a6c66fe488" }));
+        assert_eq!(result["Key"], "<redacted>");
+    }
+
+    #[test]
+    fn key_substrings_stay_readable() {
+        let result = redacted(json!({ "KeyId": 42, "errorKey": "invalid_plan_type" }));
+        assert_eq!(result["KeyId"], 42);
+        assert_eq!(result["errorKey"], "invalid_plan_type");
+    }
+
+    #[test]
+    fn deployment_key_is_redacted() {
+        let result = redacted(json!({ "DeploymentKey": "e5bb2cc3-0b2e-49e2-8858" }));
+        assert_eq!(result["DeploymentKey"], "<redacted>");
+    }
+
+    #[test]
+    fn account_api_key_value_redacted_under_any_field() {
+        // Two concatenated UUIDs — the bunny.net account API key shape.
+        let key = "eda66cfe-8fd7-4040-997f-77a6c66fe488ea41a773-201d-4cbf-81df-1735d605b486";
+        let result = redacted(json!({ "SomeHarmlessField": key }));
+        assert_eq!(result["SomeHarmlessField"], "<redacted>");
+    }
+
+    #[test]
+    fn author_name_fields_redacted_but_resource_names_kept() {
+        let result = redacted(json!({
+            "Author": "Jane Doe",
+            "AuthorEmail": "jane@real-company.com",
+            "FirstName": "Jane",
+            "Name": "hoppy-test-zone",
+            "DefaultHostname": "zone.b-cdn.net"
+        }));
+        assert_eq!(result["Author"], "<redacted>");
+        assert_eq!(result["AuthorEmail"], "<redacted>");
+        assert_eq!(result["FirstName"], "<redacted>");
+        assert_eq!(result["Name"], "hoppy-test-zone");
+        assert_eq!(result["DefaultHostname"], "zone.b-cdn.net");
+    }
+
+    #[test]
+    fn single_uuid_not_redacted() {
+        // Plain GUIDs are identifiers (video guids, app ids) — keep them.
+        let result = redacted(json!({ "guid": "7ddb2cac-63f5-46c0-beed-f6566e0f6a07" }));
+        assert_eq!(result["guid"], "7ddb2cac-63f5-46c0-beed-f6566e0f6a07");
+    }
+
+    #[test]
+    fn hostnames_and_versions_not_jwt_false_positives() {
+        let result = redacted(json!({
+            "Nameserver1": "kiki.bunny.net",
+            "DefaultHostname": "new-script.b-cdn.net",
+            "version": "1.2.3"
+        }));
+        assert_eq!(result["Nameserver1"], "kiki.bunny.net");
+        assert_eq!(result["DefaultHostname"], "new-script.b-cdn.net");
+        assert_eq!(result["version"], "1.2.3");
     }
 
     #[test]

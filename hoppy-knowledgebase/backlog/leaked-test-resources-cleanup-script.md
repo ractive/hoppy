@@ -12,6 +12,34 @@ tags:
 
 # Live-api test runs leak resources, cleanup.sh doesn't clean them
 
+## State on 2026-07-10 (fixture-refresh pre-flight scan)
+
+Still leaking. Pre-flight enumeration before the fixture-refresh sweep found
+10 leftovers (some from May, some from the 2026-07-10 iter-66..77 live run):
+
+| Surface        | Leaks | IDs |
+|----------------|-------|-----|
+| pull zones     | 2     | 5857625 (`hoppy-edge-rule-*`), 5857634 (`hoppy-shield-test-*`) |
+| storage zones  | 1     | 1515810 (`hpst-1778785767589-1`) |
+| container apps | 9     | `hpmc-*-upd` — AGgJrAa8x91qbOB, AhURpuhAmIjaJpP, CBI5MrzQsZLio4b, I8jMdqTeJGAFFl1, Iw2g5HcXM7k407G, Y8OkKr3R0iNtd3E, eWgSqyF6FGqEI4m, geGegD8mXdxMLng, iIzjD0NJ52AoDbE |
+| shield zones   | 1     | 118829 — orphan; its pull zone 5830062 is gone and the CLI has no `shield zone delete` |
+
+The container-app leaks are all `-upd` suffixed, and the two fixture-refresh
+sweeps on 2026-07-10 each leaked **exactly one** new `-upd` app
+(Iw2g5HcXM7k407G, Y8OkKr3R0iNtd3E): the container update-lifecycle test's
+rename step reliably breaks the cleanup stack's delete — this is a
+reproducible bug, not an occasional flake.
+
+**Cleanup executed 2026-07-10:** all pull zones, storage zones, and
+container apps deleted (`container app delete --cascade --yes` handles the
+auto-managed pull zones). What remains is 10 **orphaned shield zones**
+(118829, 122317, 122354, 122393, 122412, 122444, 149999, 150002–150004),
+each referencing an already-deleted pull zone. There is no way to remove
+them: the public spec has no `DELETE /shield/shield-zone/{id}` and a
+speculative call returns 405. They appear to be inert server-side residue —
+shield-zone creation during tests should assume old orphans may be present
+in `shield zone list` output.
+
 ## State on 2026-05-15
 
 A fresh `hoppy <noun> list` against the test account showed leaks from

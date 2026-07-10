@@ -4,7 +4,7 @@
   "BillingRecords": [
     {
       "Id": 1001,
-      "Amount": 9.99,
+      "Amount": 0,
       "PaymentId": "<redacted>",
       "InvoiceDownloadUrl": "<redacted>",
       "PayerEmail": "<redacted>",

@@ -35,6 +35,12 @@ macro_rules! assert_cli_snapshot {
 /// Build a hoppy Command with all BUNNY_* env vars cleared.
 pub fn hoppy_cmd() -> Command {
     let mut cmd = Command::cargo_bin("hoppy").expect("binary not found");
+    // Never record mock-server responses: a fixture-refresh sweep sets
+    // HOPPY_RECORD_DIR on the whole `cargo test` invocation, and offline
+    // wiremock tests would otherwise write their mock payloads into the
+    // recording directory alongside real live-API responses.
+    cmd.env_remove("HOPPY_RECORD_DIR");
+    cmd.env_remove("HOPPY_NO_REDACT");
     cmd.env_remove("BUNNY_API_KEY");
     cmd.env_remove("BUNNY_API_URL");
     cmd.env_remove("BUNNY_STORAGE_URL");
