@@ -28,9 +28,11 @@ fn real_fixtures_dir() -> PathBuf {
         .join("fixtures")
 }
 
-/// Snapshot of (relative path -> (bytes, mtime)) for every file under `dir`,
-/// used to assert a directory tree was not touched by a command invocation.
-fn snapshot_tree(dir: &Path) -> Vec<(PathBuf, u64, SystemTime)> {
+/// Snapshot of (relative path -> (content bytes, mtime)) for every file under
+/// `dir`, used to assert a directory tree was not touched by a command
+/// invocation. Full content bytes (not just length) so a same-size content
+/// change can't slip through.
+fn snapshot_tree(dir: &Path) -> Vec<(PathBuf, Vec<u8>, SystemTime)> {
     let mut out = Vec::new();
     for entry in walkdir::WalkDir::new(dir) {
         let entry = entry.expect("walk fixtures dir");
@@ -38,9 +40,14 @@ fn snapshot_tree(dir: &Path) -> Vec<(PathBuf, u64, SystemTime)> {
             continue;
         }
         let meta = entry.metadata().expect("read metadata");
+        let rel = entry
+            .path()
+            .strip_prefix(dir)
+            .expect("entry under snapshot root")
+            .to_path_buf();
         out.push((
-            entry.path().to_path_buf(),
-            meta.len(),
+            rel,
+            fs::read(entry.path()).expect("read file bytes"),
             meta.modified().expect("mtime"),
         ));
     }
@@ -67,6 +74,20 @@ fn apply_flag_no_longer_exists() {
         .arg("--apply")
         .assert()
         .failure();
+}
+
+#[test]
+fn out_flag_requires_shape_report() {
+    let dir = tempdir().unwrap();
+    let recorded_dir = dir.path().join("recorded");
+    fs::create_dir_all(&recorded_dir).unwrap();
+
+    fixture_refresh_cmd()
+        .args(["--recorded", recorded_dir.to_str().unwrap()])
+        .args(["--out", dir.path().join("report.md").to_str().unwrap()])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("--shape-report"));
 }
 
 #[test]
@@ -193,9 +214,15 @@ fn shape_report_exit_code_two_when_recording_has_leak() {
 
     assert_eq!(output.status.code(), Some(2));
     let stdout = String::from_utf8_lossy(&output.stdout);
+    // The report names the key path but deliberately never echoes the leaked
+    // value itself — a leak report containing the leak would defeat its point.
     assert!(
-        stdout.contains("leaked-person@real-company.com") || stdout.contains("AuthorEmail"),
-        "leak should be listed in the report: {stdout}"
+        stdout.contains("AuthorEmail"),
+        "leak key path should be listed in the report: {stdout}"
+    );
+    assert!(
+        !stdout.contains("leaked-person@real-company.com"),
+        "the leaked value itself must never appear in the report: {stdout}"
     );
 }
 

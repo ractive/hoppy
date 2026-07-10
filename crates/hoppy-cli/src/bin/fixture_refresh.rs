@@ -57,7 +57,7 @@ struct Cli {
     shape_report: bool,
 
     /// Write the --shape-report markdown to this file instead of stdout.
-    #[arg(long)]
+    #[arg(long, requires = "shape_report")]
     out: Option<PathBuf>,
 }
 
@@ -106,6 +106,7 @@ fn run_drift_listing(fixtures_dir: &Path, matches: &[RecordingMatch]) -> Result<
             RecordingMatch::Mapped {
                 fixture_rel,
                 recording_abs,
+                ..
             } => {
                 let fixture_abs = fixtures_dir.join(fixture_rel);
                 let rec_bytes = std::fs::read(recording_abs)
@@ -131,11 +132,12 @@ fn run_drift_listing(fixtures_dir: &Path, matches: &[RecordingMatch]) -> Result<
             RecordingMatch::Collision {
                 recording_rel,
                 candidates,
+                ..
             } => {
                 collisions += 1;
                 println!("collision: {} → [{}]", recording_rel, candidates.join(", "));
             }
-            RecordingMatch::Unmapped { recording_rel } => {
+            RecordingMatch::Unmapped { recording_rel, .. } => {
                 unmapped += 1;
                 println!("unmapped: {}", recording_rel);
             }
@@ -196,15 +198,20 @@ pub enum RecordingMatch {
     /// Recording matched exactly one descriptive fixture.
     Mapped {
         fixture_rel: String,
+        recording_rel: String,
         recording_abs: PathBuf,
     },
     /// Recording matched multiple descriptive fixtures (ambiguous — skip).
     Collision {
         recording_rel: String,
+        recording_abs: PathBuf,
         candidates: Vec<String>,
     },
     /// No descriptive fixture maps to this recording.
-    Unmapped { recording_rel: String },
+    Unmapped {
+        recording_rel: String,
+        recording_abs: PathBuf,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -842,13 +849,16 @@ mod matcher {
                 match deduped.len() {
                     0 => RecordingMatch::Unmapped {
                         recording_rel: rec.rel.clone(),
+                        recording_abs: rec.abs.clone(),
                     },
                     1 => RecordingMatch::Mapped {
                         fixture_rel: deduped.remove(0),
+                        recording_rel: rec.rel.clone(),
                         recording_abs: rec.abs.clone(),
                     },
                     _ => RecordingMatch::Collision {
                         recording_rel: rec.rel.clone(),
+                        recording_abs: rec.abs.clone(),
                         candidates: deduped,
                     },
                 }
@@ -1220,10 +1230,13 @@ mod shape_diff {
             }
             Value::Array(items) => {
                 // Collapse all elements onto index 0 so an N-element array
-                // produces one representative path, not N. Merge the shape
-                // of every element (not just the first) so a heterogeneous
-                // array still surfaces every key/type combination that
-                // appears anywhere in it. A no-op for an empty array.
+                // produces one representative path, not N. Nested object keys
+                // are unioned across elements (every child key seen anywhere
+                // gets a path), but for the collapsed path's OWN type the last
+                // element wins — a heterogeneous array mixing e.g. objects and
+                // scalars reports only the final element's type. bunny.net
+                // arrays are homogeneous by schema, so this is acceptable for
+                // a diagnostic report. A no-op for an empty array.
                 let child_prefix = if prefix.is_empty() {
                     "0".to_string()
                 } else {
@@ -1396,7 +1409,10 @@ mod noise {
 
     fn is_iso_timestamp(s: &str) -> bool {
         // YYYY-MM-DDTHH:MM:SS with optional fractional seconds and either a
-        // literal 'Z' or a +HH:MM / -HH:MM offset.
+        // literal 'Z' or a +HH:MM / -HH:MM offset. The tail is validated
+        // exactly — a matching 19-byte prefix followed by arbitrary text
+        // (e.g. "2026-07-10T00:00:00-some-slug") is NOT a timestamp, so a
+        // real field name that merely starts date-like never gets filtered.
         let bytes = s.as_bytes();
         if bytes.len() < 19 {
             return false;
@@ -1409,7 +1425,30 @@ mod noise {
         let hour_ok = digit(11) && digit(12);
         let min_ok = bytes.get(13) == Some(&b':') && digit(14) && digit(15);
         let sec_ok = bytes.get(16) == Some(&b':') && digit(17) && digit(18);
-        year_ok && month_ok && day_ok && sep_ok && hour_ok && min_ok && sec_ok
+        if !(year_ok && month_ok && day_ok && sep_ok && hour_ok && min_ok && sec_ok) {
+            return false;
+        }
+        is_valid_timestamp_tail(&bytes[19..])
+    }
+
+    /// Validates what may follow the `YYYY-MM-DDTHH:MM:SS` prefix: nothing,
+    /// `Z`/`z`, a fractional-seconds part (`.` + digits), and/or a
+    /// `+HH:MM` / `-HH:MM` offset.
+    fn is_valid_timestamp_tail(mut tail: &[u8]) -> bool {
+        if let [b'.', rest @ ..] = tail {
+            let digits = rest.iter().take_while(|b| b.is_ascii_digit()).count();
+            if digits == 0 {
+                return false;
+            }
+            tail = &rest[digits..];
+        }
+        match tail {
+            [] | [b'Z'] | [b'z'] => true,
+            [b'+' | b'-', h1, h2, b':', m1, m2] => {
+                [h1, h2, m1, m2].iter().all(|b| b.is_ascii_digit())
+            }
+            _ => false,
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1436,8 +1475,22 @@ mod noise {
         #[test]
         fn iso_timestamp_is_noisy() {
             assert!(is_noisy_segment("2026-07-10T00:00:00Z"));
+            assert!(is_noisy_segment("2026-07-10T00:00:00"));
             assert!(is_noisy_segment("2026-07-10T00:00:00.123Z"));
+            assert!(is_noisy_segment("2026-07-10T00:00:00.2519408Z"));
             assert!(is_noisy_segment("2026-07-10T00:00:00+02:00"));
+            assert!(is_noisy_segment("2026-07-10T00:00:00-05:00"));
+        }
+
+        #[test]
+        fn timestamp_prefix_with_arbitrary_suffix_not_noisy() {
+            // A valid 19-byte timestamp prefix followed by garbage is NOT a
+            // timestamp — a field name that merely starts date-like must not
+            // have its whole subtree dropped from the diff.
+            assert!(!is_noisy_segment("2026-07-10T00:00:00-some-slug"));
+            assert!(!is_noisy_segment("2026-07-10T00:00:00Zebra"));
+            assert!(!is_noisy_segment("2026-07-10T00:00:00.Z"));
+            assert!(!is_noisy_segment("2026-07-10T00:00:00+2:00"));
         }
 
         #[test]
@@ -1570,7 +1623,10 @@ mod leak_audit {
 
     fn is_allowed_email_domain(domain: &str) -> bool {
         let lower = domain.to_lowercase();
-        lower == "example.com" || lower == "example.org" || lower.ends_with(".example.com")
+        lower == "example.com"
+            || lower == "example.org"
+            || lower.ends_with(".example.com")
+            || lower.ends_with(".example.org")
     }
 
     /// Load optional extra leak patterns from `<workspace_root>/.hoppy-leak-patterns`.
@@ -1629,10 +1685,16 @@ mod leak_audit {
                     } else {
                         format!("{path}.{key}")
                     };
-                    if let Value::String(s) = val
-                        && is_secret_key_name(key)
-                        && !is_redacted_or_empty(s)
-                    {
+                    // Redaction leaves `"<redacted>"` for strings and `0` for
+                    // numbers — anything else under a secret-ish key is a
+                    // potential leak (bools/objects/arrays carry no secret
+                    // material themselves; their leaves are scanned below).
+                    let leaky_value = match val {
+                        Value::String(s) => !is_redacted_or_empty(s),
+                        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0),
+                        _ => false,
+                    };
+                    if is_secret_key_name(key) && leaky_value {
                         hits.push(LeakHit {
                             recording_rel: recording_rel.to_string(),
                             key_path: child_path.clone(),
@@ -1748,6 +1810,16 @@ mod leak_audit {
             let v = json!({ "ApiKey": "sk_live_abc123", "Password": "hunter2", "Token": "tok_x" });
             let hits = scan("core/x.json", &v, &[]);
             assert_eq!(hits.len(), 3, "got: {hits:?}");
+        }
+
+        #[test]
+        fn numeric_value_under_secret_key_flagged_unless_zero() {
+            // Redaction turns numbers under sensitive keys into 0 — any other
+            // number under a secret-ish key escaped redaction.
+            let v = json!({ "ApiKey": 123456, "Token": 0 });
+            let hits = scan("core/x.json", &v, &[]);
+            assert_eq!(hits.len(), 1, "got: {hits:?}");
+            assert_eq!(hits[0].key_path, "ApiKey");
         }
 
         #[test]
@@ -1984,12 +2056,15 @@ mod report {
             match m {
                 RecordingMatch::Mapped {
                     fixture_rel,
+                    recording_rel,
                     recording_abs,
                 } => {
                     let rec_value = read_json(recording_abs)?;
 
+                    // Leak hits are labelled with the RECORDING path (the file
+                    // to locate/delete), not the mapped fixture name.
                     leak_hits.extend(leak_audit::scan(
-                        fixture_rel,
+                        recording_rel,
                         &rec_value,
                         extra_leak_patterns,
                     ));
@@ -2013,13 +2088,31 @@ mod report {
                         }
                     }
                 }
+                // Collision/unmapped recordings have no fixture to diff, but
+                // they can still carry leaks — scan them too.
                 RecordingMatch::Collision {
                     recording_rel,
+                    recording_abs,
                     candidates,
                 } => {
+                    let rec_value = read_json(recording_abs)?;
+                    leak_hits.extend(leak_audit::scan(
+                        recording_rel,
+                        &rec_value,
+                        extra_leak_patterns,
+                    ));
                     collisions.push((recording_rel.clone(), candidates.clone()));
                 }
-                RecordingMatch::Unmapped { recording_rel } => {
+                RecordingMatch::Unmapped {
+                    recording_rel,
+                    recording_abs,
+                } => {
+                    let rec_value = read_json(recording_abs)?;
+                    leak_hits.extend(leak_audit::scan(
+                        recording_rel,
+                        &rec_value,
+                        extra_leak_patterns,
+                    ));
                     unmapped.push(recording_rel.clone());
                 }
             }
@@ -2142,6 +2235,7 @@ mod report {
 
             let matches = vec![RecordingMatch::Mapped {
                 fixture_rel: "core/billing_get.json".to_string(),
+                recording_rel: "core/GET_billing.json".to_string(),
                 recording_abs: rec_path,
             }];
 
@@ -2165,11 +2259,50 @@ mod report {
 
             let matches = vec![RecordingMatch::Mapped {
                 fixture_rel: "core/billing_get.json".to_string(),
+                recording_rel: "core/GET_billing.json".to_string(),
                 recording_abs: rec_path,
             }];
 
             let report = build_report(&fixtures_dir, &matches, &[]).unwrap();
             assert_eq!(report.leak_hits.len(), 1);
+            assert_eq!(
+                report.leak_hits[0].recording_rel, "core/GET_billing.json",
+                "leak hits must point at the recording file, not the mapped fixture"
+            );
+            assert_eq!(report.exit_code(), 2);
+        }
+
+        #[test]
+        fn build_report_scans_unmapped_and_collision_recordings_for_leaks() {
+            let dir = tempdir().unwrap();
+            let fixtures_dir = dir.path().join("fixtures");
+            std::fs::create_dir_all(&fixtures_dir).unwrap();
+
+            let recorded_dir = dir.path().join("recorded");
+            std::fs::create_dir_all(&recorded_dir).unwrap();
+            let unmapped_path = recorded_dir.join("GET_new_endpoint.json");
+            std::fs::write(&unmapped_path, r#"{"AuthorEmail":"leak@real.com"}"#).unwrap();
+            let collision_path = recorded_dir.join("GET_ambiguous.json");
+            std::fs::write(&collision_path, r#"{"ApiKey":"raw-secret"}"#).unwrap();
+
+            let matches = vec![
+                RecordingMatch::Unmapped {
+                    recording_rel: "core/GET_new_endpoint.json".to_string(),
+                    recording_abs: unmapped_path,
+                },
+                RecordingMatch::Collision {
+                    recording_rel: "core/GET_ambiguous.json".to_string(),
+                    recording_abs: collision_path,
+                    candidates: vec!["core/a.json".to_string(), "core/b.json".to_string()],
+                },
+            ];
+
+            let report = build_report(&fixtures_dir, &matches, &[]).unwrap();
+            assert_eq!(
+                report.leak_hits.len(),
+                2,
+                "unmapped and collision recordings must be leak-scanned too"
+            );
             assert_eq!(report.exit_code(), 2);
         }
 
@@ -2193,6 +2326,7 @@ mod report {
 
             let matches = vec![RecordingMatch::Mapped {
                 fixture_rel: "core/billing_get.json".to_string(),
+                recording_rel: "core/GET_billing.json".to_string(),
                 recording_abs: rec_path,
             }];
 
