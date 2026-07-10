@@ -1,0 +1,20 @@
+[
+  {
+    "Name": "Germany",
+    "IsoCode": "DE",
+    "IsEU": true,
+    "TaxRate": 0.19,
+    "TaxPrefix": "DE",
+    "FlagUrl": "https://bunny.net/flags/de.svg",
+    "PopList": ["FR", "MU"]
+  },
+  {
+    "Name": "United States",
+    "IsoCode": "US",
+    "IsEU": false,
+    "TaxRate": 0.0,
+    "TaxPrefix": null,
+    "FlagUrl": "https://bunny.net/flags/us.svg",
+    "PopList": ["NY", "LA", "MI"]
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "Logs": [
+    {
+      "Timestamp": "2026-07-01T10:15:00Z",
+      "Product": "CDN",
+      "ResourceType": "PullZone",
+      "ResourceId": "500123",
+      "ResourceOwner": "acct-1",
+      "Action": "Update",
+      "ActorId": "user-42",
+      "ActorType": "User",
+      "Diff": "{\"CacheExpirationTime\":[3600,7200]}"
+    },
+    {
+      "Timestamp": "2026-07-01T11:00:00Z",
+      "Product": "Storage",
+      "ResourceType": "StorageZone",
+      "ResourceId": "700456",
+      "ResourceOwner": "acct-1",
+      "Action": "Delete",
+      "ActorId": "apikey-1001",
+      "ActorType": "ApiKey",
+      "Diff": null
+    }
+  ],
+  "HasMoreData": true,
+  "ContinuationToken": "next-page-token-abc",
+  "StartToken": "start-token-xyz"
+}

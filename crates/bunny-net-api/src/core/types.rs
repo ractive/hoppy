@@ -3819,6 +3819,281 @@ pub struct BillingDetails {
 }
 
 // ---------------------------------------------------------------------------
+// Account / admin: API keys, billing summary, payment requests,
+// reference data (regions, countries), global search, audit log (iter-75)
+// ---------------------------------------------------------------------------
+
+/// A single API key entry returned by `GET /apikey`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ApiKey {
+    /// Numeric key identifier.
+    #[serde(default)]
+    pub id: i64,
+    /// The API key value. Sensitive — treat as a secret and redact in output
+    /// unless the caller explicitly opts in to revealing it.
+    #[serde(default)]
+    pub key: Option<String>,
+    /// Roles/scopes granted to this key.
+    #[serde(default)]
+    pub roles: Option<Vec<String>>,
+}
+
+/// A single per-pull-zone line item returned by `GET /billing/summary`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BillingSummaryEntry {
+    /// Pull Zone the usage is attributed to.
+    #[serde(default)]
+    pub pull_zone_id: i64,
+    /// Charges accrued this month for this pull zone (USD).
+    #[serde(default)]
+    pub monthly_usage: f64,
+    /// Bandwidth used this month for this pull zone (bytes).
+    #[serde(default)]
+    pub monthly_bandwidth_used: i64,
+}
+
+/// A single payment request returned by `GET /billing/payment-requests`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct PaymentRequest {
+    /// Payment request identifier.
+    #[serde(default)]
+    pub id: i64,
+    /// Amount requested (USD).
+    #[serde(default)]
+    pub amount: f64,
+    /// When the request was generated (ISO 8601).
+    #[serde(default)]
+    pub date_generated: Option<String>,
+    /// When payment is due (ISO 8601).
+    #[serde(default)]
+    pub date_due: Option<String>,
+    /// Free-text description of the charge.
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Whether the request has been paid.
+    #[serde(default)]
+    pub paid: bool,
+    /// When the request was paid, if it has been (ISO 8601).
+    #[serde(default)]
+    pub date_paid: Option<String>,
+    /// Linked billing invoice identifier, if issued.
+    #[serde(default)]
+    pub billing_invoice_id: Option<i64>,
+    /// Direct download link for the invoice, if available.
+    #[serde(default)]
+    pub billing_invoice_download_link: Option<String>,
+    /// Bank transfer reference for manual payment.
+    #[serde(default)]
+    pub bank_transfer_reference: Option<String>,
+    /// Applied tax rate (fraction, e.g. 0.2 for 20%).
+    #[serde(default)]
+    pub tax_rate: f64,
+    /// Amount of tax applied (USD).
+    #[serde(default)]
+    pub taxed_amount: f64,
+}
+
+/// A single edge region returned by `GET /region`.
+///
+/// Distinct from the containers `/regions` endpoint — this is the core CDN
+/// PoP-region reference list with per-region pricing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Region {
+    /// Numeric region identifier.
+    #[serde(default)]
+    pub id: i64,
+    /// Human-readable region name.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Price per gigabyte served from this region (USD).
+    #[serde(default)]
+    pub price_per_gigabyte: f64,
+    /// Short region code (e.g. `DE`, `NY`).
+    #[serde(default)]
+    pub region_code: Option<String>,
+    /// Continent code (e.g. `EU`, `NA`).
+    #[serde(default)]
+    pub continent_code: Option<String>,
+    /// ISO country code the region resides in.
+    #[serde(default)]
+    pub country_code: Option<String>,
+    /// Region latitude.
+    #[serde(default)]
+    pub latitude: f64,
+    /// Region longitude.
+    #[serde(default)]
+    pub longitude: f64,
+    /// Whether latency-based routing is permitted to this region.
+    #[serde(default)]
+    pub allow_latency_routing: bool,
+}
+
+/// A single country returned by `GET /country`.
+///
+/// Documents the valid ISO codes accepted by
+/// `pull-zone update --blocked-countries` and related filters.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Country {
+    /// Country name.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// ISO 3166 alpha-2 country code.
+    #[serde(default)]
+    pub iso_code: Option<String>,
+    /// Whether the country is part of the European Union.
+    #[serde(rename = "IsEU", default)]
+    pub is_eu: bool,
+    /// VAT / tax rate applied to accounts in this country (fraction).
+    #[serde(default)]
+    pub tax_rate: f64,
+    /// Tax prefix / registration prefix, if any.
+    #[serde(default)]
+    pub tax_prefix: Option<String>,
+    /// URL of the country flag image.
+    #[serde(default)]
+    pub flag_url: Option<String>,
+    /// PoP codes located in this country.
+    #[serde(default)]
+    pub pop_list: Option<Vec<String>>,
+}
+
+/// A single hit returned inside a [`SearchResults`] envelope.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SearchResultItem {
+    /// Resource type (e.g. `PullZone`, `StorageZone`, `DnsZone`).
+    #[serde(rename = "Type", default)]
+    pub result_type: Option<String>,
+    /// Numeric resource identifier.
+    #[serde(default)]
+    pub id: i64,
+    /// Resource name.
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+/// Response envelope for `GET /search` — cross-resource global search.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SearchResults {
+    /// The query that was executed.
+    #[serde(default)]
+    pub query: Option<String>,
+    /// Total number of matches available.
+    #[serde(default)]
+    pub total: i32,
+    /// Offset of the first returned result.
+    #[serde(default)]
+    pub from: i32,
+    /// Number of results returned in this page.
+    #[serde(default)]
+    pub size: i32,
+    /// The matching resources.
+    #[serde(default)]
+    pub search_results: Option<Vec<SearchResultItem>>,
+}
+
+/// A single audit-log entry returned by `GET /user/audit/{date}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserAuditLog {
+    /// When the action occurred (ISO 8601).
+    #[serde(default)]
+    pub timestamp: Option<String>,
+    /// Product area the action targeted (e.g. `CDN`, `Storage`).
+    #[serde(default)]
+    pub product: Option<String>,
+    /// Type of resource acted upon.
+    #[serde(default)]
+    pub resource_type: Option<String>,
+    /// Identifier of the resource acted upon.
+    #[serde(default)]
+    pub resource_id: Option<String>,
+    /// Account/owner the resource belongs to.
+    #[serde(default)]
+    pub resource_owner: Option<String>,
+    /// The action performed (e.g. `Create`, `Update`, `Delete`).
+    #[serde(default)]
+    pub action: Option<String>,
+    /// Identifier of the actor who performed the action.
+    #[serde(default)]
+    pub actor_id: Option<String>,
+    /// Type of the actor (e.g. `User`, `ApiKey`).
+    #[serde(default)]
+    pub actor_type: Option<String>,
+    /// JSON diff of the change, if captured.
+    #[serde(default)]
+    pub diff: Option<String>,
+}
+
+/// Response envelope for `GET /user/audit/{date}` — paginated audit log.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UserAuditLogList {
+    /// The audit-log entries for this page.
+    #[serde(default)]
+    pub logs: Option<Vec<UserAuditLog>>,
+    /// Whether more pages are available beyond this one.
+    #[serde(default)]
+    pub has_more_data: bool,
+    /// Token to pass as `continuation_token` to fetch the next page.
+    #[serde(default)]
+    pub continuation_token: Option<String>,
+    /// Token identifying the start of the current window.
+    #[serde(default)]
+    pub start_token: Option<String>,
+}
+
+/// Sort order for the user audit log (`Order` query param of
+/// `GET /user/audit/{date}`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuditLogOrder {
+    /// Oldest entries first.
+    Ascending,
+    /// Newest entries first.
+    Descending,
+}
+
+impl AuditLogOrder {
+    /// The wire value bunny.net expects for the `Order` query parameter.
+    #[must_use]
+    pub fn as_query_value(self) -> &'static str {
+        match self {
+            AuditLogOrder::Ascending => "Ascending",
+            AuditLogOrder::Descending => "Descending",
+        }
+    }
+}
+
+/// Query filters for `GET /user/audit/{date}`.
+///
+/// Every field is optional; unset fields are simply not sent. The array
+/// filters (`product`, `resource_type`, `resource_id`, `actor_id`) are
+/// repeated once per value on the wire.
+#[derive(Debug, Clone, Default)]
+pub struct UserAuditQuery {
+    /// Filter by product area(s).
+    pub product: Vec<String>,
+    /// Filter by resource type(s).
+    pub resource_type: Vec<String>,
+    /// Filter by resource id(s).
+    pub resource_id: Vec<String>,
+    /// Filter by actor id(s).
+    pub actor_id: Vec<String>,
+    /// Sort order.
+    pub order: Option<AuditLogOrder>,
+    /// Continuation token from a previous page.
+    pub continuation_token: Option<String>,
+    /// Maximum entries to return.
+    pub limit: Option<i32>,
+}
+
+// ---------------------------------------------------------------------------
 // Request bodies
 // ---------------------------------------------------------------------------
 

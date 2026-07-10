@@ -10,15 +10,16 @@ use reqwest::{
 use crate::recording::{capture_request, maybe_record_response};
 
 use super::types::{
-    AccountStatistics, AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone,
-    CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord, DnsRecordScanResult,
-    DnsRecordScanTrigger, DnsSecDsRecord, DnsZone, DnsZoneStatistics, ExternalDnsCertificateRecord,
-    OptimizerStatistics, OriginShieldQueueStatistics, PaginatedList, PullZone, PullZoneCount,
-    PullZonePrivateKeyType, PurgeCache, SafeHopStatistics, StatisticsQuery, StorageRegion,
-    StorageZone, StorageZoneEgressStatistics, StorageZoneStatistics, TriggerDnsRecordScan,
-    UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary,
-    VideoLanguage, VideoLibrary, VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics,
-    ZoneAvailability,
+    AccountStatistics, AddDnsRecord, ApiError, ApiKey, BillingDetails, BillingSummaryEntry,
+    Country, CreateDnsZone, CreatePullZone, CreateStorageZone, CreateVideoLibrary, DnsImportResult,
+    DnsRecord, DnsRecordScanResult, DnsRecordScanTrigger, DnsSecDsRecord, DnsZone,
+    DnsZoneStatistics, ExternalDnsCertificateRecord, OptimizerStatistics,
+    OriginShieldQueueStatistics, PaginatedList, PaymentRequest, PullZone, PullZoneCount,
+    PullZonePrivateKeyType, PurgeCache, Region, SafeHopStatistics, SearchResults, StatisticsQuery,
+    StorageRegion, StorageZone, StorageZoneEgressStatistics, StorageZoneStatistics,
+    TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone,
+    UpdateVideoLibrary, UserAuditLogList, UserAuditQuery, VideoLanguage, VideoLibrary,
+    VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics, ZoneAvailability,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -1058,6 +1059,165 @@ impl CoreClient {
     }
 
     // -----------------------------------------------------------------------
+    // Account / admin endpoints (iter-75)
+    // -----------------------------------------------------------------------
+
+    /// List the account's API keys.
+    ///
+    /// Backs `GET /apikey`. `page` is 1-based; both `page` and `per_page` are
+    /// always sent so the API returns a paginated envelope. Key values are
+    /// returned verbatim — the caller is responsible for redacting them.
+    pub async fn list_api_keys(
+        &self,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<PaginatedList<ApiKey>> {
+        let url = format!("{}/apikey", self.base_url);
+        let page = page.unwrap_or(1);
+        let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
+        let rb = self.auth(self.http.get(&url)).query(&[
+            ("page", page.to_string()),
+            ("perPage", per_page.to_string()),
+        ]);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch the per-pull-zone billing summary for the current month.
+    ///
+    /// Backs `GET /billing/summary`.
+    pub async fn get_billing_summary(&self) -> Result<Vec<BillingSummaryEntry>> {
+        let url = format!("{}/billing/summary", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// List the account's payment requests (open and settled).
+    ///
+    /// Backs `GET /billing/payment-requests`.
+    pub async fn list_payment_requests(&self) -> Result<Vec<PaymentRequest>> {
+        let url = format!("{}/billing/payment-requests", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Download a billing-record invoice PDF, streaming the response body into
+    /// `writer` chunk-by-chunk instead of buffering the whole payload.
+    ///
+    /// Backs `GET /billing/summary/{billingRecordId}/pdf`. Returns the number
+    /// of bytes written. On a non-success status the (small) error body is
+    /// buffered so the usual [`ApiError`] can be parsed and surfaced.
+    pub async fn download_billing_invoice_pdf<W>(
+        &self,
+        billing_record_id: i64,
+        writer: &mut W,
+    ) -> Result<u64>
+    where
+        W: std::io::Write,
+    {
+        let url = format!("{}/billing/summary/{billing_record_id}/pdf", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        self.stream_to_writer(rb, writer).await
+    }
+
+    /// Download a payment-request invoice PDF, streaming the response body into
+    /// `writer` chunk-by-chunk instead of buffering the whole payload.
+    ///
+    /// Backs `GET /billing/payment-request-invoice/{id}/pdf`. Returns the
+    /// number of bytes written.
+    pub async fn download_payment_request_pdf<W>(&self, id: i64, writer: &mut W) -> Result<u64>
+    where
+        W: std::io::Write,
+    {
+        let url = format!("{}/billing/payment-request-invoice/{id}/pdf", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        self.stream_to_writer(rb, writer).await
+    }
+
+    /// List the core CDN edge regions with per-region pricing.
+    ///
+    /// Backs `GET /region` (distinct from the containers `/regions` endpoint).
+    pub async fn list_regions(&self) -> Result<Vec<Region>> {
+        let url = format!("{}/region", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// List the countries bunny.net recognises, including their ISO codes.
+    ///
+    /// Backs `GET /country`. Useful as the source of valid values for
+    /// pull-zone country-blocking filters.
+    pub async fn list_countries(&self) -> Result<Vec<Country>> {
+        let url = format!("{}/country", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Run a global cross-resource search.
+    ///
+    /// Backs `GET /search`. `from` is the result offset and `size` the page
+    /// size; both are optional and defaulted server-side when omitted.
+    pub async fn search(
+        &self,
+        query: &str,
+        from: Option<i32>,
+        size: Option<i32>,
+    ) -> Result<SearchResults> {
+        let url = format!("{}/search", self.base_url);
+        let mut rb = self.auth(self.http.get(&url)).query(&[("search", query)]);
+        if let Some(v) = from {
+            rb = rb.query(&[("from", v.to_string())]);
+        }
+        if let Some(v) = size {
+            rb = rb.query(&[("size", v.to_string())]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch the user audit log for a given date.
+    ///
+    /// Backs `GET /user/audit/{date}`. `date` is passed through verbatim as the
+    /// API expects it (ISO 8601, e.g. `2026-07-01`). See [`UserAuditQuery`] for
+    /// the filter/pagination parameters.
+    pub async fn get_user_audit(
+        &self,
+        date: &str,
+        query: &UserAuditQuery,
+    ) -> Result<UserAuditLogList> {
+        let encoded = urlencoding::encode(date);
+        let url = format!("{}/user/audit/{encoded}", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        for v in &query.product {
+            rb = rb.query(&[("Product", v)]);
+        }
+        for v in &query.resource_type {
+            rb = rb.query(&[("ResourceType", v)]);
+        }
+        for v in &query.resource_id {
+            rb = rb.query(&[("ResourceId", v)]);
+        }
+        for v in &query.actor_id {
+            rb = rb.query(&[("ActorId", v)]);
+        }
+        if let Some(order) = query.order {
+            rb = rb.query(&[("Order", order.as_query_value())]);
+        }
+        if let Some(token) = &query.continuation_token {
+            rb = rb.query(&[("ContinuationToken", token)]);
+        }
+        if let Some(limit) = query.limit {
+            rb = rb.query(&[("Limit", limit.to_string())]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
     // Statistics endpoints
     // -----------------------------------------------------------------------
 
@@ -1384,6 +1544,43 @@ impl CoreClient {
         }
 
         Err(self.extract_api_error(status, &bytes))
+    }
+
+    /// Send a request and stream a successful binary body into `writer`
+    /// chunk-by-chunk, returning the number of bytes written.
+    ///
+    /// Used for binary downloads (e.g. invoice PDFs) so an arbitrarily large
+    /// payload never has to be buffered in memory. On a non-success status the
+    /// (small) error body is buffered so the usual [`ApiError`] can be parsed
+    /// and surfaced.
+    async fn stream_to_writer<W>(&self, rb: reqwest::RequestBuilder, writer: &mut W) -> Result<u64>
+    where
+        W: std::io::Write,
+    {
+        let mut response = self.send(rb).await?;
+        let status = response.status();
+        if self.debug {
+            eprintln!("<< {status}");
+        }
+        if !status.is_success() {
+            // Error bodies are small — buffer to parse the structured error.
+            let (status, bytes) = self.read_body(response).await?;
+            return Err(self.extract_api_error(status, &bytes));
+        }
+
+        let mut total: u64 = 0;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .context("failed to read response chunk")?
+        {
+            writer
+                .write_all(&chunk)
+                .context("failed to write downloaded chunk")?;
+            total += chunk.len() as u64;
+        }
+        writer.flush().context("failed to flush writer")?;
+        Ok(total)
     }
 
     /// Try to parse a bunny.net `ApiError` JSON body; fall back to a plain

@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - billing
   - account
-status: planned
+status: in-progress
 branch: iter-75/account-billing
 priority: 4
 related:
@@ -28,34 +28,34 @@ log. Only `GET /billing` is reachable today (as `auth check`).
 
 ### 1. API keys
 
-- [ ] `hoppy apikey list` → `GET /apikey` — key values redacted unless
+- [x] `hoppy apikey list` → `GET /apikey` — key values redacted unless
   `--reveal`
 
 ### 2. Billing
 
-- [ ] `hoppy billing summary` → `GET /billing/summary`
-- [ ] `hoppy billing payment-requests` → `GET /billing/payment-requests`
-- [ ] `hoppy billing invoice-pdf --record-id --output` →
+- [x] `hoppy billing summary` → `GET /billing/summary`
+- [x] `hoppy billing payment-requests` → `GET /billing/payment-requests`
+- [x] `hoppy billing invoice-pdf --record-id --output` →
   `GET /billing/summary/{billingRecordId}/pdf` (binary; stream to file)
-- [ ] `hoppy billing payment-request-pdf --id --output` →
+- [x] `hoppy billing payment-request-pdf --id --output` →
   `GET /billing/payment-request-invoice/{id}/pdf` (binary; stream to
   file)
 
 ### 3. Reference data
 
-- [ ] `hoppy region list` → `GET /region` (core `/region`, distinct from
+- [x] `hoppy region list` → `GET /region` (core `/region`, distinct from
   the containers `/regions`)
-- [ ] `hoppy country list` → `GET /country` — documents valid values for
+- [x] `hoppy country list` → `GET /country` — documents valid values for
   `pull-zone update --blocked-countries`
 
 ### 4. Global search
 
-- [ ] `hoppy search <query>` → `GET /search` (cross-resource search;
+- [x] `hoppy search <query>` → `GET /search` (cross-resource search;
   map its pagination params)
 
 ### 5. User audit log
 
-- [ ] `hoppy user audit --date …` → `GET /user/audit/{date}` with all 7
+- [x] `hoppy user audit --date …` → `GET /user/audit/{date}` with all 7
   query params from the spec
 
 ## Out of scope
@@ -66,9 +66,9 @@ log. Only `GET /billing` is reachable today (as `auth check`).
 
 ## Acceptance
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new command (`tests/e2e/` pattern)
-- [ ] PDF downloads streamed, never buffered whole (project rule)
-- [ ] Help text present for all new command groups
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new command (`tests/e2e/` pattern)
+- [x] PDF downloads streamed, never buffered whole (project rule)
+- [x] Help text present for all new command groups
+- [x] `hyalo lint` clean on touched knowledgebase files
