@@ -75,7 +75,7 @@ the client's serde renames.
 - [ ] Iteration: DNS record monitor/geolocation/smart-routing fields
 - [ ] Iteration: shield zone new config fields
 - [ ] Check stream collection casing handling in the client
-- [ ] Teach `fixture-refresh` to skip date-keyed chart fixtures
+- [x] Teach `fixture-refresh` to skip date-keyed chart fixtures
 
 ## Related
 
