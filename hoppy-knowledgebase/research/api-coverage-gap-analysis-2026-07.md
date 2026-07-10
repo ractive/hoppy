@@ -168,50 +168,59 @@ drops all 10 per-upload encoding/transcription params; `db versions` lacks
 Ordered by (correctness first, then value/effort). One iteration = one
 branch = one PR, per project convention.
 
-- [ ] **P0 — iter-66 “spec refresh & drift fixes”**: commit refreshed
+- [x] **P0 — iter-66 “spec refresh & drift fixes”**: commit refreshed
   `specs/` (+3 new specs); fix `db fork` payload; rework API Guardian to
   `/spec` endpoints + `enums`; add `cdn_server_token` to db optimal (unstub
   `optimal_single`); make `storage download` stream to disk; dogfood-verify
   caption base64 + regional storage hosts; refresh magic-containers KB notes
   (3 endpoints absent from notes).
-- [ ] **P1 — iter-67 “credential rotation”**: the six rotation/safety
+- [x] **P1 — iter-67 “credential rotation”**: the six rotation/safety
   commands + `--checksum` + `storage-zone delete --delete-linked-pull-zones`
   + directory-delete semantics for `storage rm`.
-- [ ] **P1 — iter-68 “updates that update”**: full-field shield
+- [x] **P1 — iter-68 “updates that update”**: full-field shield
   `waf update-rule`/`rate-limit update` (+ `--config-json` escape hatch for
   nested conditions), `dns record update` parity + `--disabled`,
   `db group update`, `db v2 update` (fix non-spec client payloads).
-- [ ] **P2 — iter-69 “filters & pagination sweep”**: everything in the
+- [x] **P2 — iter-69 “filters & pagination sweep”**: everything in the
   filters theme above (shield pagination, script list filters +
   `--load-latest`, statistics params, purge `exactPath`/`async`,
   storage-zone `--include-deleted`, db versions windowing, shield metrics
   time range, stream per-upload params).
-- [ ] **P2 — iter-70 “log retrieval services”**: new feature-gated
+- [x] **P2 — iter-70 “log retrieval services”**: new feature-gated
   `logging` + `origin_errors` modules in bunny-net-api; `hoppy logs pull-zone`
   and `hoppy logs origin-errors` (or similar) commands. Tiny but 100%-new
   coverage; streaming download path.
-- [ ] **P2 — iter-71 “DNS completeness”**: smart routing/monitoring/geo
+- [x] **P2 — iter-71 “DNS completeness”**: smart routing/monitoring/geo
   fields, linked-record wiring, `GET /dnszone/{id}/records`, zone
   `LogAnonymizationType`, `checkavailability` (dns + pullzone + storagezone
   in one go), `pullzone count`, storagezone `regions` + egress statistics.
-- [ ] **P3 — iter-72 “shield new surface”**: bot categorization, custom
+- [x] **P3 — iter-72 “shield new surface”**: bot categorization, custom
   pages, overages + API Guardian metrics; drop/flag the undocumented
   `--ddos-*` fields per drift note.
-- [ ] **P3 — iter-73 “video library settings”**: full library update
+- [x] **P3 — iter-73 “video library settings”**: full library update
   surface, referrer ops, watermark upload/delete, languages, OEmbed/play/
   heatmap; video update `chapters`/`moments`/`metaTags`.
-- [ ] **P3 — iter-74 “pull-zone body completeness”**: error pages,
+- [x] **P3 — iter-74 “pull-zone body completeness”**: error pages,
   preloading screen, EdgeScriptId/MiddlewareScriptId, MagicContainers
   origins, `updatePrivateKeyType`, external-DNS certificate flow.
-- [ ] **P4 — iter-75 “account & billing”**: apikey list, billing
+- [x] **P4 — iter-75 “account & billing”**: apikey list, billing
   summary/invoices/PDFs, region/country reference, global search, audit log.
   (`closeaccount` deliberately excluded — destructive, low CLI value.)
-- [ ] **P4 — iter-76 “containers polish”**: volumes/volumeMounts, probes/
+- [x] **P4 — iter-76 “containers polish”**: volumes/volumeMounts, probes/
   entrypoint/imagePullPolicy, endpoint SSL/sticky/protocols, `registry images`,
   app summary + nodes + image-config.
-- [ ] **P4 — iter-77 “stream TUS resumable upload”**: TUS protocol client
+- [x] **P4 — iter-77 “stream TUS resumable upload”**: TUS protocol client
   (bigger feature; unlocks reliable large uploads + the per-upload params
   from iter-69 apply here too).
+
+## 5b. Outcome (2026-07-10)
+
+All 12 iterations executed and merged 2026-07-10 via the new-ralph-loop
+workflow runner (PRs #77–#88, one PR per iteration, every one reviewed
+before merge). The scorecard in section 2 describes the **pre-iteration**
+state and is retained for historical context; sections 3 and 4 are resolved
+except where an iteration file notes a deferred live-only check (db fork
+`group` acceptance, TUS live dogfood).
 
 ## 6. Method note
 

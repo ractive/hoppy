@@ -1479,7 +1479,8 @@ fn live_shield_lifecycle() {
             acl_delete.stderr
         );
 
-        // 23. Get bot detection
+        // 23.+24. Bot detection get/update (Advanced-tier feature — the API
+        // rejects it with invalid_plan_type on the Basic tier).
         let bd_get = support::hoppy_live_json(&[
             "shield",
             "bot-detection",
@@ -1487,27 +1488,29 @@ fn live_shield_lifecycle() {
             "--shield-zone-id",
             &sz_id_str,
         ]);
-        assert!(
-            bd_get.success,
-            "shield bot-detection get failed — stderr: {}",
-            bd_get.stderr
-        );
-
-        // 24. Update bot detection
-        let bd_update = support::hoppy_live_json(&[
-            "shield",
-            "bot-detection",
-            "update",
-            "--shield-zone-id",
-            &sz_id_str,
-            "--execution-mode",
-            "1",
-        ]);
-        assert!(
-            bd_update.success,
-            "shield bot-detection update failed — stderr: {}",
-            bd_update.stderr
-        );
+        if bd_get.success {
+            let bd_update = support::hoppy_live_json(&[
+                "shield",
+                "bot-detection",
+                "update",
+                "--shield-zone-id",
+                &sz_id_str,
+                "--execution-mode",
+                "1",
+            ]);
+            assert!(
+                bd_update.success,
+                "shield bot-detection update failed — stderr: {}",
+                bd_update.stderr
+            );
+        } else if bd_get.stderr.contains("invalid_plan_type") {
+            eprintln!("skipping bot detection get/update — plan does not support bot detection");
+        } else {
+            panic!(
+                "shield bot-detection get failed — stderr: {}",
+                bd_get.stderr
+            );
+        }
 
         // 25. Metrics overview (already existed)
         let m_overview = support::hoppy_live_json(&[
@@ -1537,7 +1540,9 @@ fn live_shield_lifecycle() {
             m_detailed.stderr
         );
 
-        // 27. Metrics rate-limits (zone-level)
+        // 27. Metrics rate-limits (zone-level) — the API 202s with not_found
+        // when the zone has no rate limits (e.g. when the CRUD step above was
+        // skipped due to plan limits).
         let m_ratelimits = support::hoppy_live_json(&[
             "shield",
             "metrics",
@@ -1545,11 +1550,16 @@ fn live_shield_lifecycle() {
             "--shield-zone-id",
             &sz_id_str,
         ]);
-        assert!(
-            m_ratelimits.success,
-            "shield metrics rate-limits failed — stderr: {}",
-            m_ratelimits.stderr
-        );
+        if !m_ratelimits.success {
+            assert!(
+                m_ratelimits
+                    .stderr
+                    .contains("not_found.ratelimit_shieldzone"),
+                "shield metrics rate-limits failed — stderr: {}",
+                m_ratelimits.stderr
+            );
+            eprintln!("skipping metrics rate-limits assertion — zone has no rate limits");
+        }
 
         // 28. Metrics bot-detection
         let m_bot = support::hoppy_live_json(&[
