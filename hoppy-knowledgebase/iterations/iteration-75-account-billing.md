@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - billing
   - account
-status: in-progress
+status: completed
 branch: iter-75/account-billing
 priority: 4
 related:
