@@ -16,7 +16,7 @@ use super::types::{
     OriginShieldQueueStatistics, PaginatedList, PullZone, PullZoneCount, PurgeCache,
     SafeHopStatistics, StatisticsQuery, StorageRegion, StorageZone, StorageZoneEgressStatistics,
     StorageZoneStatistics, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone,
-    UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
+    UpdateStorageZone, UpdateVideoLibrary, VideoLanguage, VideoLibrary, VideoLibraryDrmStatistics,
     VideoLibraryTranscribingStatistics, ZoneAvailability,
 };
 
@@ -898,6 +898,96 @@ impl CoreClient {
         let rb = self.auth(self.http.post(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
+    }
+
+    // -----------------------------------------------------------------------
+    // Video Library referrer / watermark / languages endpoints
+    // -----------------------------------------------------------------------
+
+    /// Add a hostname to a Video Library's allowed-referrer list.
+    pub async fn add_video_library_allowed_referrer(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/addAllowedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Remove a hostname from a Video Library's allowed-referrer list.
+    pub async fn remove_video_library_allowed_referrer(
+        &self,
+        id: i64,
+        hostname: &str,
+    ) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/removeAllowedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Add a hostname to a Video Library's blocked-referrer list.
+    pub async fn add_video_library_blocked_referrer(&self, id: i64, hostname: &str) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/addBlockedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Remove a hostname from a Video Library's blocked-referrer list.
+    pub async fn remove_video_library_blocked_referrer(
+        &self,
+        id: i64,
+        hostname: &str,
+    ) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/removeBlockedReferrer", self.base_url);
+        let rb = self.auth(self.http.post(&url)).json(&serde_json::json!({
+            "Hostname": hostname
+        }));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Upload (set) the watermark image for a Video Library.
+    ///
+    /// `body` can be any type that converts into a [`reqwest::Body`],
+    /// including a `tokio::fs::File` wrapped via `reqwest::Body::wrap_stream`
+    /// so the image is streamed rather than buffered in memory.
+    pub async fn set_video_library_watermark(
+        &self,
+        id: i64,
+        body: impl Into<reqwest::Body>,
+    ) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/watermark", self.base_url);
+        let rb = self
+            .auth(self.http.put(&url))
+            .header(header::CONTENT_TYPE, "application/octet-stream")
+            .body(body);
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// Delete the watermark image from a Video Library.
+    pub async fn delete_video_library_watermark(&self, id: i64) -> Result<()> {
+        let url = format!("{}/videolibrary/{id}/watermark", self.base_url);
+        let rb = self.auth(self.http.delete(&url));
+        let response = self.send(rb).await?;
+        self.handle_empty_response(response).await
+    }
+
+    /// List the languages supported by the Stream player / transcription.
+    ///
+    /// `GET /videolibrary/languages` returns a bare JSON array of
+    /// [`VideoLanguage`] entries.
+    pub async fn list_video_library_languages(&self) -> Result<Vec<VideoLanguage>> {
+        let url = format!("{}/videolibrary/languages", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
     }
 
     // -----------------------------------------------------------------------

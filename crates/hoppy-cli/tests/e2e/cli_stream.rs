@@ -1,6 +1,6 @@
 use super::support;
 
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 // ---------------------------------------------------------------------------
@@ -1201,6 +1201,442 @@ async fn stream_video_storage_json() {
 
     assert!(output.status.success());
     insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+// ---------------------------------------------------------------------------
+// Library settings / referrer / watermark / languages (iter-73)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn stream_library_update_full_settings_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "EnabledResolutions": "240p,720p,1080p",
+            "WebhookUrl": "https://example.com/hook",
+            "EnableDRM": true,
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/videolibrary_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "stream",
+            "library",
+            "update",
+            "--id",
+            "10001",
+            "--enabled-resolutions",
+            "240p,720p,1080p",
+            "--webhook-url",
+            "https://example.com/hook",
+            "--enable-drm",
+            "true",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn stream_library_update_requires_a_flag() {
+    // No mock server call should happen; the CLI must bail before any request.
+    let server = MockServer::start().await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["stream", "library", "update", "--id", "10001"])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("at least one update flag"),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn stream_library_referrer_allow() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/addAllowedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "example.com" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "stream",
+            "library",
+            "referrer",
+            "allow",
+            "--id",
+            "10001",
+            "--value",
+            "example.com",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn stream_library_referrer_block() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/videolibrary/10001/addBlockedReferrer"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({ "Hostname": "bad.example" })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "stream",
+            "library",
+            "referrer",
+            "block",
+            "--id",
+            "10001",
+            "--value",
+            "bad.example",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn stream_library_watermark_set_streams_file() {
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/videolibrary/10001/watermark"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(header("Content-Type", "application/octet-stream"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Write a small "image" file to a temp path.
+    let dir = std::env::temp_dir();
+    let path = dir.join(format!("hoppy-watermark-{}.png", std::process::id()));
+    std::fs::write(&path, [0x89u8, 0x50, 0x4e, 0x47]).unwrap();
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--quiet",
+            "stream",
+            "library",
+            "watermark",
+            "set",
+            "--id",
+            "10001",
+            "--file",
+            path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    let _ = std::fs::remove_file(&path);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn stream_library_watermark_delete() {
+    let server = MockServer::start().await;
+    Mock::given(method("DELETE"))
+        .and(path("/videolibrary/10001/watermark"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["stream", "library", "watermark", "delete", "--id", "10001"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn stream_library_languages_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/videolibrary/languages"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/videolibrary_languages.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "stream", "library", "languages"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json.is_array(), "expected a JSON array of languages");
+    assert_eq!(json[0]["ShortName"].as_str(), Some("en"));
+}
+
+// ---------------------------------------------------------------------------
+// Video metadata update + player-facing endpoints (iter-73)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn stream_video_update_config_json_chapters() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/library/10001/videos/vid-guid-0001"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .and(body_json(serde_json::json!({
+            "Chapters": [{ "title": "Intro", "start": 0, "end": 30 }],
+            "MetaTags": [{ "property": "topic", "value": "demo" }],
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_upload_status.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    // Follow-up GET to render the updated video.
+    Mock::given(method("GET"))
+        .and(path("/library/10001/videos/vid-guid-0001"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let dir = std::env::temp_dir();
+    let cfg_path = dir.join(format!("hoppy-vidmeta-{}.json", std::process::id()));
+    std::fs::write(
+        &cfg_path,
+        r#"{"chapters":[{"title":"Intro","start":0,"end":30}],"metaTags":[{"property":"topic","value":"demo"}]}"#,
+    )
+    .unwrap();
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "update",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "vid-guid-0001",
+        "--config-json",
+        cfg_path.to_str().unwrap(),
+    ])
+    .output()
+    .unwrap();
+
+    let _ = std::fs::remove_file(&cfg_path);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn stream_video_oembed_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/OEmbed"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .and(query_param(
+            "url",
+            "https://iframe.mediadelivery.net/play/10001/aaaabbbb",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_oembed.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "stream",
+        "video",
+        "oembed",
+        "--id",
+        "10001",
+        "--url",
+        "https://iframe.mediadelivery.net/play/10001/aaaabbbb",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert_eq!(json["type"].as_str(), Some("video"));
+    assert!(json["html"].as_str().unwrap().contains("iframe"));
+}
+
+#[tokio::test]
+async fn stream_video_play_data_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/play",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_play_data.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "stream",
+        "video",
+        "play-data",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("invalid JSON output");
+    assert!(json["videoPlaylistUrl"].is_string());
+}
+
+#[tokio::test]
+async fn stream_video_play_heatmap_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/play/heatmap",
+        ))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_heatmap.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "play-heatmap",
+        "--library-id",
+        "10001",
+        "--video-id",
+        "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    ])
+    .output()
+    .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 // ---------------------------------------------------------------------------

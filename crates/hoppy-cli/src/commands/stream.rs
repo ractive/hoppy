@@ -1,7 +1,8 @@
 use crate::auth;
 use crate::cli::{
     OutputFormat, StreamAction, StreamCaptionAction, StreamCollectionAction, StreamLibraryAction,
-    StreamResolutionsAction, StreamVideoAction,
+    StreamLibraryReferrerAction, StreamLibraryWatermarkAction, StreamResolutionsAction,
+    StreamVideoAction,
 };
 use crate::date;
 use crate::output::{self, PaginatedListJson};
@@ -10,7 +11,7 @@ use crate::redact::{RedactConfig, placeholder, redact_secrets_in_json};
 use anyhow::{Context as _, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
-use bunny_net_api::stream::types::{Collection, Video};
+use bunny_net_api::stream::types::{Chapter, Collection, MetaTag, Moment, Video};
 use bunny_net_api::stream::{
     CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, SmartGenerateSettings,
     StreamCleanupResolutions, StreamClient, TranscribeSettings, UpdateCollection, UpdateVideo,
@@ -188,7 +189,7 @@ pub async fn handle(
 ) -> Result<()> {
     match action {
         StreamAction::Library { action } => {
-            handle_library(action, format, debug, yes, record, redact_cfg).await
+            handle_library(action, format, debug, yes, quiet, record, redact_cfg).await
         }
         StreamAction::Video { action } => {
             handle_video(action, format, debug, yes, quiet, record).await
@@ -204,6 +205,7 @@ async fn handle_library(
     format: OutputFormat,
     debug: bool,
     yes: bool,
+    quiet: bool,
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
@@ -301,28 +303,107 @@ async fn handle_library(
             allow_direct_play,
             enable_mp4_fallback,
             has_watermark,
+            enabled_resolutions,
+            output_codecs,
+            keep_original_files,
+            jit_encoding_enabled,
+            allow_early_play,
+            player_key_color,
+            captions_font_size,
+            captions_font_color,
+            captions_background,
+            font_family,
+            ui_language,
+            controls,
+            playback_speeds,
+            vast_tag_url,
+            custom_html,
+            show_heatmap,
+            remember_player_position,
+            webhook_url,
+            enable_token_authentication,
+            enable_token_ip_verification,
+            block_none_referrer,
+            enable_drm,
+            enable_transcribing,
+            enable_transcribing_title_generation,
+            enable_transcribing_description_generation,
+            enable_transcribing_chapters_generation,
+            enable_transcribing_moments_generation,
+            transcribing_caption_languages,
+            enable_content_tagging,
         } => {
-            if name.is_none()
-                && allow_direct_play.is_none()
-                && enable_mp4_fallback.is_none()
-                && has_watermark.is_none()
-            {
-                bail!(
-                    "at least one update flag is required (--name, --allow-direct-play, --enable-mp4-fallback, or --has-watermark)"
-                );
-            }
             let mut body = UpdateVideoLibrary::new();
-            if let Some(v) = name {
-                body = body.name(v);
+            let mut any = false;
+            macro_rules! set_opt {
+                ($field:expr, $method:ident) => {
+                    if let Some(v) = $field {
+                        body = body.$method(v.clone());
+                        any = true;
+                    }
+                };
             }
-            if let Some(v) = allow_direct_play {
-                body = body.allow_direct_play(*v);
+            macro_rules! set_copy {
+                ($field:expr, $method:ident) => {
+                    if let Some(v) = $field {
+                        body = body.$method(*v);
+                        any = true;
+                    }
+                };
             }
-            if let Some(v) = enable_mp4_fallback {
-                body = body.enable_mp4_fallback(*v);
+            set_opt!(name, name);
+            set_copy!(allow_direct_play, allow_direct_play);
+            set_copy!(enable_mp4_fallback, enable_mp4_fallback);
+            set_copy!(has_watermark, has_watermark);
+            set_opt!(enabled_resolutions, enabled_resolutions);
+            set_opt!(output_codecs, output_codecs);
+            set_copy!(keep_original_files, keep_original_files);
+            set_copy!(jit_encoding_enabled, jit_encoding_enabled);
+            set_copy!(allow_early_play, allow_early_play);
+            set_opt!(player_key_color, player_key_color);
+            set_copy!(captions_font_size, captions_font_size);
+            set_opt!(captions_font_color, captions_font_color);
+            set_opt!(captions_background, captions_background);
+            set_opt!(font_family, font_family);
+            set_opt!(ui_language, ui_language);
+            set_opt!(controls, controls);
+            set_opt!(playback_speeds, playback_speeds);
+            set_opt!(vast_tag_url, vast_tag_url);
+            set_opt!(custom_html, custom_html);
+            set_copy!(show_heatmap, show_heatmap);
+            set_copy!(remember_player_position, remember_player_position);
+            set_opt!(webhook_url, webhook_url);
+            set_copy!(enable_token_authentication, enable_token_authentication);
+            set_copy!(enable_token_ip_verification, enable_token_ip_verification);
+            set_copy!(block_none_referrer, block_none_referrer);
+            set_copy!(enable_drm, enable_drm);
+            set_copy!(enable_transcribing, enable_transcribing);
+            set_copy!(
+                enable_transcribing_title_generation,
+                enable_transcribing_title_generation
+            );
+            set_copy!(
+                enable_transcribing_description_generation,
+                enable_transcribing_description_generation
+            );
+            set_copy!(
+                enable_transcribing_chapters_generation,
+                enable_transcribing_chapters_generation
+            );
+            set_copy!(
+                enable_transcribing_moments_generation,
+                enable_transcribing_moments_generation
+            );
+            if !transcribing_caption_languages.is_empty() {
+                body = body.transcribing_caption_languages(transcribing_caption_languages.clone());
+                any = true;
             }
-            if let Some(v) = has_watermark {
-                body = body.has_watermark(*v);
+            set_copy!(enable_content_tagging, enable_content_tagging);
+
+            if !any {
+                bail!(
+                    "at least one update flag is required (e.g. --name, --enabled-resolutions, --webhook-url, --enable-drm; run `hoppy stream library update --help` for the full list)"
+                );
             }
             let lib = core.update_video_library(*id, &body).await?;
             print_library(&lib, format, redact_cfg);
@@ -397,6 +478,155 @@ async fn handle_library(
                 }];
                 output::print_data(&rows, format);
             }
+        }
+        StreamLibraryAction::Referrer { action } => {
+            handle_library_referrer(&core, action, format).await?;
+        }
+        StreamLibraryAction::Watermark { action } => {
+            handle_library_watermark(&core, action, format, quiet).await?;
+        }
+        StreamLibraryAction::Languages {} => {
+            let langs = core.list_video_library_languages().await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&langs).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct LangRow {
+                    #[tabled(rename = "Code")]
+                    code: String,
+                    #[tabled(rename = "Name")]
+                    name: String,
+                    #[tabled(rename = "Transcribe Source")]
+                    source: String,
+                    #[tabled(rename = "Transcribe Target")]
+                    target: String,
+                }
+                let rows: Vec<LangRow> = langs
+                    .iter()
+                    .map(|l| LangRow {
+                        code: l.short_name.clone().unwrap_or_else(|| "-".to_owned()),
+                        name: l.name.clone().unwrap_or_else(|| "-".to_owned()),
+                        source: yes_no_dash(l.supported_for_transcription),
+                        target: yes_no_dash(l.supports_transcribing),
+                    })
+                    .collect();
+                output::print_data(&rows, format);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Render an `Option<bool>` as `yes` / `no` / `-` for table output.
+fn yes_no_dash(v: Option<bool>) -> String {
+    match v {
+        Some(true) => "yes".to_owned(),
+        Some(false) => "no".to_owned(),
+        None => "-".to_owned(),
+    }
+}
+
+async fn handle_library_referrer(
+    core: &CoreClient,
+    action: &StreamLibraryReferrerAction,
+    format: OutputFormat,
+) -> Result<()> {
+    match action {
+        StreamLibraryReferrerAction::Allow { id, value } => {
+            core.add_video_library_allowed_referrer(*id, value).await?;
+            output::print_mutation_result(
+                format,
+                "allow",
+                "stream-library-referrer",
+                serde_json::json!({ "LibraryId": id, "Value": value }),
+                &format!("Allowed referrer {value} on video library {id}"),
+            );
+        }
+        StreamLibraryReferrerAction::RemoveAllowed { id, value } => {
+            core.remove_video_library_allowed_referrer(*id, value)
+                .await?;
+            output::print_mutation_result(
+                format,
+                "remove-allowed",
+                "stream-library-referrer",
+                serde_json::json!({ "LibraryId": id, "Value": value }),
+                &format!("Removed allowed referrer {value} from video library {id}"),
+            );
+        }
+        StreamLibraryReferrerAction::Block { id, value } => {
+            core.add_video_library_blocked_referrer(*id, value).await?;
+            output::print_mutation_result(
+                format,
+                "block",
+                "stream-library-referrer",
+                serde_json::json!({ "LibraryId": id, "Value": value }),
+                &format!("Blocked referrer {value} on video library {id}"),
+            );
+        }
+        StreamLibraryReferrerAction::RemoveBlocked { id, value } => {
+            core.remove_video_library_blocked_referrer(*id, value)
+                .await?;
+            output::print_mutation_result(
+                format,
+                "remove-blocked",
+                "stream-library-referrer",
+                serde_json::json!({ "LibraryId": id, "Value": value }),
+                &format!("Removed blocked referrer {value} from video library {id}"),
+            );
+        }
+    }
+    Ok(())
+}
+
+async fn handle_library_watermark(
+    core: &CoreClient,
+    action: &StreamLibraryWatermarkAction,
+    format: OutputFormat,
+    quiet: bool,
+) -> Result<()> {
+    match action {
+        StreamLibraryWatermarkAction::Set { id, file } => {
+            // Stream the image from disk rather than buffering it in memory.
+            let fh = tokio::fs::File::open(file)
+                .await
+                .with_context(|| format!("opening watermark file: {file}"))?;
+            let file_size = fh
+                .metadata()
+                .await
+                .with_context(|| format!("reading metadata for: {file}"))?
+                .len();
+            let pb = progress::file_progress(file_size, quiet);
+            let body: reqwest::Body = if let Some(bar) = &pb {
+                reqwest::Body::wrap_stream(ReaderStream::new(bar.wrap_async_read(fh)))
+            } else {
+                reqwest::Body::wrap_stream(ReaderStream::new(fh))
+            };
+            core.set_video_library_watermark(*id, body).await?;
+            progress::finish_with_message(
+                pb.as_ref(),
+                format!("Set watermark for video library {id}"),
+            );
+            if pb.is_none() {
+                output::print_mutation_result(
+                    format,
+                    "set",
+                    "stream-library-watermark",
+                    serde_json::json!({ "LibraryId": id }),
+                    &format!("Set watermark for video library {id}"),
+                );
+            }
+        }
+        StreamLibraryWatermarkAction::Delete { id } => {
+            core.delete_video_library_watermark(*id).await?;
+            output::print_mutation_result(
+                format,
+                "delete",
+                "stream-library-watermark",
+                serde_json::json!({ "LibraryId": id }),
+                &format!("Deleted watermark from video library {id}"),
+            );
         }
     }
     Ok(())
@@ -629,9 +859,13 @@ async fn handle_video(
             video_id,
             title,
             collection_id,
+            config_json,
         } => {
-            if title.is_none() && collection_id.is_none() {
-                bail!("at least one update flag is required (--title or --collection-id)");
+            let metadata = load_video_metadata_json(config_json.as_deref())?;
+            if title.is_none() && collection_id.is_none() && metadata.is_none() {
+                bail!(
+                    "at least one update flag is required (--title, --collection-id, or --config-json)"
+                );
             }
             let stream = resolve_stream_client(*library_id, debug, record).await?;
             let mut body = UpdateVideo::new();
@@ -640,6 +874,17 @@ async fn handle_video(
             }
             if let Some(cid) = collection_id {
                 body = body.collection_id(cid);
+            }
+            if let Some(meta) = metadata {
+                if let Some(chapters) = meta.chapters {
+                    body = body.chapters(chapters);
+                }
+                if let Some(moments) = meta.moments {
+                    body = body.moments(moments);
+                }
+                if let Some(meta_tags) = meta.meta_tags {
+                    body = body.meta_tags(meta_tags);
+                }
             }
             stream.update_video(*library_id, video_id, &body).await?;
             let video = stream.get_video(*library_id, video_id).await?;
@@ -963,8 +1208,100 @@ async fn handle_video(
                 }
             }
         }
+        StreamVideoAction::Oembed {
+            url,
+            library_id,
+            max_width,
+            max_height,
+            token,
+            expires,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let oembed = stream
+                .get_oembed(url, *max_width, *max_height, token.as_deref(), *expires)
+                .await?;
+            let json =
+                serde_json::to_string_pretty(&oembed).context("failed to serialize to JSON")?;
+            println!("{json}");
+        }
+        StreamVideoAction::PlayData {
+            library_id,
+            video_id,
+            token,
+            expires,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let data = stream
+                .get_video_play_data(*library_id, video_id, token.as_deref(), *expires)
+                .await?;
+            let json =
+                serde_json::to_string_pretty(&data).context("failed to serialize to JSON")?;
+            println!("{json}");
+        }
+        StreamVideoAction::PlayHeatmap {
+            library_id,
+            video_id,
+        } => {
+            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let heatmap = stream.get_video_play_heatmap(*library_id, video_id).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&heatmap)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                match &heatmap.heatmap {
+                    None => eprintln!("No heatmap data"),
+                    Some(map) if map.is_empty() => eprintln!("No heatmap data"),
+                    Some(map) => {
+                        let mut segments: Vec<_> = map.iter().collect();
+                        segments.sort_by_key(|(k, _)| k.parse::<i64>().unwrap_or(i64::MAX));
+                        #[derive(serde::Serialize, tabled::Tabled)]
+                        struct HeatmapRow {
+                            #[tabled(rename = "Segment")]
+                            segment: String,
+                            #[tabled(rename = "Intensity")]
+                            intensity: i32,
+                        }
+                        let rows: Vec<HeatmapRow> = segments
+                            .into_iter()
+                            .map(|(k, v)| HeatmapRow {
+                                segment: k.clone(),
+                                intensity: *v,
+                            })
+                            .collect();
+                        output::print_data(&rows, format);
+                    }
+                }
+            }
+        }
     }
     Ok(())
+}
+
+/// Nested video-metadata arrays supplied via `--config-json <file>` for
+/// `stream video update`. Any subset of the three keys may be present.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct VideoMetadataJson {
+    #[serde(default)]
+    chapters: Option<Vec<Chapter>>,
+    #[serde(default)]
+    moments: Option<Vec<Moment>>,
+    #[serde(default, alias = "metatags")]
+    meta_tags: Option<Vec<MetaTag>>,
+}
+
+/// Read and parse a `--config-json` file for `stream video update`.
+/// Returns `Ok(None)` when `path` is `None`.
+fn load_video_metadata_json(path: Option<&std::path::Path>) -> Result<Option<VideoMetadataJson>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("reading --config-json file {}", path.display()))?;
+    let meta: VideoMetadataJson = serde_json::from_str(&raw)
+        .with_context(|| format!("parsing --config-json file {}", path.display()))?;
+    Ok(Some(meta))
 }
 
 async fn handle_resolutions(

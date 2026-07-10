@@ -172,6 +172,21 @@ POST /videolibrary/{id}
 
 **QUIRK:** Uses POST, not PATCH — same pattern as pull zone updates.
 
+**Coverage (iter-73):** `UpdateVideoLibrary` / `stream library update` model the
+following slice of this body: `Name`, `AllowDirectPlay`, `EnableMP4Fallback`,
+`HasWatermark`, `EnabledResolutions`, `OutputCodecs`, `KeepOriginalFiles`,
+`JitEncodingEnabled`, `AllowEarlyPlay`, `PlayerKeyColor`, `CaptionsFontSize`,
+`CaptionsFontColor`, `CaptionsBackground`, `FontFamily`, `UILanguage`,
+`Controls`, `PlaybackSpeeds`, `VastTagUrl`, `CustomHTML`, `ShowHeatmap`,
+`RememberPlayerPosition`, `WebhookUrl`, `EnableTokenAuthentication`,
+`EnableTokenIPVerification`, `BlockNoneReferrer`, `EnableDRM`,
+`EnableTranscribing`, `EnableTranscribing{Title,Description,Chapters,Moments}Generation`,
+`TranscribingCaptionLanguages`, `EnableContentTagging`. Intentionally omitted
+(low CLI value): the four `Watermark*` position/size ints, `PlayerVersion`, the
+`Bitrate*p` ints, `DrmVersion`/`EncodingTier`, `ResetToken`,
+`ViAiPublisherId`, `PlayerTokenAuthenticationEnabled`, and the
+`AppleFairPlayDrm`/`GoogleWidevineDrm` sub-objects.
+
 ### Delete Video Library
 
 ```

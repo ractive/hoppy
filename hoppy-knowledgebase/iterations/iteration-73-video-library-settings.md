@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - stream
   - video-library
-status: planned
+status: in-progress
 branch: iter-73/video-library-settings
 priority: 3
 related:
@@ -39,41 +39,41 @@ whole image into memory first.
 
 ### 1. Full library update surface
 
-- [ ] Extend `UpdateVideoLibrary` + `stream library update` flags beyond
+- [x] Extend `UpdateVideoLibrary` + `stream library update` flags beyond
   Name/AllowDirectPlay/EnableMP4Fallback/HasWatermark: enabled
   resolutions, output codecs, player config (key color, captions font
   size, …), `WebhookUrl`, `KeepOriginalFiles`, `AllowEarlyPlay`,
   `EnableDRM`, transcription defaults (`POST /videolibrary/{id}`)
-- [ ] Field inventory from the live API/dashboard where the spec body is
+- [x] Field inventory from the live API/dashboard where the spec body is
   `<unknown>`; document verified fields in the KB
 
 ### 2. Referrer allow/block ops (4)
 
-- [ ] `stream library referrer allow` / `block` / `remove-allowed` /
+- [x] `stream library referrer allow` / `block` / `remove-allowed` /
   `remove-blocked` → `POST /videolibrary/{id}/addAllowedReferrer`,
   `addBlockedReferrer`, `removeAllowedReferrer`, `removeBlockedReferrer`
   (mirror the `pull-zone referrer` command shape)
 
 ### 3. Watermark
 
-- [ ] `stream library watermark set` → `PUT /videolibrary/{id}/watermark`
+- [x] `stream library watermark set` → `PUT /videolibrary/{id}/watermark`
   (image upload; stream the body)
-- [ ] `stream library watermark delete` →
+- [x] `stream library watermark delete` →
   `DELETE /videolibrary/{id}/watermark`
 
 ### 4. Languages
 
-- [ ] `stream library languages` → `GET /videolibrary/languages`
+- [x] `stream library languages` → `GET /videolibrary/languages`
 
 ### 5. Player-facing stream endpoints
 
-- [ ] `GET /OEmbed`, `GET /library/{lib}/videos/{vid}/play`, and
+- [x] `GET /OEmbed`, `GET /library/{lib}/videos/{vid}/play`, and
   `GET .../play/heatmap` → new `stream video` subcommands (oembed,
   play-data, play-heatmap or similar)
 
 ### 6. Video metadata update
 
-- [ ] Add `chapters`, `moments`, `metaTags` to `UpdateVideo` +
+- [x] Add `chapters`, `moments`, `metaTags` to `UpdateVideo` +
   `stream video update` (nested arrays — JSON file input à la
   `--config-json` is acceptable)
 
@@ -87,8 +87,8 @@ whole image into memory first.
 
 ## Acceptance
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new/changed command (`tests/e2e/` pattern)
-- [ ] Help text updated for all new commands/flags
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new/changed command (`tests/e2e/` pattern)
+- [x] Help text updated for all new commands/flags
+- [x] `hyalo lint` clean on touched knowledgebase files

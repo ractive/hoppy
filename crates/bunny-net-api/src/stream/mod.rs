@@ -30,9 +30,9 @@ pub mod types;
 pub use client::StreamCleanupResolutions;
 pub use client::StreamClient;
 pub use types::{
-    Caption, CodecRenditionSize, Collection, CreateCollection, CreateVideo, EncoderOutputCodec,
-    FetchVideo, PaginatedList, ResolutionReference, SmartGenerateSettings, StatusEnvelope,
-    StatusMessage, StorageObject, TranscribeSettings, UpdateCollection, UpdateVideo, Video,
-    VideoHeatmap, VideoResolutionsInfo, VideoStatistics, VideoStatus, VideoStorageSize,
-    VideoUploadOptions,
+    Caption, Chapter, CodecRenditionSize, Collection, CreateCollection, CreateVideo,
+    EncoderOutputCodec, FetchVideo, MetaTag, Moment, PaginatedList, ResolutionReference,
+    SmartGenerateSettings, StatusEnvelope, StatusMessage, StorageObject, TranscribeSettings,
+    UpdateCollection, UpdateVideo, Video, VideoHeatmap, VideoOEmbed, VideoPlayData,
+    VideoResolutionsInfo, VideoStatistics, VideoStatus, VideoStorageSize, VideoUploadOptions,
 };

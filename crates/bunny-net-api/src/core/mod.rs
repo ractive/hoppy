@@ -42,5 +42,5 @@ pub use types::{
     PullZoneTierType, PullZoneType, PurgeCache, SafeHopStatistics, StatisticsQuery,
     StickySessionType, StorageZone, StorageZoneStatistics, TriggerDnsRecordScan, TriggerType,
     UpdateDnsRecord, UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary,
-    VideoLibrary, VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics,
+    VideoLanguage, VideoLibrary, VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics,
 };

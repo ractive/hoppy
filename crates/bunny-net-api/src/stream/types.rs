@@ -261,9 +261,48 @@ pub struct VideoUploadOptions {
     pub generate_moments: Option<bool>,
 }
 
+/// A chapter marker on a video (`ChapterModel`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Chapter {
+    /// Chapter title (required).
+    pub title: String,
+    /// Start time in seconds.
+    #[serde(default)]
+    pub start: i32,
+    /// End time in seconds.
+    #[serde(default)]
+    pub end: i32,
+}
+
+/// A highlight moment on a video (`MomentModel`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Moment {
+    /// Moment label (required).
+    pub label: String,
+    /// Timestamp in seconds.
+    #[serde(default)]
+    pub timestamp: i32,
+}
+
+/// An arbitrary metadata tag on a video (`MetaTagModel`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MetaTag {
+    /// Property name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub property: Option<String>,
+    /// Property value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
 /// Request body for `POST /library/{id}/videos/{videoId}` — update a video.
 ///
-/// All fields are optional; only non-`None` values are serialised.
+/// All fields are optional; only non-`None`/non-empty values are serialised.
+/// `chapters`, `moments`, and `meta_tags` are nested arrays best supplied via
+/// a JSON file (`--config-json`) on the CLI.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct UpdateVideo {
@@ -271,6 +310,12 @@ pub struct UpdateVideo {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub collection_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chapters: Option<Vec<Chapter>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moments: Option<Vec<Moment>>,
+    #[serde(rename = "MetaTags", skip_serializing_if = "Option::is_none")]
+    pub meta_tags: Option<Vec<MetaTag>>,
 }
 
 impl UpdateVideo {
@@ -285,6 +330,24 @@ impl UpdateVideo {
 
     pub fn collection_id(mut self, id: impl Into<String>) -> Self {
         self.collection_id = Some(id.into());
+        self
+    }
+
+    #[must_use]
+    pub fn chapters(mut self, chapters: Vec<Chapter>) -> Self {
+        self.chapters = Some(chapters);
+        self
+    }
+
+    #[must_use]
+    pub fn moments(mut self, moments: Vec<Moment>) -> Self {
+        self.moments = Some(moments);
+        self
+    }
+
+    #[must_use]
+    pub fn meta_tags(mut self, tags: Vec<MetaTag>) -> Self {
+        self.meta_tags = Some(tags);
         self
     }
 }
@@ -533,6 +596,48 @@ pub struct VideoHeatmap {
     #[serde(default)]
     pub heatmap: Option<BTreeMap<String, i32>>,
 }
+
+/// oEmbed response from `GET /OEmbed`.
+///
+/// The oEmbed spec leaves most fields optional; we model the common ones and
+/// mark them all `#[serde(default)]` so partial responses still deserialise.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoOEmbed {
+    /// The oEmbed resource type (e.g. `"video"`). Serialised back as `type` to
+    /// stay faithful to the oEmbed spec.
+    #[serde(default, rename = "type")]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub provider_name: Option<String>,
+    #[serde(default)]
+    pub provider_url: Option<String>,
+    #[serde(default)]
+    pub thumbnail_url: Option<String>,
+    #[serde(default)]
+    pub thumbnail_width: Option<i32>,
+    #[serde(default)]
+    pub thumbnail_height: Option<i32>,
+    #[serde(default)]
+    pub html: Option<String>,
+    #[serde(default)]
+    pub width: Option<i32>,
+    #[serde(default)]
+    pub height: Option<i32>,
+}
+
+/// Player-facing metadata returned by
+/// `GET /library/{id}/videos/{videoId}/play`.
+///
+/// The `VideoPlayDataModel` payload is large and loosely specified (player
+/// URLs, DRM config, caption paths, chapters, moments, …). To stay resilient
+/// to schema drift and avoid dropping fields, the full body is captured as a
+/// `serde_json::Value` and surfaced verbatim.
+pub type VideoPlayData = serde_json::Value;
 
 /// Resolution + storage path pair returned inside [`VideoResolutionsInfo`].
 #[derive(Debug, Clone, Serialize, Deserialize)]

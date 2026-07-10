@@ -9,8 +9,8 @@ use crate::recording::{capture_request, maybe_record_response};
 use super::types::{
     Collection, CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, PaginatedList,
     SmartGenerateSettings, StatusEnvelope, StatusMessage, TranscribeSettings, UpdateCollection,
-    UpdateVideo, Video, VideoHeatmap, VideoResolutionsInfo, VideoStatistics, VideoStorageSize,
-    VideoUploadOptions,
+    UpdateVideo, Video, VideoHeatmap, VideoOEmbed, VideoPlayData, VideoResolutionsInfo,
+    VideoStatistics, VideoStorageSize, VideoUploadOptions,
 };
 
 const BASE_URL: &str = "https://video.bunnycdn.com";
@@ -339,6 +339,78 @@ impl StreamClient {
             self.base_url
         );
         let resp = self.send(self.auth(self.http.get(&url))).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Fetch player-facing play data for a video (`GET …/play`).
+    ///
+    /// `token`/`expires` are the optional signed-URL parameters; pass `None`
+    /// for both on token-authentication-disabled libraries.
+    pub async fn get_video_play_data(
+        &self,
+        library_id: i64,
+        video_id: &str,
+        token: Option<&str>,
+        expires: Option<i64>,
+    ) -> Result<VideoPlayData> {
+        let vid = Self::encode(video_id);
+        let url = format!("{}/library/{library_id}/videos/{vid}/play", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(t) = token {
+            rb = rb.query(&[("token", t)]);
+        }
+        if let Some(e) = expires {
+            rb = rb.query(&[("expires", e.to_string())]);
+        }
+        let resp = self.send(rb).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Fetch the player-facing play heatmap for a video (`GET …/play/heatmap`).
+    ///
+    /// Distinct from [`get_video_heatmap`](Self::get_video_heatmap), which hits
+    /// `…/heatmap`.
+    pub async fn get_video_play_heatmap(
+        &self,
+        library_id: i64,
+        video_id: &str,
+    ) -> Result<VideoHeatmap> {
+        let vid = Self::encode(video_id);
+        let url = format!(
+            "{}/library/{library_id}/videos/{vid}/play/heatmap",
+            self.base_url
+        );
+        let resp = self.send(self.auth(self.http.get(&url))).await?;
+        self.parse_response(resp).await
+    }
+
+    /// Fetch the oEmbed representation of a video (`GET /OEmbed`).
+    ///
+    /// `url` is the public direct-play URL of the video. `max_width`/
+    /// `max_height` and the signed-URL `token`/`expires` params are optional.
+    pub async fn get_oembed(
+        &self,
+        url: &str,
+        max_width: Option<i32>,
+        max_height: Option<i32>,
+        token: Option<&str>,
+        expires: Option<i64>,
+    ) -> Result<VideoOEmbed> {
+        let endpoint = format!("{}/OEmbed", self.base_url);
+        let mut rb = self.auth(self.http.get(&endpoint)).query(&[("url", url)]);
+        if let Some(w) = max_width {
+            rb = rb.query(&[("maxWidth", w.to_string())]);
+        }
+        if let Some(h) = max_height {
+            rb = rb.query(&[("maxHeight", h.to_string())]);
+        }
+        if let Some(t) = token {
+            rb = rb.query(&[("token", t)]);
+        }
+        if let Some(e) = expires {
+            rb = rb.query(&[("expires", e.to_string())]);
+        }
+        let resp = self.send(rb).await?;
         self.parse_response(resp).await
     }
 

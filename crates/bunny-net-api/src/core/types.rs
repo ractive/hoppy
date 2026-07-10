@@ -3106,7 +3106,16 @@ impl CreateVideoLibrary {
 
 /// Request body for `POST /videolibrary/{id}` — update an existing Video Library.
 ///
-/// All fields are optional; only non-`None` values are serialised.
+/// The live API accepts a large `VideoLibraryUpdateModel` settings object;
+/// every field is optional and only non-`None` values are serialised, so a
+/// partial update touches only the fields the caller sets. Field names and
+/// types are verified against the live Core API and documented in
+/// `hoppy-knowledgebase/api/bunny-stream-api-research.md`.
+///
+/// Not every model field is surfaced (the four `Watermark*` position/size
+/// ints and the FairPlay/Widevine DRM sub-objects are omitted as low-value on
+/// the CLI); the settings that matter for encoding, playback, transcription,
+/// DRM, and webhooks are all reachable.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct UpdateVideoLibrary {
@@ -3118,6 +3127,81 @@ pub struct UpdateVideoLibrary {
     pub enable_mp4_fallback: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub has_watermark: Option<bool>,
+
+    // Encoding / resolution / codec settings
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled_resolutions: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_codecs: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keep_original_files: Option<bool>,
+    #[serde(rename = "JitEncodingEnabled", skip_serializing_if = "Option::is_none")]
+    pub jit_encoding_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_early_play: Option<bool>,
+
+    // Player configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub player_key_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captions_font_size: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captions_font_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captions_background: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_language: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub controls: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub playback_speeds: Option<String>,
+    #[serde(rename = "VastTagUrl", skip_serializing_if = "Option::is_none")]
+    pub vast_tag_url: Option<String>,
+    #[serde(rename = "CustomHTML", skip_serializing_if = "Option::is_none")]
+    pub custom_html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_heatmap: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remember_player_position: Option<bool>,
+
+    // Webhook
+    #[serde(rename = "WebhookUrl", skip_serializing_if = "Option::is_none")]
+    pub webhook_url: Option<String>,
+
+    // Access control / tokens
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_token_authentication: Option<bool>,
+    #[serde(
+        rename = "EnableTokenIPVerification",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub enable_token_ip_verification: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_none_referrer: Option<bool>,
+
+    // DRM
+    #[serde(rename = "EnableDRM", skip_serializing_if = "Option::is_none")]
+    pub enable_drm: Option<bool>,
+
+    // Transcription defaults
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_transcribing: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_transcribing_title_generation: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_transcribing_description_generation: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_transcribing_chapters_generation: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_transcribing_moments_generation: Option<bool>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub transcribing_caption_languages: Vec<String>,
+
+    // Content tagging
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_content_tagging: Option<bool>,
 }
 
 impl UpdateVideoLibrary {
@@ -3149,6 +3233,203 @@ impl UpdateVideoLibrary {
         self.has_watermark = Some(has);
         self
     }
+
+    #[must_use]
+    pub fn enabled_resolutions(mut self, v: impl Into<String>) -> Self {
+        self.enabled_resolutions = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn output_codecs(mut self, v: impl Into<String>) -> Self {
+        self.output_codecs = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn keep_original_files(mut self, v: bool) -> Self {
+        self.keep_original_files = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn jit_encoding_enabled(mut self, v: bool) -> Self {
+        self.jit_encoding_enabled = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn allow_early_play(mut self, v: bool) -> Self {
+        self.allow_early_play = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn player_key_color(mut self, v: impl Into<String>) -> Self {
+        self.player_key_color = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn captions_font_size(mut self, v: i32) -> Self {
+        self.captions_font_size = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn captions_font_color(mut self, v: impl Into<String>) -> Self {
+        self.captions_font_color = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn captions_background(mut self, v: impl Into<String>) -> Self {
+        self.captions_background = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn font_family(mut self, v: impl Into<String>) -> Self {
+        self.font_family = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn ui_language(mut self, v: impl Into<String>) -> Self {
+        self.ui_language = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn controls(mut self, v: impl Into<String>) -> Self {
+        self.controls = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn playback_speeds(mut self, v: impl Into<String>) -> Self {
+        self.playback_speeds = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn vast_tag_url(mut self, v: impl Into<String>) -> Self {
+        self.vast_tag_url = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn custom_html(mut self, v: impl Into<String>) -> Self {
+        self.custom_html = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn show_heatmap(mut self, v: bool) -> Self {
+        self.show_heatmap = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn remember_player_position(mut self, v: bool) -> Self {
+        self.remember_player_position = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn webhook_url(mut self, v: impl Into<String>) -> Self {
+        self.webhook_url = Some(v.into());
+        self
+    }
+
+    #[must_use]
+    pub fn enable_token_authentication(mut self, v: bool) -> Self {
+        self.enable_token_authentication = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_token_ip_verification(mut self, v: bool) -> Self {
+        self.enable_token_ip_verification = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn block_none_referrer(mut self, v: bool) -> Self {
+        self.block_none_referrer = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_drm(mut self, v: bool) -> Self {
+        self.enable_drm = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_transcribing(mut self, v: bool) -> Self {
+        self.enable_transcribing = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_transcribing_title_generation(mut self, v: bool) -> Self {
+        self.enable_transcribing_title_generation = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_transcribing_description_generation(mut self, v: bool) -> Self {
+        self.enable_transcribing_description_generation = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_transcribing_chapters_generation(mut self, v: bool) -> Self {
+        self.enable_transcribing_chapters_generation = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn enable_transcribing_moments_generation(mut self, v: bool) -> Self {
+        self.enable_transcribing_moments_generation = Some(v);
+        self
+    }
+
+    #[must_use]
+    pub fn transcribing_caption_languages(mut self, langs: Vec<String>) -> Self {
+        self.transcribing_caption_languages = langs;
+        self
+    }
+
+    #[must_use]
+    pub fn enable_content_tagging(mut self, v: bool) -> Self {
+        self.enable_content_tagging = Some(v);
+        self
+    }
+}
+
+/// A language supported by the bunny.net Stream player / transcription,
+/// returned by `GET /videolibrary/languages`.
+///
+/// bunny.net does not publish a strict schema for this endpoint, so every
+/// field is optional and annotated `#[serde(default)]` to tolerate omissions
+/// and field-name drift.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct VideoLanguage {
+    /// Human-readable language name (e.g. `"English"`).
+    #[serde(default)]
+    pub name: Option<String>,
+    /// ISO 639-1 short code (e.g. `"en"`).
+    #[serde(default)]
+    pub short_name: Option<String>,
+    /// Whether the language can be used as a transcription target.
+    #[serde(default)]
+    pub supports_transcribing: Option<bool>,
+    /// Whether the language is supported as a transcription source.
+    #[serde(default)]
+    pub supported_for_transcription: Option<bool>,
 }
 
 // ---------------------------------------------------------------------------
