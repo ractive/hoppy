@@ -10,7 +10,7 @@ tags:
   - database
   - storage
   - stream
-status: in-progress
+status: completed
 branch: iter-66/spec-refresh-drift-fixes
 priority: 0
 related:
