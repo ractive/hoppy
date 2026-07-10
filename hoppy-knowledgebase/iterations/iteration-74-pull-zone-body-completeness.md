@@ -6,7 +6,7 @@ tags:
   - iteration
   - api-coverage
   - pull-zone
-status: planned
+status: in-progress
 branch: iter-74/pull-zone-body-completeness
 priority: 3
 related:
@@ -43,36 +43,36 @@ All body props below need `UpdatePullZone` struct fields
 
 ### 1. Error-page group (5 props)
 
-- [ ] `ErrorPageEnableCustomCode`, `ErrorPageCustomCode`,
+- [x] `ErrorPageEnableCustomCode`, `ErrorPageCustomCode`,
   `ErrorPageEnableStatuspageWidget`, `ErrorPageStatuspageCode`,
   `ErrorPageWhitelabel`
 
 ### 2. Preloading-screen group (7 props)
 
-- [ ] `PreloadingScreenEnabled`, `PreloadingScreenCode`,
+- [x] `PreloadingScreenEnabled`, `PreloadingScreenCode`,
   `PreloadingScreenLogoUrl`, `PreloadingScreenShowOnFirstVisit`,
   `PreloadingScreenTheme`, `PreloadingScreenCodeEnabled`,
   `PreloadingScreenDelay`
 
 ### 3. Edge/middleware scripting wiring
 
-- [ ] `EdgeScriptId`, `MiddlewareScriptId` (+ `EdgeScriptExecutionPhase`)
+- [x] `EdgeScriptId`, `MiddlewareScriptId` (+ `EdgeScriptExecutionPhase`)
   — attach `hoppy script` output to a pull zone
 
 ### 4. Magic Containers origin
 
-- [ ] `MagicContainersAppId`, `MagicContainersEndpointId` — point a zone
+- [x] `MagicContainersAppId`, `MagicContainersEndpointId` — point a zone
   at a `hoppy container` app/endpoint
 
 ### 5. Private key type endpoint
 
-- [ ] `pull-zone hostname update-key-type` →
+- [x] `pull-zone hostname update-key-type` →
   `POST /pullzone/{id}/updatePrivateKeyType` (RSA/EC switch; no client
   method today)
 
 ### 6. External-DNS certificate flow
 
-- [ ] `POST /pullzone/requestExternalDnsCertificate` +
+- [x] `POST /pullzone/requestExternalDnsCertificate` +
   `POST /pullzone/completeExternalDnsCertificate` (new July-spec ops) as
   a two-step `pull-zone hostname` cert flow with clear help text on
   ordering
@@ -88,8 +88,8 @@ All body props below need `UpdatePullZone` struct fields
 
 ## Acceptance
 
-- [ ] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
-- [ ] e2e tests cover every new/changed command (`tests/e2e/` pattern)
-- [ ] Help text updated; `fixtures/core/pullzone_get.json` carries new keys
-- [ ] `hyalo lint` clean on touched knowledgebase files
+- [x] e2e tests cover every new/changed command (`tests/e2e/` pattern)
+- [x] Help text updated; `fixtures/core/pullzone_get.json` carries new keys
+- [x] `hyalo lint` clean on touched knowledgebase files

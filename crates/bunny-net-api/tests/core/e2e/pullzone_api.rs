@@ -1,6 +1,7 @@
 use bunny_net_api::core::types::{
-    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, LogAnonymizationType, MatchingType,
-    OptimizerWatermarkPosition, OriginType, PermaCacheType, PullZoneLogForwarderProtocolType,
+    AddOrUpdateEdgeRule, EdgeRuleActionType, EdgeRuleTrigger, EdgeScriptExecutionPhase,
+    LogAnonymizationType, MatchingType, OptimizerWatermarkPosition, OriginType, PermaCacheType,
+    PreloadingScreenTheme, PullZoneLogForwarderProtocolType, PullZonePrivateKeyType,
     PullZoneTierType, StickySessionType, TriggerType, UpdatePullZone,
 };
 use bunny_net_api::core::{ApiError, CoreClient};
@@ -1842,4 +1843,235 @@ fn update_pull_zone_remaining_toggle_fields_serialise_with_correct_key_names() {
         serde_json::Value::Bool(false),
         "EnableWebSockets key absent or wrong"
     );
+}
+
+// ── Iter-74: error-page / preloading-screen / scripting / magic containers ───
+
+/// Error-page fields serialise with the exact PascalCase keys the API expects,
+/// and a sparse update only carries the set keys.
+#[test]
+fn update_pull_zone_error_page_fields_serialise_with_correct_keys() {
+    let body = UpdatePullZone::new()
+        .error_page_enable_custom_code(true)
+        .error_page_custom_code("<h1>oops</h1>")
+        .error_page_enable_statuspage_widget(false)
+        .error_page_statuspage_code("abc123")
+        .error_page_whitelabel(true);
+
+    let json: serde_json::Value = serde_json::to_value(&body).unwrap();
+
+    assert_eq!(json["ErrorPageEnableCustomCode"], serde_json::json!(true));
+    assert_eq!(
+        json["ErrorPageCustomCode"],
+        serde_json::json!("<h1>oops</h1>")
+    );
+    assert_eq!(
+        json["ErrorPageEnableStatuspageWidget"],
+        serde_json::json!(false)
+    );
+    assert_eq!(json["ErrorPageStatuspageCode"], serde_json::json!("abc123"));
+    assert_eq!(json["ErrorPageWhitelabel"], serde_json::json!(true));
+
+    // Unrelated keys must be absent from a sparse update.
+    let empty: serde_json::Value = serde_json::to_value(UpdatePullZone::new()).unwrap();
+    assert!(
+        empty.as_object().unwrap().is_empty(),
+        "empty update leaked keys"
+    );
+}
+
+/// Preloading-screen fields serialise with the exact PascalCase keys, and the
+/// theme serialises as its integer discriminant.
+#[test]
+fn update_pull_zone_preloading_screen_fields_serialise_with_correct_keys() {
+    let body = UpdatePullZone::new()
+        .preloading_screen_enabled(true)
+        .preloading_screen_code("<div>loading</div>")
+        .preloading_screen_logo_url("https://cdn.example.com/logo.png")
+        .preloading_screen_show_on_first_visit(true)
+        .preloading_screen_theme(PreloadingScreenTheme::Light)
+        .preloading_screen_code_enabled(false)
+        .preloading_screen_delay(2500);
+
+    let json: serde_json::Value = serde_json::to_value(&body).unwrap();
+
+    assert_eq!(json["PreloadingScreenEnabled"], serde_json::json!(true));
+    assert_eq!(
+        json["PreloadingScreenCode"],
+        serde_json::json!("<div>loading</div>")
+    );
+    assert_eq!(
+        json["PreloadingScreenLogoUrl"],
+        serde_json::json!("https://cdn.example.com/logo.png")
+    );
+    assert_eq!(
+        json["PreloadingScreenShowOnFirstVisit"],
+        serde_json::json!(true)
+    );
+    // Light = 1 on the wire.
+    assert_eq!(json["PreloadingScreenTheme"], serde_json::json!(1));
+    assert_eq!(
+        json["PreloadingScreenCodeEnabled"],
+        serde_json::json!(false)
+    );
+    assert_eq!(json["PreloadingScreenDelay"], serde_json::json!(2500));
+}
+
+/// Edge/middleware script wiring serialises with the correct keys, and the
+/// execution phase serialises as its integer discriminant.
+#[test]
+fn update_pull_zone_script_wiring_fields_serialise_with_correct_keys() {
+    let body = UpdatePullZone::new()
+        .edge_script_id(42)
+        .middleware_script_id(99)
+        .edge_script_execution_phase(EdgeScriptExecutionPhase::OnResponse);
+
+    let json: serde_json::Value = serde_json::to_value(&body).unwrap();
+
+    assert_eq!(json["EdgeScriptId"], serde_json::json!(42));
+    assert_eq!(json["MiddlewareScriptId"], serde_json::json!(99));
+    // OnResponse = 1 on the wire.
+    assert_eq!(json["EdgeScriptExecutionPhase"], serde_json::json!(1));
+}
+
+/// Magic Containers origin IDs serialise as strings with the correct keys.
+#[test]
+fn update_pull_zone_magic_containers_fields_serialise_with_correct_keys() {
+    let body = UpdatePullZone::new()
+        .magic_containers_app_id("app-abc")
+        .magic_containers_endpoint_id("ep-xyz");
+
+    let json: serde_json::Value = serde_json::to_value(&body).unwrap();
+
+    assert_eq!(json["MagicContainersAppId"], serde_json::json!("app-abc"));
+    assert_eq!(
+        json["MagicContainersEndpointId"],
+        serde_json::json!("ep-xyz")
+    );
+}
+
+/// The recorded fixture must deserialise the iter-74 fields without panicking,
+/// exercising the integer-enum and nullable-string paths.
+#[tokio::test]
+async fn get_pull_zone_deserialises_iter74_body_fields() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_GET, "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let zone = test_client(&server.uri())
+        .get_pull_zone(1001)
+        .await
+        .unwrap();
+
+    // Fixture values: EdgeScriptExecutionPhase=0 (OnRequest), PreloadingScreenTheme=0 (Dark).
+    assert_eq!(
+        zone.edge_script_execution_phase,
+        Some(EdgeScriptExecutionPhase::OnRequest)
+    );
+    assert_eq!(
+        zone.preloading_screen_theme,
+        Some(PreloadingScreenTheme::Dark)
+    );
+    assert_eq!(zone.preloading_screen_delay, Some(1000));
+    assert!(!zone.error_page_enable_custom_code);
+}
+
+/// `updatePrivateKeyType` with EC sends `UseEcKey = true`.
+#[tokio::test]
+async fn update_private_key_type_ec_sends_use_ec_key_true() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/updatePrivateKeyType"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Hostname": "cdn.example.com",
+            "UseEcKey": true
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .update_private_key_type(1001, "cdn.example.com", PullZonePrivateKeyType::Ec)
+        .await
+        .unwrap();
+}
+
+/// `updatePrivateKeyType` with RSA sends `UseEcKey = false`.
+#[tokio::test]
+async fn update_private_key_type_rsa_sends_use_ec_key_false() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001/updatePrivateKeyType"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_json(serde_json::json!({
+            "Hostname": "cdn.example.com",
+            "UseEcKey": false
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .update_private_key_type(1001, "cdn.example.com", PullZonePrivateKeyType::Rsa)
+        .await
+        .unwrap();
+}
+
+/// `requestExternalDnsCertificate` sends the hostname as a query param and
+/// parses the returned DNS validation records.
+#[tokio::test]
+async fn request_external_dns_certificate_returns_validation_records() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/requestExternalDnsCertificate"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("hostname", "cdn.example.com"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+            {
+                "Hostname": "cdn.example.com",
+                "Type": "CNAME",
+                "Name": "_acme-challenge.cdn.example.com",
+                "Value": "validate.bunny.net"
+            }
+        ])))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let records = test_client(&server.uri())
+        .request_external_dns_certificate("cdn.example.com")
+        .await
+        .unwrap();
+
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].record_type.as_deref(), Some("CNAME"));
+    assert_eq!(records[0].value.as_deref(), Some("validate.bunny.net"));
+}
+
+/// `completeExternalDnsCertificate` sends the hostname as a query param.
+#[tokio::test]
+async fn complete_external_dns_certificate_sends_hostname_query() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/completeExternalDnsCertificate"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("hostname", "cdn.example.com"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .complete_external_dns_certificate("cdn.example.com")
+        .await
+        .unwrap();
 }
