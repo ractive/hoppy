@@ -4,7 +4,7 @@ use crate::cli::{
     PullZoneReferrerAction,
 };
 use crate::date;
-use crate::output::{self, PaginatedListJson};
+use crate::output::{self, AvailabilityRow, PaginatedListJson};
 use crate::redact::RedactConfig;
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
@@ -192,20 +192,7 @@ pub async fn handle(
                     .context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
-                #[derive(serde::Serialize, tabled::Tabled)]
-                struct Row {
-                    #[tabled(rename = "Name")]
-                    name: String,
-                    #[tabled(rename = "Available")]
-                    available: bool,
-                }
-                output::print_single(
-                    &Row {
-                        name: name.clone(),
-                        available: availability.available,
-                    },
-                    format,
-                );
+                output::print_single(&AvailabilityRow::new(name, availability.available), format);
             }
         }
         PullZoneAction::Create {

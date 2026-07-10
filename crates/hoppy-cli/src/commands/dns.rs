@@ -2,7 +2,7 @@ use crate::auth;
 use crate::cli::{
     DnsAction, DnsDnssecAction, DnsRecordAction, DnsScanAction, DnsZoneAction, OutputFormat,
 };
-use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
+use crate::output::{self, AvailabilityRow, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
@@ -41,27 +41,6 @@ impl From<&DnsZone> for DnsZoneRow {
             nameservers_detected: z.nameservers_detected,
             dns_sec_enabled: z.dns_sec_enabled,
             date_created: z.date_created.clone(),
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Display structs — availability
-// ---------------------------------------------------------------------------
-
-#[derive(serde::Serialize, tabled::Tabled)]
-struct AvailabilityRow {
-    #[tabled(rename = "Name")]
-    name: String,
-    #[tabled(rename = "Available")]
-    available: bool,
-}
-
-impl AvailabilityRow {
-    fn new(name: &str, available: bool) -> Self {
-        Self {
-            name: name.to_owned(),
-            available,
         }
     }
 }
