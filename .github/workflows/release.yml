@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   release:
-    uses: ractive/release-workflows/.github/workflows/release.yml@v0.1.2
+    uses: ractive/release-workflows/.github/workflows/release.yml@v0.1.3
     secrets: inherit
     with:
       dry-run: ${{ github.event_name == 'workflow_dispatch' }}
@@ -25,12 +25,15 @@ jobs:
       # hoppy links OpenSSL (see Cross.toml's libssl pre-build step for the
       # aarch64-unknown-linux-gnu cross target), so it cannot use the shared
       # workflow's default musl targets. No aarch64-*-musl entries here.
+      # run_tests is false everywhere: the pre-migration release pipeline
+      # never ran tests (PR CI covers them, on ubuntu), and the CLI tests
+      # overflow the default 1 MB MSVC stack on Windows.
       targets: >-
         [
-          {"target": "x86_64-unknown-linux-gnu",  "os": "ubuntu-latest",  "cross": false, "run_tests": true},
+          {"target": "x86_64-unknown-linux-gnu",  "os": "ubuntu-latest",  "cross": false, "run_tests": false},
           {"target": "aarch64-unknown-linux-gnu",  "os": "ubuntu-latest",  "cross": true,  "run_tests": false},
-          {"target": "aarch64-apple-darwin",       "os": "macos-latest",  "cross": false, "run_tests": true},
-          {"target": "x86_64-pc-windows-msvc",     "os": "windows-latest", "cross": false, "run_tests": true},
+          {"target": "aarch64-apple-darwin",       "os": "macos-latest",  "cross": false, "run_tests": false},
+          {"target": "x86_64-pc-windows-msvc",     "os": "windows-latest", "cross": false, "run_tests": false},
           {"target": "aarch64-pc-windows-msvc",    "os": "windows-latest", "cross": false, "run_tests": false}
         ]
       # Runs on every matrix target (bash on all OSes, including Windows via
@@ -41,15 +44,17 @@ jobs:
       pre-package-command: |
         mkdir -p completions man
         if [ "$CROSS" = "true" ] || [ "$TARGET" = "aarch64-pc-windows-msvc" ]; then
-          cargo run --release -- completions bash  > completions/hoppy.bash
-          cargo run --release -- completions zsh   > completions/_hoppy
-          cargo run --release -- completions fish  > completions/hoppy.fish
+          # --bin disambiguates: hoppy-cli ships hoppy + fixture-refresh.
+          cargo run --release --bin hoppy -- completions bash  > completions/hoppy.bash
+          cargo run --release --bin hoppy -- completions zsh   > completions/_hoppy
+          cargo run --release --bin hoppy -- completions fish  > completions/hoppy.fish
         else
-          BIN="target/$TARGET/release/hoppy"
-          [ -f "${BIN}.exe" ] && BIN="${BIN}.exe"
-          "$BIN" completions bash > completions/hoppy.bash
-          "$BIN" completions zsh  > completions/_hoppy
-          "$BIN" completions fish > completions/hoppy.fish
+          # BIN_PATH is exported by the shared workflow and points at the
+          # binary this job built (target/<triple>/release/ in matrix jobs,
+          # target/release/ in linux-packages, .exe resolved on Windows).
+          "$BIN_PATH" completions bash > completions/hoppy.bash
+          "$BIN_PATH" completions zsh  > completions/_hoppy
+          "$BIN_PATH" completions fish > completions/hoppy.fish
         fi
         cargo xtask --output-dir man
         # cargo-deb / cargo-generate-rpm resolve [package.metadata.*] asset
