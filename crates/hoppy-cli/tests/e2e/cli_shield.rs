@@ -1,6 +1,6 @@
 use super::support;
 
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
@@ -957,6 +957,155 @@ async fn shield_bot_detection_update() {
             "55001",
             "--execution-mode",
             "1",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+// ---------------------------------------------------------------------------
+// iter-69: pagination & metrics time-range params
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn shield_zone_list_forwards_pagination() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/shield-zones"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "2"))
+        .and(query_param("perPage", "25"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/shield_zones_list.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "zone",
+            "list",
+            "--page",
+            "2",
+            "--per-page",
+            "25",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_waf_list_rules_forwards_pagination() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/waf/custom-rules/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "3"))
+        .and(query_param("perPage", "10"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/waf_rules_list.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "waf",
+            "list-rules",
+            "--shield-zone-id",
+            "55001",
+            "--page",
+            "3",
+            "--per-page",
+            "10",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_rate_limit_list_forwards_pagination() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/rate-limits/55001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("page", "2"))
+        .and(query_param("perPage", "5"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/rate_limit_rules_list.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "rate-limit",
+            "list",
+            "--shield-zone-id",
+            "55001",
+            "--page",
+            "2",
+            "--per-page",
+            "5",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn shield_metrics_detailed_forwards_time_range() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/shield/metrics/overview/55001/detailed"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("startDate", "2026-01-01T00:00:00Z"))
+        .and(query_param("endDate", "2026-01-31T00:00:00Z"))
+        .and(query_param("resolution", "3"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/metrics_overview_detailed.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "metrics",
+            "detailed",
+            "--shield-zone-id",
+            "55001",
+            "--start-date",
+            "2026-01-01",
+            "--end-date",
+            "2026-01-31",
+            "--resolution",
+            "3",
         ])
         .output()
         .unwrap();

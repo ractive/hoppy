@@ -1,6 +1,6 @@
 use super::support;
 
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
@@ -696,6 +696,84 @@ async fn script_secret_delete() {
         .unwrap();
 
     assert!(output.status.success());
+}
+
+// ---------------------------------------------------------------------------
+// iter-69: script list filters + statistics load-latest
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn script_list_forwards_type_integration_and_linked_filters() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/compute/script"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("type", "1"))
+        .and(query_param("integrationId", "77"))
+        .and(query_param("includeLinkedPullZones", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("compute/scripts_list.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "script",
+            "list",
+            "--type",
+            "1",
+            "--integration-id",
+            "77",
+            "--include-linked-pullzones",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn script_statistics_forwards_load_latest() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/compute/script/1001/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("loadLatest", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("compute/statistics.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "script",
+            "statistics",
+            "--id",
+            "1001",
+            "--load-latest",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[cfg(feature = "live-api")]

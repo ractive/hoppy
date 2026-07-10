@@ -471,9 +471,36 @@ pub enum Commands {
         /// Filter by pull zone ID
         #[arg(long)]
         pull_zone: Option<i64>,
+        /// Filter by server zone (edge PoP) ID
+        #[arg(long)]
+        server_zone_id: Option<i64>,
         /// Show hourly granularity
         #[arg(long)]
         hourly: bool,
+        /// Include the 3xx/4xx/5xx error charts
+        #[arg(long)]
+        load_errors: bool,
+        /// Include the origin response-time chart
+        #[arg(long)]
+        load_origin_response_times: bool,
+        /// Include the origin-traffic chart
+        #[arg(long)]
+        load_origin_traffic: bool,
+        /// Include the requests-served chart
+        #[arg(long)]
+        load_requests_served: bool,
+        /// Include the bandwidth-used chart
+        #[arg(long)]
+        load_bandwidth_used: bool,
+        /// Include the origin-shield bandwidth chart
+        #[arg(long)]
+        load_origin_shield_bandwidth: bool,
+        /// Include the geographic traffic distribution chart
+        #[arg(long)]
+        load_geographic_traffic_distribution: bool,
+        /// Include the user balance history chart
+        #[arg(long)]
+        load_user_balance_history: bool,
     },
 
     /// Manage video libraries (core API — DRM and transcription stats)
@@ -487,6 +514,12 @@ pub enum Commands {
         /// The URL to purge
         #[arg(long)]
         url: String,
+        /// Purge only the exact URL rather than treating it as a directory prefix
+        #[arg(long)]
+        exact_path: bool,
+        /// Return immediately without waiting for the purge to propagate
+        #[arg(long = "async")]
+        is_async: bool,
     },
 
     /// Generate shell completions
@@ -1460,6 +1493,9 @@ pub enum StorageZoneAction {
         /// Items per page
         #[arg(long, conflicts_with = "all")]
         per_page: Option<u32>,
+        /// Include soft-deleted storage zones in the results
+        #[arg(long)]
+        include_deleted: bool,
         /// Automatically paginate through all available pages
         #[arg(long)]
         all: bool,
@@ -2117,6 +2153,36 @@ pub enum StreamVideoAction {
         /// Collection GUID to assign the video to
         #[arg(long)]
         collection_id: Option<String>,
+        /// Enable Just-In-Time encoding for this upload
+        #[arg(long)]
+        jit_enabled: Option<bool>,
+        /// Comma-separated resolutions to encode (e.g. 720p,1080p)
+        #[arg(long)]
+        enabled_resolutions: Option<String>,
+        /// Comma-separated output codecs (e.g. x264,vp9)
+        #[arg(long)]
+        enabled_output_codecs: Option<String>,
+        /// Enable automatic transcription for this upload
+        #[arg(long)]
+        transcribe_enabled: Option<bool>,
+        /// Comma-separated transcription target languages (ISO 639-1)
+        #[arg(long)]
+        transcribe_languages: Option<String>,
+        /// Source language of the video (ISO 639-1, e.g. en)
+        #[arg(long)]
+        source_language: Option<String>,
+        /// Generate a title from the video content
+        #[arg(long)]
+        generate_title: Option<bool>,
+        /// Generate a description from the video content
+        #[arg(long)]
+        generate_description: Option<bool>,
+        /// Generate chapters from the video content
+        #[arg(long)]
+        generate_chapters: Option<bool>,
+        /// Generate highlight moments from the video content
+        #[arg(long)]
+        generate_moments: Option<bool>,
     },
     /// Update video title or collection
     Update {
@@ -2482,6 +2548,15 @@ pub enum ShieldMetricsAction {
         /// Shield zone ID
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
+        /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
+        #[arg(long)]
+        start_date: Option<String>,
+        /// End of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
+        #[arg(long)]
+        end_date: Option<String>,
+        /// Bucket resolution (0–6; higher = coarser buckets)
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=6))]
+        resolution: Option<u8>,
     },
     /// Get rate limit metrics for all rules in a Shield Zone
     RateLimits {
@@ -2521,7 +2596,14 @@ pub enum ShieldMetricsAction {
 #[derive(Subcommand)]
 pub enum ShieldZoneAction {
     /// List all Shield Zones
-    List,
+    List {
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
+    },
     /// Get a Shield Zone by ID
     Get {
         /// Shield zone ID
@@ -2575,6 +2657,12 @@ pub enum ShieldWafAction {
         /// Shield zone ID
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
     },
     /// Get a custom WAF rule by ID
     GetRule {
@@ -2782,6 +2870,12 @@ pub enum ShieldRateLimitAction {
         /// Shield zone ID
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
+        /// Page number (1-based)
+        #[arg(long)]
+        page: Option<u32>,
+        /// Items per page
+        #[arg(long)]
+        per_page: Option<u32>,
     },
     /// Get a rate limit rule by ID
     Get {
@@ -3011,6 +3105,15 @@ pub enum ScriptAction {
         /// Items per page
         #[arg(long, conflicts_with = "all")]
         per_page: Option<i32>,
+        /// Filter by script type (repeatable; 0 = Standalone, 1 = Middleware)
+        #[arg(long = "type", value_name = "N")]
+        types: Vec<i32>,
+        /// Filter by integration ID
+        #[arg(long)]
+        integration_id: Option<i64>,
+        /// Include each script's linked pull zones in the response
+        #[arg(long)]
+        include_linked_pullzones: bool,
         /// Automatically paginate through all available pages
         #[arg(long)]
         all: bool,
@@ -3103,6 +3206,9 @@ pub enum ScriptAction {
         /// Return hourly breakdowns
         #[arg(long)]
         hourly: bool,
+        /// Include the latest data point even if it falls outside the date range
+        #[arg(long)]
+        load_latest: bool,
     },
     /// Rotate the deployment key for a script
     RotateDeploymentKey {
@@ -4154,6 +4260,12 @@ Hoppy validates locally before the API call."
         /// Limit the number of generations returned
         #[arg(long)]
         limit: Option<u64>,
+        /// Only list generations older than this timestamp (RFC 3339 / ISO 8601)
+        #[arg(long)]
+        older_than: Option<String>,
+        /// Only list generations newer than this timestamp (RFC 3339 / ISO 8601)
+        #[arg(long)]
+        newer_than: Option<String>,
     },
     /// Ping a database with `SELECT 1` via its libSQL data plane.
     ///

@@ -59,7 +59,7 @@ async fn list_scripts_returns_paginated() {
         .await;
 
     let result = test_client(&server.uri())
-        .list_scripts(None, None, None)
+        .list_scripts(None, None, None, &[], None, false)
         .await
         .unwrap();
 
@@ -90,7 +90,32 @@ async fn list_scripts_with_search() {
         .await;
 
     let result = test_client(&server.uri())
-        .list_scripts(None, None, Some("cdn"))
+        .list_scripts(None, None, Some("cdn"), &[], None, false)
+        .await
+        .unwrap();
+
+    assert!(!result.items.is_empty());
+}
+
+#[tokio::test]
+async fn list_scripts_forwards_type_integration_and_linked_filters() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/compute/script"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("type", "0"))
+        .and(query_param("integrationId", "77"))
+        .and(query_param("includeLinkedPullZones", "true"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_SCRIPTS_LIST, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let result = test_client(&server.uri())
+        .list_scripts(None, None, None, &[0], Some(77), true)
         .await
         .unwrap();
 
@@ -715,7 +740,7 @@ async fn get_statistics_returns_data() {
         .await;
 
     let stats = test_client(&server.uri())
-        .get_script_statistics(1001, None, None, false)
+        .get_script_statistics(1001, None, None, false, false)
         .await
         .unwrap();
 
@@ -742,7 +767,30 @@ async fn get_statistics_with_date_range() {
         .await;
 
     let stats = test_client(&server.uri())
-        .get_script_statistics(1001, Some("2024-01-01"), Some("2024-01-31"), false)
+        .get_script_statistics(1001, Some("2024-01-01"), Some("2024-01-31"), false, false)
+        .await
+        .unwrap();
+
+    assert_eq!(stats.total_requests_served, 125000);
+}
+
+#[tokio::test]
+async fn get_statistics_forwards_load_latest() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/compute/script/1001/statistics"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("loadLatest", "true"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(FIXTURE_STATISTICS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let stats = test_client(&server.uri())
+        .get_script_statistics(1001, None, None, false, true)
         .await
         .unwrap();
 
@@ -767,7 +815,7 @@ async fn unauthorized_returns_error() {
         .await;
 
     let err = test_client(&server.uri())
-        .list_scripts(None, None, None)
+        .list_scripts(None, None, None, &[], None, false)
         .await
         .unwrap_err();
 
@@ -818,7 +866,7 @@ async fn debug_mode_makes_request() {
     // With debug enabled the request should still succeed
     let result = ComputeClient::with_base_url("test-api-key", server.uri())
         .with_debug(true)
-        .list_scripts(None, None, None)
+        .list_scripts(None, None, None, &[], None, false)
         .await
         .unwrap();
 

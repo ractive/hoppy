@@ -230,6 +230,37 @@ impl CreateVideo {
     }
 }
 
+/// Per-upload encoding and AI-generation options for
+/// `PUT /library/{libraryId}/videos/{videoId}`.
+///
+/// Every field is optional; `None` (or `false`) leaves the corresponding
+/// query parameter off the request so the library default applies. The
+/// resolution / codec / language fields are sent verbatim, so callers pass
+/// the API's comma-separated form (e.g. `"720p,1080p"`).
+#[derive(Debug, Clone, Default)]
+pub struct VideoUploadOptions {
+    /// Enable Just-In-Time encoding for this upload.
+    pub jit_enabled: Option<bool>,
+    /// Comma-separated list of resolutions to encode (e.g. `"720p,1080p"`).
+    pub enabled_resolutions: Option<String>,
+    /// Comma-separated list of output codecs (e.g. `"x264,vp9"`).
+    pub enabled_output_codecs: Option<String>,
+    /// Enable automatic transcription for this upload.
+    pub transcribe_enabled: Option<bool>,
+    /// Comma-separated list of transcription target languages (ISO 639-1).
+    pub transcribe_languages: Option<String>,
+    /// Source language of the video (ISO 639-1, e.g. `"en"`).
+    pub source_language: Option<String>,
+    /// Have the API generate a title from the video content.
+    pub generate_title: Option<bool>,
+    /// Have the API generate a description from the video content.
+    pub generate_description: Option<bool>,
+    /// Have the API generate chapters from the video content.
+    pub generate_chapters: Option<bool>,
+    /// Have the API generate highlight moments from the video content.
+    pub generate_moments: Option<bool>,
+}
+
 /// Request body for `POST /library/{id}/videos/{videoId}` — update a video.
 ///
 /// All fields are optional; only non-`None` values are serialised.

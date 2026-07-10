@@ -1,4 +1,4 @@
-use bunny_net_api::stream::types::{CreateCollection, UpdateCollection};
+use bunny_net_api::stream::types::{CreateCollection, UpdateCollection, VideoUploadOptions};
 use bunny_net_api::stream::{
     CreateVideo, SmartGenerateSettings, StreamCleanupResolutions, StreamClient, TranscribeSettings,
 };
@@ -272,7 +272,69 @@ async fn upload_video_sends_binary_body() {
         .await;
 
     let status = test_client(&server.uri())
-        .upload_video(10001, "newvideo-1111-2222-3333-444455556666", video_bytes)
+        .upload_video(
+            10001,
+            "newvideo-1111-2222-3333-444455556666",
+            video_bytes,
+            &VideoUploadOptions::default(),
+        )
+        .await
+        .unwrap();
+
+    assert!(status.success);
+    assert_eq!(status.status_code, 200);
+}
+
+#[tokio::test]
+async fn upload_video_forwards_per_upload_options() {
+    let server = MockServer::start().await;
+
+    let video_bytes: Vec<u8> = b"fake-video-binary-content".to_vec();
+
+    Mock::given(method("PUT"))
+        .and(path(
+            "/library/10001/videos/newvideo-1111-2222-3333-444455556666",
+        ))
+        .and(header("AccessKey", "stream-test-key"))
+        .and(query_param("jitEnabled", "true"))
+        .and(query_param("enabledResolutions", "720p,1080p"))
+        .and(query_param("enabledOutputCodecs", "x264,vp9"))
+        .and(query_param("transcribeEnabled", "true"))
+        .and(query_param("transcribeLanguages", "en,de"))
+        .and(query_param("sourceLanguage", "en"))
+        .and(query_param("generateTitle", "true"))
+        .and(query_param("generateDescription", "true"))
+        .and(query_param("generateChapters", "true"))
+        .and(query_param("generateMoments", "true"))
+        .and(body_bytes(video_bytes.clone()))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(FIXTURE_VIDEO_UPLOAD_STATUS, "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let options = VideoUploadOptions {
+        jit_enabled: Some(true),
+        enabled_resolutions: Some("720p,1080p".to_string()),
+        enabled_output_codecs: Some("x264,vp9".to_string()),
+        transcribe_enabled: Some(true),
+        transcribe_languages: Some("en,de".to_string()),
+        source_language: Some("en".to_string()),
+        generate_title: Some(true),
+        generate_description: Some(true),
+        generate_chapters: Some(true),
+        generate_moments: Some(true),
+    };
+
+    let status = test_client(&server.uri())
+        .upload_video(
+            10001,
+            "newvideo-1111-2222-3333-444455556666",
+            video_bytes,
+            &options,
+        )
         .await
         .unwrap();
 

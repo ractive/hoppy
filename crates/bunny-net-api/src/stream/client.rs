@@ -10,6 +10,7 @@ use super::types::{
     Collection, CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, PaginatedList,
     SmartGenerateSettings, StatusEnvelope, StatusMessage, TranscribeSettings, UpdateCollection,
     UpdateVideo, Video, VideoHeatmap, VideoResolutionsInfo, VideoStatistics, VideoStorageSize,
+    VideoUploadOptions,
 };
 
 const BASE_URL: &str = "https://video.bunnycdn.com";
@@ -238,21 +239,52 @@ impl StreamClient {
     /// This is the operation that Progenitor's codegen could not handle
     /// because it requires `application/octet-stream` with a binary body —
     /// a first-class advantage of the hand-written client.
+    ///
+    /// `options` carries the optional per-upload encoding and AI-generation
+    /// query parameters; pass `&VideoUploadOptions::default()` to send none.
     pub async fn upload_video(
         &self,
         library_id: i64,
         video_id: &str,
         body: impl Into<reqwest::Body>,
+        options: &VideoUploadOptions,
     ) -> Result<StatusMessage> {
         let vid = Self::encode(video_id);
         let url = format!("{}/library/{library_id}/videos/{vid}", self.base_url);
-        let resp = self
-            .send(
-                self.auth(self.http.put(&url))
-                    .header("Content-Type", "application/octet-stream")
-                    .body(body),
-            )
-            .await?;
+        let mut rb = self
+            .auth(self.http.put(&url))
+            .header("Content-Type", "application/octet-stream");
+        if let Some(v) = options.jit_enabled {
+            rb = rb.query(&[("jitEnabled", v.to_string())]);
+        }
+        if let Some(v) = &options.enabled_resolutions {
+            rb = rb.query(&[("enabledResolutions", v.as_str())]);
+        }
+        if let Some(v) = &options.enabled_output_codecs {
+            rb = rb.query(&[("enabledOutputCodecs", v.as_str())]);
+        }
+        if let Some(v) = options.transcribe_enabled {
+            rb = rb.query(&[("transcribeEnabled", v.to_string())]);
+        }
+        if let Some(v) = &options.transcribe_languages {
+            rb = rb.query(&[("transcribeLanguages", v.as_str())]);
+        }
+        if let Some(v) = &options.source_language {
+            rb = rb.query(&[("sourceLanguage", v.as_str())]);
+        }
+        if let Some(v) = options.generate_title {
+            rb = rb.query(&[("generateTitle", v.to_string())]);
+        }
+        if let Some(v) = options.generate_description {
+            rb = rb.query(&[("generateDescription", v.to_string())]);
+        }
+        if let Some(v) = options.generate_chapters {
+            rb = rb.query(&[("generateChapters", v.to_string())]);
+        }
+        if let Some(v) = options.generate_moments {
+            rb = rb.query(&[("generateMoments", v.to_string())]);
+        }
+        let resp = self.send(rb.body(body)).await?;
         self.parse_response(resp).await
     }
 

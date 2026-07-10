@@ -3257,6 +3257,43 @@ impl UpdateDnsRecord {
 // Statistics types
 // ---------------------------------------------------------------------------
 
+/// Query parameters for `GET /statistics`.
+///
+/// All fields are optional. The `date_from` / `date_to` window and the
+/// `pull_zone` / `server_zone_id` filters narrow the result set, `hourly`
+/// switches to per-hour buckets, and the `load_*` selectors toggle the
+/// individual chart series the API computes and returns. Leaving a `load_*`
+/// flag `false` lets the API apply its default for that series.
+#[derive(Debug, Clone, Default)]
+pub struct StatisticsQuery<'a> {
+    /// Start of the reporting window (`YYYY-MM-DD` or RFC 3339).
+    pub date_from: Option<&'a str>,
+    /// End of the reporting window (`YYYY-MM-DD` or RFC 3339).
+    pub date_to: Option<&'a str>,
+    /// Restrict statistics to a single Pull Zone.
+    pub pull_zone: Option<i64>,
+    /// Restrict statistics to a single Server Zone (edge PoP).
+    pub server_zone_id: Option<i64>,
+    /// Return per-hour buckets instead of the coarser default granularity.
+    pub hourly: bool,
+    /// Include the 3xx/4xx/5xx error charts.
+    pub load_errors: bool,
+    /// Include the origin response-time chart.
+    pub load_origin_response_times: bool,
+    /// Include the origin-traffic chart.
+    pub load_origin_traffic: bool,
+    /// Include the requests-served chart.
+    pub load_requests_served: bool,
+    /// Include the bandwidth-used chart.
+    pub load_bandwidth_used: bool,
+    /// Include the origin-shield bandwidth chart.
+    pub load_origin_shield_bandwidth: bool,
+    /// Include the geographic traffic distribution chart.
+    pub load_geographic_traffic_distribution: bool,
+    /// Include the user balance history chart.
+    pub load_user_balance_history: bool,
+}
+
 /// Account-level statistics returned by `GET /statistics`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]

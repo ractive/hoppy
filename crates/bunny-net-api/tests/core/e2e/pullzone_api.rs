@@ -235,7 +235,27 @@ async fn purge_url_sends_url_as_query_param() {
         .await;
 
     test_client(&server.uri())
-        .purge_url("https://cdn.example.com/style.css")
+        .purge_url("https://cdn.example.com/style.css", false, false)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn purge_url_forwards_exact_path_and_async() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/purge"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("url", "https://cdn.example.com/style.css"))
+        .and(query_param("exactPath", "true"))
+        .and(query_param("async", "true"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    test_client(&server.uri())
+        .purge_url("https://cdn.example.com/style.css", true, true)
         .await
         .unwrap();
 }

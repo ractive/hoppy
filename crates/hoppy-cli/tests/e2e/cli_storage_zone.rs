@@ -27,6 +27,35 @@ async fn storage_zone_list_json() {
 }
 
 #[tokio::test]
+async fn storage_zone_list_forwards_include_deleted() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("includeDeleted", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_list_paginated.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "storage-zone",
+            "list",
+            "--include-deleted",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+}
+
+#[tokio::test]
 async fn storage_zone_get_redacts_passwords_by_default() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

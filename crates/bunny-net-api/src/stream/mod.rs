@@ -3,7 +3,7 @@
 //! # Quick start
 //!
 //! ```rust,no_run
-//! use bunny_net_api::stream::{StreamClient, CreateVideo};
+//! use bunny_net_api::stream::{StreamClient, CreateVideo, VideoUploadOptions};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> anyhow::Result<()> {
@@ -12,7 +12,12 @@
 //! // Create a video record, then upload the bytes
 //! let video = client.create_video(12345, &CreateVideo::new("My Video")).await?;
 //! client
-//!     .upload_video(12345, &video.guid, std::fs::read("video.mp4")?)
+//!     .upload_video(
+//!         12345,
+//!         &video.guid,
+//!         std::fs::read("video.mp4")?,
+//!         &VideoUploadOptions::default(),
+//!     )
 //!     .await?;
 //! # Ok(())
 //! # }
@@ -29,4 +34,5 @@ pub use types::{
     FetchVideo, PaginatedList, ResolutionReference, SmartGenerateSettings, StatusEnvelope,
     StatusMessage, StorageObject, TranscribeSettings, UpdateCollection, UpdateVideo, Video,
     VideoHeatmap, VideoResolutionsInfo, VideoStatistics, VideoStatus, VideoStorageSize,
+    VideoUploadOptions,
 };
