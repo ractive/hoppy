@@ -2279,3 +2279,665 @@ fn container_app_create_eq_form_passes_negative_value() {
         "should not trigger negative-value hint for --min=-1: {stderr}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// iter-76: containers polish — volumes, runtime config, endpoint options,
+// registry images, and the schema-less summary / node-ips / image-config
+// passthrough commands.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn container_app_create_with_volumes_sends_array() {
+    // --volume NAME:SIZE_GB must land in the POST /apps `volumes` array so the
+    // volume is actually created (previously hard-coded to None).
+    use wiremock::matchers::body_partial_json;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/apps"))
+        .and(body_partial_json(serde_json::json!({
+            "volumes": [
+                {"name": "data", "size": 10},
+                {"name": "cache", "size": 5}
+            ]
+        })))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/app_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "app",
+            "create",
+            "--minimal",
+            "--name",
+            "vol-app",
+            "--runtime-type",
+            "shared",
+            "--min",
+            "1",
+            "--max",
+            "1",
+            "--region",
+            "DE",
+            "--volume",
+            "data:10",
+            "--volume",
+            "cache:5",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn container_app_update_with_volumes_sends_array() {
+    use wiremock::matchers::body_partial_json;
+
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/apps/test-app-id"))
+        .and(body_partial_json(serde_json::json!({
+            "volumes": [{"name": "logs", "size": 3}]
+        })))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/app_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "app",
+            "update",
+            "--id",
+            "test-app-id",
+            "--volume",
+            "logs:3",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn container_app_create_bad_volume_spec_errors() {
+    let output = support::hoppy_cmd()
+        .env("BUNNY_API_KEY", "dummy")
+        .args([
+            "container",
+            "app",
+            "create",
+            "--name",
+            "x",
+            "--runtime-type",
+            "shared",
+            "--min",
+            "1",
+            "--max",
+            "1",
+            "--region",
+            "DE",
+            "--volume",
+            "data-no-colon",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("NAME:SIZE_GB"),
+        "expected volume-format hint, got: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn container_app_summary_passthrough() {
+    let server = MockServer::start().await;
+    let body = serde_json::json!({"usage": {"cpu": 12, "memory": 256}});
+    Mock::given(method("GET"))
+        .and(path("/apps/test-app-id/summary"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(body.to_string(), "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args(["container", "app", "summary", "--id", "test-app-id"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("\"cpu\": 12"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn container_template_add_with_runtime_config() {
+    // --pull-policy, --image-digest, entrypoint flags, and --volume-mount must
+    // all land in the POST /apps/{id}/containers body.
+    use wiremock::matchers::body_partial_json;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/apps/test-app-id/containers"))
+        .and(body_partial_json(serde_json::json!({
+            "imageDigest": "sha256:abc",
+            "imagePullPolicy": "always",
+            "entryPoint": {
+                "commandArray": ["/bin/sh", "-c"],
+                "arguments": "echo hi",
+                "workingDirectory": "/app"
+            },
+            "volumeMounts": [{"name": "data", "mountPath": "/var/lib/data"}]
+        })))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/container_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "template",
+            "add",
+            "--app-id",
+            "test-app-id",
+            "--name",
+            "nginx",
+            "--image-name",
+            "nginx",
+            "--image-namespace",
+            "library",
+            "--image-tag",
+            "alpine",
+            "--registry-id",
+            "1155",
+            "--image-digest",
+            "sha256:abc",
+            "--pull-policy",
+            "Always",
+            "--command-array",
+            "/bin/sh",
+            "--command-array=-c",
+            "--arguments",
+            "echo hi",
+            "--working-directory",
+            "/app",
+            "--volume-mount",
+            "data:/var/lib/data",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn container_template_add_with_probes_json_file() {
+    use wiremock::matchers::body_partial_json;
+
+    let dir = tempfile::tempdir().unwrap();
+    let probes_path = dir.path().join("probes.json");
+    std::fs::write(
+        &probes_path,
+        r#"{"liveness":{"periodSeconds":10,"httpGet":{"request":{"path":"/health","portNumber":80}}}}"#,
+    )
+    .unwrap();
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/apps/test-app-id/containers"))
+        .and(body_partial_json(serde_json::json!({
+            "probes": {
+                "liveness": {
+                    "periodSeconds": 10,
+                    "httpGet": {"request": {"path": "/health", "portNumber": 80}}
+                }
+            }
+        })))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/container_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "template",
+            "add",
+            "--app-id",
+            "test-app-id",
+            "--name",
+            "nginx",
+            "--image-name",
+            "nginx",
+            "--image-namespace",
+            "library",
+            "--image-tag",
+            "alpine",
+            "--registry-id",
+            "1155",
+            "--probes-json",
+            probes_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn container_template_add_bad_pull_policy_errors() {
+    let output = support::hoppy_cmd()
+        .env("BUNNY_API_KEY", "dummy")
+        .args([
+            "container",
+            "template",
+            "add",
+            "--app-id",
+            "a",
+            "--name",
+            "n",
+            "--image-name",
+            "nginx",
+            "--image-namespace",
+            "library",
+            "--image-tag",
+            "alpine",
+            "--registry-id",
+            "1155",
+            "--pull-policy",
+            "Sometimes",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Always or IfNotPresent"), "got: {stderr}");
+}
+
+#[tokio::test]
+async fn container_template_update_with_runtime_config() {
+    use wiremock::matchers::body_partial_json;
+
+    let server = MockServer::start().await;
+    Mock::given(method("PATCH"))
+        .and(path("/apps/test-app-id/containers/test-container-id"))
+        .and(body_partial_json(serde_json::json!({
+            "imagePullPolicy": "ifNotPresent",
+            "entryPoint": {"command": "/start.sh"}
+        })))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/container_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "template",
+            "update",
+            "--app-id",
+            "test-app-id",
+            "--container-id",
+            "test-container-id",
+            "--pull-policy",
+            "IfNotPresent",
+            "--command",
+            "/start.sh",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn container_endpoint_add_cdn_with_ssl_and_sticky() {
+    use wiremock::matchers::body_partial_json;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/apps/test-app-id/containers/test-container-id/endpoints",
+        ))
+        .and(body_partial_json(serde_json::json!({
+            "displayName": "web",
+            "cdn": {
+                "isSslEnabled": true,
+                "pullZoneId": 42,
+                "stickySessions": {
+                    "enabled": true,
+                    "sessionHeaders": ["X-User"],
+                    "cookieName": "sid"
+                },
+                "portMappings": [{"containerPort": 8080, "exposedPort": 443}]
+            }
+        })))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/endpoint_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "endpoint",
+            "add",
+            "--app-id",
+            "test-app-id",
+            "--container-id",
+            "test-container-id",
+            "--name",
+            "web",
+            "--cdn",
+            "--container-port",
+            "8080",
+            "--exposed-port",
+            "443",
+            "--ssl",
+            "--pull-zone-id",
+            "42",
+            "--sticky",
+            "--sticky-header",
+            "X-User",
+            "--sticky-cookie",
+            "sid",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn container_endpoint_add_anycast_multiple_port_mappings() {
+    use wiremock::matchers::body_partial_json;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/apps/test-app-id/containers/test-container-id/endpoints",
+        ))
+        .and(body_partial_json(serde_json::json!({
+            "anycast": {
+                "type": "IPv4",
+                "portMappings": [
+                    {"containerPort": 80, "exposedPort": 80, "protocols": ["Tcp"]},
+                    {"containerPort": 53, "protocols": ["Udp"]}
+                ]
+            }
+        })))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/endpoint_add.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "endpoint",
+            "add",
+            "--app-id",
+            "test-app-id",
+            "--container-id",
+            "test-container-id",
+            "--name",
+            "any",
+            "--anycast",
+            "--port-mapping",
+            "80:80:Tcp",
+            "--port-mapping",
+            "53::Udp",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn container_endpoint_add_cdn_rejects_multiple_mappings() {
+    let output = support::hoppy_cmd()
+        .env("BUNNY_API_KEY", "dummy")
+        .args([
+            "container",
+            "endpoint",
+            "add",
+            "--app-id",
+            "a",
+            "--container-id",
+            "c",
+            "--name",
+            "web",
+            "--cdn",
+            "--port-mapping",
+            "80",
+            "--port-mapping",
+            "443",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("exactly one port mapping"), "got: {stderr}");
+}
+
+#[test]
+fn container_endpoint_add_anycast_rejects_cdn_options() {
+    let output = support::hoppy_cmd()
+        .env("BUNNY_API_KEY", "dummy")
+        .args([
+            "container",
+            "endpoint",
+            "add",
+            "--app-id",
+            "a",
+            "--container-id",
+            "c",
+            "--name",
+            "any",
+            "--anycast",
+            "--container-port",
+            "80",
+            "--ssl",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("CDN-only"), "got: {stderr}");
+}
+
+#[test]
+fn container_endpoint_add_sticky_without_header_errors() {
+    let output = support::hoppy_cmd()
+        .env("BUNNY_API_KEY", "dummy")
+        .args([
+            "container",
+            "endpoint",
+            "add",
+            "--app-id",
+            "a",
+            "--container-id",
+            "c",
+            "--name",
+            "web",
+            "--container-port",
+            "80",
+            "--sticky",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--sticky-header"), "got: {stderr}");
+}
+
+#[tokio::test]
+async fn container_registry_images_json() {
+    use wiremock::matchers::body_partial_json;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/registries/images"))
+        .and(body_partial_json(serde_json::json!({"registryId": "1155"})))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/container_images_list.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "container",
+            "registry",
+            "images",
+            "--registry-id",
+            "1155",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("nginx"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn container_registry_image_config_passthrough() {
+    let server = MockServer::start().await;
+    let body =
+        serde_json::json!({"exposedPorts": ["80/tcp"], "entrypoint": ["/docker-entrypoint.sh"]});
+    Mock::given(method("POST"))
+        .and(path("/registries/image-config"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(body.to_string(), "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "container",
+            "registry",
+            "image-config",
+            "--registry-id",
+            "1155",
+            "--image-name",
+            "nginx",
+            "--image-namespace",
+            "library",
+            "--tag",
+            "alpine",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("exposedPorts"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn container_node_ips_passthrough() {
+    let server = MockServer::start().await;
+    let body = serde_json::json!(["203.0.113.1", "203.0.113.2"]);
+    Mock::given(method("GET"))
+        .and(path("/nodes/plain"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(body.to_string(), "application/json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args(["container", "node", "ips"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("203.0.113.1"), "got: {stdout}");
+}
