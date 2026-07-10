@@ -96,6 +96,36 @@ fn clear_session(path: &Path) {
     let _ = std::fs::remove_file(path);
 }
 
+/// Look up the `video_id` of a still-valid persisted session for `file` in
+/// `library_id`, without creating anything.
+///
+/// The caller (the CLI upload command) must check this *before* creating a
+/// new video record: `hoppy stream video upload --resumable` re-run on the
+/// same file should resume the video created by the previous run rather than
+/// creating a brand-new video every time — a fresh video GUID would never
+/// match the GUID stored in the persisted session, silently defeating resume.
+/// Returns `None` if there is no session file, it's unreadable, or the file
+/// path/size on disk no longer matches what was recorded.
+pub fn find_resumable_session(
+    library_id: i64,
+    file: &str,
+    state_dir_override: Option<&Path>,
+) -> Option<String> {
+    let file_abs = std::fs::canonicalize(file)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| file.to_owned());
+    let dir = state_dir(state_dir_override);
+    let session_path = dir.join(session_filename(library_id, &file_abs));
+    let session = load_session(&session_path)?;
+
+    let length = std::fs::metadata(file).ok()?.len();
+    if session.library_id == library_id && session.file == file_abs && session.length == length {
+        Some(session.video_id)
+    } else {
+        None
+    }
+}
+
 /// Parameters for [`run_resumable_upload`], grouped to keep the arg list sane.
 pub struct ResumableUpload<'a> {
     pub uploader: TusUploader,

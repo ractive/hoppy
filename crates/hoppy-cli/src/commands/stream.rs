@@ -829,11 +829,27 @@ async fn handle_video(
                     .and_then(|n| n.to_str())
                     .unwrap_or(file.as_str())
             });
-            let mut create_body = CreateVideo::new(video_title);
-            if let Some(cid) = collection_id {
-                create_body = create_body.collection_id(cid);
-            }
-            let video = stream.create_video(*library_id, &create_body).await?;
+
+            // For resumable uploads, re-running the same command against the
+            // same file must resume the video created by the previous run —
+            // not create a brand-new video every time, which would silently
+            // defeat resume (a fresh GUID never matches the persisted
+            // session's GUID). Look up any still-valid session first.
+            let resumed_video_id = if *resumable {
+                stream_tus::find_resumable_session(*library_id, file, state_dir.as_deref())
+            } else {
+                None
+            };
+
+            let video = if let Some(existing_id) = &resumed_video_id {
+                stream.get_video(*library_id, existing_id).await?
+            } else {
+                let mut create_body = CreateVideo::new(video_title);
+                if let Some(cid) = collection_id {
+                    create_body = create_body.collection_id(cid);
+                }
+                stream.create_video(*library_id, &create_body).await?
+            };
 
             if *resumable {
                 // Resumable TUS path: needs the library's Stream API key to

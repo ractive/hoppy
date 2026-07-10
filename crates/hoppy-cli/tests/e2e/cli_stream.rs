@@ -1814,6 +1814,145 @@ async fn stream_video_upload_resumable_resumes_from_offset() {
     );
 }
 
+/// A second, separate `hoppy` process re-run against the same file and
+/// state dir must resume the video created by the first run — not create a
+/// brand-new video. Exercises real cross-invocation resume (unlike
+/// `stream_video_upload_resumable_resumes_from_offset`, which only covers a
+/// single invocation whose server-side offset happens to be non-zero).
+#[tokio::test]
+async fn stream_video_upload_resumable_second_invocation_reuses_video() {
+    let server = MockServer::start().await;
+
+    // The video-create endpoint must be hit exactly once across BOTH
+    // invocations — the second run must reuse the persisted video GUID.
+    Mock::given(method("POST"))
+        .and(path("/library/10001/videos"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_create.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    Mock::given(method("POST"))
+        .and(path("/tusupload"))
+        .and(header("VideoId", "newvideo-1111-2222-3333-444455556666"))
+        .respond_with(
+            ResponseTemplate::new(201).insert_header("Location", "/tusupload/session-two-run"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // First invocation: PATCH fails so the session file survives for the
+    // second run to pick up (simulates an interrupted upload).
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-two-run"))
+        .respond_with(ResponseTemplate::new(200).insert_header("Upload-Offset", "0"))
+        .up_to_n_times(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/tusupload/session-two-run"))
+        .and(header("Upload-Offset", "0"))
+        .respond_with(ResponseTemplate::new(500))
+        .up_to_n_times(5)
+        .mount(&server)
+        .await;
+
+    let mut vid_file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut vid_file, b"hello").unwrap();
+    let state_dir = tempfile::tempdir().unwrap();
+
+    let args = [
+        "stream",
+        "video",
+        "upload",
+        "--library-id",
+        "10001",
+        "--file",
+        vid_file.path().to_str().unwrap(),
+        "--resumable",
+        "--quiet",
+        "--state-dir",
+        state_dir.path().to_str().unwrap(),
+    ];
+
+    // First invocation fails (server always 500s the PATCH) but must leave a
+    // session file behind referencing the created video's GUID.
+    let first = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args(args)
+    .output()
+    .unwrap();
+    assert!(
+        !first.status.success(),
+        "expected the first (interrupted) invocation to fail"
+    );
+    let remaining: Vec<_> = std::fs::read_dir(state_dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(
+        remaining.len(),
+        1,
+        "expected a session file to survive the failed first invocation"
+    );
+
+    // Second invocation: offset probe now reports the full 5 bytes already
+    // uploaded, so no PATCH is needed — this proves the session (and its
+    // video GUID) was picked back up rather than a new video being created.
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-two-run"))
+        .respond_with(ResponseTemplate::new(200).insert_header("Upload-Offset", "5"))
+        .mount(&server)
+        .await;
+    // Resuming fetches the existing video record (instead of creating a new
+    // one) to have a `Video` to render at the end.
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/newvideo-1111-2222-3333-444455556666",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_create.json"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let second = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args(args)
+    .output()
+    .unwrap();
+    assert!(
+        second.status.success(),
+        "second (resuming) invocation failed; stderr: {}",
+        String::from_utf8_lossy(&second.stderr)
+    );
+
+    // Session file is cleared on success.
+    let remaining: Vec<_> = std::fs::read_dir(state_dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert!(
+        remaining.is_empty(),
+        "expected TUS session file to be removed after the second invocation succeeds"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Live API lifecycle tests
 // ---------------------------------------------------------------------------
