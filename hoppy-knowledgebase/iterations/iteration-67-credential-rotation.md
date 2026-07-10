@@ -9,7 +9,7 @@ tags:
   - storage
   - stream
   - pull-zone
-status: in-progress
+status: completed
 branch: iter-67/credential-rotation
 priority: 1
 depends-on: iter-66/spec-refresh-drift-fixes
