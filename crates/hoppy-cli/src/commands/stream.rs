@@ -4,6 +4,7 @@ use crate::cli::{
     StreamLibraryReferrerAction, StreamLibraryWatermarkAction, StreamResolutionsAction,
     StreamVideoAction,
 };
+use crate::commands::stream_tus;
 use crate::date;
 use crate::output::{self, PaginatedListJson};
 use crate::progress;
@@ -14,8 +15,8 @@ use bunny_net_api::core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLi
 use bunny_net_api::stream::types::{Chapter, Collection, MetaTag, Moment, Video};
 use bunny_net_api::stream::{
     CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, SmartGenerateSettings,
-    StreamCleanupResolutions, StreamClient, TranscribeSettings, UpdateCollection, UpdateVideo,
-    VideoUploadOptions,
+    StreamCleanupResolutions, StreamClient, TranscribeSettings, TusUploader, UpdateCollection,
+    UpdateVideo, VideoUploadOptions,
 };
 use std::io::{self, BufRead, Write};
 use tokio_util::io::ReaderStream;
@@ -668,6 +669,28 @@ async fn resolve_stream_client(
     Ok(client)
 }
 
+/// Resolve the raw Stream API key for a library.
+///
+/// The TUS resumable-upload path needs the key itself (not a wrapped client)
+/// to compute the presigned signature. Mirrors the resolution order in
+/// [`resolve_stream_client`]: prefer `BUNNY_STREAM_KEY`, else fetch the library
+/// via the core API and read its `ApiKey`.
+async fn resolve_stream_api_key(
+    library_id: i64,
+    debug: bool,
+    record: Option<&str>,
+) -> Result<String> {
+    if let Some(key) = auth::get_stream_key() {
+        return Ok(key);
+    }
+    let core = auth::core_client(debug, record)?;
+    let lib = core.get_video_library(library_id).await?;
+    if lib.api_key.is_empty() {
+        bail!("could not determine stream API key for library {library_id}; set BUNNY_STREAM_KEY");
+    }
+    Ok(lib.api_key)
+}
+
 async fn handle_video(
     action: &StreamVideoAction,
     format: OutputFormat,
@@ -783,6 +806,9 @@ async fn handle_video(
             generate_description,
             generate_chapters,
             generate_moments,
+            resumable,
+            chunk_size,
+            state_dir,
         } => {
             let upload_options = VideoUploadOptions {
                 jit_enabled: *jit_enabled,
@@ -803,46 +829,87 @@ async fn handle_video(
                     .and_then(|n| n.to_str())
                     .unwrap_or(file.as_str())
             });
-            let mut create_body = CreateVideo::new(video_title);
-            if let Some(cid) = collection_id {
-                create_body = create_body.collection_id(cid);
-            }
-            let video = stream.create_video(*library_id, &create_body).await?;
 
-            // Open the file and get its size for the progress bar.
-            let fh = tokio::fs::File::open(file)
-                .await
-                .with_context(|| format!("opening file: {file}"))?;
-            let file_size = fh
-                .metadata()
-                .await
-                .with_context(|| format!("reading metadata for: {file}"))?
-                .len();
-
-            let pb = progress::file_progress(file_size, quiet);
-
-            let body: reqwest::Body = if let Some(bar) = &pb {
-                reqwest::Body::wrap_stream(ReaderStream::new(bar.wrap_async_read(fh)))
+            // For resumable uploads, re-running the same command against the
+            // same file must resume the video created by the previous run —
+            // not create a brand-new video every time, which would silently
+            // defeat resume (a fresh GUID never matches the persisted
+            // session's GUID). Look up any still-valid session first.
+            let resumed_video_id = if *resumable {
+                stream_tus::find_resumable_session(*library_id, file, state_dir.as_deref())
             } else {
-                reqwest::Body::wrap_stream(ReaderStream::new(fh))
+                None
             };
 
-            stream
-                .upload_video(*library_id, &video.guid, body, &upload_options)
-                .await?;
+            let video = if let Some(existing_id) = &resumed_video_id {
+                stream.get_video(*library_id, existing_id).await?
+            } else {
+                let mut create_body = CreateVideo::new(video_title);
+                if let Some(cid) = collection_id {
+                    create_body = create_body.collection_id(cid);
+                }
+                stream.create_video(*library_id, &create_body).await?
+            };
 
-            progress::finish_with_message(
-                pb.as_ref(),
-                format!("Uploaded {} ({})", video.guid, video.title),
-            );
-            if pb.is_none() && !quiet {
-                output::print_mutation_result(
-                    format,
-                    "upload",
-                    "stream-video",
-                    serde_json::json!({ "Guid": video.guid }),
-                    &format!("Uploaded video {} ({})", video.guid, video.title),
+            if *resumable {
+                // Resumable TUS path: needs the library's Stream API key to
+                // compute the presigned signature.
+                let api_key = resolve_stream_api_key(*library_id, debug, record).await?;
+                let mut uploader =
+                    TusUploader::new(*library_id, api_key, &video.guid).with_debug(debug);
+                if let Some(url) = auth::get_stream_url() {
+                    uploader = uploader.with_base_url(url);
+                }
+                if let Some(cs) = chunk_size {
+                    uploader = uploader.with_chunk_size(*cs);
+                }
+                let params = stream_tus::ResumableUpload {
+                    uploader,
+                    library_id: *library_id,
+                    video_id: &video.guid,
+                    title: video_title,
+                    file,
+                    options: &upload_options,
+                    state_dir: state_dir.as_deref(),
+                    quiet,
+                };
+                stream_tus::run_resumable_upload(params).await?;
+            } else {
+                // Open the file and get its size for the progress bar.
+                let fh = tokio::fs::File::open(file)
+                    .await
+                    .with_context(|| format!("opening file: {file}"))?;
+                let file_size = fh
+                    .metadata()
+                    .await
+                    .with_context(|| format!("reading metadata for: {file}"))?
+                    .len();
+
+                let pb = progress::file_progress(file_size, quiet);
+
+                let body: reqwest::Body = if let Some(bar) = &pb {
+                    reqwest::Body::wrap_stream(ReaderStream::new(bar.wrap_async_read(fh)))
+                } else {
+                    reqwest::Body::wrap_stream(ReaderStream::new(fh))
+                };
+
+                stream
+                    .upload_video(*library_id, &video.guid, body, &upload_options)
+                    .await?;
+
+                progress::finish_with_message(
+                    pb.as_ref(),
+                    format!("Uploaded {} ({})", video.guid, video.title),
                 );
+                if pb.is_none() && !quiet {
+                    output::print_mutation_result(
+                        format,
+                        "upload",
+                        "stream-video",
+                        serde_json::json!({ "Guid": video.guid }),
+                        &format!("Uploaded video {} ({})", video.guid, video.title),
+                    );
+                }
             }
 
             if let OutputFormat::Json = format {

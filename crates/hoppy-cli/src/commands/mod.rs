@@ -12,4 +12,5 @@ pub mod statistics;
 pub mod storage;
 pub mod storage_zone;
 pub mod stream;
+pub mod stream_tus;
 pub mod video_library;

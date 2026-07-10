@@ -20,7 +20,7 @@ logging = ["core"]
 origin-errors = ["core"]
 shield = ["core"]
 storage = ["core"]
-stream = ["core"]
+stream = ["core", "dep:sha2", "dep:tokio"]
 
 [dependencies]
 reqwest.workspace = true
@@ -32,6 +32,11 @@ base64.workspace = true
 bytes.workspace = true
 percent-encoding.workspace = true
 urlencoding.workspace = true
+# Used only by the Stream TUS resumable-upload client; gated behind `stream`.
+sha2 = { workspace = true, optional = true }
+# `io-util` provides `AsyncReadExt` for chunked streaming reads in the TUS
+# uploader. The workspace default tokio features omit it, so request it here.
+tokio = { version = "1", features = ["io-util", "fs"], optional = true }
 
 [dev-dependencies]
 tokio.workspace = true

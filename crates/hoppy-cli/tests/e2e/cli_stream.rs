@@ -1640,6 +1640,320 @@ async fn stream_video_play_heatmap_json() {
 }
 
 // ---------------------------------------------------------------------------
+// Resumable (TUS) upload tests (stream API)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn stream_video_upload_resumable_full_run() {
+    let server = MockServer::start().await;
+
+    // Step 1: create the video record (JSON Stream API).
+    Mock::given(method("POST"))
+        .and(path("/library/10001/videos"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_create.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Step 2: TUS create -> returns the session Location.
+    Mock::given(method("POST"))
+        .and(path("/tusupload"))
+        .and(header("Tus-Resumable", "1.0.0"))
+        .and(header("LibraryId", "10001"))
+        .and(header("VideoId", "newvideo-1111-2222-3333-444455556666"))
+        .respond_with(
+            ResponseTemplate::new(201).insert_header("Location", "/tusupload/session-e2e"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Step 3: offset probe -> nothing uploaded yet.
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-e2e"))
+        .respond_with(ResponseTemplate::new(200).insert_header("Upload-Offset", "0"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Step 4: single PATCH covers the whole (small) file.
+    Mock::given(method("PATCH"))
+        .and(path("/tusupload/session-e2e"))
+        .and(header("Content-Type", "application/offset+octet-stream"))
+        .and(header("Upload-Offset", "0"))
+        .respond_with(ResponseTemplate::new(204).insert_header("Upload-Offset", "5"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // A 5-byte file so a large chunk size means exactly one PATCH.
+    let mut vid_file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut vid_file, b"hello").unwrap();
+    let state_dir = tempfile::tempdir().unwrap();
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "--format",
+        "json",
+        "stream",
+        "video",
+        "upload",
+        "--library-id",
+        "10001",
+        "--file",
+        vid_file.path().to_str().unwrap(),
+        "--title",
+        "My New Video",
+        "--resumable",
+        "--quiet",
+        "--state-dir",
+        state_dir.path().to_str().unwrap(),
+    ])
+    .output()
+    .unwrap();
+
+    assert!(
+        output.status.success(),
+        "resumable upload failed; stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("newvideo-1111-2222-3333-444455556666"),
+        "expected created video guid in output, got: {stdout}"
+    );
+    // Session file must be cleaned up on success.
+    let remaining: Vec<_> = std::fs::read_dir(state_dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert!(
+        remaining.is_empty(),
+        "expected TUS session file to be removed after success, found {} entries",
+        remaining.len()
+    );
+}
+
+#[tokio::test]
+async fn stream_video_upload_resumable_resumes_from_offset() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/library/10001/videos"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_create.json"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("POST"))
+        .and(path("/tusupload"))
+        .respond_with(
+            ResponseTemplate::new(201).insert_header("Location", "/tusupload/session-resume"),
+        )
+        .mount(&server)
+        .await;
+
+    // Server already has 3 of 5 bytes -> only the 2-byte tail should be sent.
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-resume"))
+        .respond_with(ResponseTemplate::new(200).insert_header("Upload-Offset", "3"))
+        .mount(&server)
+        .await;
+
+    Mock::given(method("PATCH"))
+        .and(path("/tusupload/session-resume"))
+        .and(header("Upload-Offset", "3"))
+        .respond_with(ResponseTemplate::new(204).insert_header("Upload-Offset", "5"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut vid_file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut vid_file, b"hello").unwrap();
+    let state_dir = tempfile::tempdir().unwrap();
+
+    let output = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args([
+        "stream",
+        "video",
+        "upload",
+        "--library-id",
+        "10001",
+        "--file",
+        vid_file.path().to_str().unwrap(),
+        "--resumable",
+        "--quiet",
+        "--state-dir",
+        state_dir.path().to_str().unwrap(),
+    ])
+    .output()
+    .unwrap();
+
+    assert!(
+        output.status.success(),
+        "resume upload failed; stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// A second, separate `hoppy` process re-run against the same file and
+/// state dir must resume the video created by the first run — not create a
+/// brand-new video. Exercises real cross-invocation resume (unlike
+/// `stream_video_upload_resumable_resumes_from_offset`, which only covers a
+/// single invocation whose server-side offset happens to be non-zero).
+#[tokio::test]
+async fn stream_video_upload_resumable_second_invocation_reuses_video() {
+    let server = MockServer::start().await;
+
+    // The video-create endpoint must be hit exactly once across BOTH
+    // invocations — the second run must reuse the persisted video GUID.
+    Mock::given(method("POST"))
+        .and(path("/library/10001/videos"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_create.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    Mock::given(method("POST"))
+        .and(path("/tusupload"))
+        .and(header("VideoId", "newvideo-1111-2222-3333-444455556666"))
+        .respond_with(
+            ResponseTemplate::new(201).insert_header("Location", "/tusupload/session-two-run"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // First invocation: PATCH fails so the session file survives for the
+    // second run to pick up (simulates an interrupted upload).
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-two-run"))
+        .respond_with(ResponseTemplate::new(200).insert_header("Upload-Offset", "0"))
+        .up_to_n_times(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/tusupload/session-two-run"))
+        .and(header("Upload-Offset", "0"))
+        .respond_with(ResponseTemplate::new(500))
+        .up_to_n_times(5)
+        .mount(&server)
+        .await;
+
+    let mut vid_file = tempfile::NamedTempFile::new().unwrap();
+    std::io::Write::write_all(&mut vid_file, b"hello").unwrap();
+    let state_dir = tempfile::tempdir().unwrap();
+
+    let args = [
+        "stream",
+        "video",
+        "upload",
+        "--library-id",
+        "10001",
+        "--file",
+        vid_file.path().to_str().unwrap(),
+        "--resumable",
+        "--quiet",
+        "--state-dir",
+        state_dir.path().to_str().unwrap(),
+    ];
+
+    // First invocation fails (server always 500s the PATCH) but must leave a
+    // session file behind referencing the created video's GUID.
+    let first = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args(args)
+    .output()
+    .unwrap();
+    assert!(
+        !first.status.success(),
+        "expected the first (interrupted) invocation to fail"
+    );
+    let remaining: Vec<_> = std::fs::read_dir(state_dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert_eq!(
+        remaining.len(),
+        1,
+        "expected a session file to survive the failed first invocation"
+    );
+
+    // Second invocation: offset probe now reports the full 5 bytes already
+    // uploaded, so no PATCH is needed — this proves the session (and its
+    // video GUID) was picked back up rather than a new video being created.
+    Mock::given(method("HEAD"))
+        .and(path("/tusupload/session-two-run"))
+        .respond_with(ResponseTemplate::new(200).insert_header("Upload-Offset", "5"))
+        .mount(&server)
+        .await;
+    // Resuming fetches the existing video record (instead of creating a new
+    // one) to have a `Video` to render at the end.
+    Mock::given(method("GET"))
+        .and(path(
+            "/library/10001/videos/newvideo-1111-2222-3333-444455556666",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_create.json"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let second = support::hoppy_mock_cmd_full(
+        "test-api-key",
+        &server.uri(),
+        None,
+        Some(&server.uri()),
+        None,
+    )
+    .args(args)
+    .output()
+    .unwrap();
+    assert!(
+        second.status.success(),
+        "second (resuming) invocation failed; stderr: {}",
+        String::from_utf8_lossy(&second.stderr)
+    );
+
+    // Session file is cleared on success.
+    let remaining: Vec<_> = std::fs::read_dir(state_dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .collect();
+    assert!(
+        remaining.is_empty(),
+        "expected TUS session file to be removed after the second invocation succeeds"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Live API lifecycle tests
 // ---------------------------------------------------------------------------
 

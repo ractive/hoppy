@@ -2938,6 +2938,19 @@ pub enum StreamVideoAction {
         /// Generate highlight moments from the video content
         #[arg(long)]
         generate_moments: Option<bool>,
+        /// Use a TUS resumable upload (chunked; survives interruptions and
+        /// resumes on re-run). Best for large files over flaky links.
+        #[arg(long)]
+        resumable: bool,
+        /// Chunk size in bytes for resumable uploads (default 32 MiB).
+        /// Ignored unless --resumable is set.
+        #[arg(long, value_name = "BYTES")]
+        chunk_size: Option<usize>,
+        /// Directory to store resumable-upload session state
+        /// (default: a `hoppy-tus` folder in the OS temp directory).
+        /// Ignored unless --resumable is set.
+        #[arg(long, value_name = "DIR")]
+        state_dir: Option<std::path::PathBuf>,
     },
     /// Update video title, collection, or metadata (chapters/moments/meta-tags)
     ///
