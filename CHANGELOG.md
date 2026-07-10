@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-10
+
+Covers iterations 33–78 (the May–July development run, including the full
+July API-coverage gap-analysis plan).
+
+### Added
+
+- **`hoppy logs` command group** — retrieve CDN access logs and origin error
+  logs (new `logging` and `origin-errors` API modules) (iter-70)
+- **Resumable video uploads** — `stream video upload --resumable` via the TUS
+  protocol; survives interruptions and process re-runs (iter-77)
+- **Account & billing surface** — `apikey`, `billing` (summary, payment
+  requests, invoice download), `region`, `country`, `search` (global
+  cross-resource), `user` (account audit log) (iter-75)
+- **Credential rotation** — rotate storage-zone passwords, stream library
+  keys, and pull-zone security keys (iter-67)
+- **DNS completeness** — smart-routing records, zone export formats,
+  `dnssec`, scan-by-domain, certificate-issuance hints, remaining
+  spec-only endpoints (iters 53, 58, 60–61, 71)
+- **Shield expansion** — new surface coverage (API Guardian, bot
+  categorization, custom pages), metrics flag parity, structured 202 error
+  envelopes (iters 50, 54, 59, 72)
+- **Video library settings** — ~35 new update flags (DRM, transcoding,
+  player configuration) (iter-73)
+- **Pull-zone completeness** — security/compliance toggles, vary headers +
+  caching toggles, origin + routing toggles, firewall + rate limiting, full
+  update-body coverage (iters 44–47, 74)
+- **Magic Containers polish** — volumes, health probes (`--probes-json`),
+  endpoints, registry image-config (iter-76)
+- **Stream library API keys** — surfaced via CLI with `--reveal` opt-in
+  (secrets stay redacted by default) (iter-52)
+- **Filters & pagination sweep** — consistent `--page`/`--per-page`/filter
+  flags and `--list-all` across list commands (iters 63, 69)
+- **CLI discoverability** — drill-down hints after commands (`--no-hints` to
+  suppress), `--quiet` contract, `--format` parity across all subcommands
+  (iters 35, 51, 57)
+- **Fixture tooling for contributors** — `--record <dir>` /
+  `HOPPY_RECORD_DIR` response recording with PII redaction by default
+  (`--no-redact` escape hatch), and the read-only `fixture-refresh
+  --shape-report` API drift radar (iters 33–34, 48, 78)
+
+### Fixed
+
+- Seven API correctness drifts found by the July spec refresh: `db fork`
+  payload, API Guardian `/spec` path, `cdn_server_token`, streaming storage
+  downloads, base64 caption uploads, `{region}.storage.bunnycdn.com`
+  endpoint casing, geo-zone serde casing (iters 49, 66)
+- TUS resumable upload never resumed across process re-runs (caught in PR
+  review) (iter-77)
+- Record-mode PII redaction gaps: account API key under `Key`,
+  `DeploymentKey`, `ZoneSecurityKey`, person-name fields, billing amounts;
+  JWT false positive that redacted three-label hostnames
+- Dozens of dogfooding fixes: negative-integer flag rejection, empty help
+  strings, deterministic chart ordering, `db` output formats, DNS scan
+  domain column, empty-zone exports (iters 39–42, 55–58, 62, 64–65)
+
+### Changed
+
+- Fixture values are test contracts: recorded live responses never
+  overwrite `fixtures/` (`fixture-refresh --apply` removed) (iter-78)
+- Shape-first wiremock asserts and drift-tolerant CLI snapshots make the
+  offline suite robust against API value churn (iters 36–37)
+
+### Security
+
+- Dependency updates: `quinn-proto` ≥ 0.11.15 (RUSTSEC-2026-0185, remote
+  memory exhaustion, high), `anyhow` 1.0.103 (RUSTSEC-2026-0190
+  unsoundness). `RUSTSEC-2026-0173` (`proc-macro-error2` unmaintained,
+  compile-time only via `tabled`) documented as ignored in `deny.toml` — no
+  fixed upstream exists yet.
+
+## [0.3.0] - 2026-05-11
+
+Released without a changelog entry; see the git history between `v0.2.0`
+and `v0.3.0`. Highlights: consolidated `bunny-net-api` crate (iter-32) and
+the e2e test-binary consolidation (iter-22).
+
+## [0.2.0] - 2026-05-10
+
+Released without a changelog entry; see the git history between `v0.1.1`
+and `v0.2.0`. Highlights: Bunny Database (libSQL) support (iter-20), Magic
+Containers UX & cross-cutting secret redaction (iter-21), `container logs`
+syslog tunnel (iter-24), pull-zone edge rules and optimizer flags
+(iters 26–29).
+
 ## [0.1.1] - 2026-05-09
 
 ### Release pipeline (iter-25)

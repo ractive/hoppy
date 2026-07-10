@@ -4,7 +4,12 @@
 # Runs automatically in the release workflow as a quality gate.
 
 [advisories]
-ignore = []
+ignore = [
+    # proc-macro-error2 is unmaintained (compile-time only, via
+    # tabled_derive -> tabled). RUSTSEC says "no safe upgrade is available" —
+    # tabled 0.21 still depends on it. Revisit when tabled drops it.
+    "RUSTSEC-2026-0173",
+]
 
 [licenses]
 allow = [
