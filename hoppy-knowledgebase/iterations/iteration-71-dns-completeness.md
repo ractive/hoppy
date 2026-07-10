@@ -8,7 +8,7 @@ tags:
   - dns
   - pull-zone
   - storage-zone
-status: in-progress
+status: completed
 branch: iter-71/dns-completeness
 priority: 2
 depends-on: iter-66/spec-refresh-drift-fixes
@@ -41,37 +41,37 @@ function consumes.
 
 ## Scope
 
-### 1. Smart routing / monitoring / geo record fields
+### 1. Smart routing / monitoring / geo record fields [1/1]
 
 - [x] Add `SmartRoutingType`, `MonitorType`, `LatencyZone`,
   `GeolocationLatitude`, `GeolocationLongitude` to `AddDnsRecord`
   (`core/types.rs:3059-3079`) and `UpdateDnsRecord`, with flags on
   `dns record add` / `update`
 
-### 2. Linked-record fields
+### 2. Linked-record fields [1/1]
 
 - [x] Add `PullZoneId`, `ScriptId`, `Accelerated`, `AutoSslIssuance`
   to both record bodies + flags — makes `--type PullZone` / `Script`
   functional and removes the CNAME-workaround help text
 
-### 3. Zone-level field
+### 3. Zone-level field [1/1]
 
 - [x] `dns zone update --log-anonymization-type` — add
   `LogAnonymizationType` (enum) to `UpdateDnsZone`
 
-### 4. New records endpoint
+### 4. New records endpoint [1/1]
 
 - [x] `GET /dnszone/{zoneId}/records` (new in July spec) — back
   `dns record list` with the dedicated endpoint instead of projecting
   `Records` out of `GET /dnszone/{id}`
 
-### 5. checkavailability endpoints (all three in one go)
+### 5. checkavailability endpoints (all three in one go) [3/3]
 
 - [x] `dns zone check --domain` → `POST /dnszone/checkavailability`
 - [x] `pull-zone check --name` → `POST /pullzone/checkavailability`
 - [x] `storage-zone check --name` → `POST /storagezone/checkavailability`
 
-### 6. New core-platform reference/statistics ops
+### 6. New core-platform reference/statistics ops [3/3]
 
 - [x] `pull-zone count` → `GET /pullzone/count`
 - [x] `storage-zone regions` → `GET /storagezone/regions`
@@ -85,7 +85,7 @@ function consumes.
   create (`zone import` covers bulk-load)
 - External-DNS certificate flow — [[iteration-74-pull-zone-body-completeness]]
 
-## Acceptance
+## Acceptance [4/4]
 
 - [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
