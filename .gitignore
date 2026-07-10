@@ -7,3 +7,4 @@ security-audit-workspace
 .DS_Store
 **/.DS_Store
 .claude/scheduled_tasks.lock
+.hoppy-leak-patterns

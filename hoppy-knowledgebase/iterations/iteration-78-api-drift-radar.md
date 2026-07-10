@@ -1,5 +1,7 @@
 ---
-title: Iter-78 — repurpose fixture-refresh into a read-only API drift radar + sweep skill
+title: >-
+  Iter-78 — repurpose fixture-refresh into a read-only API drift radar + sweep
+  skill
 type: iteration
 date: 2026-07-10
 tags:
@@ -9,7 +11,7 @@ tags:
   - dogfooding
   - live-api
   - tooling
-status: planned
+status: completed
 branch: iter-78/api-drift-radar
 ---
 
@@ -46,37 +48,37 @@ collisions, and a leak-audit section. Never modifies `fixtures/`.
 
 ### 1. Remove `--apply` from fixture-refresh
 
-- [ ] Delete the `--apply` flag, the overwrite code path, and its tests.
-- [ ] Dry-run byte-drift listing (`drift: <fixture> (Δ N bytes)`) stays as
+- [x] Delete the `--apply` flag, the overwrite code path, and its tests.
+- [x] Dry-run byte-drift listing (`drift: <fixture> (Δ N bytes)`) stays as
       informational output.
-- [ ] `unmapped:` / `collision:` listings stay (coverage + ambiguity signal).
+- [x] `unmapped:` / `collision:` listings stay (coverage + ambiguity signal).
 
 ### 2. Add `--shape-report` mode
 
-- [ ] For each mapped (recording, fixture) pair, diff **key paths + JSON
+- [x] For each mapped (recording, fixture) pair, diff **key paths + JSON
       types** (not values), in both directions (added vs removed keys).
-- [ ] Noise filters: ignore map keys that look like dates/timestamps
+- [x] Noise filters: ignore map keys that look like dates/timestamps
       (`01-07-2026`, `2026-07-10T…`) and array indices beyond `0`; keep the
       filter list in one place with unit tests.
-- [ ] Output: markdown grouped by domain → endpoint → added/removed key
+- [x] Output: markdown grouped by domain → endpoint → added/removed key
       lists, suitable for pasting into a KB research note. `--out <file>`
       writes it directly.
-- [ ] Exit code signals "drift found" vs "clean" so the skill can branch.
+- [x] Exit code signals "drift found" vs "clean" so the skill can branch.
 
 ### 3. Leak-audit section in the report
 
-- [ ] Scan recordings for: email-shaped values outside `example.com` /
+- [x] Scan recordings for: email-shaped values outside `example.com` /
       `<redacted>`; 72-char double-UUID account-key shapes; values under
       secret-ish key names (`*key*`, `*token*`, `*password*`, `*secret*`)
       that are not `<redacted>`/null/empty.
-- [ ] Optional account-specific literal patterns via a git-ignored file
+- [x] Optional account-specific literal patterns via a git-ignored file
       (e.g. `.hoppy-leak-patterns`, one regex per line) so real names/IDs
       never get hardcoded into the repo.
-- [ ] Any leak-audit hit is listed prominently and flips the exit code.
+- [x] Any leak-audit hit is listed prominently and flips the exit code.
 
 ### 4. `/api-drift-sweep` skill
 
-- [ ] New project skill `.claude/skills/api-drift-sweep/SKILL.md` encoding
+- [x] New project skill `.claude/skills/api-drift-sweep/SKILL.md` encoding
       the full procedure: pre-flight (**`TEST_BUNNY_API_KEY` only** — never
       any other key; `hoppy auth check`; read-only account leak scan),
       recording run (`HOPPY_RECORD_DIR` scratch dir, `--test-threads=1`,
@@ -86,29 +88,29 @@ collisions, and a leak-audit section. Never modifies `fixtures/`.
       scratch dir, list account leftovers (deletion only with user
       approval; `container app delete --cascade`), end with ranked
       iteration candidates.
-- [ ] Skill explicitly states: never write to `fixtures/`, never commit
+- [x] Skill explicitly states: never write to `fixtures/`, never commit
       recordings, never run with a non-test key.
-- [ ] Reference [[dogfooding/dogfooding-playbook]] for rationale and the
+- [x] Reference [[dogfooding/dogfooding-playbook]] for rationale and the
       known caveats (plan-tier error envelopes, `hpmc-*-upd` cleanup leak,
       orphaned shield zones).
 
 ### 5. Docs
 
-- [ ] Rewrite the playbook "Refreshing fixtures" section as "API drift
+- [x] Rewrite the playbook "Refreshing fixtures" section as "API drift
       radar": drop the apply step, describe report + iteration-lane update
       path, point to the skill.
-- [ ] Update `CLAUDE.md` Integration Tests note: `HOPPY_RECORD_DIR` feeds
+- [x] Update `CLAUDE.md` Integration Tests note: `HOPPY_RECORD_DIR` feeds
       the drift radar; fixture updates happen only inside iterations.
-- [ ] `adding-a-feature.md` stays: `--record` is still the way to capture
+- [x] `adding-a-feature.md` stays: `--record` is still the way to capture
       the raw payload when hand-crafting a **new** fixture.
-- [ ] Add the decision ("recordings never overwrite fixtures") to
+- [x] Add the decision ("recordings never overwrite fixtures") to
       [[decision-log]].
 
 ### 6. Tests
 
-- [ ] Unit tests: shape-diff (added/removed/type-changed keys), noise
+- [x] Unit tests: shape-diff (added/removed/type-changed keys), noise
       filters, leak-audit patterns (incl. the double-UUID and email rules).
-- [ ] E2E: synthetic recorded-vs-fixture tree → assert report content and
+- [x] E2E: synthetic recorded-vs-fixture tree → assert report content and
       exit codes; assert `fixtures/` is never written.
 
 ## Out of scope
@@ -131,15 +133,28 @@ collisions, and a leak-audit section. Never modifies `fixtures/`.
 
 ## Acceptance
 
-- [ ] `fixture-refresh` has no code path that writes under `fixtures/`.
-- [ ] `--shape-report` on a recorded sweep reproduces the substance of the
+- [x] `fixture-refresh` has no code path that writes under `fixtures/`.
+- [x] `--shape-report` on a recorded sweep reproduces the substance of the
       2026-07-10 hand-written drift note (video library / DNS / shield /
       stream findings) with chart-date noise filtered out.
-- [ ] Leak audit flags a planted double-UUID and a planted email in a
+- [x] Leak audit flags a planted double-UUID and a planted email in a
       synthetic recording.
-- [ ] `/api-drift-sweep` skill file exists and walks the full procedure.
-- [ ] `cargo fmt` / `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `/api-drift-sweep` skill file exists and walks the full procedure.
+- [x] `cargo fmt` / `cargo clippy --workspace --all-targets -- -D warnings`
       / `cargo test --workspace --quiet` all clean.
+
+## Outcome (dogfooded 2026-07-10)
+
+Live sweep + `--shape-report` run against the test account: 98 recordings,
+report reproduced every headline finding of the hand-written drift note
+(video-library DRM fields, DNS acceleration/geo/routing, shield zone
+config, pull-zone `CacheKeyHeaders`/`IpFamilyPolicy`, stream casing) with
+zero date-noise lines. The leak audit paid for itself on its first run: it
+caught `ZoneSecurityKey` (pull-zone URL-auth signing secret) escaping
+redaction — fixed in `recording/redact.rs` (`securitykey` pattern) — and
+two audit false positives (`PlayerKeyColor`, `PublicKey`) were added to the
+exclusion list with tests. `fixtures/` verified byte-identical after the
+full sweep; offline suite 1208/0.
 
 ## Related
 

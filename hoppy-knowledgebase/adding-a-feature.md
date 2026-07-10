@@ -41,14 +41,17 @@ The `<<< {...}` line in `debug.log` contains the raw API response body. Save it 
 grep '^<<<' debug.log | sed 's/^<<< //' | jq . > fixtures/<service>/<resource>_<action>.json
 ```
 
-Alternatively, use `--record` to capture fixtures automatically:
+Alternatively, use `--record` to capture the raw payload into a scratch
+directory, then crop/rename it into `fixtures/<service>/` by hand:
 
 ```bash
-hoppy --record=fixtures/ --format json <your-new-command>
+hoppy --record=fixtures-recorded/ --format json <your-new-command>
 ```
 
-> **Warning:** Recorded responses may contain secrets (e.g. `Password`, `ApiKey` fields).
-> Always review and redact sensitive fields before committing fixture files.
+> **Warning:** Recording redacts common PII/secrets by default, but always
+> review the payload before committing it as a fixture — and never point
+> `--record` directly at `fixtures/` (fixture values are test contracts;
+> see [[decision-log]]).
 
 ### 4. Rust wiremock test
 
