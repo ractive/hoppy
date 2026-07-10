@@ -29,6 +29,16 @@ from the CLI — `--type PullZone/Script` is accepted but non-functional.
 Also picks up the 6 new core-platform ops from the July spec refresh
 ([[research/api-coverage-gap-analysis-2026-07]] §1).
 
+**Lesson carried from [[iteration-70-log-retrieval-services]]**: that
+PR's initial pass wired a client-level params struct with every query
+param from the spec, but the CLI arg surface only exposed a subset
+(`--start`/`--end`, dropping `sort`/`status`/`search`/`download`) —
+caught in review, not before. When adding flags for the field lists in
+§1–3 below (`AddDnsRecord`/`UpdateDnsRecord`, `UpdateDnsZone`), diff
+the new `#[arg(...)]` list against the spec's full field/param list
+before calling a section done, not just against what the handler
+function consumes.
+
 ## Scope
 
 ### 1. Smart routing / monitoring / geo record fields
