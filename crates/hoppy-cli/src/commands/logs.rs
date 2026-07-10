@@ -113,6 +113,8 @@ pub async fn handle(
             date,
             start,
             end,
+            legacy_sort,
+            legacy_download,
             output,
         } => {
             let client = auth::logging_client(debug, record)?;
@@ -124,10 +126,13 @@ pub async fn handle(
                 let params = LegacyLogParams {
                     start: *start,
                     end: *end,
-                    ..Default::default()
+                    sort: legacy_sort.clone(),
+                    status: status.clone(),
+                    search: search.clone(),
+                    download: legacy_download.then_some(true),
                 };
                 // Stream the raw body straight to the sink instead of buffering.
-                let written = match output {
+                match output {
                     Some(path) => {
                         let mut out = std::fs::File::create(path)
                             .with_context(|| format!("creating output file: {path}"))?;
@@ -137,17 +142,15 @@ pub async fn handle(
                         if !quiet {
                             eprintln!("Saved {n} bytes to {path}");
                         }
-                        n
                     }
                     None => {
                         let stdout = io::stdout();
                         let mut handle = stdout.lock();
                         client
                             .stream_legacy_logs(date, *id, &params, &mut handle)
-                            .await?
+                            .await?;
                     }
-                };
-                let _ = written;
+                }
                 return Ok(());
             }
 

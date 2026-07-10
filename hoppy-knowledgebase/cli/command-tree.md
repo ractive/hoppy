@@ -194,7 +194,7 @@ authenticate with the standard `BUNNY_API_KEY`; base URLs are overridable via
 
 | Verb / sub | Description |
 |---|---|
-| `pull-zone` | CDN access logs for a pull zone. v2 structured JSON by default (full filter + pagination set: `--status`, `--cache-status`, `--country`, `--edge-location`, `--remote-ip`, `--url-contains`, `--user-agent-contains`, `--referer-contains`, `--search`, `--request-id`, `--include-origin-shield`, `--limit`, `--offset`, `--order`, `--from`, `--to`). `--legacy --date <MM-DD-YY>` streams the v1 raw pipe-delimited log (honours `--start`/`--end`). `--output <file>` streams to disk. |
+| `pull-zone` | CDN access logs for a pull zone. v2 structured JSON by default (full filter + pagination set: `--status`, `--cache-status`, `--country`, `--edge-location`, `--remote-ip`, `--url-contains`, `--user-agent-contains`, `--referer-contains`, `--search`, `--request-id`, `--include-origin-shield`, `--limit`, `--offset`, `--order`, `--from`, `--to`). `--legacy --date <MM-DD-YY>` streams the v1 raw pipe-delimited log (honours `--start`/`--end`/`--legacy-sort`/`--legacy-download`, and reuses `--status`/`--search` as single-value legacy filters). `--output <file>` streams to disk. |
 | `origin-errors` | CDN origin error logs for a pull zone on one date (`--date MM-DD-YYYY`, validated locally). |
 
 - These are `logs pull-zone` / `logs origin-errors` — not verbs on the `pull-zone`

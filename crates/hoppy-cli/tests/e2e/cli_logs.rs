@@ -150,6 +150,54 @@ async fn logs_pull_zone_legacy_streams_to_file() {
 }
 
 #[tokio::test]
+async fn logs_pull_zone_legacy_forwards_filters() {
+    let server = MockServer::start().await;
+    let raw = "1720440001|502|MISS|/api\n";
+    Mock::given(method("GET"))
+        .and(path("/07-08-26/12345.log"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(query_param("start", "1000"))
+        .and(query_param("end", "2000"))
+        .and(query_param("sort", "asc"))
+        .and(query_param("status", "502"))
+        .and(query_param("search", "error"))
+        .and(query_param("download", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(raw, "text/plain"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_logging_cmd("test-api-key", &server.uri())
+        .args([
+            "logs",
+            "pull-zone",
+            "--id",
+            "12345",
+            "--legacy",
+            "--date",
+            "07-08-26",
+            "--start",
+            "1000",
+            "--end",
+            "2000",
+            "--legacy-sort",
+            "asc",
+            "--status",
+            "502",
+            "--search",
+            "error",
+            "--legacy-download",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
 async fn logs_pull_zone_legacy_requires_date() {
     // --legacy without --date must fail (clap requires it) — no HTTP call made.
     let output = hoppy_logging_cmd("test-api-key", "http://127.0.0.1:1")

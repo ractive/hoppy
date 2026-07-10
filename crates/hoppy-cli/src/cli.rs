@@ -580,7 +580,8 @@ pub enum LogsAction {
         to: Option<String>,
 
         // ── v2 filters ───────────────────────────────────────────────────────
-        /// Comma-separated HTTP status filters — exact codes (`404`) or classes (`5xx`).
+        /// Status filter. v2: comma-separated exact codes (`404`) or classes
+        /// (`5xx`). Legacy (--legacy): a single exact status code.
         #[arg(long, value_name = "STATUS", help_heading = "v2 filters")]
         status: Option<String>,
         /// Comma-separated cache statuses to match exactly (e.g. `HIT,MISS,EXPIRED`).
@@ -604,7 +605,8 @@ pub enum LogsAction {
         /// Case-insensitive substring match against the Referer header.
         #[arg(long, value_name = "TEXT", help_heading = "v2 filters")]
         referer_contains: Option<String>,
-        /// Free-text, case-insensitive token search across several columns.
+        /// Free-text search. v2: case-insensitive token search across several
+        /// columns. Legacy (--legacy): substring search on the raw log line.
         #[arg(long, value_name = "TEXT", help_heading = "v2 filters")]
         search: Option<String>,
         /// Exact request ID (UUID) to look up a single log entry.
@@ -655,6 +657,21 @@ pub enum LogsAction {
             help_heading = "v1 legacy"
         )]
         end: Option<i64>,
+        /// Sort order for the legacy log (`asc` or `desc`).
+        #[arg(
+            long = "legacy-sort",
+            value_name = "ORDER",
+            requires = "legacy",
+            help_heading = "v1 legacy"
+        )]
+        legacy_sort: Option<String>,
+        /// Request the legacy log as a downloadable attachment.
+        #[arg(
+            long = "legacy-download",
+            requires = "legacy",
+            help_heading = "v1 legacy"
+        )]
+        legacy_download: bool,
 
         /// Write log output to a file instead of stdout (streamed for --legacy).
         #[arg(long, value_name = "FILE")]
