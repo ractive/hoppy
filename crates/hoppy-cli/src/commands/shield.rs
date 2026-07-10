@@ -12,11 +12,12 @@ use bunny_net_api::shield::types::{
     BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
     BrowserFingerprintConfiguration, CreateCustomAccessList, CreateCustomWafRule,
     CreateRateLimitRule, CustomAccessList, CustomWafRule, DdosExecutionMode, DdosShieldSensitivity,
-    EventLog, IpAddressConfiguration, RateLimitCounterKey, RateLimitRule,
-    RateLimitRuleConfiguration, RequestIntegrityConfiguration, ReviewActionType,
-    ShieldZonePullZoneMapping, ShieldZoneRequest, ShieldZoneResponse, TriggeredRuleItem,
-    UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest, UpdateApiGuardianRequest,
-    UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
+    EventLog, IpAddressConfiguration, RateLimitActionType, RateLimitBlockDuration,
+    RateLimitCounterKey, RateLimitRule, RateLimitRuleConfiguration, RateLimitTimeframe,
+    RequestIntegrityConfiguration, ReviewActionType, ShieldZonePullZoneMapping, ShieldZoneRequest,
+    ShieldZoneResponse, TriggeredRuleItem, UpdateAccessListConfiguration,
+    UpdateApiGuardianEndpointRequest, UpdateApiGuardianRequest, UpdateBotDetection,
+    UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
     UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
     UpdateUploadScanningConfigurationRequest, UploadOpenApiSpecificationRequest,
     UploadScanningConfigurationState, UploadScanningScannerMode, WafChainedRuleCondition,
@@ -1207,9 +1208,23 @@ async fn handle_rate_limit(
             }
             // The Shield API requires all fields on PATCH, so fetch current state first.
             let current = client.get_rate_limit_rule(*id).await?;
+            // Same fallback as WAF update-rule: a rule without a stored
+            // configuration starts from conservative defaults.
             let mut config = current
                 .rule_configuration
-                .with_context(|| format!("rate limit rule {id} has no configuration to update"))?;
+                .unwrap_or(RateLimitRuleConfiguration {
+                    action_type: RateLimitActionType::Block,
+                    variable_types: Some(Default::default()),
+                    operator_type: WafRuleOperatorType::Eq,
+                    severity_type: WafRuleSeverityType::Low,
+                    transformation_types: Some(vec![]),
+                    value: None,
+                    request_count: 0,
+                    counter_key_type: RateLimitCounterKey::PerIp,
+                    timeframe: RateLimitTimeframe::Sec60,
+                    block_time: RateLimitBlockDuration::Sec60,
+                    chained_rule_conditions: None,
+                });
             if let Some(v) = action_type {
                 config.action_type = u8_to_enum(*v, "action-type")?;
             }

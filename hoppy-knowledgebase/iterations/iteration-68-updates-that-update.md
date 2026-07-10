@@ -8,7 +8,7 @@ tags:
   - shield
   - dns
   - database
-status: in-progress
+status: completed
 branch: iter-68/updates-that-update
 priority: 1
 depends-on: iter-66/spec-refresh-drift-fixes
