@@ -173,8 +173,9 @@ pub struct Cli {
 
     /// Record API responses as JSON fixtures under `<DIR>/<domain>/` (one
     /// subdirectory per service: core, compute, containers, database,
-    /// shield, storage, stream). Writes are idempotent — unchanged files
-    /// are left alone. May also be set via `HOPPY_RECORD_DIR=<DIR>`.
+    /// logging, origin-errors, shield, storage, stream). Writes are
+    /// idempotent — unchanged files are left alone. May also be set via
+    /// `HOPPY_RECORD_DIR=<DIR>`.
     #[arg(long, value_name = "DIR", global = true)]
     pub record: Option<String>,
 
@@ -503,6 +504,12 @@ pub enum Commands {
         load_user_balance_history: bool,
     },
 
+    /// Retrieve CDN access logs and origin error logs
+    Logs {
+        #[command(subcommand)]
+        action: LogsAction,
+    },
+
     /// Manage video libraries (core API — DRM and transcription stats)
     VideoLibrary {
         #[command(subcommand)]
@@ -536,6 +543,137 @@ pub enum Commands {
 pub enum AuthAction {
     /// Validate the API key and display account billing info
     Check,
+}
+
+// -- Logs --
+
+#[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // PullZone carries many Option<T> filters; clap boxes internally
+pub enum LogsAction {
+    /// Retrieve CDN access logs for a pull zone.
+    ///
+    /// Uses the v2 structured JSON endpoint by default (rich filters +
+    /// pagination). Pass --legacy to stream the v1 raw pipe-delimited log for a
+    /// single date instead. Logs are retained for up to 3 days.
+    ///
+    /// EXAMPLES:
+    ///   # Last 24h of 5xx responses (v2, up to 50 rows)
+    ///   hoppy logs pull-zone --id 12345 --status 5xx --limit 50
+    ///
+    ///   # v2 with an explicit UTC window and country filter
+    ///   hoppy logs pull-zone --id 12345 \
+    ///     --from 2026-07-08T00:00:00Z --to 2026-07-09T00:00:00Z --country EE
+    ///
+    ///   # Legacy v1 raw log for one date, streamed to a file
+    ///   hoppy logs pull-zone --id 12345 --legacy --date 07-08-26 --output logs.txt
+    PullZone {
+        /// Pull zone ID
+        #[arg(long)]
+        id: i64,
+
+        // ── v2 time range ────────────────────────────────────────────────────
+        /// Inclusive start of the time range (UTC, RFC 3339). Defaults to `to - 24h`.
+        #[arg(long, value_name = "RFC3339", help_heading = "v2 filters")]
+        from: Option<String>,
+        /// Exclusive end of the time range (UTC, RFC 3339). Defaults to now.
+        #[arg(long, value_name = "RFC3339", help_heading = "v2 filters")]
+        to: Option<String>,
+
+        // ── v2 filters ───────────────────────────────────────────────────────
+        /// Comma-separated HTTP status filters — exact codes (`404`) or classes (`5xx`).
+        #[arg(long, value_name = "STATUS", help_heading = "v2 filters")]
+        status: Option<String>,
+        /// Comma-separated cache statuses to match exactly (e.g. `HIT,MISS,EXPIRED`).
+        #[arg(long, value_name = "STATUS", help_heading = "v2 filters")]
+        cache_status: Option<String>,
+        /// ISO 3166 alpha-2 country code(s), comma-separated (e.g. `EE,DE`).
+        #[arg(long, value_name = "CODE", help_heading = "v2 filters")]
+        country: Option<String>,
+        /// Edge location / server zone (exact match).
+        #[arg(long, value_name = "LOCATION", help_heading = "v2 filters")]
+        edge_location: Option<String>,
+        /// Client IP address filter (IPv4 or IPv6).
+        #[arg(long, value_name = "IP", help_heading = "v2 filters")]
+        remote_ip: Option<String>,
+        /// Case-insensitive substring match against the request URL.
+        #[arg(long, value_name = "TEXT", help_heading = "v2 filters")]
+        url_contains: Option<String>,
+        /// Case-insensitive substring match against the User-Agent header.
+        #[arg(long, value_name = "TEXT", help_heading = "v2 filters")]
+        user_agent_contains: Option<String>,
+        /// Case-insensitive substring match against the Referer header.
+        #[arg(long, value_name = "TEXT", help_heading = "v2 filters")]
+        referer_contains: Option<String>,
+        /// Free-text, case-insensitive token search across several columns.
+        #[arg(long, value_name = "TEXT", help_heading = "v2 filters")]
+        search: Option<String>,
+        /// Exact request ID (UUID) to look up a single log entry.
+        #[arg(long, value_name = "UUID", help_heading = "v2 filters")]
+        request_id: Option<String>,
+        /// Include origin-shield (edge → shield) requests. Defaults to false.
+        #[arg(long, action = clap::ArgAction::Set, help_heading = "v2 filters")]
+        include_origin_shield: Option<bool>,
+
+        // ── v2 pagination ────────────────────────────────────────────────────
+        /// Maximum entries to return (default 100, capped at 10000).
+        #[arg(long, value_name = "N", help_heading = "v2 pagination")]
+        limit: Option<i32>,
+        /// Number of entries to skip (default 0).
+        #[arg(long, value_name = "N", help_heading = "v2 pagination")]
+        offset: Option<i64>,
+        /// Sort order by timestamp: `asc` or `desc` (default).
+        #[arg(long, value_name = "ORDER", help_heading = "v2 pagination")]
+        order: Option<String>,
+
+        // ── v1 legacy ────────────────────────────────────────────────────────
+        /// Use the legacy v1 raw-log endpoint instead of v2. Requires --date and
+        /// streams raw pipe-delimited text (honours --output).
+        #[arg(long, help_heading = "v1 legacy")]
+        legacy: bool,
+        /// Log date for the legacy endpoint (as the API expects, e.g. `07-08-26`).
+        /// Required with --legacy.
+        #[arg(
+            long,
+            value_name = "DATE",
+            requires = "legacy",
+            help_heading = "v1 legacy"
+        )]
+        date: Option<String>,
+        /// Unix millisecond timestamp — inclusive start of the legacy range.
+        #[arg(
+            long,
+            value_name = "MS",
+            requires = "legacy",
+            help_heading = "v1 legacy"
+        )]
+        start: Option<i64>,
+        /// Unix millisecond timestamp — exclusive end of the legacy range.
+        #[arg(
+            long,
+            value_name = "MS",
+            requires = "legacy",
+            help_heading = "v1 legacy"
+        )]
+        end: Option<i64>,
+
+        /// Write log output to a file instead of stdout (streamed for --legacy).
+        #[arg(long, value_name = "FILE")]
+        output: Option<String>,
+    },
+
+    /// Retrieve CDN origin error logs for a pull zone on a given date.
+    ///
+    /// EXAMPLES:
+    ///   # Origin errors for one day
+    ///   hoppy logs origin-errors --id 12345 --date 10-29-2025
+    OriginErrors {
+        /// Pull zone ID
+        #[arg(long)]
+        id: i64,
+        /// Log date, formatted MM-DD-YYYY (e.g. 10-29-2025).
+        #[arg(long, value_name = "MM-DD-YYYY")]
+        date: String,
+    },
 }
 
 // -- Video Library (core API — DRM and transcription stats) --

@@ -10,12 +10,14 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["core", "compute", "containers", "database", "recording", "shield", "storage", "stream"]
+default = ["core", "compute", "containers", "database", "logging", "origin-errors", "recording", "shield", "storage", "stream"]
 recording = []
 core = ["recording"]
 compute = ["core"]
 containers = ["core"]
 database = ["core"]
+logging = ["core"]
+origin-errors = ["core"]
 shield = ["core"]
 storage = ["core"]
 stream = ["core"]
@@ -51,6 +53,14 @@ path = "tests/core/e2e/mod.rs"
 [[test]]
 name = "e2e-database"
 path = "tests/database/e2e/mod.rs"
+
+[[test]]
+name = "e2e-logging"
+path = "tests/logging/e2e/mod.rs"
+
+[[test]]
+name = "e2e-origin-errors"
+path = "tests/origin_errors/e2e/mod.rs"
 
 [[test]]
 name = "e2e-shield"

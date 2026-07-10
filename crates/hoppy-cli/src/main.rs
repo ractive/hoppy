@@ -141,6 +141,9 @@ async fn run(cli: Cli) {
             )
             .await
         }
+        Commands::Logs { action } => {
+            commands::logs::handle(action, cli.format, cli.debug, cli.quiet, record).await
+        }
         Commands::VideoLibrary { action } => {
             commands::video_library::handle(action, cli.format, cli.debug, record).await
         }

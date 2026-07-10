@@ -6,6 +6,7 @@ mod cli_database;
 mod cli_dns;
 mod cli_help_completeness;
 mod cli_hints;
+mod cli_logs;
 mod cli_pull_zone;
 mod cli_script;
 mod cli_shield;

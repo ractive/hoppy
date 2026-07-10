@@ -3,6 +3,8 @@ use bunny_net_api::compute::ComputeClient;
 use bunny_net_api::containers::ContainersClient;
 use bunny_net_api::core::CoreClient;
 use bunny_net_api::database::DatabaseClient;
+use bunny_net_api::logging::LoggingClient;
+use bunny_net_api::origin_errors::OriginErrorsClient;
 use bunny_net_api::shield::ShieldClient;
 use std::env;
 
@@ -65,6 +67,46 @@ pub fn get_storage_url() -> Option<String> {
 /// Read a custom base URL for the bunny.net Database API.
 pub fn get_database_url() -> Option<String> {
     get_env_url("BUNNY_DATABASE_URL")
+}
+
+/// Read a custom base URL for the bunny.net CDN Logging API.
+pub fn get_logging_url() -> Option<String> {
+    get_env_url("BUNNY_LOGGING_URL")
+}
+
+/// Read a custom base URL for the bunny.net Origin Errors API.
+pub fn get_origin_errors_url() -> Option<String> {
+    get_env_url("BUNNY_ORIGIN_ERRORS_URL")
+}
+
+/// Build a `LoggingClient` with optional base URL override.
+pub fn logging_client(debug: bool, record: Option<&str>) -> Result<LoggingClient> {
+    let api_key = get_api_key()?;
+    let mut client = if let Some(url) = get_logging_url() {
+        LoggingClient::with_base_url(api_key, url)
+    } else {
+        LoggingClient::new(api_key)
+    }
+    .with_debug(debug);
+    if let Some(dir) = get_record_dir(record) {
+        client = client.with_record(dir);
+    }
+    Ok(client)
+}
+
+/// Build an `OriginErrorsClient` with optional base URL override.
+pub fn origin_errors_client(debug: bool, record: Option<&str>) -> Result<OriginErrorsClient> {
+    let api_key = get_api_key()?;
+    let mut client = if let Some(url) = get_origin_errors_url() {
+        OriginErrorsClient::with_base_url(api_key, url)
+    } else {
+        OriginErrorsClient::new(api_key)
+    }
+    .with_debug(debug);
+    if let Some(dir) = get_record_dir(record) {
+        client = client.with_record(dir);
+    }
+    Ok(client)
 }
 
 /// Build a `DatabaseClient` with optional base URL override.

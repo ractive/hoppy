@@ -1,0 +1,24 @@
+{
+  "logs": [
+    {
+      "logId": "a6a6b755-b6a4-46be-b523-aa82a17d4bc5",
+      "timestamp": 1728952065848,
+      "log": "{\"RequestUrl\":\"/apikey\",\"PullZoneId\":308006,\"Message\":\"Origin DNS lookup failed\",\"ErrorCode\":\"dns_lookup\",\"StatusCode\":502}",
+      "labels": {
+        "ErrorCode": "dns_lookup",
+        "StatusCode": "502",
+        "ServerZone": "CA"
+      }
+    },
+    {
+      "logId": "b7b7c866-c7b5-57cf-c634-bb93b28e5cd6",
+      "timestamp": 1728952070123,
+      "log": "{\"RequestUrl\":\"/index.html\",\"PullZoneId\":308006,\"Message\":\"Origin connection timed out\",\"ErrorCode\":\"connect_timeout\",\"StatusCode\":504}",
+      "labels": {
+        "ErrorCode": "connect_timeout",
+        "StatusCode": "504",
+        "ServerZone": "NY"
+      }
+    }
+  ]
+}

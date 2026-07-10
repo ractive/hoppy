@@ -10,6 +10,8 @@
 //! | `compute` | Edge scripting |
 //! | `containers` | Magic containers |
 //! | `database` | libSQL managed databases |
+//! | `logging` | CDN access log retrieval (v1 legacy + v2 structured) |
+//! | `origin-errors` | CDN origin error log retrieval |
 //! | `recording` | HTTP response recording helper (shared by other modules) |
 //! | `shield` | WAF, DDoS protection, rate limiting, bot detection |
 //! | `storage` | Edge storage file operations |
@@ -29,6 +31,12 @@ pub mod containers;
 
 #[cfg(feature = "database")]
 pub mod database;
+
+#[cfg(feature = "logging")]
+pub mod logging;
+
+#[cfg(feature = "origin-errors")]
+pub mod origin_errors;
 
 #[cfg(feature = "shield")]
 pub mod shield;
