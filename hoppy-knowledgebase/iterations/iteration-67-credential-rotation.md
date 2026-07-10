@@ -43,27 +43,27 @@ item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
 
 ## Scope
 
-### 1. Storage zone password rotation
+### 1. Storage zone password rotation [3/3]
 
 - [x] `storage-zone reset-password` → `POST /storagezone/{id}/resetPassword`
 - [x] `storage-zone reset-read-only-password` →
   `POST /storagezone/resetReadOnlyPassword?id=` (note: id is a query param)
 - [x] Confirmation prompt + `-y`; new secrets redacted unless `--reveal`
 
-### 2. Video library key rotation
+### 2. Video library key rotation [3/3]
 
 - [x] `stream library reset-api-key` → `POST /videolibrary/{id}/resetApiKey`
 - [x] `stream library reset-read-only-api-key` →
   `POST /videolibrary/{id}/resetReadOnlyApiKey`
 - [x] Same confirm/redact pattern as storage-zone
 
-### 3. Pull-zone security key rotation
+### 3. Pull-zone security key rotation [1/1]
 
 - [x] `pull-zone reset-security-key` →
   `POST /pullzone/{id}/resetSecurityKey` (completes the half-covered
   `--zone-security-enabled` story)
 
-### 4. Storage upload integrity
+### 4. Storage upload integrity [1/1]
 
 - [x] `storage upload --checksum` — send the SHA-256 `Checksum` header;
   client param exists (`upload_file(..., checksum)`), CLI passes `None`
@@ -76,7 +76,7 @@ item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
   by buffering the whole file) per the CLAUDE.md streaming rule reinforced
   in iter-66's `download_file_streaming`
 
-### 5. Storage zone delete safety
+### 5. Storage zone delete safety [1/1]
 
 - [x] **Spec check (confirmed against the iter-66-refreshed
   `specs/core-platform.json`): `deleteLinkedPullZones` defaults to
@@ -89,7 +89,7 @@ item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
   opt in; the confirmation prompt should say explicitly whether linked
   pull zones will be deleted
 
-### 6. `storage rm` directory-delete semantics
+### 6. `storage rm` directory-delete semantics [2/2]
 
 - [x] Preserve the trailing slash so `storage rm --remote-path images/`
   targets the directory URL form (recursive delete); today
@@ -101,7 +101,7 @@ item instead (see iter-66's `db-fork-group-field-drift` for the pattern).
 - Access-key selection (using `ReadOnlyPassword` for read-only ops) —
   file as backlog if friction shows up during dogfooding
 
-## Acceptance
+## Acceptance [4/4]
 
 - [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
