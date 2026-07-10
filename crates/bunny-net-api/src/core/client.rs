@@ -13,10 +13,11 @@ use super::types::{
     AccountStatistics, AddDnsRecord, ApiError, BillingDetails, CreateDnsZone, CreatePullZone,
     CreateStorageZone, CreateVideoLibrary, DnsImportResult, DnsRecord, DnsRecordScanResult,
     DnsRecordScanTrigger, DnsSecDsRecord, DnsZone, DnsZoneStatistics, OptimizerStatistics,
-    OriginShieldQueueStatistics, PaginatedList, PullZone, PurgeCache, SafeHopStatistics,
-    StatisticsQuery, StorageZone, StorageZoneStatistics, TriggerDnsRecordScan, UpdateDnsRecord,
-    UpdateDnsZone, UpdatePullZone, UpdateStorageZone, UpdateVideoLibrary, VideoLibrary,
-    VideoLibraryDrmStatistics, VideoLibraryTranscribingStatistics,
+    OriginShieldQueueStatistics, PaginatedList, PullZone, PullZoneCount, PurgeCache,
+    SafeHopStatistics, StatisticsQuery, StorageRegion, StorageZone, StorageZoneEgressStatistics,
+    StorageZoneStatistics, TriggerDnsRecordScan, UpdateDnsRecord, UpdateDnsZone, UpdatePullZone,
+    UpdateStorageZone, UpdateVideoLibrary, VideoLibrary, VideoLibraryDrmStatistics,
+    VideoLibraryTranscribingStatistics, ZoneAvailability,
 };
 
 const DEFAULT_BASE_URL: &str = "https://api.bunny.net";
@@ -210,6 +211,28 @@ impl CoreClient {
         }
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
+    }
+
+    /// Count the total number of Pull Zones on the account.
+    ///
+    /// Backs `GET /pullzone/count`.
+    pub async fn count_pull_zones(&self) -> Result<PullZoneCount> {
+        let url = format!("{}/pullzone/count", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Check whether a Pull Zone name is available before creating one.
+    ///
+    /// Backs `POST /pullzone/checkavailability`.
+    pub async fn check_pull_zone_availability(&self, name: &str) -> Result<ZoneAvailability> {
+        let url = format!("{}/pullzone/checkavailability", self.base_url);
+        let rb = self
+            .auth(self.http.post(&url))
+            .json(&serde_json::json!({ "Name": name }));
+        let response = self.send(rb).await?;
+        self.handle_availability_response(response).await
     }
 
     // -----------------------------------------------------------------------
@@ -507,6 +530,54 @@ impl CoreClient {
         self.handle_empty_response(response).await
     }
 
+    /// List the storage regions available for creating Storage Zones.
+    ///
+    /// Backs `GET /storagezone/regions`.
+    pub async fn list_storage_zone_regions(&self) -> Result<Vec<StorageRegion>> {
+        let url = format!("{}/storagezone/regions", self.base_url);
+        let rb = self.auth(self.http.get(&url));
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Fetch egress statistics for a Storage Zone.
+    ///
+    /// Backs `GET /storagezone/{id}/statistics/egress`. `date_from` / `date_to`
+    /// bound the window; `hourly` switches to per-hour buckets.
+    pub async fn get_storage_zone_egress_statistics(
+        &self,
+        id: i64,
+        date_from: Option<&str>,
+        date_to: Option<&str>,
+        hourly: bool,
+    ) -> Result<StorageZoneEgressStatistics> {
+        let url = format!("{}/storagezone/{id}/statistics/egress", self.base_url);
+        let mut rb = self.auth(self.http.get(&url));
+        if let Some(v) = date_from {
+            rb = rb.query(&[("dateFrom", v)]);
+        }
+        if let Some(v) = date_to {
+            rb = rb.query(&[("dateTo", v)]);
+        }
+        if hourly {
+            rb = rb.query(&[("hourly", "true")]);
+        }
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Check whether a Storage Zone name is available before creating one.
+    ///
+    /// Backs `POST /storagezone/checkavailability`.
+    pub async fn check_storage_zone_availability(&self, name: &str) -> Result<ZoneAvailability> {
+        let url = format!("{}/storagezone/checkavailability", self.base_url);
+        let rb = self
+            .auth(self.http.post(&url))
+            .json(&serde_json::json!({ "Name": name }));
+        let response = self.send(rb).await?;
+        self.handle_availability_response(response).await
+    }
+
     // -----------------------------------------------------------------------
     // DNS Zone endpoints
     // -----------------------------------------------------------------------
@@ -706,6 +777,41 @@ impl CoreClient {
         let rb = self.auth(self.http.delete(&url));
         let response = self.send(rb).await?;
         self.handle_empty_response(response).await
+    }
+
+    /// List the records in a DNS zone via the dedicated records endpoint.
+    ///
+    /// Backs `GET /dnszone/{zoneId}/records` (new in the July 2026 spec).
+    /// `page` is 1-based (defaults to 1); `per_page` defaults to 1000 (the API
+    /// maximum). Unlike projecting `Records` out of `GET /dnszone/{id}`, this
+    /// endpoint returns a paginated envelope.
+    pub async fn list_dns_zone_records(
+        &self,
+        zone_id: i64,
+        page: Option<u32>,
+        per_page: Option<u32>,
+    ) -> Result<PaginatedList<DnsRecord>> {
+        let url = format!("{}/dnszone/{zone_id}/records", self.base_url);
+        let page = page.unwrap_or(1);
+        let per_page = per_page.unwrap_or(DEFAULT_PER_PAGE);
+        let rb = self.auth(self.http.get(&url)).query(&[
+            ("page", page.to_string()),
+            ("perPage", per_page.to_string()),
+        ]);
+        let response = self.send(rb).await?;
+        self.handle_response(response).await
+    }
+
+    /// Check whether a DNS zone (domain) is available before creating one.
+    ///
+    /// Backs `POST /dnszone/checkavailability`.
+    pub async fn check_dns_zone_availability(&self, name: &str) -> Result<ZoneAvailability> {
+        let url = format!("{}/dnszone/checkavailability", self.base_url);
+        let rb = self
+            .auth(self.http.post(&url))
+            .json(&serde_json::json!({ "Name": name }));
+        let response = self.send(rb).await?;
+        self.handle_availability_response(response).await
     }
 
     // -----------------------------------------------------------------------
@@ -1111,6 +1217,28 @@ impl CoreClient {
 
         if status.is_success() {
             return Ok(());
+        }
+
+        Err(self.extract_api_error(status, &bytes))
+    }
+
+    /// Convert a `checkavailability` response into a [`ZoneAvailability`].
+    ///
+    /// The spec marks the 200 body as unstructured. In practice the API returns
+    /// `{"Available": <bool>}`, but we tolerate an empty body (a bare 200) by
+    /// treating it as "available" so the command still succeeds.
+    async fn handle_availability_response(
+        &self,
+        response: reqwest::Response,
+    ) -> Result<ZoneAvailability> {
+        let (status, bytes) = self.read_body(response).await?;
+
+        if status.is_success() {
+            if bytes.is_empty() {
+                return Ok(ZoneAvailability { available: true });
+            }
+            return serde_json::from_slice(&bytes)
+                .context("failed to deserialise availability response body");
         }
 
         Err(self.extract_api_error(status, &bytes))

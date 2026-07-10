@@ -5,7 +5,9 @@ use crate::output::{self, PaginatedListJson};
 use crate::redact::{RedactConfig, redact_secrets_in_json};
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::CoreClient;
-use bunny_net_api::core::types::{CreateStorageZone, StorageZone, UpdateStorageZone};
+use bunny_net_api::core::types::{
+    CreateStorageZone, StorageRegion, StorageZone, UpdateStorageZone,
+};
 use std::io::{self, BufRead, Write};
 
 // ---------------------------------------------------------------------------
@@ -38,6 +40,27 @@ impl From<&StorageZone> for StorageZoneRow {
             storage_used: sz.storage_used,
             files_stored: sz.files_stored,
             zone_tier: sz.zone_tier,
+        }
+    }
+}
+
+/// Table row for `storage-zone regions`.
+#[derive(serde::Serialize, tabled::Tabled)]
+struct StorageRegionRow {
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "URL")]
+    url: String,
+}
+
+impl From<&StorageRegion> for StorageRegionRow {
+    fn from(r: &StorageRegion) -> Self {
+        Self {
+            id: r.id.clone().unwrap_or_default(),
+            name: r.name.clone().unwrap_or_default(),
+            url: r.url.clone().unwrap_or_default(),
         }
     }
 }
@@ -133,6 +156,41 @@ pub async fn handle(
         StorageZoneAction::Get { id } => {
             let sz = client.get_storage_zone(*id).await?;
             print_storage_zone(&sz, format, redact_cfg);
+        }
+        StorageZoneAction::Check { name } => {
+            let availability = client.check_storage_zone_availability(name).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&availability)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct Row {
+                    #[tabled(rename = "Name")]
+                    name: String,
+                    #[tabled(rename = "Available")]
+                    available: bool,
+                }
+                output::print_single(
+                    &Row {
+                        name: name.clone(),
+                        available: availability.available,
+                    },
+                    format,
+                );
+            }
+        }
+        StorageZoneAction::Regions => {
+            let regions = client.list_storage_zone_regions().await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&regions)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                let rows: Vec<StorageRegionRow> =
+                    regions.iter().map(StorageRegionRow::from).collect();
+                output::print_data(&rows, format);
+            }
         }
         StorageZoneAction::Create {
             name,
@@ -265,6 +323,63 @@ pub async fn handle(
                 {
                     eprintln!("  Peak file count: {latest}");
                 }
+            }
+        }
+        StorageZoneAction::Egress {
+            id,
+            date_from,
+            date_to,
+            hourly,
+        } => {
+            let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
+            let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
+            let stats = client
+                .get_storage_zone_egress_statistics(
+                    *id,
+                    date_from.as_deref(),
+                    date_to.as_deref(),
+                    *hourly,
+                )
+                .await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&stats).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct Row {
+                    #[tabled(rename = "Protocol")]
+                    protocol: String,
+                    #[tabled(rename = "Egress (bytes)")]
+                    egress: i64,
+                }
+                let rows = vec![
+                    Row {
+                        protocol: "HTTP".to_string(),
+                        egress: stats.http_egress_total,
+                    },
+                    Row {
+                        protocol: "S3".to_string(),
+                        egress: stats.s3_egress_total,
+                    },
+                    Row {
+                        protocol: "S3 Presigned".to_string(),
+                        egress: stats.s3_presigned_egress_total,
+                    },
+                    Row {
+                        protocol: "FTP".to_string(),
+                        egress: stats.ftp_egress_total,
+                    },
+                    Row {
+                        protocol: "SFTP".to_string(),
+                        egress: stats.sftp_egress_total,
+                    },
+                    Row {
+                        protocol: "Total".to_string(),
+                        egress: stats.total_egress,
+                    },
+                ];
+                output::print_data(&rows, format);
             }
         }
     }

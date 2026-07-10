@@ -170,6 +170,44 @@ pub async fn handle(
             let pz = client.get_pull_zone(*id).await?;
             print_pull_zone(&pz, format, redact_cfg);
         }
+        PullZoneAction::Count => {
+            let count = client.count_pull_zones().await?;
+            if let OutputFormat::Json = format {
+                let json =
+                    serde_json::to_string_pretty(&count).context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct Row {
+                    #[tabled(rename = "Count")]
+                    count: i32,
+                }
+                output::print_single(&Row { count: count.count }, format);
+            }
+        }
+        PullZoneAction::Check { name } => {
+            let availability = client.check_pull_zone_availability(name).await?;
+            if let OutputFormat::Json = format {
+                let json = serde_json::to_string_pretty(&availability)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                #[derive(serde::Serialize, tabled::Tabled)]
+                struct Row {
+                    #[tabled(rename = "Name")]
+                    name: String,
+                    #[tabled(rename = "Available")]
+                    available: bool,
+                }
+                output::print_single(
+                    &Row {
+                        name: name.clone(),
+                        available: availability.available,
+                    },
+                    format,
+                );
+            }
+        }
         PullZoneAction::Create {
             name,
             origin_url,

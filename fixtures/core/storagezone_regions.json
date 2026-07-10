@@ -1,0 +1,17 @@
+[
+  {
+    "Id": "DE",
+    "Name": "Falkenstein",
+    "Url": "storage.bunnycdn.com"
+  },
+  {
+    "Id": "NY",
+    "Name": "New York",
+    "Url": "ny.storage.bunnycdn.com"
+  },
+  {
+    "Id": "SG",
+    "Name": "Singapore",
+    "Url": "sg.storage.bunnycdn.com"
+  }
+]

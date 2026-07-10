@@ -1,0 +1,14 @@
+{
+  "HttpEgressChart": { "2026-07-01": 1000, "2026-07-02": 2000 },
+  "S3EgressChart": { "2026-07-01": 500 },
+  "S3PresignedEgressChart": { "2026-07-01": 100 },
+  "FtpEgressChart": { "2026-07-01": 0 },
+  "SftpEgressChart": { "2026-07-01": 0 },
+  "TotalEgressChart": { "2026-07-01": 1600, "2026-07-02": 2000 },
+  "HttpEgressTotal": 3000,
+  "S3EgressTotal": 500,
+  "S3PresignedEgressTotal": 100,
+  "FtpEgressTotal": 0,
+  "SftpEgressTotal": 0,
+  "TotalEgress": 3600
+}

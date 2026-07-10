@@ -2552,6 +2552,119 @@ impl std::str::FromStr for DnsRecordType {
     }
 }
 
+/// Smart-routing mode for a DNS record.
+///
+/// Spec: `DnsSmartRoutingType` — `0 = None`, `1 = Latency`, `2 = Geolocation`.
+/// Serialised as the integer discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum DnsSmartRoutingType {
+    /// No smart routing — the record resolves the same everywhere.
+    None = 0,
+    /// Route to the lowest-latency target.
+    Latency = 1,
+    /// Route based on the resolver's geolocation.
+    Geolocation = 2,
+}
+
+impl std::fmt::Display for DnsSmartRoutingType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::None => "none",
+            Self::Latency => "latency",
+            Self::Geolocation => "geolocation",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for DnsSmartRoutingType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "none" => Ok(Self::None),
+            "latency" => Ok(Self::Latency),
+            "geolocation" | "geo" => Ok(Self::Geolocation),
+            _ => Err(format!(
+                "unknown smart routing type: {s:?}; \
+                 expected one of: none, latency, geolocation"
+            )),
+        }
+    }
+}
+
+/// Monitoring mode for a DNS record's target.
+///
+/// Spec: `DnsMonitoringType` — `0 = None`, `1 = Ping`, `2 = Http`, `3 = Monitor`.
+/// Serialised as the integer discriminant on the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum DnsMonitoringType {
+    /// No health monitoring.
+    None = 0,
+    /// ICMP ping health check.
+    Ping = 1,
+    /// HTTP(S) health check.
+    Http = 2,
+    /// Full monitor health check.
+    Monitor = 3,
+}
+
+impl std::fmt::Display for DnsMonitoringType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::None => "none",
+            Self::Ping => "ping",
+            Self::Http => "http",
+            Self::Monitor => "monitor",
+        };
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for DnsMonitoringType {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "none" => Ok(Self::None),
+            "ping" => Ok(Self::Ping),
+            "http" => Ok(Self::Http),
+            "monitor" => Ok(Self::Monitor),
+            _ => Err(format!(
+                "unknown monitor type: {s:?}; \
+                 expected one of: none, ping, http, monitor"
+            )),
+        }
+    }
+}
+
+/// Current monitoring status of a DNS record's target (read-only).
+///
+/// Spec: `DnsMonitoringStatus` — `0 = Unknown`, `1 = Online`, `2 = Offline`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
+pub enum DnsMonitoringStatus {
+    /// Status not yet determined.
+    Unknown = 0,
+    /// The target is healthy.
+    Online = 1,
+    /// The target is failing its health check.
+    Offline = 2,
+}
+
+impl std::fmt::Display for DnsMonitoringStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Unknown => "Unknown",
+            Self::Online => "Online",
+            Self::Offline => "Offline",
+        };
+        f.write_str(s)
+    }
+}
+
 /// A DNS record within a zone.
 ///
 /// `record_type` is an `Option` because bunny.net may return new record-type
@@ -2589,6 +2702,33 @@ pub struct DnsRecord {
     pub disabled: bool,
     #[serde(default)]
     pub comment: Option<String>,
+    /// Numeric ID of the linked Pull Zone (for `PullZone` records).
+    #[serde(default)]
+    pub pull_zone_id: i64,
+    /// Numeric ID of the linked Edge Script (for `Script` records).
+    #[serde(default)]
+    pub script_id: i64,
+    /// Smart-routing mode configured on the record.
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub smart_routing_type: Option<DnsSmartRoutingType>,
+    /// Health-monitoring mode configured on the record.
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub monitor_type: Option<DnsMonitoringType>,
+    /// Current health-monitoring status (read-only).
+    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    pub monitor_status: Option<DnsMonitoringStatus>,
+    /// Latitude used by geolocation smart routing.
+    #[serde(default)]
+    pub geolocation_latitude: f64,
+    /// Longitude used by geolocation smart routing.
+    #[serde(default)]
+    pub geolocation_longitude: f64,
+    /// Latency zone identifier used by latency smart routing.
+    #[serde(default)]
+    pub latency_zone: Option<String>,
+    /// Whether the record automatically issues a TLS certificate.
+    #[serde(default)]
+    pub auto_ssl_issuance: bool,
 }
 
 /// A bunny.net DNS zone.
@@ -2843,6 +2983,8 @@ pub struct UpdateDnsZone {
     pub logging_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logging_ip_anonymization_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_anonymization_type: Option<LogAnonymizationType>,
 }
 
 impl UpdateDnsZone {
@@ -2884,6 +3026,12 @@ impl UpdateDnsZone {
     #[must_use]
     pub fn logging_ip_anonymization_enabled(mut self, enabled: bool) -> Self {
         self.logging_ip_anonymization_enabled = Some(enabled);
+        self
+    }
+
+    #[must_use]
+    pub fn log_anonymization_type(mut self, v: LogAnonymizationType) -> Self {
+        self.log_anonymization_type = Some(v);
         self
     }
 }
@@ -3075,9 +3223,27 @@ pub struct AddDnsRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub pull_zone_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accelerated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub monitor_type: Option<DnsMonitoringType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub geolocation_latitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub geolocation_longitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latency_zone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smart_routing_type: Option<DnsSmartRoutingType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_ssl_issuance: Option<bool>,
 }
 
 impl AddDnsRecord {
@@ -3092,8 +3258,17 @@ impl AddDnsRecord {
             port: None,
             flags: None,
             tag: None,
+            pull_zone_id: None,
+            script_id: None,
+            accelerated: None,
+            monitor_type: None,
+            geolocation_latitude: None,
+            geolocation_longitude: None,
+            latency_zone: None,
+            smart_routing_type: None,
             disabled: None,
             comment: None,
+            auto_ssl_issuance: None,
         }
     }
 
@@ -3148,6 +3323,60 @@ impl AddDnsRecord {
     #[must_use]
     pub fn comment(mut self, comment: impl Into<String>) -> Self {
         self.comment = Some(comment.into());
+        self
+    }
+
+    #[must_use]
+    pub fn pull_zone_id(mut self, id: i64) -> Self {
+        self.pull_zone_id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub fn script_id(mut self, id: i64) -> Self {
+        self.script_id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub fn accelerated(mut self, accelerated: bool) -> Self {
+        self.accelerated = Some(accelerated);
+        self
+    }
+
+    #[must_use]
+    pub fn monitor_type(mut self, monitor_type: DnsMonitoringType) -> Self {
+        self.monitor_type = Some(monitor_type);
+        self
+    }
+
+    #[must_use]
+    pub fn geolocation_latitude(mut self, lat: f64) -> Self {
+        self.geolocation_latitude = Some(lat);
+        self
+    }
+
+    #[must_use]
+    pub fn geolocation_longitude(mut self, lon: f64) -> Self {
+        self.geolocation_longitude = Some(lon);
+        self
+    }
+
+    #[must_use]
+    pub fn latency_zone(mut self, zone: impl Into<String>) -> Self {
+        self.latency_zone = Some(zone.into());
+        self
+    }
+
+    #[must_use]
+    pub fn smart_routing_type(mut self, routing: DnsSmartRoutingType) -> Self {
+        self.smart_routing_type = Some(routing);
+        self
+    }
+
+    #[must_use]
+    pub fn auto_ssl_issuance(mut self, auto: bool) -> Self {
+        self.auto_ssl_issuance = Some(auto);
         self
     }
 }
@@ -3175,9 +3404,27 @@ pub struct UpdateDnsRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub pull_zone_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accelerated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub monitor_type: Option<DnsMonitoringType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub geolocation_latitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub geolocation_longitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latency_zone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub smart_routing_type: Option<DnsSmartRoutingType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_ssl_issuance: Option<bool>,
 }
 
 impl UpdateDnsRecord {
@@ -3193,8 +3440,17 @@ impl UpdateDnsRecord {
             port: None,
             flags: None,
             tag: None,
+            pull_zone_id: None,
+            script_id: None,
+            accelerated: None,
+            monitor_type: None,
+            geolocation_latitude: None,
+            geolocation_longitude: None,
+            latency_zone: None,
+            smart_routing_type: None,
             disabled: None,
             comment: None,
+            auto_ssl_issuance: None,
         }
     }
 
@@ -3249,6 +3505,60 @@ impl UpdateDnsRecord {
     #[must_use]
     pub fn comment(mut self, comment: impl Into<String>) -> Self {
         self.comment = Some(comment.into());
+        self
+    }
+
+    #[must_use]
+    pub fn pull_zone_id(mut self, id: i64) -> Self {
+        self.pull_zone_id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub fn script_id(mut self, id: i64) -> Self {
+        self.script_id = Some(id);
+        self
+    }
+
+    #[must_use]
+    pub fn accelerated(mut self, accelerated: bool) -> Self {
+        self.accelerated = Some(accelerated);
+        self
+    }
+
+    #[must_use]
+    pub fn monitor_type(mut self, monitor_type: DnsMonitoringType) -> Self {
+        self.monitor_type = Some(monitor_type);
+        self
+    }
+
+    #[must_use]
+    pub fn geolocation_latitude(mut self, lat: f64) -> Self {
+        self.geolocation_latitude = Some(lat);
+        self
+    }
+
+    #[must_use]
+    pub fn geolocation_longitude(mut self, lon: f64) -> Self {
+        self.geolocation_longitude = Some(lon);
+        self
+    }
+
+    #[must_use]
+    pub fn latency_zone(mut self, zone: impl Into<String>) -> Self {
+        self.latency_zone = Some(zone.into());
+        self
+    }
+
+    #[must_use]
+    pub fn smart_routing_type(mut self, routing: DnsSmartRoutingType) -> Self {
+        self.smart_routing_type = Some(routing);
+        self
+    }
+
+    #[must_use]
+    pub fn auto_ssl_issuance(mut self, auto: bool) -> Self {
+        self.auto_ssl_issuance = Some(auto);
         self
     }
 }
@@ -3408,6 +3718,79 @@ pub struct VideoLibraryTranscribingStatistics {
     pub transcription_seconds_chart: Option<BTreeMap<String, i64>>,
 }
 
+// ---------------------------------------------------------------------------
+// Zone availability / reference types
+// ---------------------------------------------------------------------------
+
+/// Result of a `checkavailability` preflight for a DNS zone, Pull Zone, or
+/// Storage Zone.
+///
+/// The `POST /{resource}/checkavailability` endpoints report whether a name is
+/// free to use before a create call. The spec marks the 200 body as
+/// unstructured, but the API returns `{"Available": <bool>}` in practice; the
+/// field is `#[serde(default)]` so a bare 200 (no body) deserialises as
+/// "available".
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ZoneAvailability {
+    /// Whether the requested name is available.
+    #[serde(default)]
+    pub available: bool,
+}
+
+/// Result of `GET /pullzone/count` — the total number of Pull Zones.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct PullZoneCount {
+    /// Total number of Pull Zones on the account.
+    #[serde(default)]
+    pub count: i32,
+}
+
+/// A storage region returned by `GET /storagezone/regions`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct StorageRegion {
+    /// Region code (e.g. `DE`, `NY`, `SG`).
+    #[serde(default)]
+    pub id: Option<String>,
+    /// Human-readable region name.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Storage endpoint URL for the region.
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+/// Egress statistics returned by `GET /storagezone/{id}/statistics/egress`.
+///
+/// Per-protocol totals are always present; the corresponding time-series charts
+/// are only populated by the API for some accounts, hence they are `Option`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct StorageZoneEgressStatistics {
+    pub http_egress_chart: Option<BTreeMap<String, i64>>,
+    #[serde(rename = "S3EgressChart")]
+    pub s3_egress_chart: Option<BTreeMap<String, i64>>,
+    #[serde(rename = "S3PresignedEgressChart")]
+    pub s3_presigned_egress_chart: Option<BTreeMap<String, i64>>,
+    pub ftp_egress_chart: Option<BTreeMap<String, i64>>,
+    pub sftp_egress_chart: Option<BTreeMap<String, i64>>,
+    pub total_egress_chart: Option<BTreeMap<String, i64>>,
+    #[serde(default)]
+    pub http_egress_total: i64,
+    #[serde(rename = "S3EgressTotal", default)]
+    pub s3_egress_total: i64,
+    #[serde(rename = "S3PresignedEgressTotal", default)]
+    pub s3_presigned_egress_total: i64,
+    #[serde(default)]
+    pub ftp_egress_total: i64,
+    #[serde(default)]
+    pub sftp_egress_total: i64,
+    #[serde(default)]
+    pub total_egress: i64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3526,5 +3909,101 @@ mod tests {
         let body = AddDnsRecord::new(DnsRecordType::A, "192.0.2.1");
         let v = serde_json::to_value(&body).unwrap();
         assert!(v.get("Disabled").is_none());
+    }
+
+    /// iter-71: smart-routing enum parses case-insensitively and serialises as
+    /// its integer discriminant.
+    #[test]
+    fn dns_smart_routing_type_parse_and_serialize() {
+        assert_eq!(
+            "GEOLOCATION".parse::<DnsSmartRoutingType>().unwrap(),
+            DnsSmartRoutingType::Geolocation
+        );
+        assert_eq!(
+            "geo".parse::<DnsSmartRoutingType>().unwrap(),
+            DnsSmartRoutingType::Geolocation
+        );
+        assert!("bogus".parse::<DnsSmartRoutingType>().is_err());
+        assert_eq!(
+            serde_json::to_value(DnsSmartRoutingType::Latency).unwrap(),
+            serde_json::json!(1)
+        );
+    }
+
+    /// iter-71: monitor enum parse + integer serialisation.
+    #[test]
+    fn dns_monitor_type_parse_and_serialize() {
+        assert_eq!(
+            "Ping".parse::<DnsMonitoringType>().unwrap(),
+            DnsMonitoringType::Ping
+        );
+        assert!("nope".parse::<DnsMonitoringType>().is_err());
+        assert_eq!(
+            serde_json::to_value(DnsMonitoringType::Http).unwrap(),
+            serde_json::json!(2)
+        );
+    }
+
+    /// iter-71: linked/smart-routing fields serialise on `AddDnsRecord` and are
+    /// omitted when unset.
+    #[test]
+    fn add_dns_record_linked_and_smart_fields() {
+        let body = AddDnsRecord::new(DnsRecordType::PullZone, "@")
+            .pull_zone_id(1234)
+            .smart_routing_type(DnsSmartRoutingType::Geolocation)
+            .monitor_type(DnsMonitoringType::Ping)
+            .geolocation_latitude(51.5)
+            .geolocation_longitude(-0.1)
+            .auto_ssl_issuance(true);
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["PullZoneId"], 1234);
+        assert_eq!(v["SmartRoutingType"], 2);
+        assert_eq!(v["MonitorType"], 1);
+        assert_eq!(v["GeolocationLatitude"], 51.5);
+        assert_eq!(v["GeolocationLongitude"], -0.1);
+        assert_eq!(v["AutoSslIssuance"], true);
+
+        let empty = AddDnsRecord::new(DnsRecordType::A, "192.0.2.1");
+        let v = serde_json::to_value(&empty).unwrap();
+        assert!(v.get("PullZoneId").is_none());
+        assert!(v.get("SmartRoutingType").is_none());
+    }
+
+    /// iter-71: `UpdateDnsZone` carries `LogAnonymizationType` as its integer
+    /// discriminant when set, and omits it otherwise.
+    #[test]
+    fn update_dns_zone_log_anonymization_type() {
+        let body = UpdateDnsZone::new().log_anonymization_type(LogAnonymizationType::Drop);
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["LogAnonymizationType"], 1);
+
+        let body = UpdateDnsZone::new();
+        let v = serde_json::to_value(&body).unwrap();
+        assert!(v.get("LogAnonymizationType").is_none());
+    }
+
+    /// iter-71: the shared `checkavailability` response deserialises, and a
+    /// missing `Available` field defaults to `false`.
+    #[test]
+    fn zone_availability_deserialize() {
+        let a: ZoneAvailability = serde_json::from_str(r#"{"Available": true}"#).unwrap();
+        assert!(a.available);
+        let b: ZoneAvailability = serde_json::from_str("{}").unwrap();
+        assert!(!b.available);
+    }
+
+    /// iter-71: egress statistics deserialise per-protocol totals correctly.
+    #[test]
+    fn storage_zone_egress_statistics_deserialize() {
+        let json = r#"{
+            "HttpEgressTotal": 3000,
+            "S3EgressTotal": 500,
+            "TotalEgress": 3600
+        }"#;
+        let s: StorageZoneEgressStatistics = serde_json::from_str(json).unwrap();
+        assert_eq!(s.http_egress_total, 3000);
+        assert_eq!(s.s3_egress_total, 500);
+        assert_eq!(s.total_egress, 3600);
+        assert_eq!(s.ftp_egress_total, 0);
     }
 }

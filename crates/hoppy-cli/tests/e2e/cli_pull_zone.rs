@@ -2135,3 +2135,94 @@ async fn pull_zone_update_firewall_fields() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+// ---------------------------------------------------------------------------
+// iter-71 — pull-zone count / check availability
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn pull_zone_count_json() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/pullzone/count"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_count.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "pull-zone", "count"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
+    assert_eq!(json["Count"], 7);
+}
+
+#[tokio::test]
+async fn pull_zone_check_json() {
+    use wiremock::matchers::body_string_contains;
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/checkavailability"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"Name\":\"my-zone\""))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/zone_availability.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "check",
+            "--name",
+            "my-zone",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
+    assert_eq!(json["Available"], true);
+}
+
+/// A bare 200 with no body from checkavailability must be treated as available.
+#[tokio::test]
+async fn pull_zone_check_empty_body_is_available() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/checkavailability"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "check",
+            "--name",
+            "my-zone",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
+    assert_eq!(json["Available"], true);
+}
