@@ -6,7 +6,7 @@ tags:
   - iteration
   - api-coverage
   - logging
-status: in-progress
+status: completed
 branch: iter-70/log-retrieval-services
 priority: 2
 related:
