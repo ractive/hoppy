@@ -69,7 +69,7 @@ Tasks:
 
 - [ ] Add the `WINGET_TOKEN` secret (classic PAT, `public_repo` scope —
       same token hyalo/ff-rdp use) to ractive/hoppy
-- [ ] One-time manual submission of `ractive.hoppy` to
+- [x] One-time manual submission of `ractive.hoppy` to
       microsoft/winget-pkgs via `komac` or `wingetcreate`, referencing the
       latest release's Windows zips (the
       `hoppy-vX.Y.Z-<arch>-pc-windows-msvc.zip` naming already matches the
