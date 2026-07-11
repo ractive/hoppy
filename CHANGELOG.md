@@ -27,7 +27,7 @@ Release-infrastructure release: iterations 79 and 80 (scope A).
   (`@v0.2.0`); `release.yml` is a thin caller. Releases can be rehearsed
   with a `workflow_dispatch` dry run.
 - `.deb`/`.rpm` packages are now also published to the hosted apt/yum repos
-  at Cloudsmith (`ractive/ractive-pkgs`).
+  at Cloudsmith (`ractive/hoppy`).
 
 ### Fixed
 

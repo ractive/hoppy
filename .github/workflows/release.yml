@@ -23,7 +23,7 @@ jobs:
       linux-package-crate: hoppy-cli
       # Publishes the .deb/.rpm to the hosted apt/yum repos at Cloudsmith
       # (non-blocking; needs the CLOUDSMITH_API_KEY repo secret):
-      cloudsmith-repo: ractive/ractive-pkgs
+      cloudsmith-repo: ractive/hoppy
       extra-archive-paths: completions man
       # Full 7-target matrix incl. musl statics (iter-80): hoppy does NOT
       # link OpenSSL — reqwest is rustls-only, no openssl-sys/native-tls in
