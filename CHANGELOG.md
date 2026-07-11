@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-11
+
+Release-infrastructure release: iterations 79 and 80 (scope A).
+
+### Added
+
+- musl static Linux builds (`x86_64-unknown-linux-musl`,
+  `aarch64-unknown-linux-musl`). Homebrew on Linux now installs the static
+  musl binaries instead of the glibc-linked ones.
+- CycloneDX SBOMs and GitHub build-provenance attestations for native
+  builds.
+- crates.io publish recovery workflow (`publish-crates.yml`).
+
+### Changed
+
+- The release pipeline moved to the shared reusable workflow in
+  [ractive/release-workflows](https://github.com/ractive/release-workflows)
+  (`@v0.2.0`); `release.yml` is a thin caller. Releases can be rehearsed
+  with a `workflow_dispatch` dry run.
+- `.deb`/`.rpm` packages are now also published to the hosted apt/yum repos
+  at Cloudsmith (`ractive/ractive-pkgs`).
+
+### Fixed
+
+- Cross-compiled aarch64 binaries embedded container-local git provenance
+  in `hoppy -V`: `Cross.toml` now passes `GIT_COMMIT`/`GIT_COMMIT_DATE`
+  into cross containers.
+- Removed the vestigial `libssl-dev` cross pre-build: hoppy has been
+  rustls-only for its whole dependency tree (no `openssl-sys`/`native-tls`
+  in the lockfile).
+
 ## [0.4.0] - 2026-07-10
 
 Covers iterations 33–78 (the May–July development run, including the full
