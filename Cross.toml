@@ -3,3 +3,10 @@ pre-build = [
     "dpkg --add-architecture $CROSS_DEB_ARCH",
     "apt-get update && apt-get --assume-yes install libssl-dev:$CROSS_DEB_ARCH"
 ]
+
+[build.env]
+# build.rs reads these for hermetic build provenance (embedded in `hoppy
+# -V`). Without this passthrough the cross container either shells out to
+# its own bundled git (giving a container-local, not host-checkout, SHA) or
+# has no git at all and silently falls back to empty strings.
+passthrough = ["GIT_COMMIT", "GIT_COMMIT_DATE"]

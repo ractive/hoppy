@@ -3,606 +3,82 @@ name: Release
 on:
   release:
     types: [published]
+  workflow_dispatch: {}
 
 permissions:
   contents: write
-
-env:
-  CARGO_TERM_COLOR: always
+  id-token: write
+  attestations: write
 
 jobs:
-  version-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-
-      - name: Verify tag matches Cargo.toml version
-        run: |
-          TAG="${{ github.event.release.tag_name }}"
-          CARGO_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "hoppy-cli") | .version')
-          TAG_VERSION="${TAG#v}"
-          echo "Git tag version:   $TAG_VERSION"
-          echo "Cargo.toml version: $CARGO_VERSION"
-          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "ERROR: tag '$TAG' does not match Cargo.toml version '$CARGO_VERSION'"
-            exit 1
-          fi
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-
-      - name: Install security tools
-        uses: taiki-e/install-action@a1df9120380005ebdc788c62449b841b205541dd # v2
-        with:
-          tool: cargo-audit@0.22.1,cargo-deny@0.19.0
-
-      - name: Audit dependencies for known vulnerabilities
-        run: cargo audit
-
-      - name: Check licenses, advisories, bans, and sources
-        run: cargo deny check
-
-  build:
-    needs: [version-check, security]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            cross: true
-            runnable: false
-          - target: aarch64-apple-darwin
-            os: macos-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-          # aarch64-pc-windows-msvc cross-compiles natively on Windows x86_64
-          # (no Docker / cross). It is not runnable on the host, so smoke-test
-          # and completion-generation steps are skipped.
-          - target: aarch64-pc-windows-msvc
-            os: windows-latest
-            runnable: false
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-        with:
-          key: ${{ matrix.target }}
-
-      - name: Install cross
-        if: matrix.cross
-        uses: taiki-e/install-action@a1df9120380005ebdc788c62449b841b205541dd # v2
-        with:
-          tool: cross
-
-      - name: Build release binary
-        run: ${{ matrix.cross && 'cross' || 'cargo' }} build --release --target ${{ matrix.target }}
-
-      - name: Smoke test — verify CLI runs and subcommands exist
-        if: matrix.runnable != false
-        shell: bash
-        run: |
-          cargo run --release --target ${{ matrix.target }} -p hoppy-cli -- --help | \
-            grep -E "pull-zone|storage|dns|compute|container|stream|shield"
-        env:
-          BUNNY_API_KEY: placeholder
-
-      # Generate shell completions by running a native host build.
-      # For non-runnable targets (cross-compiled aarch64) the matrix binary
-      # cannot run on the host, so we build natively (no --target flag) just
-      # to produce completions. The completions output is architecture-independent.
-      - name: Generate shell completions
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          mkdir -p completions
-          if [ "${{ matrix.runnable }}" = "false" ]; then
-            cargo run --release -- completions bash  > completions/hoppy.bash
-            cargo run --release -- completions zsh   > completions/_hoppy
-            cargo run --release -- completions fish  > completions/hoppy.fish
-          else
-            ./target/${{ matrix.target }}/release/hoppy completions bash  > completions/hoppy.bash
-            ./target/${{ matrix.target }}/release/hoppy completions zsh   > completions/_hoppy
-            ./target/${{ matrix.target }}/release/hoppy completions fish  > completions/hoppy.fish
-          fi
-        env:
-          BUNNY_API_KEY: placeholder
-
-      # Windows: run the native x86_64 binary to generate completions
-      - name: Generate shell completions (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path completions | Out-Null
-          if ("${{ matrix.runnable }}" -eq "false") {
-            cargo run --release -- completions bash  | Set-Content -NoNewline completions/hoppy.bash
-            cargo run --release -- completions zsh   | Set-Content -NoNewline completions/_hoppy
-            cargo run --release -- completions fish  | Set-Content -NoNewline completions/hoppy.fish
-          } else {
-            .\target\${{ matrix.target }}\release\hoppy.exe completions bash  | Set-Content -NoNewline completions/hoppy.bash
-            .\target\${{ matrix.target }}\release\hoppy.exe completions zsh   | Set-Content -NoNewline completions/_hoppy
-            .\target\${{ matrix.target }}\release\hoppy.exe completions fish  | Set-Content -NoNewline completions/hoppy.fish
-          }
-        env:
-          BUNNY_API_KEY: placeholder
-
-      # Man pages are generated via xtask (uses Clap's Command builder, no binary
-      # execution required). Skipped on Windows — man pages are not used there.
-      - name: Generate man pages
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          mkdir -p man
-          cargo xtask --output-dir man
-
-      # Package Linux / macOS archives (.tar.gz)
-      - name: Package (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          ARCHIVE="hoppy-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
-          mkdir -p archive/completions archive/man
-          cp target/${{ matrix.target }}/release/hoppy archive/hoppy
-          cp completions/hoppy.bash completions/_hoppy completions/hoppy.fish archive/completions/
-          cp man/* archive/man/
-          cp LICENSE README.md archive/
-          tar czf "$ARCHIVE" -C archive .
-          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
-
-      # Package Windows archives (.zip)
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $archive = "hoppy-${{ github.ref_name }}-${{ matrix.target }}.zip"
-          New-Item -ItemType Directory -Force -Path archive/completions | Out-Null
-          Copy-Item target/${{ matrix.target }}/release/hoppy.exe archive/hoppy.exe
-          Copy-Item completions/hoppy.bash, completions/_hoppy, completions/hoppy.fish archive/completions/
-          Copy-Item LICENSE, README.md archive/
-          Compress-Archive -Path archive/* -DestinationPath $archive
-          "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
-
-      - name: Upload archive artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: hoppy-${{ matrix.target }}
-          path: ${{ env.ARCHIVE }}
-          if-no-files-found: error
-
-  # Build .deb and .rpm packages from the native x86_64-linux build
-  linux-packages:
-    needs: [version-check, security]
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-
-      - name: Build release binary
-        run: cargo build --release --locked
-
-      # cargo-deb and cargo-generate-rpm resolve relative asset paths from
-      # the package directory (crates/hoppy-cli/), so completions and man
-      # pages must land there — not at the workspace root.
-      - name: Generate shell completions
-        run: |
-          mkdir -p crates/hoppy-cli/completions
-          ./target/release/hoppy completions bash > crates/hoppy-cli/completions/hoppy.bash
-          ./target/release/hoppy completions zsh  > crates/hoppy-cli/completions/_hoppy
-          ./target/release/hoppy completions fish > crates/hoppy-cli/completions/hoppy.fish
-        env:
-          BUNNY_API_KEY: placeholder
-
-      - name: Generate man pages
-        run: |
-          mkdir -p crates/hoppy-cli/man
-          cargo xtask --output-dir crates/hoppy-cli/man
-
-      - name: Install packaging tools
-        uses: taiki-e/install-action@a1df9120380005ebdc788c62449b841b205541dd # v2
-        with:
-          tool: cargo-deb,cargo-generate-rpm
-
-      - name: Build deb package
-        run: cargo deb -p hoppy-cli --no-build --no-strip
-        # cargo-deb picks up the binary from target/release/ and assets
-        # from paths in [package.metadata.deb] in crates/hoppy-cli/Cargo.toml,
-        # resolved relative to that package directory.
-
-      - name: Build rpm package
-        run: cargo generate-rpm -p crates/hoppy-cli
-        # cargo-generate-rpm's `-p` is a path (NOT a workspace package
-        # name like cargo's own -p flag), so pass the relative directory.
-        # It reads [package.metadata.generate-rpm] from that Cargo.toml.
-
-      - name: Rename packages with version
-        run: |
-          mv target/debian/*.deb .
-          mv target/generate-rpm/*.rpm .
-
-      - name: Upload deb artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: hoppy-deb
-          path: "*.deb"
-          if-no-files-found: error
-
-      - name: Upload rpm artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: hoppy-rpm
-          path: "*.rpm"
-          if-no-files-found: error
-
   release:
-    needs: [build, linux-packages]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Download all build artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          merge-multiple: true
-          path: artifacts
-
-      - name: Generate SHA256SUMS
-        run: |
-          cd artifacts
-          sha256sum * > SHA256SUMS
-          cat SHA256SUMS
-
-      - name: Upload assets to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" artifacts/*
-
-  crates-io:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-
-      - name: Verify CARGO_TOKEN is set
-        env:
-          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        shell: bash
-        run: |
-          if [ -z "${CARGO_TOKEN}" ]; then
-            echo "ERROR: CARGO_TOKEN secret is not set. Add a crates.io API token as a repository secret."
-            exit 1
-          fi
-
-      # Publish bunny-net-api first — all other crates depend on it
-      - name: Publish bunny-net-api to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-net-api (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-net-api --locked 2>&1); then
-              echo "$output"
-              echo "bunny-net-api published successfully."
-              exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then
-              echo "bunny-net-api already published, skipping."
-              exit 0
-            fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              if [ "$attempt" -eq "$max_attempts" ]; then
-                echo "ERROR: giving up after $max_attempts attempts" >&2
-                exit 1
-              fi
-              echo "Index not yet updated, waiting ${delay}s..."
-              sleep "$delay"
-              delay=$((delay * 2))
-            else
-              echo "ERROR: cargo publish failed with a non-index error" >&2
-              exit 1
-            fi
-          done
-
-      # bunny-syslog-receiver has no bunny-net-api deps; publish after bunny-net-api in this sequential job
-      - name: Publish bunny-syslog-receiver to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing bunny-syslog-receiver (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package bunny-syslog-receiver --locked 2>&1); then
-              echo "$output"; echo "bunny-syslog-receiver published."; exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then echo "Already published."; exit 0; fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              [ "$attempt" -eq "$max_attempts" ] && { echo "ERROR: giving up" >&2; exit 1; }
-              echo "Waiting ${delay}s..."; sleep "$delay"; delay=$((delay * 2))
-            else
-              echo "ERROR: non-index error" >&2; exit 1
-            fi
-          done
-
-      # hoppy-cli depends on bunny-net-api and bunny-syslog-receiver — publish last
-      # Install with: cargo install hoppy-cli  (binary name: hoppy)
-      - name: Publish hoppy-cli to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          set -euo pipefail
-          max_attempts=10
-          delay=15
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "Publishing hoppy-cli (attempt $attempt/$max_attempts)..."
-            if output=$(cargo publish --package hoppy-cli --locked 2>&1); then
-              echo "$output"
-              echo "hoppy-cli published successfully."
-              exit 0
-            fi
-            echo "$output"
-            if echo "$output" | grep -q 'already uploaded'; then
-              echo "hoppy-cli already published, skipping."
-              exit 0
-            fi
-            if echo "$output" | grep -qiE 'failed to select a version|no matching package named|depends on'; then
-              if [ "$attempt" -eq "$max_attempts" ]; then
-                echo "ERROR: giving up after $max_attempts attempts" >&2
-                exit 1
-              fi
-              echo "Index not yet updated, waiting ${delay}s..."
-              sleep "$delay"
-              delay=$((delay * 2))
-            else
-              echo "ERROR: cargo publish failed with a non-index error" >&2
-              exit 1
-            fi
-          done
-
-  # Update the Homebrew tap formula with new version and checksums
-  homebrew:
-    needs: release
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Download SHA256SUMS from release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "${{ github.event.release.tag_name }}" \
-            --pattern "SHA256SUMS" --dir .
-
-      - name: Update Homebrew formula
-        env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${HOMEBREW_TAP_TOKEN}" ]; then
-            echo "ERROR: HOMEBREW_TAP_TOKEN secret is not set"
-            exit 1
-          fi
-
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"
-
-          get_sha() {
-            awk -v file="$1" '$2 == file {print $1}' SHA256SUMS
-          }
-
-          TAG="${{ github.event.release.tag_name }}"
-          SHA_MACOS_ARM64=$(get_sha "hoppy-${TAG}-aarch64-apple-darwin.tar.gz")
-          SHA_LINUX_ARM64=$(get_sha "hoppy-${TAG}-aarch64-unknown-linux-gnu.tar.gz")
-          SHA_LINUX_X86=$(get_sha "hoppy-${TAG}-x86_64-unknown-linux-gnu.tar.gz")
-
-          for var in SHA_MACOS_ARM64 SHA_LINUX_ARM64 SHA_LINUX_X86; do
-            if [ -z "${!var}" ]; then
-              echo "ERROR: missing SHA256 checksum for $var"
-              exit 1
-            fi
-          done
-
-          cat > formula.rb <<FORMULA
-          # typed: false
-          # frozen_string_literal: true
-
-          # Homebrew formula for hoppy — a CLI for bunny.net cloud and edge services.
-          # Auto-updated by the release workflow in ractive/hoppy.
-          class Hoppy < Formula
-            desc "CLI for bunny.net cloud and edge services"
-            homepage "https://github.com/ractive/hoppy"
-            version "${VERSION}"
-            license "MIT"
-
-            on_macos do
-              on_arm do
-                url "https://github.com/ractive/hoppy/releases/download/v#{version}/hoppy-v#{version}-aarch64-apple-darwin.tar.gz"
-                sha256 "${SHA_MACOS_ARM64}"
-              end
-            end
-
-            on_linux do
-              on_arm do
-                url "https://github.com/ractive/hoppy/releases/download/v#{version}/hoppy-v#{version}-aarch64-unknown-linux-gnu.tar.gz"
-                sha256 "${SHA_LINUX_ARM64}"
-              end
-
-              on_intel do
-                url "https://github.com/ractive/hoppy/releases/download/v#{version}/hoppy-v#{version}-x86_64-unknown-linux-gnu.tar.gz"
-                sha256 "${SHA_LINUX_X86}"
-              end
-            end
-
-            def install
-              bin.install "hoppy"
-              bash_completion.install "completions/hoppy.bash" => "hoppy"
-              zsh_completion.install "completions/_hoppy"
-              fish_completion.install "completions/hoppy.fish"
-              man1.install Dir["man/*.1"]
-            end
-
-            def caveats
-              <<~EOS
-                hoppy container logs requires bore for automatic tunnel setup:
-                  cargo install bore-cli
-                  brew install bore-cli
-                This is optional — see `hoppy container logs --help` for tunnel alternatives.
-              EOS
-            end
-
-            test do
-              assert_match version.to_s, shell_output("#{bin}/hoppy --version")
-            end
-          end
-          FORMULA
-
-          # Remove leading whitespace from heredoc
-          sed -i 's/^          //' formula.rb
-
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/ractive/homebrew-tap.git" tap
-          cp formula.rb tap/Formula/hoppy.rb
-          cd tap
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/hoppy.rb
-          if git diff --cached --quiet; then
-            echo "Formula unchanged, skipping commit"
-          else
-            git commit -m "Update hoppy to ${VERSION}"
-            git push
-          fi
-
-  scoop:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Download SHA256SUMS from release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "${{ github.event.release.tag_name }}" \
-            --pattern "SHA256SUMS" --dir .
-
-      - name: Update Scoop manifest
-        shell: bash
-        env:
-          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${SCOOP_BUCKET_TOKEN}" ]; then
-            echo "ERROR: SCOOP_BUCKET_TOKEN secret is not set"
-            exit 1
-          fi
-
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"
-          TAG="${{ github.event.release.tag_name }}"
-
-          get_sha() {
-            awk -v file="$1" '$2 == file {print $1}' SHA256SUMS
-          }
-
-          SHA_WIN_X64=$(get_sha "hoppy-${TAG}-x86_64-pc-windows-msvc.zip")
-          SHA_WIN_ARM64=$(get_sha "hoppy-${TAG}-aarch64-pc-windows-msvc.zip")
-
-          for var in SHA_WIN_X64 SHA_WIN_ARM64; do
-            if [ -z "${!var}" ]; then
-              echo "ERROR: missing SHA256 checksum for $var"
-              exit 1
-            fi
-          done
-
-          RELEASE_URL="https://github.com/ractive/hoppy/releases/download"
-
-          jq -n \
-            --arg version "$VERSION" \
-            --arg sha_x64 "$SHA_WIN_X64" \
-            --arg sha_arm64 "$SHA_WIN_ARM64" \
-            --arg release_url "$RELEASE_URL" \
-            --arg tag "$TAG" \
-            '{
-              version: $version,
-              description: "CLI for bunny.net cloud and edge services",
-              homepage: "https://github.com/ractive/hoppy",
-              license: "MIT",
-              architecture: {
-                "64bit": {
-                  url: "\($release_url)/\($tag)/hoppy-\($tag)-x86_64-pc-windows-msvc.zip",
-                  hash: $sha_x64
-                },
-                arm64: {
-                  url: "\($release_url)/\($tag)/hoppy-\($tag)-aarch64-pc-windows-msvc.zip",
-                  hash: $sha_arm64
-                }
-              },
-              bin: "hoppy.exe",
-              checkver: "github",
-              autoupdate: {
-                architecture: {
-                  "64bit": {
-                    url: "\($release_url)/v$version/hoppy-v$version-x86_64-pc-windows-msvc.zip",
-                    hash: {
-                      url: "\($release_url)/v$version/SHA256SUMS",
-                      regex: "([a-fA-F0-9]+)\\s+hoppy-v$version-x86_64-pc-windows-msvc\\.zip"
-                    }
-                  },
-                  arm64: {
-                    url: "\($release_url)/v$version/hoppy-v$version-aarch64-pc-windows-msvc.zip",
-                    hash: {
-                      url: "\($release_url)/v$version/SHA256SUMS",
-                      regex: "([a-fA-F0-9]+)\\s+hoppy-v$version-aarch64-pc-windows-msvc\\.zip"
-                    }
-                  }
-                }
-              }
-            }' > hoppy.json
-
-          cat hoppy.json
-
-          git clone "https://x-access-token:${SCOOP_BUCKET_TOKEN}@github.com/ractive/scoop-bucket.git" scoop-repo
-          cp hoppy.json scoop-repo/bucket/hoppy.json
-          cd scoop-repo
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bucket/hoppy.json
-          if git diff --cached --quiet; then
-            echo "Manifest unchanged, skipping commit"
-          else
-            git commit -m "Update hoppy to ${VERSION}"
-            git push
-          fi
+    uses: ractive/release-workflows/.github/workflows/release.yml@v0.2.0
+    secrets: inherit
+    with:
+      dry-run: ${{ github.event_name == 'workflow_dispatch' }}
+      bin-name: hoppy
+      version-package: hoppy-cli
+      publish-crates: bunny-net-api,bunny-syslog-receiver,hoppy-cli
+      enable-linux-packages: true
+      linux-package-crate: hoppy-cli
+      # Publishes the .deb/.rpm to the hosted apt/yum repos at Cloudsmith
+      # (non-blocking; needs the CLOUDSMITH_API_KEY repo secret):
+      cloudsmith-repo: ractive/ractive-pkgs
+      extra-archive-paths: completions man
+      # hoppy links OpenSSL (see Cross.toml's libssl pre-build step for the
+      # aarch64-unknown-linux-gnu cross target), so it cannot use the shared
+      # workflow's default musl targets. No aarch64-*-musl entries here.
+      # run_tests is false everywhere: the pre-migration release pipeline
+      # never ran tests (PR CI covers them, on ubuntu), and the CLI tests
+      # overflow the default 1 MB MSVC stack on Windows.
+      targets: >-
+        [
+          {"target": "x86_64-unknown-linux-gnu",  "os": "ubuntu-latest",  "cross": false, "run_tests": false},
+          {"target": "aarch64-unknown-linux-gnu",  "os": "ubuntu-latest",  "cross": true,  "run_tests": false},
+          {"target": "aarch64-apple-darwin",       "os": "macos-latest",  "cross": false, "run_tests": false},
+          {"target": "x86_64-pc-windows-msvc",     "os": "windows-latest", "cross": false, "run_tests": false},
+          {"target": "aarch64-pc-windows-msvc",    "os": "windows-latest", "cross": false, "run_tests": false}
+        ]
+      # Runs on every matrix target (bash on all OSes, including Windows via
+      # git bash) and again in the linux-packages job. Non-runnable targets
+      # (CROSS=true, or aarch64-pc-windows-msvc which cross-compiles natively
+      # on the Windows x86_64 host) can't execute their own binary, so those
+      # cases fall back to a host build via `cargo run`.
+      pre-package-command: |
+        mkdir -p completions man
+        if [ "$CROSS" = "true" ] || [ "$TARGET" = "aarch64-pc-windows-msvc" ]; then
+          # --bin disambiguates: hoppy-cli ships hoppy + fixture-refresh.
+          cargo run --release --bin hoppy -- completions bash  > completions/hoppy.bash
+          cargo run --release --bin hoppy -- completions zsh   > completions/_hoppy
+          cargo run --release --bin hoppy -- completions fish  > completions/hoppy.fish
+        else
+          # BIN_PATH is exported by the shared workflow and points at the
+          # binary this job built (target/<triple>/release/ in matrix jobs,
+          # target/release/ in linux-packages, .exe resolved on Windows).
+          "$BIN_PATH" completions bash > completions/hoppy.bash
+          "$BIN_PATH" completions zsh  > completions/_hoppy
+          "$BIN_PATH" completions fish > completions/hoppy.fish
+        fi
+        case "$TARGET" in
+          *windows*)
+            # Man pages are not used on Windows (the old pipeline skipped
+            # them there too) — and xtask runs as a debug build, whose
+            # clap_mangen recursion overflows the default 1 MB MSVC stack.
+            # The empty man/ dir keeps extra-archive-paths satisfied.
+            ;;
+          *)
+            cargo xtask --output-dir man
+            ;;
+        esac
+        # cargo-deb / cargo-generate-rpm resolve [package.metadata.*] asset
+        # paths relative to the crate directory, not the workspace root.
+        mkdir -p crates/hoppy-cli/completions crates/hoppy-cli/man
+        cp completions/* crates/hoppy-cli/completions/
+        if [ "$(ls -A man)" ]; then
+          cp man/* crates/hoppy-cli/man/
+        fi
+      homebrew-caveats: |
+        hoppy container logs requires bore for automatic tunnel setup:
+          cargo install bore-cli
+          brew install bore-cli
+        This is optional — see `hoppy container logs --help` for tunnel alternatives.
