@@ -7,7 +7,7 @@ tags:
   - ci
   - release
   - packaging
-status: planned
+status: in-progress
 branch: iter-80/musl-targets-winget
 ---
 
@@ -37,27 +37,27 @@ Two distribution-parity gaps remain versus hyalo/ff-rdp after iter-79
 
 Tasks:
 
-- [ ] Remove the vestigial `libssl-dev` pre-build block from `Cross.toml`
+- [x] Remove the vestigial `libssl-dev` pre-build block from `Cross.toml`
       (keep the `GIT_COMMIT`/`GIT_COMMIT_DATE` passthrough added in
       iter-79)
-- [ ] Add `x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl`
+- [x] Add `x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl`
       (`cross: true`, `run_tests: false`) to the caller's `targets` matrix
       in `.github/workflows/release.yml`
-- [ ] Confirm ring/rustls compile under the cross musl images (they ship a
+- [x] Confirm ring/rustls compile under the cross musl images (they ship a
       C toolchain; expected to work out of the box)
-- [ ] Dispatch a dry run on the branch and verify the bundle contains
+- [x] Dispatch a dry run on the branch and verify the bundle contains
       `hoppy-vX.Y.Z-{x86_64,aarch64}-unknown-linux-musl.tar.gz` with
       completions/man included
-- [ ] Note in the PR body: the shared Homebrew job prefers musl artifacts,
+- [x] Note in the PR body: the shared Homebrew job prefers musl artifacts,
       so linuxbrew users switch from gnu-linked to static musl binaries
 
 Acceptance criteria:
 
-- [ ] `cargo tree` shows no `openssl-sys`/`native-tls` after the change
+- [x] `cargo tree` shows no `openssl-sys`/`native-tls` after the change
       (CI clean)
-- [ ] Dry-run bundle contains both musl tarballs; `file` on an extracted
+- [x] Dry-run bundle contains both musl tarballs; `file` on an extracted
       musl binary reports a statically linked executable
-- [ ] Existing gnu/macOS/Windows artifacts unchanged (naming and contents)
+- [x] Existing gnu/macOS/Windows artifacts unchanged (naming and contents)
 
 Non-goal: swapping the allocator. musl's malloc is slower under heavy
 multithreaded load, but hoppy is an I/O-bound CLI; revisit mimalloc only if

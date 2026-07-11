@@ -7,7 +7,7 @@ tags:
   - ci
   - release
   - tooling
-status: in-progress
+status: completed
 branch: iter-79/shared-release-workflow
 ---
 
