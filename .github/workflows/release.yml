@@ -25,16 +25,20 @@ jobs:
       # (non-blocking; needs the CLOUDSMITH_API_KEY repo secret):
       cloudsmith-repo: ractive/ractive-pkgs
       extra-archive-paths: completions man
-      # hoppy links OpenSSL (see Cross.toml's libssl pre-build step for the
-      # aarch64-unknown-linux-gnu cross target), so it cannot use the shared
-      # workflow's default musl targets. No aarch64-*-musl entries here.
+      # Full 7-target matrix incl. musl statics (iter-80): hoppy does NOT
+      # link OpenSSL — reqwest is rustls-only, no openssl-sys/native-tls in
+      # the lockfile — the old "no musl because libssl" premise was
+      # vestigial. The shared Homebrew job prefers musl artifacts, so
+      # linuxbrew installs switch from gnu-linked to static musl binaries.
       # run_tests is false everywhere: the pre-migration release pipeline
       # never ran tests (PR CI covers them, on ubuntu), and the CLI tests
       # overflow the default 1 MB MSVC stack on Windows.
       targets: >-
         [
-          {"target": "x86_64-unknown-linux-gnu",  "os": "ubuntu-latest",  "cross": false, "run_tests": false},
+          {"target": "x86_64-unknown-linux-gnu",   "os": "ubuntu-latest",  "cross": false, "run_tests": false},
+          {"target": "x86_64-unknown-linux-musl",  "os": "ubuntu-latest",  "cross": true,  "run_tests": false},
           {"target": "aarch64-unknown-linux-gnu",  "os": "ubuntu-latest",  "cross": true,  "run_tests": false},
+          {"target": "aarch64-unknown-linux-musl", "os": "ubuntu-latest",  "cross": true,  "run_tests": false},
           {"target": "aarch64-apple-darwin",       "os": "macos-latest",  "cross": false, "run_tests": false},
           {"target": "x86_64-pc-windows-msvc",     "os": "windows-latest", "cross": false, "run_tests": false},
           {"target": "aarch64-pc-windows-msvc",    "os": "windows-latest", "cross": false, "run_tests": false}
