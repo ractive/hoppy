@@ -41,25 +41,21 @@ One-time setup steps before the first release.
 
 ## winget (post-release)
 
-- [ ] After v0.1.0 is published, create a winget manifest and submit PR to `microsoft/winget-pkgs`
+- [ ] Bootstrap PR under review at `microsoft/winget-pkgs#400670` — winget is
+  **not** live yet, so don't advertise a winget install until it merges
 - [ ] Manifest should use `InstallerType: zip`, `NestedInstallerType: portable`
 - [ ] Package identifier: `ractive.hoppy`
 
 ## Releasing a new version
 
-1. Update version in `Cargo.toml` (root package)
-2. Update `CHANGELOG.md` with new section
-3. Commit and push to main
-4. Go to <https://github.com/ractive/hoppy/releases/new>
-5. Create a new tag (e.g. `v0.1.0`) targeting `main`
-6. Write release notes (or use "Generate release notes")
-7. Click **Publish release**
-8. The release workflow triggers automatically and:
-   - Builds 6 target binaries
-   - Creates .tar.gz / .zip archives with completions + man pages
-   - Builds .deb and .rpm packages
-   - Uploads all artifacts + SHA-256 checksums to the release
-   - Updates Homebrew tap formula
+The per-release steps now live in [[release-checklist]] — follow that. In
+short: bump the workspace version, add the `CHANGELOG.md` entry, then
+`gh release create vX.Y.Z --generate-notes`. The shared reusable workflow in
+[ractive/release-workflows](https://github.com/ractive/release-workflows)
+(a thin caller in `.github/workflows/release.yml`) builds the full 7-target
+matrix — including static musl Linux binaries — attaches archives, `.deb`/`.rpm`,
+SBOMs, and build-provenance attestations, publishes the crates, and updates the
+Homebrew tap, Scoop bucket, and the hosted apt/yum repos at Cloudsmith.
 
 ## Related
 

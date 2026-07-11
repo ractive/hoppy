@@ -17,20 +17,66 @@ Many commands suggest a sensible next step on stderr (turn off with
 
 ## Install
 
-```bash
-# macOS / Linux
-brew tap ractive/tap && brew install hoppy
+**Homebrew** (macOS arm64, Linux x86_64/arm64 — Linux gets static musl binaries):
 
-# Windows
+```bash
+brew install ractive/tap/hoppy
+```
+
+**Debian / Ubuntu** (apt) — from the hosted [Cloudsmith](https://cloudsmith.io) repo:
+
+```bash
+curl -sLf 'https://dl.cloudsmith.io/public/ractive/hoppy/cfg/setup/bash.deb.sh' | sudo bash
+sudo apt install hoppy
+```
+
+**Fedora / RHEL / openSUSE** (dnf/yum/zypper):
+
+```bash
+curl -sLf 'https://dl.cloudsmith.io/public/ractive/hoppy/cfg/setup/bash.rpm.sh' | sudo bash
+sudo dnf install hoppy   # or: yum install hoppy / zypper install hoppy
+```
+
+**Windows** (Scoop):
+
+```bash
 scoop bucket add ractive https://github.com/ractive/scoop-bucket
 scoop install hoppy
+```
 
-# Anywhere with Rust
+**Anywhere with Rust** (Cargo):
+
+```bash
 cargo install hoppy-cli   # binary is `hoppy`
 ```
 
-`.deb` / `.rpm` archives (with shell completions + man pages) and prebuilt
-binaries are on the [releases page](https://github.com/ractive/hoppy/releases/latest).
+The apt/dnf packages and the `.deb`/`.rpm` files also install shell
+completions and man pages system-wide. Standalone `.deb`/`.rpm` files and
+prebuilt archives for every target — including static musl Linux builds, each
+bundling the binary, shell completions, and man pages — are on the
+[releases page](https://github.com/ractive/hoppy/releases/latest). Windows/winget
+support is not available yet.
+
+### Shell completions
+
+The packaged installs wire completions up for you. For a manual setup (e.g.
+the `cargo install` route), generate them with:
+
+```bash
+hoppy completions bash > ~/.local/share/bash-completion/completions/hoppy
+hoppy completions zsh  > "${fpath[1]}/_hoppy"
+hoppy completions fish > ~/.config/fish/completions/hoppy.fish
+```
+
+### Verifying downloads
+
+Release archives for native targets ship [CycloneDX](https://cyclonedx.org)
+SBOMs and GitHub build-provenance attestations. Verify an archive with the
+GitHub CLI:
+
+```bash
+gh attestation verify hoppy-v0.5.0-aarch64-apple-darwin.tar.gz --owner ractive
+```
 
 ## Quick start
 

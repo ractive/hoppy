@@ -12,6 +12,11 @@ status: active
 
 Step-by-step checklist for cutting a hoppy release. Follow in order.
 
+The release pipeline runs on the shared reusable workflow in
+[ractive/release-workflows](https://github.com/ractive/release-workflows)
+(pinned in `.github/workflows/release.yml`); the repo-local `release.yml` is a
+thin caller. Publishing a GitHub Release triggers it automatically.
+
 ## Pre-flight
 
 - [ ] All planned iteration PRs merged to `main`
@@ -25,22 +30,40 @@ Step-by-step checklist for cutting a hoppy release. Follow in order.
   - `CARGO_TOKEN` — crates.io API token (owner: james)
   - `HOMEBREW_TAP_TOKEN` — fine-grained PAT with `contents: write` on `ractive/homebrew-tap`
   - `SCOOP_BUCKET_TOKEN` — fine-grained PAT with `contents: write` on `ractive/scoop-bucket`
+  - `CLOUDSMITH_API_KEY` — pushes the `.deb`/`.rpm` to the hosted apt/yum repos
+    (`ractive/hoppy` on Cloudsmith); non-blocking if absent
+- [ ] (Optional) Rehearse with a dry run: `gh workflow run release.yml`
+  (`workflow_dispatch` sets `dry-run: true` — builds everything, publishes nothing)
 
 ## Cut the release
 
-- [ ] Tag the commit: `git tag vX.Y.Z && git push origin vX.Y.Z`
-- [ ] Create a GitHub Release from the tag; paste the CHANGELOG entry as release notes
-- [ ] Watch the Actions run: `version-check` → `security` → `build` + `linux-packages` → `release` → `crates-io` + `homebrew` + `scoop`
+- [ ] Publish the release, which creates the tag and generated notes in one step:
+  `gh release create vX.Y.Z --generate-notes` (do **not** tag manually)
+- [ ] The `release` workflow triggers automatically on publish and builds the
+  full 7-target matrix (incl. `x86_64`/`aarch64` musl statics), attaches
+  archives + `.deb`/`.rpm` + SBOMs + build-provenance attestations, publishes
+  crates, and updates the Homebrew tap, Scoop bucket, and Cloudsmith repos
+- [ ] Watch it: `gh run watch` (or the Actions tab)
 
 ## Verify after release
 
 - [ ] All GitHub Actions jobs green
-- [ ] `cargo install hoppy` succeeds on a clean machine
-- [ ] `brew tap ractive/tap && brew install hoppy` works on macOS
+- [ ] `cargo install hoppy-cli` succeeds on a clean machine (binary is `hoppy`)
+- [ ] `brew install ractive/tap/hoppy` works on macOS (and Linux — installs the musl static)
+- [ ] apt: `curl -sLf 'https://dl.cloudsmith.io/public/ractive/hoppy/cfg/setup/bash.deb.sh' | sudo bash && sudo apt install hoppy`
+- [ ] dnf: `curl -sLf 'https://dl.cloudsmith.io/public/ractive/hoppy/cfg/setup/bash.rpm.sh' | sudo bash && sudo dnf install hoppy`
 - [ ] `scoop bucket add ractive https://github.com/ractive/scoop-bucket && scoop install hoppy` works on Windows
 - [ ] `hoppy --version` prints the new version string
-- [ ] Release assets on GitHub include: per-target `.tar.gz`/`.zip`, `.deb`, `.rpm`, `SHA256SUMS`
-- [ ] crates.io shows the new version for `hoppy`, `bunny-api-core`, and all sibling crates
+- [ ] Release assets on GitHub include: per-target `.tar.gz`/`.zip` (incl. musl),
+  `.deb`, `.rpm`, `SHA256SUMS`, SBOMs, and attestations
+- [ ] `gh attestation verify hoppy-vX.Y.Z-<target>.tar.gz --owner ractive` passes for a native archive
+- [ ] crates.io shows the new version for `hoppy-cli`, `bunny-net-api`, and `bunny-syslog-receiver`
+
+### Recovery
+
+- [ ] If crates.io publish failed but the release is otherwise good, re-run
+  `publish-crates.yml` (`gh workflow run publish-crates.yml`)
+- [ ] If the Cloudsmith upload failed, re-run `cloudsmith-republish.yml`
 
 ## Post-release dogfood
 
