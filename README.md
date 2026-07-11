@@ -20,8 +20,13 @@ Many commands suggest a sensible next step on stderr (turn off with
 **Homebrew** (macOS arm64, Linux x86_64/arm64 — Linux gets static musl binaries):
 
 ```bash
+brew trust --formula ractive/tap/hoppy   # Homebrew 6+: third-party taps need one-time trust
 brew install ractive/tap/hoppy
 ```
+
+(Homebrew 6 introduced [tap trust](https://docs.brew.sh/Tap-Trust) — formulae
+from third-party taps refuse to load until trusted; use `brew trust
+ractive/tap` to trust the whole tap instead.)
 
 **Debian / Ubuntu** (apt) — from the hosted [Cloudsmith](https://cloudsmith.io) repo:
 
