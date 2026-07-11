@@ -83,6 +83,16 @@ Acceptance criteria:
 - [ ] The next release's `winget` job submits the version-update PR
       automatically (non-blocking job green, CI clean)
 
+Known risk — installer security check on new packages: ractive.ff-rdp's
+bootstrap (winget-pkgs PR #368007, v0.1.0) failed manual validation with
+"Installer failed security check" (0x80004005) on the Windows zip — a
+Defender/SmartScreen reputation problem typical for brand-new unsigned
+binaries — and the PR was closed. The v0.2.0 resubmission passed (one
+validation retry) and merged. If hoppy's bootstrap hits the same wall:
+don't fight the closed PR; resubmit with the next release (URL/file
+reputation improves), and ask a moderator for a `@wingetbot run` retry
+before giving up on a submission whose automated validation passed.
+
 ## Sequencing
 
 - Depends on iter-79 (PR #91) merging first — the caller `targets` matrix
