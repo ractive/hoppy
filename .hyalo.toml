@@ -143,6 +143,9 @@ values = ["active", "archived", "reference", "completed", "superseded"]
 [schema.types.research.properties.supersedes]
 type = "string"
 
+[schema.types.research.properties.recommendation]
+type = "string"
+
 [views.completed-with-todos]
 fields = ["tasks"]
 properties = ["status=completed"]

@@ -8,7 +8,7 @@ tags:
   - gcloud
   - aws
   - ux
-status: research-complete
+status: completed
 type: research
 ---
 

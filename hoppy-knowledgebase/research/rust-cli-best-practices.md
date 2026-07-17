@@ -7,7 +7,7 @@ tags:
   - cli
   - clap_complete
   - best-practices
-status: research-complete
+status: completed
 type: research
 ---
 

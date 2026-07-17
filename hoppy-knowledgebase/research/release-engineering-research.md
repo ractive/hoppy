@@ -2,7 +2,7 @@
 title: Release Engineering Research for hoppy v0.1.0
 type: research
 date: 2026-03-18
-status: draft
+status: active
 tags:
   - release
   - ci-cd
