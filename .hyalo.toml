@@ -1,7 +1,41 @@
 dir = "hoppy-knowledgebase"
+site_prefix = ""
+validate_on_write = true
+
+[lint]
+profile = "okf"
+
+[schema]
+exempt = ["**/index.md", "**/log.md"]
 
 [schema.default]
-required = ["title", "type"]
+required = ["type"]
+
+[schema.default.properties.description]
+type = "string"
+
+[schema.default.properties.resource]
+pattern = '^\w[\w+.-]*://'
+type = "string"
+
+[schema.default.properties.tags]
+type = "list"
+
+[schema.default.properties.timestamp]
+type = "datetime-tz"
+
+[schema.default.properties.title]
+type = "string"
+
+[schema.types."BigQuery Dataset"]
+required = ["type", "title"]
+
+[schema.types."BigQuery Table"]
+required = ["type", "title"]
+required_sections = ["# Schema", "# Citations"]
+
+[schema.types.Reference]
+required = ["type", "title"]
 
 [schema.types.backlog]
 required = ["title", "type", "date", "status"]
