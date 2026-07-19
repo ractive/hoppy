@@ -32,6 +32,8 @@ thin caller. Publishing a GitHub Release triggers it automatically.
   - `SCOOP_BUCKET_TOKEN` — fine-grained PAT with `contents: write` on `ractive/scoop-bucket`
   - `CLOUDSMITH_API_KEY` — pushes the `.deb`/`.rpm` to the hosted apt/yum repos
     (`ractive/hoppy` on Cloudsmith); non-blocking if absent
+  - `AUR_SSH_PRIVATE_KEY` — pushes the `hoppy-bin` PKGBUILD to the AUR
+    (`aur-package: hoppy-bin` in `release.yml`); non-blocking if absent
 - [ ] (Optional) Rehearse with a dry run: `gh workflow run release.yml`
   (`workflow_dispatch` sets `dry-run: true` — builds everything, publishes nothing)
 
@@ -53,6 +55,10 @@ thin caller. Publishing a GitHub Release triggers it automatically.
 - [ ] apt: `curl -sLf 'https://dl.cloudsmith.io/public/ractive/hoppy/cfg/setup/bash.deb.sh' | sudo bash && sudo apt install hoppy`
 - [ ] dnf: `curl -sLf 'https://dl.cloudsmith.io/public/ractive/hoppy/cfg/setup/bash.rpm.sh' | sudo bash && sudo dnf install hoppy`
 - [ ] `scoop bucket add ractive https://github.com/ractive/scoop-bucket && scoop install hoppy` works on Windows
+- [ ] AUR: check the AUR job's log even when the run is green — it is
+  `continue-on-error`, so a failed push won't fail the workflow. The first
+  release after enabling creates the `hoppy-bin` package; verify at
+  <https://aur.archlinux.org/packages/hoppy-bin> (`yay -S hoppy-bin`)
 - [ ] `hoppy --version` prints the new version string
 - [ ] Release assets on GitHub include: per-target `.tar.gz`/`.zip` (incl. musl),
   `.deb`, `.rpm`, `SHA256SUMS`, SBOMs, and attestations
