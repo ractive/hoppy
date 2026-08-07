@@ -22,7 +22,7 @@ One-time setup steps before the first release.
 
 - [x] Create public repo `ractive/homebrew-tap` on GitHub
 - [x] Create `Formula/` directory in the tap repo
-- [ ] Create a **fine-grained** GitHub Personal Access Token:
+- [x] Create a **fine-grained** GitHub Personal Access Token:
   1. Go to <https://github.com/settings/personal-access-tokens/new>
   2. Token name: `hoppy-homebrew-tap`
   3. Expiration: 1 year (or custom — you'll need to rotate it)
@@ -32,7 +32,7 @@ One-time setup steps before the first release.
      - **Contents**: Read and write (needed to push the updated formula)
      - Everything else: No access
   7. Click **Generate token** and copy it
-- [ ] Add the token as a repository secret in `ractive/hoppy`:
+- [x] Add the token as a repository secret in `ractive/hoppy`:
   1. Go to <https://github.com/ractive/hoppy/settings/secrets/actions>
   2. Click **New repository secret**
   3. Name: `HOMEBREW_TAP_TOKEN`
@@ -41,10 +41,10 @@ One-time setup steps before the first release.
 
 ## winget (post-release)
 
-- [ ] Bootstrap PR under review at `microsoft/winget-pkgs#400670` — winget is
-  **not** live yet, so don't advertise a winget install until it merges
-- [ ] Manifest should use `InstallerType: zip`, `NestedInstallerType: portable`
-- [ ] Package identifier: `ractive.hoppy`
+- [x] Bootstrap PR under review at `microsoft/winget-pkgs#400670` — winget is
+  **not** live yet, so don't advertise a winget install until it merges — merged 2026-07-24; winget is live
+- [x] Manifest should use `InstallerType: zip`, `NestedInstallerType: portable`
+- [x] Package identifier: `ractive.hoppy`
 
 ## Releasing a new version
 

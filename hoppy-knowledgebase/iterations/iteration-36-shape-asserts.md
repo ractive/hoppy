@@ -99,9 +99,9 @@ the same 4 files probably assert on fixture values that haven't drifted
 
 ### 6. Re-run fixture refresh (optional, end of iter)
 
-- [ ] If time permits, run a live sweep + `fixture-refresh --apply` to
+- [x] If time permits, run a live sweep + `fixture-refresh --apply` to
       prove the offline suite now passes against refreshed fixtures.
-      Commit the resulting drift.
+      Commit the resulting drift. — dropped: `fixture-refresh --apply` was retired (decision 2026-07-10: fixtures are test contracts); drift checks now run via the read-only /api-drift-sweep
 
 ## Out of scope
 

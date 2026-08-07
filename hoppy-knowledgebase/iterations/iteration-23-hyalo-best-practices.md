@@ -38,7 +38,7 @@ Hoppy's `.hyalo.toml` today is one line (`dir = "hoppy-knowledgebase"`). Hyalo's
 - [x] Pull the relevant `[schema.types.*]` blocks from `../hyalo/.hyalo.toml`. Don't copy 1:1 — only include types hoppy actually uses (`iteration`, `research`, `decision`, `docs`, maybe `backlog`). Drop hyalo-specific types like `pitch`.
 - [x] Pull the iteration-type schema verbatim or near-verbatim — required fields (title, type, date, status, branch, tags), `status` enum (`planned`/`in-progress`/`completed`/`superseded`/`shelved`/`deferred`), branch pattern (`^iter-\d+[a-z]*/`), filename template (`iterations/iteration-{n}-{slug}.md`).
 - [x] Pull the `[views.*]` definitions that apply: `planned`, `stale-in-progress`, `completed-with-todos`, `missing-status`, `missing-type`, `open-tasks`, `orphans`. Verify each returns sensible results on hoppy's actual KB before keeping it.
-- [ ] Run `hyalo lint` against hoppy-knowledgebase. Fix any frontmatter violations the new schema flags. Document recurring patterns in `decision-log.md`.
+- [x] Run `hyalo lint` against hoppy-knowledgebase. Fix any frontmatter violations the new schema flags. Document recurring patterns in `decision-log.md`. — superseded by the 2026-08-07 OKF lint-profile adoption, which did the whole-KB cleanup
 - [x] Cross-check with `hyalo find --property '!type' --format text` and `hyalo find --property '!status' --format text` — every iteration / research / decision file should pass the schema.
 
 ### 2. CLAUDE.md alignment (project root)
@@ -57,7 +57,7 @@ Compare hoppy's `CLAUDE.md` to `../hyalo/CLAUDE.md` and decide which sections to
 Hoppy's workspace declares one inline `[dependencies]` block per crate plus the root. Hyalo hoists everything to `[workspace.dependencies]` and crates use `clap.workspace = true`.
 
 - [x] **Adopt `[workspace.dependencies]`**: move every shared dep (clap, serde, serde_json, anyhow, tabled, tokio, reqwest, assert_cmd, predicates, insta, wiremock, tempfile, etc.) to the root `[workspace.dependencies]` table. In each crate, change to `clap.workspace = true` style.
-- [ ] **Adopt `[workspace.lints.clippy]`**: import hyalo's pedantic-with-documented-allows block. Verify `cargo clippy --workspace --all-targets -- -D warnings` still passes (it'll surface a flood of new lints — fix or allow each one explicitly).
+- [x] **Adopt `[workspace.lints.clippy]`**: import hyalo's pedantic-with-documented-allows block. Verify `cargo clippy --workspace --all-targets -- -D warnings` still passes (it'll surface a flood of new lints — fix or allow each one explicitly). — dropped: pedantic is still off; `Cargo.toml` carries the deferral note next to `unsafe_code = "forbid"`
 - [x] **Adopt `[workspace.package]`**: hoist `version`, `edition`, `license`, `repository`. Verify per-crate `Cargo.toml` references them via `version.workspace = true`.
 - [x] **Set `resolver = "3"`**: hoppy currently uses `resolver = "2"`; hyalo uses `"3"` (the edition-2024 default). Move to `"3"` and verify the tree still resolves identically.
 - [x] **Optimised release profile**: copy hyalo's `[profile.release]` (`codegen-units = 1`, `lto = true`, `panic = "abort"`, `strip = true`). Measure binary size before/after — record in this iteration's Notes.
@@ -77,9 +77,9 @@ The user explicitly asked: *can we (again) check everything against real bunny.n
   - **Idempotent cleanup script**: `hoppy-knowledgebase/dogfooding/cleanup.sh` — list every resource matching the prefix and delete. Run before and after each session.
   - **Read-only smoke test first**: `hoppy <command> list / get` against the production account is safe; do this pass before any destructive op.
   - **Use the existing `live-api` feature** (already gated in `Cargo.toml`): `cargo test --features live-api` runs E2E that actually call bunny.net. Today these tests are minimal — expand them.
-- [ ] **Add a `--dry-run` global flag** for destructive commands where it doesn't already exist (delete, purge, update). Behavior: print what would happen, don't call the API. Audit each subcommand and tick the ones that need this.
-- [ ] **Audit the `hoppy delete` / `hoppy purge` family** for confirmation prompts. Already covered partially by `-y` / `--yes` skip. Make sure no destructive op runs without either an explicit `--yes` or an interactive confirmation.
-- [ ] **Run a full dogfooding session** end-to-end against the real account using the playbook. Every friction point becomes a backlog item in `hoppy-knowledgebase/backlog/` (a new subfolder if needed).
+- [x] **Add a `--dry-run` global flag** for destructive commands where it doesn't already exist (delete, purge, update). Behavior: print what would happen, don't call the API. Audit each subcommand and tick the ones that need this. — dropped: no global `--dry-run` shipped; destructive commands gate on `--yes` plus interactive confirmation instead
+- [x] **Audit the `hoppy delete` / `hoppy purge` family** for confirmation prompts. Already covered partially by `-y` / `--yes` skip. Make sure no destructive op runs without either an explicit `--yes` or an interactive confirmation. — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done as a full audit
+- [x] **Run a full dogfooding session** end-to-end against the real account using the playbook. Every friction point becomes a backlog item in `hoppy-knowledgebase/backlog/` (a new subfolder if needed). — superseded by iter-27, which ran the session and filed the friction as backlog items
 
 ### 6. CLI command consistency audit
 
@@ -88,44 +88,44 @@ The user explicitly asked: *Is it `hoppy foo list` or just `hoppy foo` everywher
 Snapshot of today's top-level commands (from `--help`): `pull-zone`, `storage-zone`, `storage`, `dns`, `stream`, `shield`, `script`, `container`, `db`, `auth`, `statistics`, `video-library`, `purge`, `completions`. Most are container groups; some are leaf verbs (`auth`, `purge`, `completions`).
 
 - [x] **Generate a complete command tree**: parse the `Subcommand` enums in `src/cli.rs` and produce a markdown table of every subcommand + its leaf actions. Save as `hoppy-knowledgebase/cli/command-tree.md`.
-- [ ] **Audit verb consistency**:
+- [x] **Audit verb consistency**:
   - List operations: `pull-zone list`, `storage-zone list`, `dns zone list`, `dns record list` — confirm every collection-noun has a `list`
   - Get-by-id operations: same audit for `get`
   - Create vs Add: hoppy uses `dns record add` but `pull-zone create` and `storage-zone create`. Pick one verb per relationship type (`create` for top-level resources, `add` for items inside a parent collection — which is roughly what's happening today; codify the rule)
   - Delete vs Remove: `pull-zone delete` vs `dns record remove`/`delete`? Audit and unify.
   - Update vs Edit: are any commands `edit`? Should all be `update`.
-- [ ] **Audit `<container> <action>` shape**: hoppy mixes shapes — some commands have `hoppy <noun>` as a hub (e.g. `dns` → requires a sub-action), others are leaf verbs (`hoppy purge <url>`). That's fine — but confirm every `<noun>` command shows useful output on `hoppy <noun>` (today some print "missing subcommand" errors that aren't friendly).
-- [ ] **Top-level `hoppy container list` aliasing**: iter-19 flagged this — `container list` should alias `container app list` etc. Confirm if iter-19 actually shipped this; if not, do it here.
+- [x] **Audit `<container> <action>` shape**: hoppy mixes shapes — some commands have `hoppy <noun>` as a hub (e.g. `dns` → requires a sub-action), others are leaf verbs (`hoppy purge <url>`). That's fine — but confirm every `<noun>` command shows useful output on `hoppy <noun>` (today some print "missing subcommand" errors that aren't friendly). — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
+- [x] **Top-level `hoppy container list` aliasing**: iter-19 flagged this — `container list` should alias `container app list` etc. Confirm if iter-19 actually shipped this; if not, do it here.
 - [x] **Document conventions in `decision-log.md`**: one entry capturing the verb rule (`create`/`add`/`update`/`delete`/`remove`/`list`/`get`) so future commands follow it.
-- [ ] **Apply renames with `#[arg(long, alias = "<old>")]`** — iter-19's no-breakage rule still applies. Add aliases for any rename so existing scripts keep working.
+- [x] **Apply renames with `#[arg(long, alias = "<old>")]`** — iter-19's no-breakage rule still applies. Add aliases for any rename so existing scripts keep working. — deferred to [[backlog/flag-naming-consistency]]
 
 ### 7. Help text quality (LLM-friendly)
 
 The user asked: *How are the help texts written? Are the AI agent/LLM friendly?*
 
-- [ ] **Sample audit**: pick 5 hot-path commands (`pull-zone create`, `storage-zone create`, `dns record add`, `container app create`, `db create`) and read their `--help` output side-by-side with hyalo's hot paths. Look for: missing `long_about`, missing examples, missing `--reveal`/`--dry-run` cross-references, missing semantic descriptions of enum values, missing "after this command, you probably want to..." next-step hints.
+- [x] **Sample audit**: pick 5 hot-path commands (`pull-zone create`, `storage-zone create`, `dns record add`, `container app create`, `db create`) and read their `--help` output side-by-side with hyalo's hot paths. Look for: missing `long_about`, missing examples, missing `--reveal`/`--dry-run` cross-references, missing semantic descriptions of enum values, missing "after this command, you probably want to..." next-step hints. — not recorded per-command; the findings were folded straight into `cli/help-text-style.md`
 - [x] **Define the "good help text" template** — write it as a section in `hoppy-knowledgebase/cli/help-text-style.md`. Components: one-line summary, multi-line `long_about` describing semantics + edge cases, `after_help` with at least one example, cross-references to related commands.
-- [ ] **Apply the template across all subcommands**. iter-19 partially did this; finish the long tail. Tick subcommands as you go in this iteration.
-- [ ] **LLM-friendly specifics**:
+- [x] **Apply the template across all subcommands**. iter-19 partially did this; finish the long tail. Tick subcommands as you go in this iteration. — superseded by iter-64's empty-`--help`-string sweep; remaining gaps tracked in [[backlog/iter-41-sub-resource-help-incomplete]]
+- [x] **LLM-friendly specifics**: — codified as rules in `cli/help-text-style.md`, not applied across the CLI surface
   - Every enum-typed flag must list possible values *with their meanings* in `long_help`, not just the values
   - Every `--*-id` flag must say "use `hoppy <noun> list` to find IDs"
   - Every destructive command must prefix `long_about` with an explicit "DESTRUCTIVE: …" line
   - Use machine-parseable formatting in `--help` (consistent indentation, no decorative ASCII art) so an LLM consuming `hoppy --help` output can build a reliable command tree
-- [ ] **Verify with an actual LLM**: pipe `hoppy --help` (and a few sub-helps) into an LLM with the prompt "build a structured command map" and check whether it can do it without hallucinating. Record the result in this iteration's Notes.
+- [x] **Verify with an actual LLM**: pipe `hoppy --help` (and a few sub-helps) into an LLM with the prompt "build a structured command map" and check whether it can do it without hallucinating. Record the result in this iteration's Notes. — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 
 ### 8. Code review (proper, end-to-end)
 
 The user asked: *plan a proper code review and dogfooding session again.*
 
-- [ ] **Run `/review-rust all`** (the project skill) against the workspace and triage findings. File a `hoppy-knowledgebase/code-review/iter-23-findings.md` with: critical issues, recommended fixes, deferred items (tag + status).
-- [ ] **Specifically scrutinise**:
+- [x] **Run `/review-rust all`** (the project skill) against the workspace and triage findings. File a `hoppy-knowledgebase/code-review/iter-23-findings.md` with: critical issues, recommended fixes, deferred items (tag + status). — dropped: no findings file was ever filed; `/review-rust` became a per-PR review step instead
+- [x] **Specifically scrutinise**: — dropped with the section-8 review; the same checks now live in CLAUDE.md's code-quality gates
   - `.unwrap()` / `.expect()` outside tests — must convert to `?` with `Context`
   - `.clone()` calls — prove each is necessary or remove
   - `pub` on struct fields where private would do
   - Error message quality — does the user see the bunny API error code + message, or a paraphrase?
   - Async correctness: any `.block_on()` inside async, missing `.await`s, accidental serial when parallel was intended
   - Streaming: storage uploads/downloads — verify they don't `.bytes().await?` huge bodies
-- [ ] **Apply non-controversial fixes inline**. Larger findings → backlog items (or follow-up iterations).
+- [x] **Apply non-controversial fixes inline**. Larger findings → backlog items (or follow-up iterations). — dropped: depended on the section-8 review that never ran
 
 ### 9. Module / crate layout
 
@@ -133,13 +133,13 @@ The user asked: *Check how modules and crates and the e2e tests are set up in ..
 
 Hyalo: `crates/hyalo-cli`, `crates/hyalo-core`, `crates/hyalo-mdlint`. The CLI binary lives in its own crate. Hoppy: CLI binary at workspace root, API client crates in `crates/bunny-api-*`. **The hyalo shape is more crates.io-friendly** (publishing requires the binary crate to be standalone) — see iter-25.
 
-- [ ] **Investigate moving the CLI binary to `crates/hoppy-cli/`**:
+- [x] **Investigate moving the CLI binary to `crates/hoppy-cli/`**: — superseded by iter-25, which performed the move
   - Pros: matches hyalo, simpler crates.io publish (binary crate has clean deps), tests already in `tests/e2e/` move with it
   - Cons: large refactor, every `mod commands::*` import path changes, root `Cargo.toml` becomes a virtual workspace
   - **Decision point**: do this in iter-23 *or* defer to iter-25. If the publishing iteration (iter-25) needs the structure, do it here as a pre-req. If publishing can work with the binary at the root, defer.
   - **Recommendation**: do it here. Crates.io publishing of a workspace-root binary works but is unusual; aligning to the hyalo shape removes friction.
 - [x] **API-client crates naming**: `bunny-api-*` is hoppy's own convention; hyalo uses `<project>-<domain>` without a prefix. Hoppy's "bunny-api-" prefix is intentional (it advertises the API surface they wrap, not hoppy itself) — keep this. Document the rule in `decision-log.md` so it doesn't drift.
-- [ ] **E2E tests**: already consolidated in iter-22. Confirm the layout matches hyalo's `crates/<crate>/tests/e2e/` exactly. If the binary moves to `crates/hoppy-cli/`, the top-level `tests/e2e/` moves with it — verify.
+- [x] **E2E tests**: already consolidated in iter-22. Confirm the layout matches hyalo's `crates/<crate>/tests/e2e/` exactly. If the binary moves to `crates/hoppy-cli/`, the top-level `tests/e2e/` moves with it — verify. — superseded by iter-25: the suite now lives at `crates/hoppy-cli/tests/e2e/`
 
 ## Notes — what landed in this PR vs. what was deferred
 

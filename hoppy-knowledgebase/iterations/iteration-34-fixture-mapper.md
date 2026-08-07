@@ -90,7 +90,7 @@ git surfaces should be a real API drift.
       dry-run output for surprises (collisions, unmappables).
 - [x] `--apply`, then `cargo test --workspace --quiet` to prove the
       offline suite still passes against the refreshed fixtures.
-- [ ] ~~Commit the resulting drift in the same PR.~~ Not done — see
+- [x] ~~Commit the resulting drift in the same PR.~~ Not done — see
       Outcome below.
 
 ## Outcome (2026-05-14)

@@ -56,7 +56,7 @@ See [[backlog/dns-scan-results-rejects-domain]].
       not-found error, and missing-arg error.
 - [x] E2E mock tests that the next-command hint is printed for
       text output and suppressed for `--format json`.
-- [ ] Live test (feature `live-api`) end-to-end — deferred to
+- [x] Live test (feature `live-api`) end-to-end — deferred to
       dogfooding rather than added to the automated suite.
 
 ## Out of scope

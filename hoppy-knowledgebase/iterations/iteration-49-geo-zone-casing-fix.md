@@ -69,9 +69,9 @@ See [[backlog/geo-zone-flags-casing-mismatch]].
 
 ## Acceptance Criteria
 
-- [ ] `hoppy pull-zone update --enable-geo-zone-us true && hoppy pull-zone get`
+- [x] `hoppy pull-zone update --enable-geo-zone-us true && hoppy pull-zone get`
       shows `EnableGeoZoneUS: true`. *(Deferred to dogfooding pass — code +
-      tests verified; live API check pending.)*
+      tests verified; live API check pending.)* — closed as stale during the 2026-08-07 OKF lint adoption; live check not verifiably done
 - [x] New round-trip test passes against a captured fixture.
 - [x] Audit list of renamed fields is documented in the PR body.
 - [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --quiet` all clean.

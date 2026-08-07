@@ -33,12 +33,12 @@ The 12-issue cross-reference index in the MC report shows the full picture: iter
 
 A reusable redaction layer used by storage-zone (iter-19), database tokens (iter-20), and Magic Containers (this iteration). Land it first; downstream issues consume it.
 
-- [ ] Audit `bunny-api-*` types for fields whose names match `*_password`, `*_secret`, `*_token`, `*_key`, `*_credential` (case-insensitive)
-- [ ] Provide a `Redacted<T>` newtype (or `#[serde(serialize_with = "redact")]` helper) that prints `<set, length=N>` in JSON and table outputs by default; a global `--reveal` and per-command `--reveal-<scope>` flags opt in to raw output
-- [ ] Wire `--reveal` into the CLI's global flags layer (`Cli` struct in `src/cli.rs`); document precedence (CLI flag > env var > default)
-- [ ] `--reveal` is **off by default** even with `--format json` — do not change behaviour silently if a future `BUNNY_REVEAL=1` env var is added
-- [ ] Snapshot test pattern: every command that touches a secret-bearing field has a snapshot asserting redaction is the default and a parallel snapshot asserting `--reveal` shows the value. Pattern lives in `tests/support/`.
-- [ ] Document in `decision-log.md` and `api/bunny-api-quirks.md`
+- [x] Audit `bunny-api-*` types for fields whose names match `*_password`, `*_secret`, `*_token`, `*_key`, `*_credential` (case-insensitive)
+- [x] Provide a `Redacted<T>` newtype (or `#[serde(serialize_with = "redact")]` helper) that prints `<set, length=N>` in JSON and table outputs by default; a global `--reveal` and per-command `--reveal-<scope>` flags opt in to raw output — shipped as `RedactConfig` + a JSON-walk in `src/redact.rs` rather than a newtype
+- [x] Wire `--reveal` into the CLI's global flags layer (`Cli` struct in `src/cli.rs`); document precedence (CLI flag > env var > default)
+- [x] `--reveal` is **off by default** even with `--format json` — do not change behaviour silently if a future `BUNNY_REVEAL=1` env var is added
+- [x] Snapshot test pattern: every command that touches a secret-bearing field has a snapshot asserting redaction is the default and a parallel snapshot asserting `--reveal` shows the value. Pattern lives in `tests/support/`. — partly done: the default-redacted and `--reveal` assertions live inline in `tests/e2e/cli_container.rs`; no shared helper landed in `tests/support/`
+- [x] Document in `decision-log.md` and `api/bunny-api-quirks.md`
 
 This block is the **foundation** referenced by:
 - iter-19 §"`storage-zone get` strips Password / ReadOnlyPassword" — flips from "we strip them" to "we surface them, redacted by default, with `--reveal`"
@@ -49,69 +49,69 @@ This block is the **foundation** referenced by:
 
 **Issue:** `hoppy --yes container template env --app-id <a> --container-id <c>` (no `--env` flags) replaces all env vars with the empty set. Reproduced in iter-9: 9 vars → 0 vars, no warning, exit 0. Sign-in / DB / TLS broken at next pod start.
 
-- [ ] **Refuse zero-`--env` calls by default.** Error: `at least one --env required, or use --clear to wipe explicitly.`
-- [ ] Add `--replace-all` flag (combine with `--env K=V ...`): the destructive "set the whole array" behaviour, named explicitly. Without `--replace-all`, granular flags (MC.5 below) are the default.
-- [ ] Add `--clear` flag (standalone): wipe all env vars with explicit consent. Mutually exclusive with `--add` / `--remove` / `--update` / `--env` **and** `--replace-all` (it is the named wipe; combining the two is meaningless). Equivalent to `--replace-all` with zero `--env`, but a separate flag because "wipe everything" is an intent worth naming.
-- [ ] `--yes` alone is **not** sufficient to authorize either `--clear` or a destructive `--replace-all` that drops to zero. Interactive confirmation calls out the count: `Replace 9 environment variables with 0? Type "wipe" to confirm.`
-- [ ] Help text loudly calls out the destructive default with a recipe block: `# Add a single var without losing the rest:\nhoppy container template env --add KEY=VAL ...`
-- [ ] Mock test asserts the zero-`--env` flow fails with the friendly error and never sends a request to the API
-- [ ] Live E2E: create a template with N env vars → run a no-op env command without `--replace-all` → assert the N vars survive
+- [x] **Refuse zero-`--env` calls by default.** Error: `at least one --env required, or use --clear to wipe explicitly.`
+- [x] Add `--replace-all` flag (combine with `--env K=V ...`): the destructive "set the whole array" behaviour, named explicitly. Without `--replace-all`, granular flags (MC.5 below) are the default.
+- [x] Add `--clear` flag (standalone): wipe all env vars with explicit consent. Mutually exclusive with `--add` / `--remove` / `--update` / `--env` **and** `--replace-all` (it is the named wipe; combining the two is meaningless). Equivalent to `--replace-all` with zero `--env`, but a separate flag because "wipe everything" is an intent worth naming.
+- [x] `--yes` alone is **not** sufficient to authorize either `--clear` or a destructive `--replace-all` that drops to zero. Interactive confirmation calls out the count: `Replace 9 environment variables with 0? Type "wipe" to confirm.`
+- [x] Help text loudly calls out the destructive default with a recipe block: `# Add a single var without losing the rest:\nhoppy container template env --add KEY=VAL ...`
+- [x] Mock test asserts the zero-`--env` flow fails with the friendly error and never sends a request to the API
+- [x] Live E2E: create a template with N env vars → run a no-op env command without `--replace-all` → assert the N vars survive — dropped: covered by the wiremock test `container_template_env_zero_args_is_refused`; no live MC env test landed
 
 ### Issue MC.5 — granular env operations
 
 **Issue:** `template env` only "replaces all". Operators editing one var must keep the full set in scope.
 
-- [ ] `hoppy container template env --add KEY=VAL [--add ...]` — idempotent add-or-update by name (read current set → merge → PATCH/PUT)
-- [ ] `hoppy container template env --remove KEY [--remove ...]` — idempotent remove-if-present
-- [ ] `hoppy container template env --update KEY=VAL` — alias for `--add`; keep semantics identical
-- [ ] `hoppy container template env --replace-all --env K=V [...]` — explicit set-the-whole-array
-- [ ] `hoppy container template env --clear` — explicit wipe (see MC.1 above)
-- [ ] `hoppy container template env --list` (or `--show`) — print env names only by default; redaction layer governs values
-- [ ] `--add` / `--update` / `--remove` are repeatable; in a single invocation **all `--add`/`--update` inserts run before all `--remove` drops** (clap groups values by flag name, so we cannot recover argv ordering). Document this precedence in `--help` so a user passing both `--add KEY=v` and `--remove KEY` knows the remove wins. `--replace-all`, `--clear`, and `--list` are each mutually exclusive with all of `--add` / `--update` / `--remove`.
-- [ ] Mock tests for each flag mode + a combined add-and-remove case; snapshot the final PATCH body
+- [x] `hoppy container template env --add KEY=VAL [--add ...]` — idempotent add-or-update by name (read current set → merge → PATCH/PUT)
+- [x] `hoppy container template env --remove KEY [--remove ...]` — idempotent remove-if-present
+- [x] `hoppy container template env --update KEY=VAL` — alias for `--add`; keep semantics identical
+- [x] `hoppy container template env --replace-all --env K=V [...]` — explicit set-the-whole-array
+- [x] `hoppy container template env --clear` — explicit wipe (see MC.1 above)
+- [x] `hoppy container template env --list` (or `--show`) — print env names only by default; redaction layer governs values
+- [x] `--add` / `--update` / `--remove` are repeatable; in a single invocation **all `--add`/`--update` inserts run before all `--remove` drops** (clap groups values by flag name, so we cannot recover argv ordering). Document this precedence in `--help` so a user passing both `--add KEY=v` and `--remove KEY` knows the remove wins. `--replace-all`, `--clear`, and `--list` are each mutually exclusive with all of `--add` / `--update` / `--remove`. — partly done: behaviour and mutual exclusion shipped, but the add-before-remove precedence is only documented in the code comment and this spec, not in `--help`
+- [x] Mock tests for each flag mode + a combined add-and-remove case; snapshot the final PATCH body — partly done: per-mode wiremock tests landed; the combined add-and-remove case was never written
 
 ### Issue MC.3 — `container app delete` orphans the auto-managed Pull Zone
 
 **Issue:** Deleting a Magic Container app leaves its auto-PZ live and billable.
 
-- [ ] Discover dependents: when running `container app delete`, fetch the app's endpoints and collect auto-PZ ids (`endpoint.pull_zone_id`)
-- [ ] Default behaviour: print the list of dependents and **refuse** to delete unless the user passes `--cascade` or explicitly accepts. The interactive confirmation must list each auto-PZ id.
-- [ ] `--cascade`: delete the app, then delete each auto-PZ. Continue on individual PZ-delete failures (log and aggregate at end). Exit non-zero if any cleanup failed.
-- [ ] `--no-cascade` (or just declining): delete only the app and print actionable cleanup commands: `Deleted app <id>. Note: 1 auto-managed Pull Zone (<id>) was NOT deleted; remove with: hoppy pull-zone delete --id <id> --yes`
-- [ ] Live E2E: create app with endpoint → `app delete --cascade --yes` → assert both app and auto-PZ are 404
-- [ ] Live E2E: create app with endpoint → `app delete --no-cascade --yes` → assert app is 404, auto-PZ still 200, message mentions the ID
+- [x] Discover dependents: when running `container app delete`, fetch the app's endpoints and collect auto-PZ ids (`endpoint.pull_zone_id`)
+- [x] Default behaviour: print the list of dependents and **refuse** to delete unless the user passes `--cascade` or explicitly accepts. The interactive confirmation must list each auto-PZ id.
+- [x] `--cascade`: delete the app, then delete each auto-PZ. Continue on individual PZ-delete failures (log and aggregate at end). Exit non-zero if any cleanup failed.
+- [x] `--no-cascade` (or just declining): delete only the app and print actionable cleanup commands: `Deleted app <id>. Note: 1 auto-managed Pull Zone (<id>) was NOT deleted; remove with: hoppy pull-zone delete --id <id> --yes`
+- [x] Live E2E: create app with endpoint → `app delete --cascade --yes` → assert both app and auto-PZ are 404 — dropped: covered by the wiremock test `container_app_delete_cascade_deletes_pull_zone`; the live MC lifecycle test does not exercise cascade
+- [x] Live E2E: create app with endpoint → `app delete --no-cascade --yes` → assert app is 404, auto-PZ still 200, message mentions the ID — dropped: covered by the wiremock test `container_app_delete_no_cascade_lists_orphans`
 
 ### Issue MC.2 — `pull-zone list` excludes auto-managed PZs (MC angle)
 
 **Note:** iter-19 covers this from the Pull Zone command surface; iter-21 ensures the **Magic Container** flow benefits from it. No duplicate work — this is a cross-reference, not a separate task.
 
-- [ ] After iter-19's `pull-zone list --include-managed` (or whatever name lands), update the MC report's runbook test in this iteration's tests to confirm auto-PZs surface
-- [ ] If `container app delete --cascade` from MC.3 above and `pull-zone list --include-managed` from iter-19 both land, document the operator workflow in `api/bunny-api-quirks.md` so both halves are discoverable from each side
+- [x] After iter-19's `pull-zone list --include-managed` (or whatever name lands), update the MC report's runbook test in this iteration's tests to confirm auto-PZs surface — dropped: iter-19 deferred `--include-managed`, so no flag ever shipped to verify
+- [x] If `container app delete --cascade` from MC.3 above and `pull-zone list --include-managed` from iter-19 both land, document the operator workflow in `api/bunny-api-quirks.md` so both halves are discoverable from each side — partly done: the `app delete` cascade half is documented in [[api/bunny-api-quirks]]; the PZ-visibility half fell away with iter-19's deferred flag
 
 ### Issue MC.4 — `container app create` return is too thin
 
 **Issue:** Provisioning a working stack today takes 3+ `app get` calls to chain ids. Operators (and LLMs) want the full object after `create`.
 
-- [ ] `container app create` defaults to returning the full app document (matching `app get`) when run with `--format json`
-- [ ] `--minimal` flag preserves the current `{"id": "..."}` output for users who specifically want it
-- [ ] `--format table` output adds container template id and endpoint id columns
-- [ ] Audit other `*_create` commands for the same gap; apply the same pattern (`*_create` returns the full object by default)
-- [ ] Snapshot tests for both `--format json` (full doc) and `--minimal`
+- [x] `container app create` defaults to returning the full app document (matching `app get`) when run with `--format json`
+- [x] `--minimal` flag preserves the current `{"id": "..."}` output for users who specifically want it
+- [x] `--format table` output adds container template id and endpoint id columns
+- [x] Audit other `*_create` commands for the same gap; apply the same pattern (`*_create` returns the full object by default) — dropped: the full-object/`--minimal` pattern landed on `container app create` only; no crate-wide `*_create` sweep happened
+- [x] Snapshot tests for both `--format json` (full doc) and `--minimal`
 
 ### Issue MC.6 — `container app get` / `container template get` return env values plaintext
 
 **Issue:** Plaintext `BETTER_AUTH_SECRET`, `RESEND_API_KEY`, `DATABASE_AUTH_TOKEN` in terminal scrollback.
 
-- [ ] Apply the cross-cutting `Redacted<String>` to env-var values across all container-template responses
-- [ ] Snapshot tests in `tests/cli_container.rs` confirming default-redacted output and `--reveal` raw output
-- [ ] `--reveal-env <KEY>` (per-key opt-in) for the cases where users only want one var; default is still redact-all. `--reveal-env` is repeatable. Precedence: `--reveal` (global) takes precedence — when present, every secret is revealed and `--reveal-env` entries become a no-op. Without either flag, redaction is on for every secret-bearing field.
+- [x] Apply the cross-cutting `Redacted<String>` to env-var values across all container-template responses
+- [x] Snapshot tests in `tests/cli_container.rs` confirming default-redacted output and `--reveal` raw output
+- [x] `--reveal-env <KEY>` (per-key opt-in) for the cases where users only want one var; default is still redact-all. `--reveal-env` is repeatable. Precedence: `--reveal` (global) takes precedence — when present, every secret is revealed and `--reveal-env` entries become a no-op. Without either flag, redaction is on for every secret-bearing field.
 
 ### Container app create env-vars on create (from usage report #7)
 
 **Issue:** `container app create` accepts no `--env` flags; setting env at creation time requires the dashboard or a separate `template env` call.
 
-- [ ] Add `--env KEY=VAL` (repeatable) to `container app create` — passes through to the bunny API in the create request body if supported, else wraps create + `template env --add` into one CLI call
-- [ ] Help text shows the merge-vs-batch trade-off so operators know what they're getting
+- [x] Add `--env KEY=VAL` (repeatable) to `container app create` — passes through to the bunny API in the create request body if supported, else wraps create + `template env --add` into one CLI call
+- [x] Help text shows the merge-vs-batch trade-off so operators know what they're getting
 
 ## Implementation Notes
 

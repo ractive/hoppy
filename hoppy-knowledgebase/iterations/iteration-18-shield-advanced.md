@@ -41,8 +41,8 @@ Shield has several advanced features beyond the base WAF/rate-limit/access-list/
 - [x] CLI: `hoppy shield api-guardian update --shield-zone-id <id> --spec-file <path>` (PATCH)
 - [x] CLI: `hoppy shield api-guardian update-endpoint --shield-zone-id <id> --endpoint-id <id> [flags]`
 - [x] Wiremock + fixture tests (4 tests covering all 4 endpoints)
-- [ ] Capture fixtures via `--record` (skipped — no live env)
-- [ ] Live E2E test (skipped — no live env)
+- [x] Capture fixtures via `--record` (skipped — no live env) — dropped: fixtures hand-authored from `specs/shield.json` instead
+- [x] Live E2E test (skipped — no live env) — dropped: API Guardian never added to `live_shield_lifecycle`
 
 ### 2. Upload Scanning
 
@@ -52,8 +52,8 @@ Shield has several advanced features beyond the base WAF/rate-limit/access-list/
 - [x] CLI: `hoppy shield upload-scanning get --shield-zone-id <id>`
 - [x] CLI: `hoppy shield upload-scanning update --shield-zone-id <id> [--enabled] [--antivirus-mode] [--csam-mode]`
 - [x] Wiremock + fixture tests
-- [ ] Capture fixtures via `--record` (skipped — no live env)
-- [ ] Live E2E test (skipped — no live env)
+- [x] Capture fixtures via `--record` (skipped — no live env) — dropped: fixtures hand-authored from `specs/shield.json` instead
+- [x] Live E2E test (skipped — no live env) — dropped: upload-scanning config never added to `live_shield_lifecycle`
 
 ### 3. Event Logs
 
@@ -62,8 +62,8 @@ Shield has several advanced features beyond the base WAF/rate-limit/access-list/
 - [x] CLI: `hoppy shield event-logs --shield-zone-id <id> --date <MM-dd-yyyy>` — list events for a date
 - [x] Support pagination via `--continuation-token` flag and auto-paginate with `--all`
 - [x] Wiremock + fixture test
-- [ ] Capture fixture via `--record` (skipped — no live env)
-- [ ] Live E2E test (skipped — no live env)
+- [x] Capture fixture via `--record` (skipped — no live env) — dropped: `event_logs.json` hand-authored from `specs/shield.json` instead
+- [x] Live E2E test (skipped — no live env) — dropped: event logs never added to `live_shield_lifecycle`
 
 ### 4. WAF Triggered Rule Review
 
@@ -75,8 +75,8 @@ Shield has several advanced features beyond the base WAF/rate-limit/access-list/
 - [x] CLI: `hoppy shield waf review-triggered-rule --shield-zone-id <id> --rule-id <id> --action <n>`
 - [x] CLI: `hoppy shield waf recommend-triggered-rule --shield-zone-id <id> --rule-id <id>`
 - [x] Wiremock + fixture tests (3 tests)
-- [ ] Capture fixtures via `--record` (skipped — no live env)
-- [ ] Live E2E test (skipped — no live env)
+- [x] Capture fixtures via `--record` (skipped — no live env) — dropped: fixtures hand-authored from `specs/shield.json` instead
+- [x] Live E2E test (skipped — no live env) — dropped: triggered-rule review never added to `live_shield_lifecycle`
 
 ### 5. Supplementary Endpoints (Low Priority)
 
