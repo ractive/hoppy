@@ -3,7 +3,7 @@ site_prefix = ""
 validate_on_write = true
 
 [lint]
-profile = "madr"
+profiles = ["madr"]
 
 [schema]
 exempt = ["**/index.md", "**/log.md", "docs/decisions/README.md", "docs/decisions/index.md"]
