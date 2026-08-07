@@ -6,6 +6,7 @@ total: 103
 passed: 103
 failed: 0
 date: 2026-03-19T10:59:52Z
+title: E2E Test Report
 ---
 
 # E2E Test Report

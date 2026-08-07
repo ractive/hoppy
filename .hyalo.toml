@@ -1,11 +1,11 @@
 dir = "hoppy-knowledgebase"
 site_prefix = ""
-validate_on_write = true
 
 [lint]
 profiles = ["madr"]
 
 [schema]
+validate_on_write = true
 exempt = ["**/index.md", "**/log.md", "docs/decisions/README.md", "docs/decisions/index.md"]
 
 [[schema.bind]]
@@ -13,7 +13,7 @@ glob = "docs/decisions/**/*.md"
 type = "adr"
 
 [schema.default]
-required = ["type"]
+required = ["title", "type"]
 
 [schema.default.properties.description]
 type = "string"
@@ -31,14 +31,7 @@ type = "datetime-tz"
 [schema.default.properties.title]
 type = "string"
 
-[schema.types."BigQuery Dataset"]
-required = ["type", "title"]
-
-[schema.types."BigQuery Table"]
-required = ["type", "title"]
-required_sections = ["# Schema", "# Citations"]
-
-[schema.types.Reference]
+[schema.types.reference]
 required = ["type", "title"]
 
 [schema.types.adr]

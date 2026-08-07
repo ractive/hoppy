@@ -68,7 +68,7 @@ branch: iter-8/release
 - [x] Global options
 - [x] Environment variables section
 - [x] Badges: CI status, license
-- [x] Contributing section (skipped — not needed for v0.1.0)
+- [x] Contributing section (skipped — not needed for v0.1.0) — dropped: README still has no Contributing section as of 2026-08-07
 
 ## Not in scope for v0.1.0
 

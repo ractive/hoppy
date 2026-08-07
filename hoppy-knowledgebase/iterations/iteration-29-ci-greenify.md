@@ -71,7 +71,8 @@ dependency.
 - [x] Sanity-check a real API call: `BUNNY_API_KEY=$TEST_BUNNY_API_KEY
       ./target/release/hoppy auth check` — succeeds against
       `api.bunny.net`'s LE-issued cert (rustls webpki roots cover Let's
-      Encrypt, so this should just work).
+      Encrypt, so this should just work). — verified by the 2026-07-10
+      live-API run (441 tests green against the test account)
 - [x] If a future caller needs to honour the OS trust store, add
       `rustls-tls-native-roots`. Not needed for bunny.net. — dropped: conditional follow-up, webpki roots suffice for bunny.net
 - [x] Remove any `openssl` / `openssl-sys` mentions from `Cargo.lock`
@@ -111,7 +112,7 @@ PRs (iter-27, iter-28). Plausible causes:
 - [x] Locally: `cargo fmt`, `cargo clippy --workspace --all-targets --
       -D warnings`, `cargo test --workspace --quiet` all green.
 - [x] One e2e API call (e.g. `auth check`) succeeds against bunny.net
-      with the rustls build.
+      with the rustls build. — verified by the 2026-07-10 live-API run (441 tests green against the test account).
 
 ## Related
 

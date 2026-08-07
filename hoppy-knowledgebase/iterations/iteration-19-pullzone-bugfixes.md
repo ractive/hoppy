@@ -40,7 +40,7 @@ All three reports praise hoppy's overall ergonomics (JSON output, env-var auth, 
 - [x] Wiremock test: `pull-zone create --name x --storage-zone-id 1234` sends `{"Name":"x","StorageZoneId":1234,"Type":0}`, no `OriginUrl`
 - [x] Wiremock test: `pull-zone create` with neither flag fails clap argument parsing (no API call)
 - [x] Wiremock test: `pull-zone create` with both flags fails clap "mutually exclusive"
-- [x] Live E2E: create SZ → create PZ bound to SZ → assert `OriginUrl == ""` and `StorageZoneId` matches → cleanup *(deferred — covered by wiremock + ArgGroup unit tests; live test gated behind `live-api` feature)*
+- [x] Live E2E: create SZ → create PZ bound to SZ → assert `OriginUrl == ""` and `StorageZoneId` matches → cleanup *(deferred — covered by wiremock + ArgGroup unit tests; live test gated behind `live-api` feature)* — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 
 ### Forward-compatible enum deserialization (BLOCKER for Magic-Container PZs)
 
@@ -52,7 +52,7 @@ All three reports praise hoppy's overall ergonomics (JSON output, env-var auth, 
 - [x] Add `OriginType::MagicContainerEndpoint = 5` (the value confirmed empirically: only Magic-Container-backed PZs trip the deserializer; Storage-Zone-backed PZs deserialize fine)
 - [x] Capture the live response for PZ `5719318` (legacy MC auto-PZ from the field report) as a regression fixture in `fixtures/core/pullzone_get_magic_container.json`
 - [x] Round-trip tests: deserialize a payload with an unknown enum value, ensure it doesn't panic, serializes back losslessly when echoed *(round-trip drops the unknown value — documented trade-off; tests cover the panic-free path and the falls-back-to-None behaviour)*
-- [x] Update error message: when deserialization still fails, translate `column N` to a field name and produce a user-actionable hint (e.g. "this Pull Zone uses a feature added after this hoppy version — try upgrading") *(deferred — fallback strategy makes the panic path inaccessible for `Option<EnumType>` fields; a future iteration can address the remaining strict fields if a regression is reported)*
+- [x] Update error message: when deserialization still fails, translate `column N` to a field name and produce a user-actionable hint (e.g. "this Pull Zone uses a feature added after this hoppy version — try upgrading") *(deferred — fallback strategy makes the panic path inaccessible for `Option<EnumType>` fields; a future iteration can address the remaining strict fields if a regression is reported)* — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 
 ### `storage-zone get` strips Password / ReadOnlyPassword (BLOCKER for credential bootstrap)
 
@@ -62,13 +62,13 @@ All three reports praise hoppy's overall ergonomics (JSON output, env-var auth, 
 - [x] Audit `src/commands/storage_zone.rs` — confirm both fields flow through to the JSON output unchanged
 - [x] If the table view should redact them, do so behind an explicit `--reveal-credentials` (or surface a `password=<redacted>` placeholder so the omission is visible) — never silently drop fields the API returns *(reused the existing global `--reveal` flag instead of a separate `--reveal-credentials`; default output shows `<set, length=N>` placeholders so the omission is always visible)*
 - [x] Wiremock test: `storage-zone get` JSON output contains both `Password` and `ReadOnlyPassword` exactly as the fixture provides them *(test exists for both default-redacted and `--reveal` paths)*
-- [x] Live E2E: `storage-zone get --id <id>` returns a Password that round-trips successfully against the storage API endpoint *(deferred — covered by wiremock; live test gated behind `live-api` feature)*
+- [x] Live E2E: `storage-zone get --id <id>` returns a Password that round-trips successfully against the storage API endpoint *(deferred — covered by wiremock; live test gated behind `live-api` feature)* — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 
 ### `pull-zone list` discoverability of Magic-Container PZs
 
 **Issue:** Pull Zones auto-created by `container endpoint add --cdn` don't appear in `pull-zone list`, even though they accept `pull-zone hostname` operations. Discoverability is poor — users only learn the ID via `container endpoint list`.
 
-- [x] Investigate: is the bunny API filtering them out, or is it a flag we're not passing? Capture and document in `api/bunny-api-quirks.md`. *(deferred — needs live API exploration; documented in quirks as a limitation to look at next time)*
+- [x] Investigate: is the bunny API filtering them out, or is it a flag we're not passing? Capture and document in `api/bunny-api-quirks.md`. *(deferred — needs live API exploration; documented in quirks as a limitation to look at next time)* — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 - [x] If a flag exists, add `pull-zone list --include-managed` (default off) to show them. *(deferred)* — closed as stale during the 2026-08-07 OKF lint adoption; never filed as a follow-up.
 - [x] If no flag, document the limitation in `pull-zone list --help` long_help and cross-reference `container endpoint list`. *(deferred)* — closed as stale during the 2026-08-07 OKF lint adoption; never filed as a follow-up.
 
@@ -99,7 +99,7 @@ All three reports praise hoppy's overall ergonomics (JSON output, env-var auth, 
 - [x] Add `long_help` (clap's longer help body) to every flag that maps to a bunny enum or has non-obvious semantics. At minimum: `--zone-tier`, `--type`, `--origin-type`, `--storage-zone-id` (once added), `--enabled` flags, all `--*-matching-type` flags. *(covered for the high-traffic flags this iteration adds — `--zone-tier`, `--storage-zone-id`, `dns record add --type`; remaining flags left for a focused help-text iteration)*
 - [x] Add examples to the top-level subcommand help for the high-traffic commands: `pull-zone create`, `pull-zone hostname add`, `dns record add`, `storage-zone create`, `container endpoint add`. Use clap's `after_help` or `long_about`. *(covered `pull-zone create`, `pull-zone hostname add`, `dns record add`, `storage-zone create`)*
 - [x] Cross-reference next-step commands where natural (e.g. after `pull-zone create`, hint `pull-zone hostname add`). *(`pull-zone create` after-help points to `hostname add` and `load-free-cert`)*
-- [x] Document feature gaps inline (e.g. if a flag is missing because the API supports it but hoppy doesn't yet, say so in help text rather than failing with a 400). *(deferred — no specific gap surfaced this iteration)*
+- [x] Document feature gaps inline (e.g. if a flag is missing because the API supports it but hoppy doesn't yet, say so in help text rather than failing with a 400). *(deferred — no specific gap surfaced this iteration)* — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 
 ### Version/build provenance
 
@@ -111,8 +111,8 @@ All three reports praise hoppy's overall ergonomics (JSON output, env-var auth, 
 
 ### Error message quality
 
-- [x] Deserialization errors translate `column N` to field name where possible *(deferred — superseded by lossy enum deserializer making the panic path inaccessible for the common case)*
-- [x] When an unknown enum value is the cause, hint at a hoppy upgrade *(deferred — same)*
+- [x] Deserialization errors translate `column N` to field name where possible *(deferred — superseded by lossy enum deserializer making the panic path inaccessible for the common case)* — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
+- [x] When an unknown enum value is the cause, hint at a hoppy upgrade *(deferred — same)* — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 - [x] Keep the raw bunny API error code + message verbatim — don't paraphrase *(verified: `ApiError` `Display` impl emits raw status / errorKey / message; no paraphrasing layer was introduced)*
 
 ## Implementation Notes

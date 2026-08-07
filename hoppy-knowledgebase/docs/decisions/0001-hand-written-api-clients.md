@@ -2,7 +2,7 @@
 type: adr
 title: Hand-written API clients instead of OpenAPI codegen
 status: accepted
-date: 2026-03-17
+date: 2026-03-18
 deciders:
   - hoppy-maintainers
 ---

@@ -2,7 +2,7 @@
 type: adr
 title: No --api-key flag; BUNNY_API_KEY env var only
 status: accepted
-date: 2026-03-18
+date: 2026-03-17
 deciders:
   - hoppy-maintainers
 ---
