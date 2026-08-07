@@ -27,6 +27,10 @@ jobs:
       # Publishes a -bin PKGBUILD to the AUR (non-blocking; needs the
       # AUR_SSH_PRIVATE_KEY repo secret):
       aur-package: hoppy-bin
+      # Submits the version-update PR to microsoft/winget-pkgs on each
+      # release (needs the WINGET_TOKEN repo secret; the ractive.hoppy
+      # package was bootstrapped manually with 0.5.0, winget-pkgs#400670):
+      winget-identifier: ractive.hoppy
       extra-archive-paths: completions man
       # Full 7-target matrix incl. musl statics (iter-80): hoppy does NOT
       # link OpenSSL — reqwest is rustls-only, no openssl-sys/native-tls in

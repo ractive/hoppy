@@ -59,6 +59,9 @@ thin caller. Publishing a GitHub Release triggers it automatically.
   `continue-on-error`, so a failed push won't fail the workflow. The first
   release after enabling creates the `hoppy-bin` package; verify at
   <https://aur.archlinux.org/packages/hoppy-bin> (`yay -S hoppy-bin`)
+- [ ] winget: the `winget` job submitted a version-update PR to
+  `microsoft/winget-pkgs` (check the job log; the new version appears via
+  `winget install ractive.hoppy` only after winget-pkgs moderation merges it)
 - [ ] `hoppy --version` prints the new version string
 - [ ] Release assets on GitHub include: per-target `.tar.gz`/`.zip` (incl. musl),
   `.deb`, `.rpm`, `SHA256SUMS`, SBOMs, and attestations

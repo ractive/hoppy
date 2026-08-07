@@ -7,7 +7,7 @@ tags:
   - ci
   - release
   - packaging
-status: in-progress
+status: completed
 branch: iter-80/musl-targets-winget
 ---
 
@@ -67,21 +67,23 @@ profiling ever says so.
 
 Tasks:
 
-- [ ] Add the `WINGET_TOKEN` secret (classic PAT, `public_repo` scope —
+- [x] Add the `WINGET_TOKEN` secret (classic PAT, `public_repo` scope —
       same token hyalo/ff-rdp use) to ractive/hoppy
 - [x] One-time manual submission of `ractive.hoppy` to
       microsoft/winget-pkgs via `komac` or `wingetcreate`, referencing the
       latest release's Windows zips (the
       `hoppy-vX.Y.Z-<arch>-pc-windows-msvc.zip` naming already matches the
       shared workflow's installer regex)
-- [ ] Wait for winget-pkgs moderation to merge the bootstrap PR
-- [ ] Add `winget-identifier: ractive.hoppy` to the caller
+- [x] Wait for winget-pkgs moderation to merge the bootstrap PR
+- [x] Add `winget-identifier: ractive.hoppy` to the caller
 
 Acceptance criteria:
 
-- [ ] `winget install ractive.hoppy` resolves and installs
+- [x] `winget install ractive.hoppy` resolves and installs
 - [ ] The next release's `winget` job submits the version-update PR
-      automatically (non-blocking job green, CI clean)
+      automatically (non-blocking job green, CI clean) — future-gated:
+      cannot fire before the next release; moved to the verify section of
+      [[release/release-checklist]] (2026-08-07), tracked there
 
 Known risk — installer security check on new packages: ractive.ff-rdp's
 bootstrap (winget-pkgs PR #368007, v0.1.0) failed manual validation with
