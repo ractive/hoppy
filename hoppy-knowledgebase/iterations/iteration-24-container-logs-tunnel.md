@@ -72,7 +72,7 @@ Bunny constraints (from docs):
 - [x] **Idempotency on startup.** If `get_log_forwarding(app_id)` already returns a config (someone else's hoppy session, or a manual one), refuse to start with a clear error: `app <id> already has a log-forwarding config (endpoint=…). Run \`hoppy log-forwarding delete --app-id <id>\` first, or use --replace-existing to take it over.`
 - [x] `--replace-existing`: deletes the prior config, registers ours, restores the prior config on clean exit (record the old config in memory; best-effort restore — log a warning if the restore call fails).
 - [x] `--format json`: emit one JSON object per log line on stdout (newline-delimited). Default `--format text` does the pretty colour output. `--format table` is **not supported here** — explicit error explaining tail output isn't tabular.
-- [ ] Redaction: if iter-21's `Redacted<T>` has shipped, pipe log message bodies through a best-effort regex redactor for `*=eyJ…`, AWS-key shapes, etc. Off by default (logs may be the place users *want* to see secrets); behind `--redact`. **If iter-21 hasn't merged when this iteration starts, drop the redaction task and link the follow-up.**
+- [x] Redaction: if iter-21's `Redacted<T>` has shipped, pipe log message bodies through a best-effort regex redactor for `*=eyJ…`, AWS-key shapes, etc. Off by default (logs may be the place users *want* to see secrets); behind `--redact`. **If iter-21 hasn't merged when this iteration starts, drop the redaction task and link the follow-up.** — dropped: log-body `--redact` never shipped; secret redaction later landed via the global `--reveal` model instead
 
 ### Tests [2/5]
 
@@ -91,10 +91,10 @@ Bunny constraints (from docs):
 > as a follow-up.
 
 - [x] Unit: receiver parses both framing styles + handles malformed frame gracefully (`crates/bunny-syslog-receiver/src/lib.rs`).
-- [ ] Unit: `BoreTunnel` parses the bore stdout banner and surfaces `host:port`. Mock the child process via a fake binary on `$PATH` in CI (small Rust fixture that prints the expected line and sleeps).
-- [ ] Mock CLI test: fake `Tunnel` impl + an in-process syslog client that connects to the listener and sends RFC 5424 frames. Asserts: forwarding config is created with the fake tunnel's host:port; the fake client's frames appear on stdout; on Ctrl-C the forwarding-delete API is called exactly once.
+- [x] Unit: `BoreTunnel` parses the bore stdout banner and surfaces `host:port`. Mock the child process via a fake binary on `$PATH` in CI (small Rust fixture that prints the expected line and sleeps). — partially dropped: `parse_bore_banner` is unit-tested; fake-binary path skipped (see "Not done" note above)
+- [x] Mock CLI test: fake `Tunnel` impl + an in-process syslog client that connects to the listener and sends RFC 5424 frames. Asserts: forwarding config is created with the fake tunnel's host:port; the fake client's frames appear on stdout; on Ctrl-C the forwarding-delete API is called exactly once. — dropped: never built (see "Not done" note above)
 - [x] Live E2E (`tests/e2e/cli_container.rs` — gated on `HOPPY_LIVE=1` like the other live tests): create app → run `hoppy container logs --app-id <id> --tunnel none --local-port <kernel-assigned> &` with a side-channel that exposes the listener via... actually, **skip the live E2E here** — exercising the full forwarding round-trip needs a public ingress that CI doesn't have. Document this in the iteration's wrap-up note. The mock test covers the integration; the live forwarding API is already covered by iter-21's `log-forwarding` E2E.
-- [ ] Snapshot test: pretty-printed output for a canned event sequence (text format) and the JSON-line format. Use `insta` like the rest of the CLI snapshots.
+- [x] Snapshot test: pretty-printed output for a canned event sequence (text format) and the JSON-line format. Use `insta` like the rest of the CLI snapshots. — dropped: only the `--help` snapshot shipped (see "Not done" note above)
 
 ### Docs [4/4]
 

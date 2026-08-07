@@ -27,7 +27,7 @@ branch: iter-3/dns
   - [x] Record add supports priority, weight, port, flags, tag, comment
 - [x] Confirmation prompts for destructive operations (--yes to skip)
 - [x] 15 wiremock integration tests with fixture-based responses
-- [ ] Import/export zone files — deferred (API supports export as BIND file, import endpoint exists but not documented well enough for safe implementation)
+- [x] Import/export zone files — deferred (API supports export as BIND file, import endpoint exists but not documented well enough for safe implementation) — done in a later iteration: `dns zone export`/`import` exist in the CLI
 
 **Deliverable:** Full DNS management via CLI.
 

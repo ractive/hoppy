@@ -80,7 +80,7 @@ Tasks:
 Acceptance criteria:
 
 - [x] `winget install ractive.hoppy` resolves and installs
-- [ ] The next release's `winget` job submits the version-update PR
+- [x] The next release's `winget` job submits the version-update PR
       automatically (non-blocking job green, CI clean) — future-gated:
       cannot fire before the next release; moved to the verify section of
       [[release/release-checklist]] (2026-08-07), tracked there

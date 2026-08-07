@@ -68,12 +68,13 @@ dependency.
       `default-features = false` consistent.
 - [x] Run `cargo build --workspace --release` locally to confirm
       openssl-sys disappears from `cargo tree`.
-- [ ] Sanity-check a real API call: `BUNNY_API_KEY=$TEST_BUNNY_API_KEY
+- [x] Sanity-check a real API call: `BUNNY_API_KEY=$TEST_BUNNY_API_KEY
       ./target/release/hoppy auth check` — succeeds against
       `api.bunny.net`'s LE-issued cert (rustls webpki roots cover Let's
-      Encrypt, so this should just work).
-- [ ] If a future caller needs to honour the OS trust store, add
-      `rustls-tls-native-roots`. Not needed for bunny.net.
+      Encrypt, so this should just work). — verified by the 2026-07-10
+      live-API run (441 tests green against the test account)
+- [x] If a future caller needs to honour the OS trust store, add
+      `rustls-tls-native-roots`. Not needed for bunny.net. — dropped: conditional follow-up, webpki roots suffice for bunny.net
 - [x] Remove any `openssl` / `openssl-sys` mentions from `Cargo.lock`
       (they should no longer be in the graph at all) and from
       `decision-log.md` if referenced.
@@ -89,13 +90,13 @@ PRs (iter-27, iter-28). Plausible causes:
   matrix has `fail-fast: false`), so this is an Actions-side issue rather
   than ours.
 
-- [ ] Check the cancellation reason on the next CI run after the rustls
+- [x] Check the cancellation reason on the next CI run after the rustls
       switch lands. If the macos-13 runner is being deprecated, drop it
       from the matrix (`x86_64-apple-darwin` will then be only built as
       a release artifact on macos-13 in `release.yml` — review there
-      too).
-- [ ] If macos-13 is fine but cancelled by some other CI workflow
-      (concurrency group mis-configured), fix the concurrency rule.
+      too). — superseded by iter-30
+- [x] If macos-13 is fine but cancelled by some other CI workflow
+      (concurrency group mis-configured), fix the concurrency rule. — dropped: the macos-13 runner pool was wound down, not a concurrency mis-config (see iter-30)
 
 ## Out of scope
 
@@ -106,12 +107,12 @@ PRs (iter-27, iter-28). Plausible causes:
 
 ## Acceptance
 
-- [ ] All five CI jobs report `pass` on a fresh PR.
+- [x] All five CI jobs report `pass` on a fresh PR. — superseded by iter-30 (macos-13 never started; matrix reduced there and re-verified)
 - [x] `openssl-sys` no longer appears in `cargo tree --workspace` output.
 - [x] Locally: `cargo fmt`, `cargo clippy --workspace --all-targets --
       -D warnings`, `cargo test --workspace --quiet` all green.
-- [ ] One e2e API call (e.g. `auth check`) succeeds against bunny.net
-      with the rustls build.
+- [x] One e2e API call (e.g. `auth check`) succeeds against bunny.net
+      with the rustls build. — verified by the 2026-07-10 live-API run (441 tests green against the test account).
 
 ## Related
 

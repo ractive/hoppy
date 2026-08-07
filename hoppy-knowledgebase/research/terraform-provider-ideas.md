@@ -2,7 +2,7 @@
 title: What hoppy could deliver for Terraform on bunny.net
 type: research
 date: 2026-05-15
-status: draft
+status: active
 tags:
   - research
   - terraform

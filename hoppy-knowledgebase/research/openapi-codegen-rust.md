@@ -7,7 +7,7 @@ tags:
   - codegen
   - progenitor
   - api-client
-status: research-complete
+status: completed
 recommendation: codegen-with-progenitor
 type: research
 ---

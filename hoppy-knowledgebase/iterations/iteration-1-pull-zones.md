@@ -27,7 +27,7 @@ branch: iter-1/pull-zones
   - [x] `purge --id <id> [--cache-tag <tag>]` — purge cache (by tag or all)
 - [x] Table output: pick sensible default columns (id, name, origin URL, status)
 - [x] Pagination: `--page`, `--per-page` flags
-- [ ] Integration test: at least one test that mocks the API response (deferred — need real API responses as fixtures first)
+- [x] Integration test: at least one test that mocks the API response (deferred — need real API responses as fixtures first) — done in later iterations: wiremock fixture tests now cover pull zones
 
 **Deliverable:** `BUNNY_API_KEY=xxx hoppy pull-zone list --format json` returns real data.
 

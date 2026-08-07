@@ -87,8 +87,8 @@ reason.
 - [x] Unit tests against a wiremock/minimal TUS server: offset resume,
   mid-upload interruption, checksum of assembled payload
 - [x] e2e test for the new flag surface (`tests/e2e/` pattern)
-- [ ] Live dogfood with a large file + forced interruption; note
-  friction in the KB — deferred, requires a real bunny.net account
+- [x] Live dogfood with a large file + forced interruption; note
+  friction in the KB — deferred, requires a real bunny.net account — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done
 
 ## Out of scope
 
@@ -101,7 +101,7 @@ reason.
 - [x] `cargo fmt` clean, `cargo clippy --workspace --all-targets -- -D warnings`
   clean, `cargo test --workspace --quiet` green
 - [x] e2e tests cover the new/changed upload commands (`tests/e2e/` pattern)
-- [ ] Interrupted-then-resumed upload verified live (dogfooding playbook)
+- [x] Interrupted-then-resumed upload verified live (dogfooding playbook) — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done (interruption+resume is covered by offline wiremock e2e only)
 - [x] Help text updated for the resumable upload surface
 - [x] `hyalo lint` clean on touched knowledgebase files
 

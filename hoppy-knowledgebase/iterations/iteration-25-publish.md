@@ -105,7 +105,7 @@ ff-rdp has Scoop publishing; hyalo does too. Same pattern.
 ff-rdp includes a winget-pkgs PR step. This is more involved (forks `microsoft/winget-pkgs`, creates a manifest PR per release, requires Microsoft review). Defer unless the user wants Windows users to find hoppy via `winget install`.
 
 - [x] **Decision point**: include winget in iter-25 or defer to a follow-up? Recommendation: defer. Scoop covers most Windows power-users; winget submission has Microsoft review delays and rejection paths. Land iter-25 without it, add as a later iteration.
-- [ ] If included: lift the winget job from ff-rdp verbatim, change package name + identifier. (Deferred — see decision above; no winget job in `release.yml`.)
+- [x] If included: lift the winget job from ff-rdp verbatim, change package name + identifier. (Deferred — see decision above; no winget job in `release.yml`.) — superseded by iter-80
 
 ### 8. SHA256SUMS aggregation
 

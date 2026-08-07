@@ -76,17 +76,17 @@ Key for accessibility and SEO — captions are a common video workflow.
 Observability for security features — without metrics the shield commands are fire-and-forget.
 
 - [x] API client: `GET /shield/metrics/overview/{shieldZoneId}`
-- [ ] API client: `GET /shield/metrics/overview/{shieldZoneId}/detailed` — deferred
-- [ ] API client: `GET /shield/metrics/rate-limits/{shieldZoneId}` — deferred
-- [ ] API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}` — deferred
-- [ ] API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection` — deferred
+- [x] API client: `GET /shield/metrics/overview/{shieldZoneId}/detailed` — deferred — superseded by iter-13
+- [x] API client: `GET /shield/metrics/rate-limits/{shieldZoneId}` — deferred — superseded by iter-13
+- [x] API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/waf-rule/{ruleId}` — deferred — superseded by iter-13
+- [x] API client: `GET /shield/metrics/shield-zone/{shieldZoneId}/bot-detection` — deferred — superseded by iter-13
 - [x] CLI: `hoppy shield metrics overview <shield-zone-id>` — overview table
-- [ ] CLI: `hoppy shield metrics <shield-zone-id> --detailed` — deferred
-- [ ] CLI: `hoppy shield metrics rate-limits <shield-zone-id>` — deferred
-- [ ] CLI: `hoppy shield metrics waf-rule <shield-zone-id> <rule-id>` — deferred
-- [ ] CLI: `hoppy shield metrics bot-detection <shield-zone-id>` — deferred
+- [x] CLI: `hoppy shield metrics <shield-zone-id> --detailed` — deferred — superseded by iter-13 (shipped as `hoppy shield metrics detailed`)
+- [x] CLI: `hoppy shield metrics rate-limits <shield-zone-id>` — deferred — superseded by iter-13
+- [x] CLI: `hoppy shield metrics waf-rule <shield-zone-id> <rule-id>` — deferred — superseded by iter-13
+- [x] CLI: `hoppy shield metrics bot-detection <shield-zone-id>` — deferred — superseded by iter-13
 - [x] Wiremock + snapshot tests (overview only)
-- [ ] Live E2E test: create PZ → create SZ → fetch metrics → cleanup — deferred
+- [x] Live E2E test: create PZ → create SZ → fetch metrics → cleanup — deferred — superseded by iter-13 (metrics steps added to `live_shield_lifecycle`)
 
 ---
 

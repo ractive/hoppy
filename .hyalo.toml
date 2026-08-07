@@ -1,7 +1,69 @@
 dir = "hoppy-knowledgebase"
+site_prefix = ""
+
+[lint]
+profiles = ["madr"]
+
+[schema]
+validate_on_write = true
+exempt = ["**/index.md", "**/log.md", "docs/decisions/README.md", "docs/decisions/index.md"]
+
+[[schema.bind]]
+glob = "docs/decisions/**/*.md"
+type = "adr"
 
 [schema.default]
 required = ["title", "type"]
+
+[schema.default.properties.description]
+type = "string"
+
+[schema.default.properties.resource]
+pattern = '^\w[\w+.-]*://'
+type = "string"
+
+[schema.default.properties.tags]
+type = "list"
+
+[schema.default.properties.timestamp]
+type = "datetime-tz"
+
+[schema.default.properties.title]
+type = "string"
+
+[schema.types.reference]
+required = ["type", "title"]
+
+[schema.types.adr]
+filename-template = "docs/decisions/{n:04}-{slug}.md"
+required = []
+required_sections = ["## Context and Problem Statement", "## Considered Options", "## Decision Outcome"]
+
+[schema.types.adr.defaults]
+date = "$today"
+status = "proposed"
+
+[schema.types.adr.properties.consulted]
+type = "string-list"
+
+[schema.types.adr.properties.date]
+type = "date"
+
+[schema.types.adr.properties.deciders]
+type = "string-list"
+
+[schema.types.adr.properties.decision-makers]
+type = "string-list"
+
+[schema.types.adr.properties.informed]
+type = "string-list"
+
+[schema.types.adr.properties.status]
+pattern = "^(proposed|rejected|accepted|deprecated|superseded by ADR-[0-9]{4})$"
+type = "string"
+
+[schema.types.adr.properties.title]
+type = "string"
 
 [schema.types.backlog]
 required = ["title", "type", "date", "status"]
@@ -94,6 +156,9 @@ required = ["title", "type", "date", "status"]
 type = "date"
 
 [schema.types.research.properties.origin]
+type = "string"
+
+[schema.types.research.properties.recommendation]
 type = "string"
 
 [schema.types.research.properties.related]

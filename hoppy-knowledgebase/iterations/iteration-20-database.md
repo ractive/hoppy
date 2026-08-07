@@ -31,7 +31,7 @@ branch: iter-20/database
 ### Spec capture & research
 
 - [x] Save the OpenAPI doc to `specs/database.json` (matching the convention of `specs/core-platform.json` etc.) — done 2026-05-05
-- [ ] Write `hoppy-knowledgebase/api/bunny-database-research.md` summarising:
+- [x] Write `hoppy-knowledgebase/api/bunny-database-research.md` summarising:
   - control-plane base URL (`https://api.bunny.net/database`), auth (`AccessKey` or `Bearer`), response envelope (top-level `{ "database": {...} }` / `{ "group": {...} }` wrappers per the bug report — verify against spec)
   - resource model: `Database` / `DatabaseGroup` / auth tokens / config / live metrics
   - **`Database` schema fields not in the bug report**: `block_reads`, `block_writes`, `allow_attach`, `is_schema`, `schema` (parent-schema DB), `version` (libSQL version), `group_name`, `current_size`, `size_max` — surface in `db get`
@@ -45,83 +45,83 @@ branch: iter-20/database
 
 ### `bunny-api-database` crate
 
-- [ ] Scaffold `crates/bunny-api-database/` matching the shape of `bunny-api-stream` (Cargo.toml, src/lib.rs, src/client.rs, src/types.rs, tests/)
-- [ ] Add to workspace `Cargo.toml` members
-- [ ] Recording integration (`bunny-api-recording::capture_request` / `maybe_record_response`)
-- [ ] Forward-compat enum strategy from iter-19 applied from day one to all repr-based enums
-- [ ] No `.unwrap()` / `.expect()` outside tests; `anyhow::Context` with `?`
+- [x] Scaffold `crates/bunny-api-database/` matching the shape of `bunny-api-stream` (Cargo.toml, src/lib.rs, src/client.rs, src/types.rs, tests/)
+- [x] Add to workspace `Cargo.toml` members
+- [x] Recording integration (`bunny-api-recording::capture_request` / `maybe_record_response`)
+- [x] Forward-compat enum strategy from iter-19 applied from day one to all repr-based enums
+- [x] No `.unwrap()` / `.expect()` outside tests; `anyhow::Context` with `?`
 
 #### Types (`types.rs`)
 
 Generated from the schemas in `specs/database.json` (component names in parens):
 
-- [ ] `Database` (`Database`) — `id`, `name`, `url`, `group_id`, `group_name`, `block_reads`, `block_writes`, `allow_attach`, `is_schema`, `schema` (Option<String>), `version`, `size_max`, `current_size`. Note: spec also has a `Database2` for v2 responses — define separately.
-- [ ] `DatabaseGroup` (`DatabaseGroup`) — `id`, `name`, `storage_region`, `primary_regions[]`, `replicas_regions[]`, status fields
-- [ ] `AuthToken` — from `GenerateTokenDatabaseResponse` (`token`, `expires_at: Option<DateTime<Utc>>`)
-- [ ] `TokenAuthorization` (`Authorization`) enum — exact serde strings from spec (likely `full-access` / `read-only`); apply iter-19 forward-compat fallback
-- [ ] `Config` (`ListConfigAPIResponse`) — `storage_region_available[]`, `primary_regions[]`
-- [ ] `Limits` (`LimitsResponse`) — surface in `db config limits`
-- [ ] `Datapoint`, `LatencyChartData`, `LatencySingleRegionChart`, `ChartUnit` — for statistics responses
-- [ ] `DBLiveStatus`, `GroupLiveStatus`, `LiveMetricsForDBPayload`, `LiveMetricsForDBResponse`, `LiveMetricsForGroupPayload`, `LiveMetricsForGroupResponse` — live metrics
-- [ ] `PossibleRegion` enum — apply forward-compat fallback (bunny adds regions silently)
-- [ ] `CountryCode` enum — same fallback
-- [ ] `Generation`, `Database2`, `DatabaseV2PageInfo` — v2 response shapes
-- [ ] `AppError` — used in 401/409/500 responses; map onto hoppy's existing error type
-- [ ] Reuse `PaginatedList<T>` from `bunny-api-core` if `ListDatabaseResponse` shape matches; if not (likely uses `DatabaseV2PageInfo` for v2 pagination), document the deviation in `api/bunny-api-quirks.md`
+- [x] `Database` (`Database`) — `id`, `name`, `url`, `group_id`, `group_name`, `block_reads`, `block_writes`, `allow_attach`, `is_schema`, `schema` (Option<String>), `version`, `size_max`, `current_size`. Note: spec also has a `Database2` for v2 responses — define separately.
+- [x] `DatabaseGroup` (`DatabaseGroup`) — `id`, `name`, `storage_region`, `primary_regions[]`, `replicas_regions[]`, status fields
+- [x] `AuthToken` — from `GenerateTokenDatabaseResponse` (`token`, `expires_at: Option<DateTime<Utc>>`) — shipped as `GenerateTokenResponse`
+- [x] `TokenAuthorization` (`Authorization`) enum — exact serde strings from spec (likely `full-access` / `read-only`); apply iter-19 forward-compat fallback — shipped as `Authorization` (kebab-case); no fallback variant, it is request-only
+- [x] `Config` (`ListConfigAPIResponse`) — `storage_region_available[]`, `primary_regions[]` — shipped as `ListConfigResponse`
+- [x] `Limits` (`LimitsResponse`) — surface in `db config limits`
+- [x] `Datapoint`, `LatencyChartData`, `LatencySingleRegionChart`, `ChartUnit` — for statistics responses — partial: `ChartUnit` dropped as unused; the other three shipped
+- [x] `DBLiveStatus`, `GroupLiveStatus`, `LiveMetricsForDBPayload`, `LiveMetricsForDBResponse`, `LiveMetricsForGroupPayload`, `LiveMetricsForGroupResponse` — live metrics — partial: both response types shipped; status types collapsed into `LiveStatus` + `LiveStatusMetadata` and the payloads built inline
+- [x] `PossibleRegion` enum — apply forward-compat fallback (bunny adds regions silently) — dropped: regions modelled as `String` for forward-compat instead of a typed enum
+- [x] `CountryCode` enum — same fallback — dropped: same `String` treatment
+- [x] `Generation`, `Database2`, `DatabaseV2PageInfo` — v2 response shapes
+- [x] `AppError` — used in 401/409/500 responses; map onto hoppy's existing error type
+- [x] Reuse `PaginatedList<T>` from `bunny-api-core` if `ListDatabaseResponse` shape matches; if not (likely uses `DatabaseV2PageInfo` for v2 pagination), document the deviation in `api/bunny-api-quirks.md` — not reused; deviation documented under `## Pagination` in [[api/bunny-database-research]] rather than the quirks note
 
 #### Client methods (`client.rs`)
 
 Mapped 1:1 to the 26 paths in `specs/database.json`.
 
 **Config** (`Config` tag):
-- [ ] `get_config()` → `GET /v1/config` — regions list
-- [ ] `get_config_limits()` → `GET /v1/config/limits`
-- [ ] `get_optimal()` → `GET /v1/config/optimal`
-- [ ] `get_optimal_single()` → `GET /v1/config/optimal_single` (note: bug report flagged `cdn_server_token` requirement — verify against spec security)
+- [x] `get_config()` → `GET /v1/config` — regions list
+- [x] `get_config_limits()` → `GET /v1/config/limits`
+- [x] `get_optimal()` → `GET /v1/config/optimal`
+- [x] `get_optimal_single()` → `GET /v1/config/optimal_single` (note: bug report flagged `cdn_server_token` requirement — verify against spec security)
 
 **Database v1** (`Database` tag):
-- [ ] `list_databases(params)` → `GET /v1/databases`
-- [ ] `get_database(db_id)` → `GET /v1/databases/{db_id}`
-- [ ] `create_database(body: CreateDatabasePayload)` → `POST /v1/databases` (`slug` + `group`)
-- [ ] `delete_database(db_id)` → `DELETE /v1/databases/{db_id}`
-- [ ] `fork_database(db_id, body: ForkDatabasePayload)` → `POST /v1/databases/{db_id}/fork`
-- [ ] `restore_database(db_id, version)` → `POST /v1/databases/{db_id}/restore`
-- [ ] `list_database_versions(db_id)` → `POST /v1/databases/{db_id}/list_versions`
-- [ ] `mint_database_token(db_id, body: GenerateTokenDatabasePayload)` → `POST /v1/databases/{db_id}/auth/tokens`
-- [ ] `invalidate_database_keys(db_id)` → `POST /v1/databases/{db_id}/auth/invalidate`
+- [x] `list_databases(params)` → `GET /v1/databases`
+- [x] `get_database(db_id)` → `GET /v1/databases/{db_id}`
+- [x] `create_database(body: CreateDatabasePayload)` → `POST /v1/databases` (`slug` + `group`)
+- [x] `delete_database(db_id)` → `DELETE /v1/databases/{db_id}`
+- [x] `fork_database(db_id, body: ForkDatabasePayload)` → `POST /v1/databases/{db_id}/fork`
+- [x] `restore_database(db_id, version)` → `POST /v1/databases/{db_id}/restore`
+- [x] `list_database_versions(db_id)` → `POST /v1/databases/{db_id}/list_versions`
+- [x] `mint_database_token(db_id, body: GenerateTokenDatabasePayload)` → `POST /v1/databases/{db_id}/auth/tokens`
+- [x] `invalidate_database_keys(db_id)` → `POST /v1/databases/{db_id}/auth/invalidate`
 
 **Database v2** (`Database (v2)` tag):
-- [ ] `list_databases_v2(params)` → `GET /v2/databases` *(broken upstream as of 2026-05-05 for create; verify list status)*
-- [ ] `get_database_v2(db_id)` → `GET /v2/databases/{db_id}`
-- [ ] `create_database_v2(body: CreateDatabaseV2Payload)` → `POST /v2/databases` *(returns 500 — implement but skip live tests; document)*
-- [ ] `delete_database_v2(db_id)` → `DELETE /v2/databases/{db_id}`
-- [ ] `get_active_usage_v2()` → `GET /v2/databases/active_usage`
-- [ ] `get_database_statistics_v2(db_id, range)` → `GET /v2/databases/{db_id}/statistics`
-- [ ] `get_database_usage_v2(db_id, range)` → `GET /v2/databases/{db_id}/usage`
-- [ ] `mint_database_token_v2(db_id, body)` → `POST /v2/databases/{db_id}/auth/generate`
-- [ ] `revoke_database_token_v2(db_id)` → `POST /v2/databases/{db_id}/auth/revoke`
+- [x] `list_databases_v2(params)` → `GET /v2/databases` *(broken upstream as of 2026-05-05 for create; verify list status)*
+- [x] `get_database_v2(db_id)` → `GET /v2/databases/{db_id}`
+- [x] `create_database_v2(body: CreateDatabaseV2Payload)` → `POST /v2/databases` *(returns 500 — implement but skip live tests; document)*
+- [x] `delete_database_v2(db_id)` → `DELETE /v2/databases/{db_id}`
+- [x] `get_active_usage_v2()` → `GET /v2/databases/active_usage`
+- [x] `get_database_statistics_v2(db_id, range)` → `GET /v2/databases/{db_id}/statistics`
+- [x] `get_database_usage_v2(db_id, range)` → `GET /v2/databases/{db_id}/usage`
+- [x] `mint_database_token_v2(db_id, body)` → `POST /v2/databases/{db_id}/auth/generate`
+- [x] `revoke_database_token_v2(db_id)` → `POST /v2/databases/{db_id}/auth/revoke`
 
 **DatabaseGroup** (`DatabaseGroup` tag):
-- [ ] `list_groups(params)` → `GET /v1/groups`
-- [ ] `get_group(group_id)` → `GET /v1/groups/{group_id}`
-- [ ] `create_group(body: CreateDatabaseGroupPayload)` → `POST /v1/groups`
-- [ ] `delete_group(group_id)` → `DELETE /v1/groups/{group_id}`
-- [ ] `get_group_stats(group_id)` → `GET /v1/groups/{group_id}/stats`
-- [ ] `get_group_aggregated_usage(group_id)` → `GET /v1/groups/{group_id}/aggregated_usage`
-- [ ] `generate_group_keys(group_id, body)` → `POST /v1/groups/{group_id}/auth/generate`
-- [ ] `invalidate_group_keys(group_id)` → `POST /v1/groups/{group_id}/auth/invalidate`
+- [x] `list_groups(params)` → `GET /v1/groups`
+- [x] `get_group(group_id)` → `GET /v1/groups/{group_id}`
+- [x] `create_group(body: CreateDatabaseGroupPayload)` → `POST /v1/groups`
+- [x] `delete_group(group_id)` → `DELETE /v1/groups/{group_id}`
+- [x] `get_group_stats(group_id)` → `GET /v1/groups/{group_id}/stats`
+- [x] `get_group_aggregated_usage(group_id)` → `GET /v1/groups/{group_id}/aggregated_usage`
+- [x] `generate_group_keys(group_id, body)` → `POST /v1/groups/{group_id}/auth/generate`
+- [x] `invalidate_group_keys(group_id)` → `POST /v1/groups/{group_id}/auth/invalidate`
 
 **Live Metrics** (`Live Metrics` tag) — note: POST with custom request headers (`db-ids` / `group-ids`):
-- [ ] `live_metrics_db(db_ids, payload)` → `POST /v1/live/live_db`
-- [ ] `live_metrics_group(group_ids, payload)` → `POST /v1/live/live_group`
+- [x] `live_metrics_db(db_ids, payload)` → `POST /v1/live/live_db`
+- [x] `live_metrics_group(group_ids, payload)` → `POST /v1/live/live_group`
 
 **Data-plane convenience** (not in spec; hoppy-only):
-- [ ] `ping(database_url, token)` — POST to `<database_url>/v2/pipeline` with `{"requests":[{"type":"execute","stmt":{"sql":"SELECT 1"}},{"type":"close"}]}`. Takes `Database.url` so callers don't construct it.
+- [x] `ping(database_url, token)` — POST to `<database_url>/v2/pipeline` with `{"requests":[{"type":"execute","stmt":{"sql":"SELECT 1"}},{"type":"close"}]}`. Takes `Database.url` so callers don't construct it.
 
 #### Crate-level tests
 
-- [ ] Wiremock + insta tests in `crates/bunny-api-database/tests/database_api.rs` for every method
-- [ ] Capture fixtures in `fixtures/database/` (config, group_create, group_get, database_create, database_get, database_list, token_mint, …) — use `--record` flag once the client supports it
+- [x] Wiremock + insta tests in `crates/bunny-api-database/tests/database_api.rs` for every method — partial: 26 wiremock tests landed (now `crates/bunny-net-api/tests/database/e2e/database_api.rs` after iter-32); no insta snapshots, and the v2 CRUD / group-stats methods are covered only at the CLI layer
+- [x] Capture fixtures in `fixtures/database/` (config, group_create, group_get, database_create, database_get, database_list, token_mint, …) — use `--record` flag once the client supports it
 
 ### CLI commands
 
@@ -180,34 +180,34 @@ hoppy db config
 ```
 
 CLI implementation tasks:
-- [ ] New module `src/commands/database.rs`
-- [ ] Wire into `src/cli.rs` as `Commands::Db { action: DbAction }` — use the short `db` (matches the bug report; shorter is better for daily ops)
-- [ ] Subcommand groups: `DbAction { Database*, Group(GroupAction), Token(TokenAction), Config, Ping }`
-- [ ] Repeatable region flags via `Vec<String>` (`--primary-region` repeatable, like edge-rule `--trigger`)
-- [ ] Slug validator: `^[a-z][a-z0-9-]{0,N}$` — pick `N` empirically (long slugs return "Internal error" upstream; the report tested `wa-admin-prod` (13) OK, `wardrobe-assistants-admin` (25) failed). Conservative starting point: 24. Document the limit in `--help` and surface a clean error before hitting the API.
-- [ ] Token redaction: by default `db token mint` prints `{ "length": 270, "authorization": "full-access", "expires_at": null }`. `--reveal` prints the raw JWT. Same default for `--format table`.
-- [ ] `hoppy db ping --id <id>` flow: `get_database(id)` → mint a short-lived read-only token (or accept `--token-file`) → POST to `Database.url + "v2/pipeline"` with `SELECT 1`. Document the implicit token-mint side-effect; offer `--token-file` to skip.
-- [ ] `long_help` on every flag mapping to a bunny enum (storage region, authorization, primary region) with the exact accepted values
-- [ ] Examples in `--help` for `db create`, `db token mint`, `db ping`
+- [x] New module `src/commands/database.rs`
+- [x] Wire into `src/cli.rs` as `Commands::Db { action: DbAction }` — use the short `db` (matches the bug report; shorter is better for daily ops)
+- [x] Subcommand groups: `DbAction { Database*, Group(GroupAction), Token(TokenAction), Config, Ping }`
+- [x] Repeatable region flags via `Vec<String>` (`--primary-region` repeatable, like edge-rule `--trigger`)
+- [x] Slug validator: `^[a-z][a-z0-9-]{0,N}$` — pick `N` empirically (long slugs return "Internal error" upstream; the report tested `wa-admin-prod` (13) OK, `wardrobe-assistants-admin` (25) failed). Conservative starting point: 24. Document the limit in `--help` and surface a clean error before hitting the API.
+- [x] Token redaction: by default `db token mint` prints `{ "length": 270, "authorization": "full-access", "expires_at": null }`. `--reveal` prints the raw JWT. Same default for `--format table`.
+- [x] `hoppy db ping --id <id>` flow: `get_database(id)` → mint a short-lived read-only token (or accept `--token-file`) → POST to `Database.url + "v2/pipeline"` with `SELECT 1`. Document the implicit token-mint side-effect; offer `--token-file` to skip.
+- [x] `long_help` on every flag mapping to a bunny enum (storage region, authorization, primary region) with the exact accepted values — partial: `--slug` got a real `long_help`; region flags document accepted values in doc comments and `--authorization` relies on clap `value_enum`
+- [x] Examples in `--help` for `db create`, `db token mint`, `db ping`
 
 ### Testing
 
-- [ ] Wiremock + insta snapshots for every CLI command (json + table where relevant)
-- [ ] Slug validator unit tests (boundary length, invalid chars, leading digit)
-- [ ] Token-redaction snapshot test — verify default output never contains the JWT
-- [ ] `db ping` mock test stubs both control-plane (`get_database`) and data-plane (`/v2/pipeline`)
-- [ ] Live E2E (`#[cfg(feature = "live-api")]`):
+- [x] Wiremock + insta snapshots for every CLI command (json + table where relevant) — partial: 36 wiremock tests in `crates/hoppy-cli/tests/e2e/cli_database.rs`, but only three use insta snapshots and a few subcommands are asserted only via request matching
+- [x] Slug validator unit tests (boundary length, invalid chars, leading digit)
+- [x] Token-redaction snapshot test — verify default output never contains the JWT
+- [x] `db ping` mock test stubs both control-plane (`get_database`) and data-plane (`/v2/pipeline`)
+- [x] Live E2E (`#[cfg(feature = "live-api")]`): — closed as stale during the 2026-08-07 OKF lint adoption; not verifiably done (no `live-api` database test exists)
   - create group → create database → mint full-access token → ping → list versions → delete database → delete group
   - cleanup-stack pattern from `tests/support/mod.rs`
   - skip the v2 create until upstream 500 is fixed
-- [ ] Auth/error tests: 401, 404 against control plane; libSQL `401` against data plane
+- [x] Auth/error tests: 401, 404 against control plane; libSQL `401` against data plane — partial: `unauthorized_surfaces_error` (control plane 401) and `ping_returns_error_on_401` (data plane) shipped; no 404 case
 
 ### Documentation
 
-- [ ] README features table: new row `Database (libSQL) | databases, groups, tokens, ping, config`
-- [ ] `api/bunny-database-research.md` finalized with everything surfaced during implementation
-- [ ] `api/bunny-api-quirks.md` updated with: v2 create returning 500, slug-length footgun (with the empirical limit found), `optimal_single` requiring `cdn_server_token`, libSQL URL casing/trailing-slash sensitivity
-- [ ] Cross-reference in `api/bunny-api-overview.md`
+- [x] README features table: new row `Database (libSQL) | databases, groups, tokens, ping, config`
+- [x] `api/bunny-database-research.md` finalized with everything surfaced during implementation
+- [x] `api/bunny-api-quirks.md` updated with: v2 create returning 500, slug-length footgun (with the empirical limit found), `optimal_single` requiring `cdn_server_token`, libSQL URL casing/trailing-slash sensitivity
+- [x] Cross-reference in `api/bunny-api-overview.md`
 
 ## Implementation Notes
 

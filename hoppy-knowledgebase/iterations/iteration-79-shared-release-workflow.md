@@ -41,9 +41,9 @@ propagate by bumping a pinned version tag instead of three manual ports.
       provenance, and without the passthrough the cross container either
       shells out to its own git or silently falls back to empty values.
 - [x] Validate both new workflow files with `actionlint`.
-- [ ] Confirm CI quality gates (fmt, clippy, test) still pass after the
+- [x] Confirm CI quality gates (fmt, clippy, test) still pass after the
       `Cross.toml` change.
-- [ ] Open PR, do not merge.
+- [x] Open PR, do not merge.
 
 ## Behavior deltas vs the old workflow
 

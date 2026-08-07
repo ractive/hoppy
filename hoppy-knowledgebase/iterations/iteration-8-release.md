@@ -57,7 +57,7 @@ branch: iter-8/release
 - [x] **cargo install**: `cargo install --git https://github.com/ractive/hoppy` documented in README
 - [x] **deb**: `cargo-deb` with `[package.metadata.deb]` — completions + man pages as assets
 - [x] **rpm**: `cargo-generate-rpm` with `[package.metadata.generate-rpm]` — same assets
-- [ ] **winget**: Submit manifest to `microsoft/winget-pkgs` after first release
+- [x] **winget**: Submit manifest to `microsoft/winget-pkgs` after first release — done in iter-80 (microsoft/winget-pkgs#400670, merged 2026-07-24)
 
 ## README Overhaul
 
@@ -68,7 +68,7 @@ branch: iter-8/release
 - [x] Global options
 - [x] Environment variables section
 - [x] Badges: CI status, license
-- [ ] Contributing section (skipped — not needed for v0.1.0)
+- [x] Contributing section (skipped — not needed for v0.1.0) — dropped: README still has no Contributing section as of 2026-08-07
 
 ## Not in scope for v0.1.0
 

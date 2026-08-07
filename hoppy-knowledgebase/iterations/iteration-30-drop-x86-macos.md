@@ -29,27 +29,27 @@ entirely.
 
 ### 1. ci.yml — drop the `x86_64-apple-darwin` matrix entry
 
-- [ ] In `.github/workflows/ci.yml` remove the lines:
+- [x] In `.github/workflows/ci.yml` remove the lines:
       ```yaml
       - target: x86_64-apple-darwin
         os: macos-13
       ```
-- [ ] Keep `aarch64-apple-darwin` on `macos-latest`.
-- [ ] No other CI changes.
+- [x] Keep `aarch64-apple-darwin` on `macos-latest`.
+- [x] No other CI changes.
 
 ### 2. release.yml — drop the same matrix entry and brew formula block
 
-- [ ] In `.github/workflows/release.yml` remove:
+- [x] In `.github/workflows/release.yml` remove:
       ```yaml
       - target: x86_64-apple-darwin
         os: macos-13
       ```
-- [ ] Remove the `SHA_MACOS_X86=$(get_sha "hoppy-${TAG}-x86_64-apple-darwin.tar.gz")`
+- [x] Remove the `SHA_MACOS_X86=$(get_sha "hoppy-${TAG}-x86_64-apple-darwin.tar.gz")`
       line near the brew-formula step.
-- [ ] In the brew-formula heredoc (`on_macos do … end`) remove the
+- [x] In the brew-formula heredoc (`on_macos do … end`) remove the
       `on_intel do … end` block; mirror hyalo's pattern where macOS only
       lists `on_arm`.
-- [ ] Audit any release-notes / changelog text that still mentions
+- [x] Audit any release-notes / changelog text that still mentions
       `x86_64-apple-darwin` and remove it.
 
 ### 3. README — add the "Intel Mac users" hint
@@ -58,19 +58,20 @@ Mirror hyalo's wording (its README reads):
 > **Intel Mac users:** Homebrew bottles are only provided for Apple
 > Silicon. Use `cargo install` above.
 
-- [ ] Add the same one-liner under the install section in
+- [x] Add the same one-liner under the install section in
       `README.md`, immediately after the cargo install / direct download
       blocks.
 
 ### 4. Verify
 
-- [ ] Push branch, open PR. Confirm:
+- [x] Push branch, open PR. Confirm:
       - `ci.yml` runs without a `macos-13` job at all.
       - `aarch64-apple-darwin` on `macos-latest` still passes.
       - All five remaining matrix entries report `pass`.
-- [ ] On the next release (out of scope for this iter), confirm the
+- [x] On the next release (out of scope for this iter), confirm the
       brew formula renders without an `on_intel` macos block and that
-      `brew install ractive/tap/hoppy` succeeds on Apple Silicon.
+      `brew install ractive/tap/hoppy` succeeds on Apple Silicon. — confirmed
+      by the releases since (v0.2.0–v0.5.0): the formula ships macOS arm64 only.
 
 ## Out of scope
 
@@ -82,15 +83,15 @@ Mirror hyalo's wording (its README reads):
 
 ## Acceptance
 
-- [ ] No `macos-13` references remain anywhere under `.github/workflows/`.
-- [ ] No `x86_64-apple-darwin` references in `.github/workflows/`,
+- [x] No `macos-13` references remain anywhere under `.github/workflows/`.
+- [x] No `x86_64-apple-darwin` references in `.github/workflows/`,
       release-notes templates, or the brew formula.
-- [ ] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings
+- [x] `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings
       && cargo test --workspace --quiet` clean.
-- [ ] PR CI shows all five matrix entries green (linux x86_64, linux
+- [x] PR CI shows all five matrix entries green (linux x86_64, linux
       aarch64 cross, darwin aarch64, windows x86_64, windows aarch64) and
       no perpetually-queued jobs.
-- [ ] README mentions cargo install as the supported path for Intel Mac.
+- [x] README mentions cargo install as the supported path for Intel Mac.
 
 ## Related
 
