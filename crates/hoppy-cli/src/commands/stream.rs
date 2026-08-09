@@ -916,7 +916,7 @@ async fn handle_video(
                     file,
                     options: &upload_options,
                     state_dir: state_dir.as_deref(),
-                    quiet,
+                    quiet: quiet || dry_run,
                 };
                 stream_tus::run_resumable_upload(params).await?;
             } else {

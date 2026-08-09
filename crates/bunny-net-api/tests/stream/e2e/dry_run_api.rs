@@ -92,3 +92,51 @@ async fn tus_create_is_blocked_under_dry_run() {
         .expect("error chain must contain DryRunSkipped");
     assert_eq!(skipped.method, "POST");
 }
+
+/// A resumed TUS session skips `create()` and goes straight to chunk PATCHes.
+/// Under dry-run, `upload_reader` must block before reading a single byte
+/// from the source (the reader panics if polled) and must never put raw
+/// chunk bytes into the preview — only a size placeholder.
+#[tokio::test]
+async fn tus_upload_reader_blocks_before_reading_under_dry_run() {
+    struct PanicReader;
+    impl tokio::io::AsyncRead for PanicReader {
+        fn poll_read(
+            self: std::pin::Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+            _buf: &mut tokio::io::ReadBuf<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            panic!("dry-run must not read the source file");
+        }
+    }
+
+    let server = MockServer::start().await;
+    let uploader = TusUploader::new(10001, "stream-test-key", "video-id")
+        .with_base_url(server.uri())
+        .with_dry_run(true);
+
+    let location = format!("{}/tusupload/session-1", server.uri());
+    let err = uploader
+        .upload_reader(&location, &mut PanicReader, 0, 4096, |_| {})
+        .await
+        .expect_err("chunk PATCH must be blocked under dry-run");
+
+    let skipped = err
+        .chain()
+        .find_map(|e| e.downcast_ref::<bunny_net_api::dry_run::DryRunSkipped>())
+        .expect("error chain must contain DryRunSkipped");
+    assert_eq!(skipped.method, "PATCH");
+    let body = skipped.body.as_deref().expect("placeholder body present");
+    assert!(
+        body.contains("4096 bytes remaining"),
+        "preview must be a size placeholder, got: {body}"
+    );
+    assert!(
+        server
+            .received_requests()
+            .await
+            .unwrap_or_default()
+            .is_empty(),
+        "no request may reach the server under dry-run"
+    );
+}

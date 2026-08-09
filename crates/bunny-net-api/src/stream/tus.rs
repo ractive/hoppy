@@ -35,7 +35,7 @@ use anyhow::{Context, Result, bail};
 use reqwest::{Client, StatusCode};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use crate::dry_run::check_dry_run;
+use crate::dry_run::{DryRunSkipped, check_dry_run};
 
 use super::types::VideoUploadOptions;
 
@@ -285,6 +285,20 @@ impl TusUploader {
         R: AsyncRead + Unpin,
         F: FnMut(u64),
     {
+        // Block before any disk read or chunk buffering: the preview for a
+        // chunk PATCH is its size, never its bytes.
+        if self.dry_run {
+            return Err(DryRunSkipped {
+                method: "PATCH".to_owned(),
+                url: location.to_owned(),
+                body: Some(format!(
+                    "<binary chunk upload, {} bytes remaining>",
+                    total_length - start_offset
+                )),
+            }
+            .into());
+        }
+
         let mut offset = start_offset;
         let mut buf = vec![0u8; self.chunk_size];
 
@@ -345,7 +359,17 @@ impl TusUploader {
             .body(chunk)
             .build()
             .context("failed to build TUS PATCH request")?;
-        check_dry_run(&request, self.dry_run, false)?;
+        // Defense in depth — `upload_reader` blocks before reading the chunk,
+        // so this is normally unreachable under dry-run. Never hand the raw
+        // chunk bytes to the preview: they are file contents, not JSON.
+        if self.dry_run {
+            return Err(DryRunSkipped {
+                method: request.method().to_string(),
+                url: request.url().to_string(),
+                body: Some(format!("<binary chunk, {len} bytes>")),
+            }
+            .into());
+        }
         let resp = self
             .http
             .execute(request)
