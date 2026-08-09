@@ -2080,8 +2080,15 @@ fn live_container_app_lifecycle() {
             .expect("id missing from create response")
             .to_owned();
 
-        // Register cleanup early
-        cleanup.push(&["container", "app", "delete", "--id", &id]);
+        // Register cleanup early. `--cascade` is required here because step 9
+        // below adds a CDN endpoint that provisions an auto-managed pull
+        // zone; without `--cascade` (or `--no-cascade`), `handle_app_delete`
+        // refuses to delete an app that owns auto-managed pull zones
+        // (crates/hoppy-cli/src/commands/container.rs handle_app_delete),
+        // CleanupStack::run swallows that failure, and both the app and the
+        // pull zone leak. `--cascade` is a no-op when there are zero
+        // auto-managed pull zones, so it's safe even before step 9 runs.
+        cleanup.push(&["container", "app", "delete", "--id", &id, "--cascade"]);
 
         // 2. Get by id
         let get = support::hoppy_live_json(&["container", "app", "get", "--id", &id]);
