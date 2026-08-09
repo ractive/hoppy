@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use anyhow::{Context, Result, anyhow, bail};
 use bytes::Bytes;
 
+use crate::dry_run::check_dry_run;
 use crate::recording::debug::{format_debug_body, print_debug_request_body};
 use crate::recording::{capture_request, maybe_record_response};
 
@@ -58,6 +59,7 @@ pub struct StorageClient {
     access_key: String,
     debug: bool,
     debug_reveal_secrets: bool,
+    dry_run: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -97,6 +99,7 @@ impl StorageClient {
             access_key: access_key.into(),
             debug: false,
             debug_reveal_secrets: false,
+            dry_run: false,
             record_dir: None,
             last_request: Mutex::new(None),
         })
@@ -111,6 +114,7 @@ impl StorageClient {
             access_key: access_key.into(),
             debug: false,
             debug_reveal_secrets: false,
+            dry_run: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -128,6 +132,14 @@ impl StorageClient {
     #[must_use]
     pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
         self.debug_reveal_secrets = reveal;
+        self
+    }
+
+    /// Preview mutating (POST/PUT/PATCH/DELETE) requests instead of sending
+    /// them. Read-only requests (GET/HEAD) are unaffected.
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
         self
     }
 
@@ -352,6 +364,7 @@ impl StorageClient {
             request.method().as_ref(),
             request.url().path(),
         );
+        check_dry_run(&request, self.dry_run, self.debug_reveal_secrets)?;
         self.http
             .execute(request)
             .await

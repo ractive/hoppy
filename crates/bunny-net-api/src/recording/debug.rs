@@ -11,7 +11,12 @@ const DEBUG_BODY_TRUNCATE: usize = 4096;
 
 /// Returns `true` for methods whose request typically carries a body worth
 /// inspecting in debug output.
-fn is_mutating(method: &reqwest::Method) -> bool {
+///
+/// Also the shared mutation predicate for `--dry-run` interception (see
+/// [`crate::dry_run::check_dry_run`]): bunny.net uses POST for updates and
+/// DELETE-with-body, so this method set is a reliable "would this change
+/// something" signal across every domain client.
+pub(crate) fn is_mutating(method: &reqwest::Method) -> bool {
     *method == reqwest::Method::POST
         || *method == reqwest::Method::PUT
         || *method == reqwest::Method::PATCH

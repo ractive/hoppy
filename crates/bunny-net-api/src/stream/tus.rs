@@ -35,6 +35,8 @@ use anyhow::{Context, Result, bail};
 use reqwest::{Client, StatusCode};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
+use crate::dry_run::check_dry_run;
+
 use super::types::VideoUploadOptions;
 
 /// The TUS protocol version bunny.net speaks.
@@ -64,6 +66,7 @@ pub struct TusUploader {
     video_id: String,
     chunk_size: usize,
     debug: bool,
+    dry_run: bool,
 }
 
 /// The outcome of a chunk-by-chunk upload run.
@@ -86,6 +89,7 @@ impl TusUploader {
             video_id: video_id.into(),
             chunk_size: DEFAULT_CHUNK_SIZE,
             debug: false,
+            dry_run: false,
         }
     }
 
@@ -112,6 +116,14 @@ impl TusUploader {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Preview the create (`POST`) and each upload chunk (`PATCH`) instead of
+    /// sending them. The offset probe (`HEAD`) is read-only and always runs.
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
         self
     }
 
@@ -162,7 +174,7 @@ impl TusUploader {
             eprintln!(">> POST {url} (TUS create, length={upload_length})");
         }
 
-        let resp = self
+        let request = self
             .http
             .post(&url)
             .header("Tus-Resumable", TUS_VERSION)
@@ -172,7 +184,12 @@ impl TusUploader {
             .header("AuthorizationExpire", expiration.to_string())
             .header("VideoId", &self.video_id)
             .header("LibraryId", self.library_id.to_string())
-            .send()
+            .build()
+            .context("failed to build TUS create request")?;
+        check_dry_run(&request, self.dry_run, false)?;
+        let resp = self
+            .http
+            .execute(request)
             .await
             .context("TUS create request failed")?;
 
@@ -208,7 +225,8 @@ impl TusUploader {
 
     /// Probe the current server-side `Upload-Offset` for an existing upload.
     ///
-    /// Returns the number of bytes the server has already received.
+    /// Returns the number of bytes the server has already received. Read-only
+    /// (`HEAD`) — always runs, even under `--dry-run`.
     pub async fn offset(&self, location: &str) -> Result<u64> {
         if self.debug {
             eprintln!(">> HEAD {location} (TUS offset probe)");
@@ -318,14 +336,19 @@ impl TusUploader {
         if self.debug {
             eprintln!(">> PATCH {location} (offset={offset}, len={len})");
         }
-        let resp = self
+        let request = self
             .http
             .patch(location)
             .header("Tus-Resumable", TUS_VERSION)
             .header("Content-Type", "application/offset+octet-stream")
             .header("Upload-Offset", offset.to_string())
             .body(chunk)
-            .send()
+            .build()
+            .context("failed to build TUS PATCH request")?;
+        check_dry_run(&request, self.dry_run, false)?;
+        let resp = self
+            .http
+            .execute(request)
             .await
             .context("TUS PATCH request failed")?;
 

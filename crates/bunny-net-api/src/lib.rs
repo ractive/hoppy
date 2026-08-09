@@ -20,6 +20,10 @@
 #[cfg(feature = "recording")]
 pub mod recording;
 
+/// Global `--dry-run` interception, shared by every domain client.
+#[cfg(feature = "recording")]
+pub mod dry_run;
+
 #[cfg(feature = "core")]
 pub mod core;
 

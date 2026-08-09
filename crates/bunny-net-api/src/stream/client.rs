@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use anyhow::{Context, Result, bail};
 use reqwest::{Client, RequestBuilder};
 
+use crate::dry_run::check_dry_run;
 use crate::recording::debug::{format_debug_body, print_debug_request_body};
 use crate::recording::{capture_request, maybe_record_response};
 
@@ -49,6 +50,7 @@ pub struct StreamClient {
     api_key: String,
     debug: bool,
     debug_reveal_secrets: bool,
+    dry_run: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -62,6 +64,7 @@ impl StreamClient {
             api_key: api_key.into(),
             debug: false,
             debug_reveal_secrets: false,
+            dry_run: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -89,6 +92,19 @@ impl StreamClient {
         self
     }
 
+    /// Preview mutating (POST/PUT/PATCH/DELETE) requests instead of sending
+    /// them. Read-only requests (GET/HEAD) are unaffected.
+    ///
+    /// [`StreamClient::cleanup_video_resolutions`] is a documented exception:
+    /// its own `dry_run` option already drives a server-side preview
+    /// (`?dryRun=true`), so that one call bypasses this client-level block
+    /// via [`StreamClient::send_bypassing_dry_run`] and is always sent.
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
+        self
+    }
+
     /// Enable recording API responses to files in the given directory.
     #[must_use]
     pub fn with_record(mut self, dir: impl Into<PathBuf>) -> Self {
@@ -109,22 +125,45 @@ impl StreamClient {
         urlencoding::encode(id).into_owned()
     }
 
-    /// Execute a prepared request, optionally logging method and URL to stderr.
+    /// Execute a prepared request, optionally logging method and URL to
+    /// stderr, and blocking mutating requests under `--dry-run`.
     async fn send(&self, rb: RequestBuilder) -> Result<reqwest::Response> {
         let request = rb.build().context("failed to build request")?;
+        self.log_and_capture(&request);
+        check_dry_run(&request, self.dry_run, self.debug_reveal_secrets)?;
+        self.http
+            .execute(request)
+            .await
+            .context("HTTP request failed")
+    }
+
+    /// Like [`StreamClient::send`], but never blocked by `--dry-run`.
+    ///
+    /// Reserved for [`StreamClient::cleanup_video_resolutions`], whose own
+    /// `opts.dry_run` already maps to the server-side `?dryRun=true` query
+    /// parameter — that request must always reach the API so the server can
+    /// return its preview, regardless of the global `--dry-run` flag.
+    async fn send_bypassing_dry_run(&self, rb: RequestBuilder) -> Result<reqwest::Response> {
+        let request = rb.build().context("failed to build request")?;
+        self.log_and_capture(&request);
+        self.http
+            .execute(request)
+            .await
+            .context("HTTP request failed")
+    }
+
+    /// Shared debug-logging and fixture-capture step used by both
+    /// [`StreamClient::send`] and [`StreamClient::send_bypassing_dry_run`].
+    fn log_and_capture(&self, request: &reqwest::Request) {
         if self.debug {
             eprintln!(">> {} {}", request.method(), request.url());
-            print_debug_request_body(&request, self.debug_reveal_secrets);
+            print_debug_request_body(request, self.debug_reveal_secrets);
         }
         capture_request(
             &self.last_request,
             request.method().as_ref(),
             request.url().path(),
         );
-        self.http
-            .execute(request)
-            .await
-            .context("HTTP request failed")
     }
 
     /// Read the response body, logging status and body when debug is enabled.
@@ -564,7 +603,12 @@ impl StreamClient {
         if opts.dry_run {
             rb = rb.query(&[("dryRun", "true")]);
         }
-        let resp = self.send(rb).await?;
+        // Bypasses the client-level `--dry-run` block: `opts.dry_run` already
+        // maps to `?dryRun=true` above, giving the server-side preview this
+        // endpoint is built for. The CLI wires `opts.dry_run` from the same
+        // global flag, so this request is never a "real" mutation when the
+        // global flag is set.
+        let resp = self.send_bypassing_dry_run(rb).await?;
         self.parse_response(resp).await
     }
 

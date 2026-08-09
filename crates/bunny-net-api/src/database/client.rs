@@ -8,6 +8,7 @@ use std::time::Instant;
 use anyhow::{Context, Result, bail};
 use reqwest::{Client, RequestBuilder};
 
+use crate::dry_run::check_dry_run;
 use crate::recording::debug::{format_debug_body, print_debug_request_body};
 use crate::recording::{capture_request, maybe_record_response};
 
@@ -36,6 +37,7 @@ pub struct DatabaseClient {
     api_key: String,
     debug: bool,
     debug_reveal_secrets: bool,
+    dry_run: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -49,6 +51,7 @@ impl DatabaseClient {
             api_key: api_key.into(),
             debug: false,
             debug_reveal_secrets: false,
+            dry_run: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -72,6 +75,14 @@ impl DatabaseClient {
     #[must_use]
     pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
         self.debug_reveal_secrets = reveal;
+        self
+    }
+
+    /// Preview mutating (POST/PUT/PATCH/DELETE) requests instead of sending
+    /// them. Read-only requests (GET/HEAD) are unaffected.
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
         self
     }
 
@@ -104,6 +115,7 @@ impl DatabaseClient {
             request.method().as_ref(),
             request.url().path(),
         );
+        check_dry_run(&request, self.dry_run, self.debug_reveal_secrets)?;
         self.http
             .execute(request)
             .await
