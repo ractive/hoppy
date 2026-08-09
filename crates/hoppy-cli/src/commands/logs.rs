@@ -87,6 +87,7 @@ pub async fn handle(
     action: &LogsAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     quiet: bool,
     record: Option<&str>,
     reveal: bool,
@@ -118,7 +119,12 @@ pub async fn handle(
             legacy_download,
             output,
         } => {
-            let client = auth::logging_client_with_reveal(debug, record, reveal)?;
+            let client = auth::logging_client_with_reveal(&auth::ClientOpts {
+                debug,
+                dry_run,
+                record,
+                reveal_secrets: reveal,
+            })?;
 
             if *legacy {
                 let date = date
@@ -214,7 +220,12 @@ pub async fn handle(
             }
         }
         LogsAction::OriginErrors { id, date } => {
-            let client = auth::origin_errors_client_with_reveal(debug, record, reveal)?;
+            let client = auth::origin_errors_client_with_reveal(&auth::ClientOpts {
+                debug,
+                dry_run,
+                record,
+                reveal_secrets: reveal,
+            })?;
             let resp = client.get_origin_errors(*id, date).await?;
             if let OutputFormat::Json = format {
                 let json =

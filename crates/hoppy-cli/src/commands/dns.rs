@@ -229,10 +229,16 @@ pub async fn handle(
     action: &DnsAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        ..Default::default()
+    })?;
 
     match action {
         DnsAction::Zone { action } => handle_zone(&client, action, format, yes).await,

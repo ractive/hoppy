@@ -78,22 +78,29 @@ pub async fn handle(
     action: &AuthAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     _yes: bool,
     quiet: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
-        AuthAction::Check => handle_check(format, debug, quiet, record).await,
+        AuthAction::Check => handle_check(format, debug, dry_run, quiet, record).await,
     }
 }
 
 async fn handle_check(
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     quiet: bool,
     record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        ..Default::default()
+    })?;
     let billing = client.get_billing().await?;
 
     // `auth check` is a predicate command: exit code carries the

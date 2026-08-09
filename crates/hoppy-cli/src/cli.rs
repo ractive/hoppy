@@ -156,6 +156,13 @@ pub struct Cli {
     #[arg(long, short = 'y', global = true)]
     pub yes: bool,
 
+    /// Preview mutating API calls without sending them; read-only requests
+    /// still execute. Implies --yes. A blocked composite command (e.g.
+    /// `container app delete --cascade`) previews only the first mutating
+    /// request it would have sent, not any follow-up requests.
+    #[arg(long, global = true)]
+    pub dry_run: bool,
+
     /// Reveal redacted secrets in output (env values, passwords, tokens).
     /// Off by default for safety; opt in explicitly.
     #[arg(long, global = true)]
@@ -3174,7 +3181,9 @@ pub enum StreamResolutionsAction {
         #[arg(long)]
         video_id: String,
     },
-    /// Cleanup video resolutions/files (destructive — confirmation required unless --yes or --dry-run)
+    /// Cleanup video resolutions/files (destructive — confirmation required
+    /// unless --yes or the global --dry-run, which also drives this
+    /// endpoint's own server-side `?dryRun=true` preview)
     Cleanup {
         /// Video library ID
         #[arg(long)]
@@ -3194,9 +3203,6 @@ pub enum StreamResolutionsAction {
         /// Delete MP4 fallback files
         #[arg(long)]
         delete_mp4_files: bool,
-        /// Preview only — do not actually delete anything
-        #[arg(long)]
-        dry_run: bool,
     },
 }
 

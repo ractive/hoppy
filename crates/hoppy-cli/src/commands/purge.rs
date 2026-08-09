@@ -9,9 +9,15 @@ pub async fn handle(
     is_async: bool,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        ..Default::default()
+    })?;
     client.purge_url(url, exact_path, is_async).await?;
     output::print_mutation_result(
         format,

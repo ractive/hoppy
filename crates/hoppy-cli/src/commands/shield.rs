@@ -597,38 +597,41 @@ pub async fn handle(
     action: &ShieldAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
     match action {
-        ShieldAction::Zone { action } => handle_zone(action, format, debug, record, reveal).await,
+        ShieldAction::Zone { action } => {
+            handle_zone(action, format, debug, dry_run, record, reveal).await
+        }
         ShieldAction::Waf { action } => {
-            handle_waf(action, format, debug, yes, record, reveal).await
+            handle_waf(action, format, debug, dry_run, yes, record, reveal).await
         }
         ShieldAction::RateLimit { action } => {
-            handle_rate_limit(action, format, debug, yes, record, reveal).await
+            handle_rate_limit(action, format, debug, dry_run, yes, record, reveal).await
         }
         ShieldAction::AccessList { action } => {
-            handle_access_list(action, format, debug, yes, record, reveal).await
+            handle_access_list(action, format, debug, dry_run, yes, record, reveal).await
         }
         ShieldAction::BotDetection { action } => {
-            handle_bot_detection(action, format, debug, record, reveal).await
+            handle_bot_detection(action, format, debug, dry_run, record, reveal).await
         }
         ShieldAction::BotCategorization { action } => {
-            handle_bot_categorization(action, format, debug, record, reveal).await
+            handle_bot_categorization(action, format, debug, dry_run, record, reveal).await
         }
         ShieldAction::CustomPage { action } => {
-            handle_custom_page(action, format, debug, record, reveal).await
+            handle_custom_page(action, format, debug, dry_run, record, reveal).await
         }
         ShieldAction::Metrics { action } => {
-            handle_metrics(action, format, debug, record, reveal).await
+            handle_metrics(action, format, debug, dry_run, record, reveal).await
         }
         ShieldAction::ApiGuardian { action } => {
-            handle_api_guardian(action, format, debug, record, reveal).await
+            handle_api_guardian(action, format, debug, dry_run, record, reveal).await
         }
         ShieldAction::UploadScanning { action } => {
-            handle_upload_scanning(action, format, debug, record, reveal).await
+            handle_upload_scanning(action, format, debug, dry_run, record, reveal).await
         }
         ShieldAction::EventLogs {
             shield_zone_id,
@@ -644,15 +647,16 @@ pub async fn handle(
                 *all,
                 format,
                 debug,
+                dry_run,
                 record,
                 reveal,
             )
             .await
         }
         ShieldAction::PullzoneMapping => {
-            handle_pullzone_mapping(format, debug, record, reveal).await
+            handle_pullzone_mapping(format, debug, dry_run, record, reveal).await
         }
-        ShieldAction::DdosEnums => handle_ddos_enums(format, debug, record, reveal).await,
+        ShieldAction::DdosEnums => handle_ddos_enums(format, debug, dry_run, record, reveal).await,
     }
 }
 
@@ -664,10 +668,16 @@ async fn handle_zone(
     action: &ShieldZoneAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldZoneAction::List { page, per_page } => {
@@ -799,11 +809,17 @@ async fn handle_waf(
     action: &ShieldWafAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldWafAction::Profiles => {
@@ -1123,11 +1139,17 @@ async fn handle_rate_limit(
     action: &ShieldRateLimitAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldRateLimitAction::List {
@@ -1377,11 +1399,17 @@ async fn handle_access_list(
     action: &ShieldAccessListAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldAccessListAction::List { shield_zone_id } => {
@@ -1519,10 +1547,16 @@ async fn handle_bot_detection(
     action: &ShieldBotDetectionAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldBotDetectionAction::Get { shield_zone_id } => {
@@ -1660,10 +1694,16 @@ async fn handle_metrics(
     action: &ShieldMetricsAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
     match action {
         ShieldMetricsAction::Overview { shield_zone_id } => {
             let metrics = client.get_metrics_overview(*shield_zone_id).await?;
@@ -2049,10 +2089,16 @@ async fn handle_api_guardian(
     action: &ShieldApiGuardianAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldApiGuardianAction::Get { shield_zone_id } => {
@@ -2193,10 +2239,16 @@ async fn handle_upload_scanning(
     action: &ShieldUploadScanningAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldUploadScanningAction::Get { shield_zone_id } => {
@@ -2268,10 +2320,16 @@ async fn handle_event_logs(
     all: bool,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
     let mut token = continuation_token.unwrap_or("").to_owned();
     let json_output = matches!(format, OutputFormat::Json);
     let mut accumulated_logs: Vec<EventLog> = Vec::new();
@@ -2344,10 +2402,16 @@ async fn handle_event_logs(
 async fn handle_pullzone_mapping(
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
     let result = client.get_shield_zones_pullzone_mapping().await?;
     if let OutputFormat::Json = format {
         let json = serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
@@ -2443,10 +2507,16 @@ async fn handle_bot_categorization(
     action: &ShieldBotCategorizationAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldBotCategorizationAction::List { shield_zone_id } => {
@@ -2526,10 +2596,16 @@ async fn handle_custom_page(
     action: &ShieldCustomPageAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
 
     match action {
         ShieldCustomPageAction::Get {
@@ -2606,11 +2682,17 @@ async fn handle_custom_page(
 async fn handle_ddos_enums(
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
     let _ = format;
-    let client = auth::shield_client_with_reveal(debug, record, reveal)?;
+    let client = auth::shield_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })?;
     let result = client.get_ddos_enums().await?;
     let json = serde_json::to_string_pretty(&result).context("failed to serialize to JSON")?;
     println!("{json}");

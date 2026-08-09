@@ -8,6 +8,25 @@ use bunny_net_api::origin_errors::OriginErrorsClient;
 use bunny_net_api::shield::ShieldClient;
 use std::env;
 
+/// Bundled client-construction flags, threaded from the global CLI flags
+/// down to each domain client factory below (and the two ad-hoc builders in
+/// `commands/storage.rs` and `commands/stream.rs`).
+///
+/// Kept separate from [`crate::redact::RedactConfig`], which governs output
+/// redaction rather than client construction.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ClientOpts<'a> {
+    /// `--debug`: log HTTP requests/responses to stderr.
+    pub debug: bool,
+    /// `--dry-run`: block mutating requests at the client layer.
+    pub dry_run: bool,
+    /// Effective `--record` directory (see [`get_record_dir`]).
+    pub record: Option<&'a str>,
+    /// `--reveal`: show secret field values in `--debug` output instead of
+    /// redacting them.
+    pub reveal_secrets: bool,
+}
+
 /// Resolve the effective record directory.
 ///
 /// Returns the explicit `--record <DIR>` flag value if set, else the
@@ -83,20 +102,17 @@ pub fn get_origin_errors_url() -> Option<String> {
 ///
 /// Read-only surface, but access-log responses can carry signed URLs —
 /// response-body debug output is redacted unless `reveal` is set.
-pub fn logging_client_with_reveal(
-    debug: bool,
-    record: Option<&str>,
-    reveal: bool,
-) -> Result<LoggingClient> {
+pub fn logging_client_with_reveal(opts: &ClientOpts) -> Result<LoggingClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_logging_url() {
         LoggingClient::with_base_url(api_key, url)
     } else {
         LoggingClient::new(api_key)
     }
-    .with_debug(debug)
-    .with_debug_reveal_secrets(reveal);
-    if let Some(dir) = get_record_dir(record) {
+    .with_debug(opts.debug)
+    .with_debug_reveal_secrets(opts.reveal_secrets)
+    .with_dry_run(opts.dry_run);
+    if let Some(dir) = get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)
@@ -106,40 +122,34 @@ pub fn logging_client_with_reveal(
 ///
 /// Read-only surface, but log responses can carry signed URLs —
 /// response-body debug output is redacted unless `reveal` is set.
-pub fn origin_errors_client_with_reveal(
-    debug: bool,
-    record: Option<&str>,
-    reveal: bool,
-) -> Result<OriginErrorsClient> {
+pub fn origin_errors_client_with_reveal(opts: &ClientOpts) -> Result<OriginErrorsClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_origin_errors_url() {
         OriginErrorsClient::with_base_url(api_key, url)
     } else {
         OriginErrorsClient::new(api_key)
     }
-    .with_debug(debug)
-    .with_debug_reveal_secrets(reveal);
-    if let Some(dir) = get_record_dir(record) {
+    .with_debug(opts.debug)
+    .with_debug_reveal_secrets(opts.reveal_secrets)
+    .with_dry_run(opts.dry_run);
+    if let Some(dir) = get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)
 }
 
 /// Build a `DatabaseClient` with optional base URL override and reveal-secrets flag.
-pub fn database_client_with_reveal(
-    debug: bool,
-    record: Option<&str>,
-    reveal_secrets: bool,
-) -> Result<DatabaseClient> {
+pub fn database_client_with_reveal(opts: &ClientOpts) -> Result<DatabaseClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_database_url() {
         DatabaseClient::new(api_key).with_base_url(url)
     } else {
         DatabaseClient::new(api_key)
     }
-    .with_debug(debug)
-    .with_debug_reveal_secrets(reveal_secrets);
-    if let Some(dir) = get_record_dir(record) {
+    .with_debug(opts.debug)
+    .with_debug_reveal_secrets(opts.reveal_secrets)
+    .with_dry_run(opts.dry_run);
+    if let Some(dir) = get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)
@@ -159,85 +169,73 @@ pub fn get_storage_key() -> Option<String> {
 }
 
 /// Build a `CoreClient` with optional base URL override.
-pub fn core_client(debug: bool, record: Option<&str>) -> Result<CoreClient> {
-    core_client_with_reveal(debug, record, false)
+pub fn core_client(opts: &ClientOpts) -> Result<CoreClient> {
+    core_client_with_reveal(opts)
 }
 
 /// Build a `CoreClient` with optional base URL override and reveal-secrets flag.
-pub fn core_client_with_reveal(
-    debug: bool,
-    record: Option<&str>,
-    reveal_secrets: bool,
-) -> Result<CoreClient> {
+pub fn core_client_with_reveal(opts: &ClientOpts) -> Result<CoreClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_api_url() {
         CoreClient::with_base_url(api_key, url)
     } else {
         CoreClient::new(api_key)
     }
-    .with_debug(debug)
-    .with_debug_reveal_secrets(reveal_secrets);
-    if let Some(dir) = get_record_dir(record) {
+    .with_debug(opts.debug)
+    .with_debug_reveal_secrets(opts.reveal_secrets)
+    .with_dry_run(opts.dry_run);
+    if let Some(dir) = get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)
 }
 
 /// Build a `ShieldClient` with optional base URL override and reveal-secrets flag.
-pub fn shield_client_with_reveal(
-    debug: bool,
-    record: Option<&str>,
-    reveal_secrets: bool,
-) -> Result<ShieldClient> {
+pub fn shield_client_with_reveal(opts: &ClientOpts) -> Result<ShieldClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_api_url() {
         ShieldClient::with_base_url(api_key, url)
     } else {
         ShieldClient::new(api_key)
     }
-    .with_debug(debug)
-    .with_debug_reveal_secrets(reveal_secrets);
-    if let Some(dir) = get_record_dir(record) {
+    .with_debug(opts.debug)
+    .with_debug_reveal_secrets(opts.reveal_secrets)
+    .with_dry_run(opts.dry_run);
+    if let Some(dir) = get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)
 }
 
 /// Build a `ComputeClient` with optional base URL override and reveal-secrets flag.
-pub fn compute_client_with_reveal(
-    debug: bool,
-    record: Option<&str>,
-    reveal_secrets: bool,
-) -> Result<ComputeClient> {
+pub fn compute_client_with_reveal(opts: &ClientOpts) -> Result<ComputeClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_api_url() {
         ComputeClient::with_base_url(api_key, url)
     } else {
         ComputeClient::new(api_key)
     }
-    .with_debug(debug)
-    .with_debug_reveal_secrets(reveal_secrets);
-    if let Some(dir) = get_record_dir(record) {
+    .with_debug(opts.debug)
+    .with_debug_reveal_secrets(opts.reveal_secrets)
+    .with_dry_run(opts.dry_run);
+    if let Some(dir) = get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)
 }
 
 /// Build a `ContainersClient` with optional base URL override and reveal-secrets flag.
-pub fn containers_client_with_reveal(
-    debug: bool,
-    record: Option<&str>,
-    reveal_secrets: bool,
-) -> Result<ContainersClient> {
+pub fn containers_client_with_reveal(opts: &ClientOpts) -> Result<ContainersClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_containers_url() {
         ContainersClient::with_base_url(api_key, url)
     } else {
         ContainersClient::new(api_key)
     }
-    .with_debug(debug)
-    .with_debug_reveal_secrets(reveal_secrets);
-    if let Some(dir) = get_record_dir(record) {
+    .with_debug(opts.debug)
+    .with_debug_reveal_secrets(opts.reveal_secrets)
+    .with_dry_run(opts.dry_run);
+    if let Some(dir) = get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)

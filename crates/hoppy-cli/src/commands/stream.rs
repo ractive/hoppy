@@ -179,10 +179,12 @@ impl From<&Collection> for CollectionRow {
 // Handler
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle(
     action: &StreamAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     quiet: bool,
     record: Option<&str>,
@@ -190,13 +192,17 @@ pub async fn handle(
 ) -> Result<()> {
     match action {
         StreamAction::Library { action } => {
-            handle_library(action, format, debug, yes, quiet, record, redact_cfg).await
+            handle_library(
+                action, format, debug, dry_run, yes, quiet, record, redact_cfg,
+            )
+            .await
         }
         StreamAction::Video { action } => {
             handle_video(
                 action,
                 format,
                 debug,
+                dry_run,
                 yes,
                 quiet,
                 record,
@@ -205,21 +211,38 @@ pub async fn handle(
             .await
         }
         StreamAction::Collection { action } => {
-            handle_collection(action, format, debug, yes, record, redact_cfg.reveal_all).await
+            handle_collection(
+                action,
+                format,
+                debug,
+                dry_run,
+                yes,
+                record,
+                redact_cfg.reveal_all,
+            )
+            .await
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_library(
     action: &StreamLibraryAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     quiet: bool,
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
-    let core = auth::core_client(debug, record)?;
+    let opts = auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: redact_cfg.reveal_all,
+    };
+    let core = auth::core_client(&opts)?;
 
     match action {
         StreamLibraryAction::List {
@@ -454,7 +477,7 @@ async fn handle_library(
         } => {
             let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
             let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
-            let stream = resolve_stream_client(*id, debug, record, redact_cfg.reveal_all).await?;
+            let stream = resolve_stream_client(*id, &opts).await?;
             let stats = stream
                 .get_library_statistics(
                     *id,
@@ -644,9 +667,7 @@ async fn handle_library_watermark(
 
 async fn resolve_stream_client(
     library_id: i64,
-    debug: bool,
-    record: Option<&str>,
-    reveal: bool,
+    opts: &auth::ClientOpts<'_>,
 ) -> Result<StreamClient> {
     if let Some(key) = auth::get_stream_key() {
         let mut client = StreamClient::new(key);
@@ -655,13 +676,18 @@ async fn resolve_stream_client(
         } else {
             client
         };
-        client = client.with_debug(debug).with_debug_reveal_secrets(reveal);
-        if let Some(dir) = auth::get_record_dir(record) {
+        client = client
+            .with_debug(opts.debug)
+            .with_debug_reveal_secrets(opts.reveal_secrets)
+            .with_dry_run(opts.dry_run);
+        if let Some(dir) = auth::get_record_dir(opts.record) {
             client = client.with_record(dir);
         }
         return Ok(client);
     }
-    let core = auth::core_client(debug, record)?;
+    // GET — always runs, even under `--dry-run`, so the library key can
+    // still be resolved before the first mutating request is blocked.
+    let core = auth::core_client(opts)?;
     let lib = core.get_video_library(library_id).await?;
     if lib.api_key.is_empty() {
         bail!("could not determine stream API key for library {library_id}; set BUNNY_STREAM_KEY");
@@ -672,8 +698,11 @@ async fn resolve_stream_client(
     } else {
         client
     };
-    client = client.with_debug(debug).with_debug_reveal_secrets(reveal);
-    if let Some(dir) = auth::get_record_dir(record) {
+    client = client
+        .with_debug(opts.debug)
+        .with_debug_reveal_secrets(opts.reveal_secrets)
+        .with_dry_run(opts.dry_run);
+    if let Some(dir) = auth::get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)
@@ -685,15 +714,11 @@ async fn resolve_stream_client(
 /// to compute the presigned signature. Mirrors the resolution order in
 /// [`resolve_stream_client`]: prefer `BUNNY_STREAM_KEY`, else fetch the library
 /// via the core API and read its `ApiKey`.
-async fn resolve_stream_api_key(
-    library_id: i64,
-    debug: bool,
-    record: Option<&str>,
-) -> Result<String> {
+async fn resolve_stream_api_key(library_id: i64, opts: &auth::ClientOpts<'_>) -> Result<String> {
     if let Some(key) = auth::get_stream_key() {
         return Ok(key);
     }
-    let core = auth::core_client(debug, record)?;
+    let core = auth::core_client(opts)?;
     let lib = core.get_video_library(library_id).await?;
     if lib.api_key.is_empty() {
         bail!("could not determine stream API key for library {library_id}; set BUNNY_STREAM_KEY");
@@ -701,15 +726,23 @@ async fn resolve_stream_api_key(
     Ok(lib.api_key)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_video(
     action: &StreamVideoAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     quiet: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
+    let opts = auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    };
     match action {
         StreamVideoAction::List {
             library_id,
@@ -720,7 +753,7 @@ async fn handle_video(
             order_by,
             all,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             if *all {
                 const AUTO_PER_PAGE: u32 = 1000;
                 let mut current_page: u32 = 1;
@@ -791,7 +824,7 @@ async fn handle_video(
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let video = stream.get_video(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json =
@@ -833,7 +866,7 @@ async fn handle_video(
                 generate_chapters: *generate_chapters,
                 generate_moments: *generate_moments,
             };
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let video_title = title.as_deref().unwrap_or_else(|| {
                 std::path::Path::new(file)
                     .file_name()
@@ -865,9 +898,10 @@ async fn handle_video(
             if *resumable {
                 // Resumable TUS path: needs the library's Stream API key to
                 // compute the presigned signature.
-                let api_key = resolve_stream_api_key(*library_id, debug, record).await?;
-                let mut uploader =
-                    TusUploader::new(*library_id, api_key, &video.guid).with_debug(debug);
+                let api_key = resolve_stream_api_key(*library_id, &opts).await?;
+                let mut uploader = TusUploader::new(*library_id, api_key, &video.guid)
+                    .with_debug(debug)
+                    .with_dry_run(dry_run);
                 if let Some(url) = auth::get_stream_url() {
                     uploader = uploader.with_base_url(url);
                 }
@@ -896,7 +930,9 @@ async fn handle_video(
                     .with_context(|| format!("reading metadata for: {file}"))?
                     .len();
 
-                let pb = progress::file_progress(file_size, quiet);
+                // No point animating a progress bar for an upload that will
+                // be blocked before the first byte leaves the process.
+                let pb = progress::file_progress(file_size, quiet || dry_run);
 
                 let body: reqwest::Body = if let Some(bar) = &pb {
                     reqwest::Body::wrap_stream(ReaderStream::new(bar.wrap_async_read(fh)))
@@ -945,7 +981,7 @@ async fn handle_video(
                     "at least one update flag is required (--title, --collection-id, or --config-json)"
                 );
             }
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let mut body = UpdateVideo::new();
             if let Some(t) = title {
                 body = body.title(t);
@@ -980,7 +1016,7 @@ async fn handle_video(
             url,
             title,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let mut body = FetchVideo::new(url);
             if let Some(t) = title {
                 body = body.title(t);
@@ -1014,7 +1050,7 @@ async fn handle_video(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             stream.delete_video(*library_id, video_id).await?;
             output::print_mutation_result(
                 format,
@@ -1025,7 +1061,7 @@ async fn handle_video(
             );
         }
         StreamVideoAction::Caption { action } => {
-            handle_caption(action, format, debug, record, reveal).await?;
+            handle_caption(action, format, debug, dry_run, record, reveal).await?;
         }
         StreamVideoAction::Transcribe {
             library_id,
@@ -1064,7 +1100,7 @@ async fn handle_video(
                 settings = settings.generate_moments(true);
                 any = true;
             }
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let status = stream
                 .transcribe_video(
                     *library_id,
@@ -1088,7 +1124,7 @@ async fn handle_video(
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let heatmap = stream.get_video_heatmap(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&heatmap)
@@ -1125,7 +1161,7 @@ async fn handle_video(
             video_id,
             codec,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let video = if let Some(codec_str) = codec {
                 let c = EncoderOutputCodec::parse(codec_str).ok_or_else(|| {
                     anyhow::anyhow!(
@@ -1153,7 +1189,7 @@ async fn handle_video(
             video_id,
             discard_originals,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let video = stream
                 .repackage_video(*library_id, video_id, !discard_originals)
                 .await?;
@@ -1191,7 +1227,7 @@ async fn handle_video(
             if *generate_moments {
                 settings = settings.generate_moments(true);
             }
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let status = stream
                 .smart_generate(*library_id, video_id, &settings)
                 .await?;
@@ -1211,7 +1247,7 @@ async fn handle_video(
             video_id,
             thumbnail_url,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let status = stream
                 .set_video_thumbnail(*library_id, video_id, Some(thumbnail_url))
                 .await?;
@@ -1227,13 +1263,13 @@ async fn handle_video(
             }
         }
         StreamVideoAction::Resolutions { action } => {
-            handle_resolutions(action, format, debug, yes, record, reveal).await?;
+            handle_resolutions(action, format, debug, dry_run, yes, record, reveal).await?;
         }
         StreamVideoAction::Storage {
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let envelope = stream.get_video_storage_size(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&envelope)
@@ -1294,7 +1330,7 @@ async fn handle_video(
             token,
             expires,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let oembed = stream
                 .get_oembed(url, *max_width, *max_height, token.as_deref(), *expires)
                 .await?;
@@ -1308,7 +1344,7 @@ async fn handle_video(
             token,
             expires,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let data = stream
                 .get_video_play_data(*library_id, video_id, token.as_deref(), *expires)
                 .await?;
@@ -1320,7 +1356,7 @@ async fn handle_video(
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let heatmap = stream.get_video_play_heatmap(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&heatmap)
@@ -1386,16 +1422,23 @@ async fn handle_resolutions(
     action: &StreamResolutionsAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
+    let opts = auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    };
     match action {
         StreamResolutionsAction::List {
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let envelope = stream.get_video_resolutions(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&envelope)
@@ -1440,7 +1483,6 @@ async fn handle_resolutions(
             delete_non_configured,
             delete_original,
             delete_mp4_files,
-            dry_run,
         } => {
             if resolutions.is_none()
                 && !*delete_non_configured
@@ -1451,7 +1493,12 @@ async fn handle_resolutions(
                     "specify what to delete: --resolutions, --delete-non-configured, --delete-original, or --delete-mp4-files (combine with --dry-run to preview)"
                 );
             }
-            if !*dry_run && !yes {
+            // The global `--dry-run` flag drives this endpoint's own
+            // server-side `?dryRun=true` preview (see `StreamClient::
+            // cleanup_video_resolutions`, which bypasses the client-level
+            // dry-run block for exactly this call) — so skip the
+            // confirmation prompt exactly as `--yes` would.
+            if !dry_run && !yes {
                 eprint!(
                     "Cleanup resolutions for video {video_id}? This permanently deletes files. [y/N] "
                 );
@@ -1464,23 +1511,23 @@ async fn handle_resolutions(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
-            let opts = StreamCleanupResolutions {
+            let stream = resolve_stream_client(*library_id, &opts).await?;
+            let cleanup_opts = StreamCleanupResolutions {
                 resolutions_to_delete: resolutions.as_deref(),
                 delete_non_configured_resolutions: *delete_non_configured,
                 delete_original: *delete_original,
                 delete_mp4_files: *delete_mp4_files,
-                dry_run: *dry_run,
+                dry_run,
             };
             let status = stream
-                .cleanup_video_resolutions(*library_id, video_id, &opts)
+                .cleanup_video_resolutions(*library_id, video_id, &cleanup_opts)
                 .await?;
             if let OutputFormat::Json = format {
                 let json =
                     serde_json::to_string_pretty(&status).context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
-                let prefix = if *dry_run { "[dry-run] " } else { "" };
+                let prefix = if dry_run { "[dry-run] " } else { "" };
                 eprintln!(
                     "{prefix}Cleanup for {video_id}: {}",
                     status.message.as_deref().unwrap_or("done")
@@ -1495,9 +1542,16 @@ async fn handle_caption(
     action: &StreamCaptionAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
+    let opts = auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    };
     match action {
         StreamCaptionAction::Add {
             library_id,
@@ -1505,7 +1559,7 @@ async fn handle_caption(
             srclang,
             file,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let content = std::fs::read_to_string(file)
                 .with_context(|| format!("failed to read caption file: {file}"))?;
             let result = stream
@@ -1530,7 +1584,7 @@ async fn handle_caption(
             video_id,
             srclang,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             stream
                 .delete_caption(*library_id, video_id, srclang)
                 .await?;
@@ -1550,10 +1604,17 @@ async fn handle_collection(
     action: &StreamCollectionAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
+    let opts = auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    };
     match action {
         StreamCollectionAction::List {
             library_id,
@@ -1563,7 +1624,7 @@ async fn handle_collection(
             order_by,
             all,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             if *all {
                 const AUTO_PER_PAGE: u32 = 1000;
                 let mut current_page: u32 = 1;
@@ -1634,7 +1695,7 @@ async fn handle_collection(
             library_id,
             collection_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let collection = stream.get_collection(*library_id, collection_id).await?;
             if let OutputFormat::Json = format {
                 let json =
@@ -1646,7 +1707,7 @@ async fn handle_collection(
             }
         }
         StreamCollectionAction::Create { library_id, name } => {
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let body = CreateCollection::new(name);
             let collection = stream.create_collection(*library_id, &body).await?;
             if let OutputFormat::Json = format {
@@ -1666,7 +1727,7 @@ async fn handle_collection(
             if name.is_none() {
                 bail!("at least one update flag is required (--name)");
             }
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             let mut body = UpdateCollection::new();
             if let Some(n) = name {
                 body = body.name(n);
@@ -1698,7 +1759,7 @@ async fn handle_collection(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
+            let stream = resolve_stream_client(*library_id, &opts).await?;
             stream.delete_collection(*library_id, collection_id).await?;
             output::print_mutation_result(
                 format,
