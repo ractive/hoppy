@@ -1,3 +1,4 @@
+pub mod debug;
 pub mod redact;
 
 use std::path::Path;

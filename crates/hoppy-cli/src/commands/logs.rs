@@ -89,6 +89,7 @@ pub async fn handle(
     debug: bool,
     quiet: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     match action {
         LogsAction::PullZone {
@@ -117,7 +118,7 @@ pub async fn handle(
             legacy_download,
             output,
         } => {
-            let client = auth::logging_client(debug, record)?;
+            let client = auth::logging_client_with_reveal(debug, record, reveal)?;
 
             if *legacy {
                 let date = date
@@ -213,7 +214,7 @@ pub async fn handle(
             }
         }
         LogsAction::OriginErrors { id, date } => {
-            let client = auth::origin_errors_client(debug, record)?;
+            let client = auth::origin_errors_client_with_reveal(debug, record, reveal)?;
             let resp = client.get_origin_errors(*id, date).await?;
             if let OutputFormat::Json = format {
                 let json =

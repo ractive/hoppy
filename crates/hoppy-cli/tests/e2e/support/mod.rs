@@ -158,6 +158,37 @@ pub fn hoppy_live_json(args: &[&str]) -> LiveResult {
     }
 }
 
+/// Run `hoppy --format json <args>` against the live API, retrying on a bare
+/// HTTP 401 with linear backoff (2s, 4s, 6s, 8s), up to 5 attempts total.
+///
+/// A freshly created video library's per-library `AccessKey` is valid
+/// against bunny.net's Core API immediately, but takes ~2-6 seconds to
+/// propagate to the Stream API (`video.bunnycdn.com`). Requests against that
+/// library's Stream API endpoints made during the propagation window come
+/// back with a bare `401 Unauthorized`, not a 404 or a feature-gate error.
+/// This is a real (short-lived) eventual-consistency window on bunny.net's
+/// side, not a client bug — the resolved Stream client already uses the
+/// correct per-library key. See
+/// `hoppy-knowledgebase/backlog/live-stream-collection-401.md` and
+/// `hoppy-knowledgebase/backlog/live-stream-statistics-401-retry.md`.
+///
+/// Only use this for calls that hit the Stream API with a per-library key;
+/// Core API calls (`api.bunny.net`, account API key) aren't subject to this
+/// quirk and should use the plain [`hoppy_live_json`] instead.
+#[cfg(feature = "live-api")]
+#[allow(dead_code)]
+pub fn hoppy_live_json_with_401_retry(args: &[&str]) -> LiveResult {
+    const MAX_ATTEMPTS: u32 = 5;
+    let mut result = hoppy_live_json(args);
+    let mut attempt = 1;
+    while !result.success && result.stderr.contains("401") && attempt < MAX_ATTEMPTS {
+        std::thread::sleep(std::time::Duration::from_secs(u64::from(attempt) * 2));
+        result = hoppy_live_json(args);
+        attempt += 1;
+    }
+    result
+}
+
 /// Run `hoppy --yes <args>` against the live API (raw, no JSON parsing).
 #[cfg(feature = "live-api")]
 #[allow(dead_code)]

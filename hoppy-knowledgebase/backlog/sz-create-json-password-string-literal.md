@@ -2,7 +2,7 @@
 title: storage-zone create --format json shows Password "string" placeholder
 type: backlog
 date: 2026-05-15
-status: open
+status: resolved
 tags:
   - storage
   - json
@@ -51,3 +51,13 @@ an env var, hand off to a CI job". Today that requires a second call:
 hoppy storage-zone create ... --format json   # password is "string" — useless
 hoppy storage-zone get --id ... --reveal --format json | jq -r .Password
 ```
+
+## Resolution (2026-08-09)
+
+Stale — already fixed exactly as proposed:
+`commands/storage_zone.rs:182-209` no longer prints the create response;
+it immediately re-fetches the zone and prints real credentials
+(unconditionally revealed on create; `get` still redacts without
+`--reveal`). If the follow-up fetch fails, the error points at
+`storage-zone get --id <id>`. Live-verified in the 2026-08-09 dogfood
+round (see dogfooding notes).

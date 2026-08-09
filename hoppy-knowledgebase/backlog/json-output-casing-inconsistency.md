@@ -2,7 +2,7 @@
 title: --format json output uses three different casing conventions
 type: backlog
 date: 2026-05-15
-status: open
+status: resolved
 tags:
   - cli
   - json
@@ -44,3 +44,12 @@ normalize.
    stdout (NDJSON), with a stable field naming convention. Non-breaking.
 3. **Document the table above in the README** so users at least know
    what to expect. Cheapest, but doesn't fix scripting pain.
+
+## Resolution (2026-08-09)
+
+Option 3 taken: the divergence table is now documented in
+`docs/MANUAL.md` ("JSON output shapes" under Global options) as the
+explicit contract. Full normalization (option 1) stays rejected as
+breaking; the non-breaking NDJSON `--flat` mode (option 2) is filed as a
+candidate future iteration in [[development-roadmap]]. Reopen if scripting
+pain recurs beyond what the documented table mitigates.

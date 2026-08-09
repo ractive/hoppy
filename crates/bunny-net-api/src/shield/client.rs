@@ -5,6 +5,7 @@ use anyhow::{Context, Result, bail};
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
 use reqwest::{Client, RequestBuilder, Response, StatusCode};
 
+use crate::recording::debug::{format_debug_body, print_debug_request_body};
 use crate::recording::{capture_request, maybe_record_response};
 
 /// Encode set for path segments per RFC 3986 §3.3.
@@ -60,6 +61,7 @@ pub struct ShieldClient {
     api_key: String,
     base_url: String,
     debug: bool,
+    debug_reveal_secrets: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -71,6 +73,7 @@ impl Clone for ShieldClient {
             api_key: self.api_key.clone(),
             base_url: self.base_url.clone(),
             debug: self.debug,
+            debug_reveal_secrets: self.debug_reveal_secrets,
             record_dir: self.record_dir.clone(),
             last_request: Mutex::new(None),
         }
@@ -102,6 +105,7 @@ impl ShieldClient {
             api_key: api_key.into(),
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             debug: false,
+            debug_reveal_secrets: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -111,6 +115,14 @@ impl ShieldClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// When debug is enabled, reveal secret field values in request/response
+    /// bodies instead of redacting them.
+    #[must_use]
+    pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
+        self.debug_reveal_secrets = reveal;
         self
     }
 
@@ -138,6 +150,7 @@ impl ShieldClient {
         let req = rb.build().context("failed to build request")?;
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
+            print_debug_request_body(&req, self.debug_reveal_secrets);
         }
         capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         self.client.execute(req).await.context("request failed")
@@ -149,7 +162,10 @@ impl ShieldClient {
         let bytes = resp.bytes().await.context("failed to read response body")?;
         if self.debug {
             eprintln!("<< {status}");
-            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+            eprintln!(
+                "<<< {}",
+                format_debug_body(&bytes, self.debug_reveal_secrets)
+            );
         }
         maybe_record_response(
             self.record_dir.as_deref(),

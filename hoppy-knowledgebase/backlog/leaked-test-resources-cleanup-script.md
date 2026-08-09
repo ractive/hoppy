@@ -2,7 +2,7 @@
 title: cleanup.sh still a skeleton — 19 leaked resources observed
 type: backlog
 date: 2026-05-15
-status: open
+status: resolved
 tags:
   - dogfooding
   - cleanup
@@ -82,3 +82,28 @@ described in `iteration-25-publish.md` — each surface block just prints
   during cleanup is escaping. Worth investigating after cleanup.sh is
   real (so the leaks stop piling up and the leaks-per-run counter is
   observable).
+
+## Resolution (2026-08-09, iter-81)
+
+`cleanup.sh` is now a real implementation (356 lines, bash 3.2
+compatible, shellcheck-clean):
+
+- Closed 9-prefix allowlist (`hoppy-test-`, `hoppytest-`,
+  `hoppy-edge-rule-`, `hoppy-shield-test-`, `hpmc-`, `hpst-`, `hpsc-`,
+  `hpscs-`, `hpscv-`); `--prefix=` can only narrow, never widen.
+- Dry-run by default; `--yes` deletes. Container apps go first with
+  `--cascade`, then stream libraries, scripts, pull zones, storage
+  zones, DNS zones. Shield zones are report-only (no delete API).
+- Per-resource failure collection — one failed delete doesn't abort the
+  sweep; exit 1 with a summary.
+
+First live run (2026-08-09): dry-run matched exactly one leak
+(`hpmc-1783703603606-0-upd`), `--yes` deleted it. Account is clean apart
+from 15 inert orphaned shield zones.
+
+The "why do runs leak" question from *Out of scope* is answered: the
+container lifecycle test registered its cleanup delete without
+`--cascade`, so `handle_app_delete` refused once the endpoint step had
+provisioned an auto-managed pull zone, and the best-effort cleanup stack
+swallowed the refusal. Fixed in the same iteration (cleanup guard now
+passes `--cascade`).

@@ -488,7 +488,6 @@ async fn fork_database_sends_slug_and_date() {
             &ForkDatabasePayload {
                 slug: "my-fork".to_owned(),
                 date: "2026-07-10T12:00:00Z".to_owned(),
-                group: None,
             },
         )
         .await
@@ -496,32 +495,11 @@ async fn fork_database_sends_slug_and_date() {
     assert_eq!(resp.database.id, "db_01HX0000000000000000000001");
 }
 
-#[tokio::test]
-async fn fork_database_serialises_group_only_when_present() {
-    let server = MockServer::start().await;
-    Mock::given(method("POST"))
-        .and(path("/v1/databases/db_01HX0000000000000000000001/fork"))
-        .and(body_json(serde_json::json!({
-            "slug": "my-fork",
-            "date": "2026-07-10T12:00:00Z",
-            "group": "group_02",
-        })))
-        .respond_with(ResponseTemplate::new(200).set_body_raw(FIXTURE_DB_GET, "application/json"))
-        .expect(1)
-        .mount(&server)
-        .await;
-    test_client(&server.uri())
-        .fork_database(
-            "db_01HX0000000000000000000001",
-            &ForkDatabasePayload {
-                slug: "my-fork".to_owned(),
-                date: "2026-07-10T12:00:00Z".to_owned(),
-                group: Some("group_02".to_owned()),
-            },
-        )
-        .await
-        .unwrap();
-}
+// iter-81: the fork_database_serialises_group_only_when_present test was
+// deleted with the non-spec `group` field, after a live check proved the API
+// ignores it — forks always land in the source namespace. The exact body_json
+// matcher in fork_database_sends_slug_and_date pins the {slug, date}-only
+// payload.
 
 // ---------------------------------------------------------------------------
 // Optimal endpoints — cdn_server_token is a required query param

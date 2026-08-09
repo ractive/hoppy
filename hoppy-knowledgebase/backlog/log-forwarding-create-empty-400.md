@@ -1,8 +1,10 @@
 ---
-title: container log-forwarding create returns 400 (empty body) on every app — including freshly created ones
+title: >-
+  container log-forwarding create returns 400 (empty body) on every app —
+  including freshly created ones
 type: backlog
 date: 2026-05-15
-status: open
+status: resolved
 tags:
   - log-forwarding
   - containers
@@ -109,3 +111,43 @@ a server-side reason it's almost impossible to fix from our side.
 
 Until then, document `hoppy container logs` as **known-broken** in the
 README and dogfooding playbook so users don't waste time on it.
+
+## Recheck (2026-08-09, iter-81 dogfood)
+
+Still broken, unchanged: `POST /mc/log/forwarding` → 400, empty body
+(tested against app DUDEnsO6OnlhJn4 with SyslogTcp/logs.example.com:5514/
+SyslogRfc5424). Two changes since May:
+
+- `container log-forwarding get` on an app with no config now returns
+  `null` instead of a 404 error — the friendlier behavior this item asked
+  for under "Smaller related issues".
+- `--debug` no longer prints the mc request body, which blocks further
+  shape experiments — filed as [[backlog/mc-debug-omits-request-body]].
+
+Action taken: documented as **known broken upstream** in
+`docs/MANUAL.md` (Magic Containers → Tailing logs). Next step remains a
+bunny.net support ticket; nothing more is fixable client-side.
+
+## Root cause found + resolved (2026-08-09, iter-81)
+
+**Hypothesis 2 was right: `token` is required.** Once the mc client's
+`--debug` body printing was restored, an A/B on the same app id settled
+it: identical payload without `token` → 400 empty; with `token` → 201.
+(The May experiment table's "token → 401" result was misleading — that
+variant differed in other fields too.)
+
+Fixes shipped:
+
+- `container logs` auto-generates a per-session token
+  (`generate_forwarding_token()` in `commands/container.rs`) — the
+  marquee feature now works end-to-end.
+- `container log-forwarding create`/`update`: `--token` is now a
+  required flag with help text documenting the undocumented API
+  requirement; pinned by the `container_log_forwarding_create_requires_token`
+  e2e test.
+- MANUAL.md known-broken note replaced with the token requirement.
+
+Two residual observations recorded in [[api/bunny-api-quirks]]: the
+endpoint accepts configs for **nonexistent app ids** (no server-side app
+validation), and the spec/API disagreement on `token` optionality is
+drift Bunny should fix.

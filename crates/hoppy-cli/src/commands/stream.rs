@@ -193,10 +193,19 @@ pub async fn handle(
             handle_library(action, format, debug, yes, quiet, record, redact_cfg).await
         }
         StreamAction::Video { action } => {
-            handle_video(action, format, debug, yes, quiet, record).await
+            handle_video(
+                action,
+                format,
+                debug,
+                yes,
+                quiet,
+                record,
+                redact_cfg.reveal_all,
+            )
+            .await
         }
         StreamAction::Collection { action } => {
-            handle_collection(action, format, debug, yes, record).await
+            handle_collection(action, format, debug, yes, record, redact_cfg.reveal_all).await
         }
     }
 }
@@ -445,7 +454,7 @@ async fn handle_library(
         } => {
             let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
             let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
-            let stream = resolve_stream_client(*id, debug, record).await?;
+            let stream = resolve_stream_client(*id, debug, record, redact_cfg.reveal_all).await?;
             let stats = stream
                 .get_library_statistics(
                     *id,
@@ -637,6 +646,7 @@ async fn resolve_stream_client(
     library_id: i64,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<StreamClient> {
     if let Some(key) = auth::get_stream_key() {
         let mut client = StreamClient::new(key);
@@ -645,7 +655,7 @@ async fn resolve_stream_client(
         } else {
             client
         };
-        client = client.with_debug(debug);
+        client = client.with_debug(debug).with_debug_reveal_secrets(reveal);
         if let Some(dir) = auth::get_record_dir(record) {
             client = client.with_record(dir);
         }
@@ -662,7 +672,7 @@ async fn resolve_stream_client(
     } else {
         client
     };
-    client = client.with_debug(debug);
+    client = client.with_debug(debug).with_debug_reveal_secrets(reveal);
     if let Some(dir) = auth::get_record_dir(record) {
         client = client.with_record(dir);
     }
@@ -698,6 +708,7 @@ async fn handle_video(
     yes: bool,
     quiet: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     match action {
         StreamVideoAction::List {
@@ -709,7 +720,7 @@ async fn handle_video(
             order_by,
             all,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             if *all {
                 const AUTO_PER_PAGE: u32 = 1000;
                 let mut current_page: u32 = 1;
@@ -780,7 +791,7 @@ async fn handle_video(
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let video = stream.get_video(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json =
@@ -822,7 +833,7 @@ async fn handle_video(
                 generate_chapters: *generate_chapters,
                 generate_moments: *generate_moments,
             };
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let video_title = title.as_deref().unwrap_or_else(|| {
                 std::path::Path::new(file)
                     .file_name()
@@ -934,7 +945,7 @@ async fn handle_video(
                     "at least one update flag is required (--title, --collection-id, or --config-json)"
                 );
             }
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let mut body = UpdateVideo::new();
             if let Some(t) = title {
                 body = body.title(t);
@@ -969,7 +980,7 @@ async fn handle_video(
             url,
             title,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let mut body = FetchVideo::new(url);
             if let Some(t) = title {
                 body = body.title(t);
@@ -1003,7 +1014,7 @@ async fn handle_video(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             stream.delete_video(*library_id, video_id).await?;
             output::print_mutation_result(
                 format,
@@ -1014,7 +1025,7 @@ async fn handle_video(
             );
         }
         StreamVideoAction::Caption { action } => {
-            handle_caption(action, format, debug, record).await?;
+            handle_caption(action, format, debug, record, reveal).await?;
         }
         StreamVideoAction::Transcribe {
             library_id,
@@ -1053,7 +1064,7 @@ async fn handle_video(
                 settings = settings.generate_moments(true);
                 any = true;
             }
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let status = stream
                 .transcribe_video(
                     *library_id,
@@ -1077,7 +1088,7 @@ async fn handle_video(
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let heatmap = stream.get_video_heatmap(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&heatmap)
@@ -1114,7 +1125,7 @@ async fn handle_video(
             video_id,
             codec,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let video = if let Some(codec_str) = codec {
                 let c = EncoderOutputCodec::parse(codec_str).ok_or_else(|| {
                     anyhow::anyhow!(
@@ -1142,7 +1153,7 @@ async fn handle_video(
             video_id,
             discard_originals,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let video = stream
                 .repackage_video(*library_id, video_id, !discard_originals)
                 .await?;
@@ -1180,7 +1191,7 @@ async fn handle_video(
             if *generate_moments {
                 settings = settings.generate_moments(true);
             }
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let status = stream
                 .smart_generate(*library_id, video_id, &settings)
                 .await?;
@@ -1200,7 +1211,7 @@ async fn handle_video(
             video_id,
             thumbnail_url,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let status = stream
                 .set_video_thumbnail(*library_id, video_id, Some(thumbnail_url))
                 .await?;
@@ -1216,13 +1227,13 @@ async fn handle_video(
             }
         }
         StreamVideoAction::Resolutions { action } => {
-            handle_resolutions(action, format, debug, yes, record).await?;
+            handle_resolutions(action, format, debug, yes, record, reveal).await?;
         }
         StreamVideoAction::Storage {
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let envelope = stream.get_video_storage_size(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&envelope)
@@ -1283,7 +1294,7 @@ async fn handle_video(
             token,
             expires,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let oembed = stream
                 .get_oembed(url, *max_width, *max_height, token.as_deref(), *expires)
                 .await?;
@@ -1297,7 +1308,7 @@ async fn handle_video(
             token,
             expires,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let data = stream
                 .get_video_play_data(*library_id, video_id, token.as_deref(), *expires)
                 .await?;
@@ -1309,7 +1320,7 @@ async fn handle_video(
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let heatmap = stream.get_video_play_heatmap(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&heatmap)
@@ -1377,13 +1388,14 @@ async fn handle_resolutions(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     match action {
         StreamResolutionsAction::List {
             library_id,
             video_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let envelope = stream.get_video_resolutions(*library_id, video_id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&envelope)
@@ -1452,7 +1464,7 @@ async fn handle_resolutions(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let opts = StreamCleanupResolutions {
                 resolutions_to_delete: resolutions.as_deref(),
                 delete_non_configured_resolutions: *delete_non_configured,
@@ -1484,6 +1496,7 @@ async fn handle_caption(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     match action {
         StreamCaptionAction::Add {
@@ -1492,7 +1505,7 @@ async fn handle_caption(
             srclang,
             file,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let content = std::fs::read_to_string(file)
                 .with_context(|| format!("failed to read caption file: {file}"))?;
             let result = stream
@@ -1517,7 +1530,7 @@ async fn handle_caption(
             video_id,
             srclang,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             stream
                 .delete_caption(*library_id, video_id, srclang)
                 .await?;
@@ -1539,6 +1552,7 @@ async fn handle_collection(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     match action {
         StreamCollectionAction::List {
@@ -1549,7 +1563,7 @@ async fn handle_collection(
             order_by,
             all,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             if *all {
                 const AUTO_PER_PAGE: u32 = 1000;
                 let mut current_page: u32 = 1;
@@ -1620,7 +1634,7 @@ async fn handle_collection(
             library_id,
             collection_id,
         } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let collection = stream.get_collection(*library_id, collection_id).await?;
             if let OutputFormat::Json = format {
                 let json =
@@ -1632,7 +1646,7 @@ async fn handle_collection(
             }
         }
         StreamCollectionAction::Create { library_id, name } => {
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let body = CreateCollection::new(name);
             let collection = stream.create_collection(*library_id, &body).await?;
             if let OutputFormat::Json = format {
@@ -1652,7 +1666,7 @@ async fn handle_collection(
             if name.is_none() {
                 bail!("at least one update flag is required (--name)");
             }
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             let mut body = UpdateCollection::new();
             if let Some(n) = name {
                 body = body.name(n);
@@ -1684,7 +1698,7 @@ async fn handle_collection(
                     return Ok(());
                 }
             }
-            let stream = resolve_stream_client(*library_id, debug, record).await?;
+            let stream = resolve_stream_client(*library_id, debug, record, reveal).await?;
             stream.delete_collection(*library_id, collection_id).await?;
             output::print_mutation_result(
                 format,

@@ -64,8 +64,16 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::Storage { action } => {
-            commands::storage::handle(action, cli.format, cli.debug, cli.yes, cli.quiet, record)
-                .await
+            commands::storage::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.yes,
+                cli.quiet,
+                record,
+                redact_cfg.reveal_all,
+            )
+            .await
         }
         Commands::Dns { action } => {
             commands::dns::handle(action, cli.format, cli.debug, cli.yes, record).await
@@ -83,10 +91,26 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::Shield { action } => {
-            commands::shield::handle(action, cli.format, cli.debug, cli.yes, record).await
+            commands::shield::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.yes,
+                record,
+                redact_cfg.reveal_all,
+            )
+            .await
         }
         Commands::Script { action } => {
-            commands::script::handle(action, cli.format, cli.debug, cli.yes, record).await
+            commands::script::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.yes,
+                record,
+                redact_cfg.reveal_all,
+            )
+            .await
         }
         Commands::Container { action } => {
             commands::container::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
@@ -142,7 +166,15 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::Logs { action } => {
-            commands::logs::handle(action, cli.format, cli.debug, cli.quiet, record).await
+            commands::logs::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.quiet,
+                record,
+                redact_cfg.reveal_all,
+            )
+            .await
         }
         Commands::VideoLibrary { action } => {
             commands::video_library::handle(action, cli.format, cli.debug, record).await

@@ -146,6 +146,14 @@ hoppy container limits
 
 ### Tailing Magic Containers logs
 
+> **Token is required (undocumented upstream):** `POST /mc/log/forwarding`
+> rejects any configuration without a `token` with an empty HTTP 400, even
+> though Bunny's spec marks the field optional. hoppy handles this for
+> you: `container logs` auto-generates a session token, and
+> `container log-forwarding create`/`update` make `--token` a required
+> flag. (This empty 400 masqueraded as a broken endpoint from 2026-05-15
+> until the root cause was found on 2026-08-09.)
+
 Bunny does not expose a logs-fetch API for Magic Containers — logs are syslog-forwarded only, so there's no `--tail` flag to look for.
 
 ```bash
@@ -246,6 +254,23 @@ via a continuation token surfaced in a stderr hint (or the JSON
 | `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
 | `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
 | `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`) |
+
+### JSON output shapes
+
+`--format json` passes each bunny.net API's own serialization through
+unchanged, so wrapper keys and field casing differ by service family:
+
+| Surface | Wrapper key | Field casing | Pagination meta |
+|---------|-------------|--------------|-----------------|
+| `pull-zone`, `storage-zone`, `dns`, `script`, `stream` | `Items` | PascalCase (`Id`, `Name`; dns uses `Domain`) | `CurrentPage`, `TotalItems`, `HasMoreItems` |
+| `statistics` | top-level object | PascalCase | none |
+| `shield` | `Items` | camelCase (`shieldZoneId`, `wafEnabled`) | `CurrentPage`, `TotalItems`, `HasMoreItems` |
+| `container`, `db` | `items` | camelCase (`id`, `name`) | `cursor`, `meta` |
+
+Scripts consuming more than one surface need per-surface `jq` paths (e.g.
+`.Items[].Name` for pull zones but `.items[].name` for container apps).
+Normalized output is a possible future feature; until then this table is
+the contract.
 
 ## Environment variables
 

@@ -2017,9 +2017,15 @@ fn live_stream_library_lifecycle() {
             "Name was not updated"
         );
 
-        // 6. Stream library statistics
-        let lib_stats =
-            support::hoppy_live_json(&["stream", "library", "statistics", "--id", &id_str]);
+        // 6. Stream library statistics (Stream API, per-library key — subject
+        //    to the fresh-library propagation window, retry on 401)
+        let lib_stats = support::hoppy_live_json_with_401_retry(&[
+            "stream",
+            "library",
+            "statistics",
+            "--id",
+            &id_str,
+        ]);
         assert!(
             lib_stats.success,
             "stream library statistics failed — stderr: {}",
@@ -2052,41 +2058,6 @@ fn live_stream_library_lifecycle() {
     });
 }
 
-/// Create a stream collection, retrying a handful of times on HTTP 401.
-///
-/// Immediately after `POST /videolibrary` returns, the new library's
-/// per-library AccessKey is valid against bunny.net's Core API but hasn't
-/// yet propagated to the Stream API (`video.bunnycdn.com`) — requests in
-/// that window come back with a bare `401 Unauthorized`, not a 404 or a
-/// feature-gate error. Verified empirically: 3/3 fresh libraries hit a 401
-/// on the very first collection-create attempt, then succeeded 2-6 seconds
-/// later. This is a real (short-lived) eventual-consistency window on
-/// bunny.net's side, not a client bug — `resolve_stream_client` already
-/// resolves and uses the correct per-library key (see
-/// `hoppy-knowledgebase/backlog/live-stream-collection-401.md`).
-#[cfg(feature = "live-api")]
-#[allow(dead_code)]
-fn create_collection_with_retry(lib_id: &str, name: &str) -> support::LiveResult {
-    const MAX_ATTEMPTS: u32 = 5;
-    let args = [
-        "stream",
-        "collection",
-        "create",
-        "--library-id",
-        lib_id,
-        "--name",
-        name,
-    ];
-    let mut result = support::hoppy_live_json(&args);
-    let mut attempt = 1;
-    while !result.success && result.stderr.contains("401") && attempt < MAX_ATTEMPTS {
-        std::thread::sleep(std::time::Duration::from_secs(u64::from(attempt) * 2));
-        result = support::hoppy_live_json(&args);
-        attempt += 1;
-    }
-    result
-}
-
 #[cfg(feature = "live-api")]
 #[test]
 fn live_stream_collection_lifecycle() {
@@ -2109,8 +2080,17 @@ fn live_stream_collection_lifecycle() {
 
         let col_name = support::unique_name("hoppy-test-col");
 
-        // 2. Create collection (retry on 401 — see create_collection_with_retry)
-        let col_create = create_collection_with_retry(&lib_id_str, &col_name);
+        // 2. Create collection (Stream API, per-library key — retry on 401;
+        //    see support::hoppy_live_json_with_401_retry)
+        let col_create = support::hoppy_live_json_with_401_retry(&[
+            "stream",
+            "collection",
+            "create",
+            "--library-id",
+            &lib_id_str,
+            "--name",
+            &col_name,
+        ]);
         assert!(
             col_create.success,
             "collection create failed — stderr: {}",
@@ -2132,8 +2112,8 @@ fn live_stream_collection_lifecycle() {
             &guid,
         ]);
 
-        // 3. Get collection
-        let get = support::hoppy_live_json(&[
+        // 3. Get collection (Stream API, per-library key — retry on 401)
+        let get = support::hoppy_live_json_with_401_retry(&[
             "stream",
             "collection",
             "get",
@@ -2153,8 +2133,9 @@ fn live_stream_collection_lifecycle() {
             "get returned wrong guid"
         );
 
-        // 4. List collections and verify appears
-        let list = support::hoppy_live_json(&[
+        // 4. List collections and verify appears (Stream API, per-library
+        //    key — retry on 401)
+        let list = support::hoppy_live_json_with_401_retry(&[
             "stream",
             "collection",
             "list",
@@ -2171,9 +2152,10 @@ fn live_stream_collection_lifecycle() {
             .unwrap_or(false);
         assert!(found, "collection {guid} not found in list output");
 
-        // 5. Update collection name
+        // 5. Update collection name (Stream API, per-library key — retry on
+        //    401)
         let updated_col_name = format!("{col_name}-updated");
-        let update = support::hoppy_live_json(&[
+        let update = support::hoppy_live_json_with_401_retry(&[
             "stream",
             "collection",
             "update",
@@ -2190,8 +2172,9 @@ fn live_stream_collection_lifecycle() {
             update.stderr
         );
 
-        // 6. Get and verify name changed
-        let get2 = support::hoppy_live_json(&[
+        // 6. Get and verify name changed (Stream API, per-library key —
+        //    retry on 401)
+        let get2 = support::hoppy_live_json_with_401_retry(&[
             "stream",
             "collection",
             "get",

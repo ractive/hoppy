@@ -2,7 +2,7 @@
 title: pull-zone update doesn't expose CDN log-forwarding fields
 type: backlog
 date: 2026-05-15
-status: open
+status: resolved
 tags:
   - pull-zone
   - log-forwarding
@@ -54,3 +54,13 @@ Without it, users have to use the dashboard.
   push logs to us; it forwards to a configured syslog endpoint, so
   any "tail" command would need the same bore/tunnel plumbing the
   container path already has.
+
+## Resolution (2026-08-09)
+
+Stale — all seven flags exist on `pull-zone update` (clap defs
+`crates/hoppy-cli/src/cli.rs:1063-1082`, wired in
+`commands/pull_zone.rs:415-434`, added by the iter-66..77 coverage wave),
+under a "Log forwarding" help heading, with a guard against setting
+sub-fields while forwarding is disabled and token redaction unless
+`--reveal`. The read path (`pull-zone get --format json`) includes the
+fields. Verified 2026-08-09.

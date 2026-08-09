@@ -5234,9 +5234,11 @@ pub enum ContainerLogForwardingAction {
         /// Syslog format (SyslogRfc3164 or SyslogRfc5424)
         #[arg(long = "syslog-format")]
         syslog_format: String,
-        /// Optional authentication token
+        /// Authentication token. Required: the API rejects tokenless
+        /// configurations with an empty 400 even though its spec marks the
+        /// field optional (verified live 2026-08-09).
         #[arg(long)]
-        token: Option<String>,
+        token: String,
         /// Enable immediately
         #[arg(long)]
         enabled: bool,
@@ -5258,9 +5260,11 @@ pub enum ContainerLogForwardingAction {
         /// Syslog format (SyslogRfc3164 or SyslogRfc5424)
         #[arg(long = "syslog-format")]
         syslog_format: String,
-        /// Optional authentication token
+        /// Authentication token. Required: the API rejects tokenless
+        /// configurations with an empty 400 even though its spec marks the
+        /// field optional (verified live 2026-08-09).
         #[arg(long)]
-        token: Option<String>,
+        token: String,
         /// Enable the configuration
         #[arg(long)]
         enabled: bool,
@@ -5326,12 +5330,10 @@ Hoppy validates locally before the API call."
         target: String,
         /// Point-in-time to fork from (RFC 3339 date-time, e.g.
         /// 2026-07-10T12:00:00Z). Required by the API for a point-in-time fork.
+        /// The fork always lands in the source database's group — the API has
+        /// no destination-group control.
         #[arg(long)]
         date: String,
-        /// Non-spec destination group; sent only when provided. The current API
-        /// ignores it — see backlog/db-fork-group-field-drift.
-        #[arg(long)]
-        group: Option<String>,
     },
     /// Destructive: restore a database to a previous generation (preview)
     Restore {

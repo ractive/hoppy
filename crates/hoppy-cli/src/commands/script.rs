@@ -17,8 +17,8 @@ use std::io::{self, BufRead, Write};
 // Helper: build the client
 // ---------------------------------------------------------------------------
 
-fn client(debug: bool, record: Option<&str>) -> Result<ComputeClient> {
-    auth::compute_client(debug, record)
+fn client(debug: bool, record: Option<&str>, reveal: bool) -> Result<ComputeClient> {
+    auth::compute_client_with_reveal(debug, record, reveal)
 }
 
 // ---------------------------------------------------------------------------
@@ -259,6 +259,7 @@ pub async fn handle(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     match action {
         ScriptAction::List {
@@ -281,10 +282,11 @@ pub async fn handle(
                 format,
                 debug,
                 record,
+                reveal,
             )
             .await
         }
-        ScriptAction::Get { id } => handle_get(*id, format, debug, record).await,
+        ScriptAction::Get { id } => handle_get(*id, format, debug, record, reveal).await,
         ScriptAction::Create {
             name,
             script_type,
@@ -301,6 +303,7 @@ pub async fn handle(
                 format,
                 debug,
                 record,
+                reveal,
             )
             .await
         }
@@ -308,20 +311,46 @@ pub async fn handle(
             id,
             name,
             script_type,
-        } => handle_update(*id, name.as_deref(), *script_type, format, debug, record).await,
+        } => {
+            handle_update(
+                *id,
+                name.as_deref(),
+                *script_type,
+                format,
+                debug,
+                record,
+                reveal,
+            )
+            .await
+        }
         ScriptAction::Delete {
             id,
             delete_linked_pull_zones,
-        } => handle_delete(*id, *delete_linked_pull_zones, yes, format, debug, record).await,
-        ScriptAction::Code { action } => handle_code(action, format, debug, record).await,
+        } => {
+            handle_delete(
+                *id,
+                *delete_linked_pull_zones,
+                yes,
+                format,
+                debug,
+                record,
+                reveal,
+            )
+            .await
+        }
+        ScriptAction::Code { action } => handle_code(action, format, debug, record, reveal).await,
         ScriptAction::Publish { id, note } => {
-            handle_publish(*id, note.as_deref(), format, debug, record).await
+            handle_publish(*id, note.as_deref(), format, debug, record, reveal).await
         }
-        ScriptAction::Release { action } => handle_release(action, format, debug, record).await,
+        ScriptAction::Release { action } => {
+            handle_release(action, format, debug, record, reveal).await
+        }
         ScriptAction::Variable { action } => {
-            handle_variable(action, format, debug, yes, record).await
+            handle_variable(action, format, debug, yes, record, reveal).await
         }
-        ScriptAction::Secret { action } => handle_secret(action, format, debug, yes, record).await,
+        ScriptAction::Secret { action } => {
+            handle_secret(action, format, debug, yes, record, reveal).await
+        }
         ScriptAction::Statistics {
             id,
             date_from,
@@ -338,6 +367,7 @@ pub async fn handle(
                 format,
                 debug,
                 record,
+                reveal,
             )
             .await
         }
@@ -354,7 +384,7 @@ pub async fn handle(
                     return Ok(());
                 }
             }
-            let c = client(debug, record)?;
+            let c = client(debug, record, reveal)?;
             c.rotate_deployment_key(*id).await?;
             eprintln!("Rotated deployment key for script {id}");
             Ok(())
@@ -378,8 +408,9 @@ async fn handle_list(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     if all {
         const AUTO_PER_PAGE: i32 = 1000;
         let mut current_page: i32 = 1;
@@ -455,8 +486,9 @@ async fn handle_get(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     let script = c.get_script(id).await?;
     if let OutputFormat::Json = format {
         println!(
@@ -480,8 +512,9 @@ async fn handle_create(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     let body = CreateEdgeScript {
         name: Some(name.to_owned()),
         code: code.map(str::to_owned),
@@ -510,11 +543,12 @@ async fn handle_update(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     if name.is_none() && script_type.is_none() {
         bail!("at least one update flag is required (--name, --script-type)");
     }
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     let body = UpdateEdgeScript {
         id,
         name: name.map(str::to_owned),
@@ -540,6 +574,7 @@ async fn handle_delete(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     if !yes {
         eprint!("Delete script {id}? [y/N] ");
@@ -551,7 +586,7 @@ async fn handle_delete(
             return Ok(());
         }
     }
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     c.delete_script(id, delete_linked_pull_zones).await?;
     output::print_mutation_result(
         format,
@@ -572,8 +607,9 @@ async fn handle_code(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ScriptCodeAction::Get { id } => {
             let code = c.get_script_code(*id).await?;
@@ -618,8 +654,9 @@ async fn handle_publish(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     let body = PublishScript {
         note: note.map(str::to_owned),
     };
@@ -643,8 +680,9 @@ async fn handle_release(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ScriptReleaseAction::List {
             id,
@@ -733,8 +771,9 @@ async fn handle_variable(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ScriptVariableAction::List { id } => {
             let script = c.get_script(*id).await?;
@@ -851,8 +890,9 @@ async fn handle_secret(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ScriptSecretAction::List { id } => {
             let result: SecretList = c.list_secrets(*id).await?;
@@ -956,10 +996,11 @@ async fn handle_statistics(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     let date_from = crate::date::normalise_datetime_opt(date_from)?;
     let date_to = crate::date::normalise_datetime_opt(date_to)?;
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     let stats = c
         .get_script_statistics(
             id,

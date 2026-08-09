@@ -29,6 +29,7 @@ pub struct LoggingClient {
     base_url: String,
     api_key: String,
     debug: bool,
+    debug_reveal_secrets: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -46,6 +47,7 @@ impl LoggingClient {
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
+            debug_reveal_secrets: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -55,6 +57,14 @@ impl LoggingClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// Reveal secret-shaped fields in `--debug` body output instead of
+    /// redacting them.
+    #[must_use]
+    pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
+        self.debug_reveal_secrets = reveal;
         self
     }
 
@@ -89,7 +99,10 @@ impl LoggingClient {
         let bytes = resp.bytes().await.context("failed to read response body")?;
         if self.debug {
             eprintln!("<< {status}");
-            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+            eprintln!(
+                "<<< {}",
+                crate::recording::debug::format_debug_body(&bytes, self.debug_reveal_secrets)
+            );
         }
         maybe_record_response(
             self.record_dir.as_deref(),
