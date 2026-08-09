@@ -30,3 +30,15 @@ field. It is kept for backward compatibility but is expected to be ignored.
 Next dogfooding pass: fork with and without `--group` against a real account
 and confirm the destination group. If the field is rejected, drop `group` from
 the payload and the CLI flag entirely.
+
+## Dogfood check attempt (2026-08-09, iter-81)
+
+Not testable this round: the test account has no database groups and no
+databases (`db group list` and `db list` both return `[]`), and a
+point-in-time fork needs PITR history that a freshly created database
+would not have accumulated within a dogfooding session. Remains open.
+Practical path to resolution: seed a database on the test account, let it
+age past the PITR window granularity, then fork with and without
+`--group` and compare destination groups. Alternatively close as
+overtaken if a future spec bump removes `group` for good (the flag is
+already documented as ignored by the current API).

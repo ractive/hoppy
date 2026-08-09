@@ -146,6 +146,15 @@ hoppy container limits
 
 ### Tailing Magic Containers logs
 
+> **Known broken upstream (as of 2026-08-09):** `POST /mc/log/forwarding`
+> returns HTTP 400 with an empty body for every request shape we have
+> tried, on multiple apps and accounts, since at least 2026-05-15. This
+> breaks both `container log-forwarding create` and `container logs`
+> (which registers a forwarding config as its first step). The listener
+> and tunnel plumbing work; only the Bunny-side registration fails. Until
+> Bunny fixes or documents the endpoint, treat these commands as
+> non-functional.
+
 Bunny does not expose a logs-fetch API for Magic Containers — logs are syslog-forwarded only, so there's no `--tail` flag to look for.
 
 ```bash
@@ -246,6 +255,22 @@ via a continuation token surfaced in a stderr hint (or the JSON
 | `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
 | `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
 | `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`) |
+
+### JSON output shapes
+
+`--format json` passes each bunny.net API's own serialization through
+unchanged, so wrapper keys and field casing differ by service family:
+
+| Surface | Wrapper key | Field casing | Pagination meta |
+|---------|-------------|--------------|-----------------|
+| `pull-zone`, `storage-zone`, `dns`, `statistics` | `Items` / top-level object | PascalCase (`Id`, `Name`) | none |
+| `shield` | `Items` | camelCase (`shieldZoneId`, `wafEnabled`) | none |
+| `container`, `db` | `items` | camelCase (`id`, `name`) | `cursor`, `meta` |
+
+Scripts consuming more than one surface need per-surface `jq` paths (e.g.
+`.Items[].Name` for pull zones but `.items[].name` for container apps).
+Normalized output is a possible future feature; until then this table is
+the contract.
 
 ## Environment variables
 

@@ -253,18 +253,28 @@ The same drift-coupling problem occurs in CLI e2e tests (`crates/hoppy-cli/tests
 
 ## Cleanup script
 
-`hoppy-knowledgebase/dogfooding/cleanup.sh` is **currently a skeleton**. Each surface block prints the manual `hoppy <noun> list` command you should run; no automated deletion has been implemented yet, and `--yes` deliberately refuses to proceed until the real delete paths exist. Until then, treat this section as a checklist for manual cleanup:
+`hoppy-knowledgebase/dogfooding/cleanup.sh` is implemented (iter-81,
+2026-08-09). Usage:
 
-1. Run the script in its (default) dry-run mode to see the listing commands per surface.
-2. For each surface, run `hoppy <noun> list`, grep for `hoppy-test-`, and delete matches manually (via `hoppy <noun> delete --id <id> --yes` or the dashboard).
-3. Track implementation of the automated path in iter-25 / a dedicated backlog item.
+```sh
+BUNNY_API_KEY="$TEST_BUNNY_API_KEY" hoppy-knowledgebase/dogfooding/cleanup.sh          # dry-run (default)
+BUNNY_API_KEY="$TEST_BUNNY_API_KEY" hoppy-knowledgebase/dogfooding/cleanup.sh --yes    # delete
+```
 
-Once implemented, the script will:
+Guarantees:
 
-- list-and-skip anything not matching the prefix (defence in depth — never delete an unprefixed resource even if requested)
-- print what it is about to delete and require `--yes` to proceed (default is dry-run)
-- exit non-zero if any deletion fails so CI can catch leaks
-- be **idempotent** — safe to run before AND after a session
+- **Closed allowlist** — only resources whose name starts with one of:
+  `hoppy-test-`, `hoppytest-`, `hoppy-edge-rule-`, `hoppy-shield-test-`,
+  `hpmc-`, `hpst-`, `hpsc-`, `hpscs-`, `hpscv-` are ever considered.
+  `--prefix=<p>` can only narrow the sweep to one of those, never widen it.
+- Dry-run is the default; `--yes` deletes. Container apps are deleted
+  first with `--cascade` (takes their auto-managed pull zones), then
+  stream libraries, edge scripts, pull zones, storage zones, DNS zones.
+- Shield zones are report-only: there is no delete endpoint, so orphans
+  are counted and ignored (inert server-side residue).
+- Exits non-zero if any list or delete fails (per-resource failure
+  summary), so CI can catch leaks. Idempotent — safe before AND after a
+  session.
 
 The script is intentionally a shell script (not Rust) so anyone can read and audit it. It's a knowledgebase helper script, not part of the build — see CLAUDE.md "Code Patterns" for the Rust-only rule and its exemption.
 

@@ -4,7 +4,7 @@ type: backlog
 date: 2026-07-10
 origin: fixture-refresh sweep 2026-07-10
 priority: low
-status: open
+status: resolved
 tags:
   - security
   - fixtures
@@ -39,3 +39,13 @@ dead. But the values remain in git history on the public repo.
 
 - [[dogfooding/dogfooding-playbook]] — redaction rules
 - [[iterations/iteration-48-record-pii-redaction]] — original redaction layer
+
+## Resolution (2026-08-09)
+
+**Accepted.** The leaked DeploymentKeys belong to `hpscv-*` edge scripts
+created and deleted inside the live-test lifecycle — the resources no
+longer exist, so the keys authenticate nothing. The redaction rule gap
+that caused the leak was fixed in the 2026-07-10 sweep (deploymentkey,
+bare Key, and double-UUID shapes now redact). A `git filter-repo` history
+rewrite would disrupt every clone/fork for no security gain. No further
+action.

@@ -109,3 +109,19 @@ a server-side reason it's almost impossible to fix from our side.
 
 Until then, document `hoppy container logs` as **known-broken** in the
 README and dogfooding playbook so users don't waste time on it.
+
+## Recheck (2026-08-09, iter-81 dogfood)
+
+Still broken, unchanged: `POST /mc/log/forwarding` → 400, empty body
+(tested against app DUDEnsO6OnlhJn4 with SyslogTcp/logs.example.com:5514/
+SyslogRfc5424). Two changes since May:
+
+- `container log-forwarding get` on an app with no config now returns
+  `null` instead of a 404 error — the friendlier behavior this item asked
+  for under "Smaller related issues".
+- `--debug` no longer prints the mc request body, which blocks further
+  shape experiments — filed as [[backlog/mc-debug-omits-request-body]].
+
+Action taken: documented as **known broken upstream** in
+`docs/MANUAL.md` (Magic Containers → Tailing logs). Next step remains a
+bunny.net support ticket; nothing more is fixable client-side.

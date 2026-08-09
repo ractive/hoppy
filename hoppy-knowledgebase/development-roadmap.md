@@ -104,26 +104,17 @@ cargo test --features live-api --no-run
 
 ---
 
-## Planned Iterations (API Coverage)
+## API Coverage — completed
 
-| Iter | Branch | Summary | New API Methods | Complexity |
-|------|--------|---------|----------------|------------|
-| [[iterations/iteration-13-statistics\|13]] | `iter-13/statistics` | Statistics & analytics across all services (shield detailed metrics, storage/DNS/pull zone/stream stats) | 11 | Medium |
-| [[iterations/iteration-14-edge-rules\|14]] | `iter-14/edge-rules` | Pull zone edge rules — custom request/response handling at CDN edge (add/update/delete/enable rules with triggers and actions) | 3 | Medium |
-| [[iterations/iteration-15-pullzone-access-control\|15]] | `iter-15/pullzone-access-control` | Pull zone referrer allow/block lists and IP blocking (6 endpoints, 8 CLI commands) | 6 | Small |
-| [[iterations/iteration-16-stream-video-processing\|16]] | `iter-16/stream-video-processing` | Stream video processing — transcription, heatmaps, re-encoding, thumbnails, resolution management, storage size | 10 | Medium |
-| [[iterations/iteration-17-dns-security\|17]] | `iter-17/dns-security` | DNS security — DNSSEC management, wildcard certificate issuance, DNS record scanning | 5 | Medium |
-| [[iterations/iteration-18-shield-advanced\|18]] | `iter-18/shield-advanced` | Shield advanced — API Guardian, upload scanning, event logs, WAF triggered rule review | 16 | Medium-Large |
+API-coverage planning moved through two waves, both done:
 
-**Total across iters 13–18:** ~51 new API methods, ~47 new CLI commands
+- Iters 13–18 (statistics, edge rules, access control, video processing, DNS
+  security, shield advanced) — merged spring 2026.
+- Iters 66–77 from the July 2026 full-spec audit — all merged 2026-07-10
+  (PRs #77–#88). See [[research/api-coverage-gap-analysis-2026-07]] for the
+  audit and outcome; its scorecard describes the pre-iteration state.
 
-### Excluded from planned iterations
-
-- **Security credential rotation** (resetSecurityKey, resetPassword, resetApiKey) — too destructive for CLI automation
-- **Billing summary/PDF downloads** — low CLI value, better in dashboard
-- **Video library watermark/referrer management** — niche, can add later
-- **Account management** (close account, audit logs) — dangerous/niche
-- **OEmbed** — embed HTML generation, not a CLI operation
+New coverage work should start from a fresh spec pull, not this file.
 
 ---
 
@@ -137,6 +128,7 @@ cargo test --features live-api --no-run
 - **AI image generation** — `hoppy ai generate --prompt "..."`
 - **Database commands** — `hoppy db query --sql "SELECT ..."`
 - **Bulk operations** — pipe JSON in, batch create/update/delete
+- **JSON output normalization** — per-domain casing/wrapper divergence (see [[backlog/json-output-casing-inconsistency]]); candidate: non-breaking NDJSON `--flat` mode with stable field names
 - **Profile support** — multiple named API key profiles
 - **Auto-update** — self-update mechanism
 - **MCP server mode** — run as a Model Context Protocol server for direct LLM integration
