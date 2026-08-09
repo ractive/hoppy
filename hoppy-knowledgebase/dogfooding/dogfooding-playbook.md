@@ -266,7 +266,13 @@ Guarantees:
 - **Closed allowlist** — only resources whose name starts with one of:
   `hoppy-test-`, `hoppytest-`, `hoppy-edge-rule-`, `hoppy-shield-test-`,
   `hpmc-`, `hpst-`, `hpsc-`, `hpscs-`, `hpscv-` are ever considered.
-  `--prefix=<p>` can only narrow the sweep to one of those, never widen it.
+  `--prefix=<p>` can only narrow the sweep to one of those, never widen it
+  (empty or whitespace-containing overrides are refused). One deliberate
+  exception: container-app `--cascade` also removes the app's auto-managed
+  pull zones, whose generated names are never prefix-checked — they exist
+  only as plumbing for the allowlisted app. Storage-zone deletes pass
+  `--keep-linked-pull-zones`, so no other cascade reaches past the name
+  check.
 - Dry-run is the default; `--yes` deletes. Container apps are deleted
   first with `--cascade` (takes their auto-managed pull zones), then
   stream libraries, edge scripts, pull zones, storage zones, DNS zones.

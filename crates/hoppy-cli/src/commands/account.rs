@@ -195,7 +195,7 @@ pub async fn handle_apikey(
             per_page,
             reveal,
         } => {
-            let client = auth::core_client(debug, record)?;
+            let client = auth::core_client_with_reveal(debug, record, *reveal || reveal_global)?;
             let list = client.list_api_keys(*page, *per_page).await?;
             let reveal = *reveal || reveal_global;
 

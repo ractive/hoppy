@@ -262,8 +262,9 @@ unchanged, so wrapper keys and field casing differ by service family:
 
 | Surface | Wrapper key | Field casing | Pagination meta |
 |---------|-------------|--------------|-----------------|
-| `pull-zone`, `storage-zone`, `dns`, `statistics` | `Items` / top-level object | PascalCase (`Id`, `Name`) | none |
-| `shield` | `Items` | camelCase (`shieldZoneId`, `wafEnabled`) | none |
+| `pull-zone`, `storage-zone`, `dns`, `script`, `stream` | `Items` | PascalCase (`Id`, `Name`; dns uses `Domain`) | `CurrentPage`, `TotalItems`, `HasMoreItems` |
+| `statistics` | top-level object | PascalCase | none |
+| `shield` | `Items` | camelCase (`shieldZoneId`, `wafEnabled`) | `CurrentPage`, `TotalItems`, `HasMoreItems` |
 | `container`, `db` | `items` | camelCase (`id`, `name`) | `cursor`, `meta` |
 
 Scripts consuming more than one surface need per-surface `jq` paths (e.g.

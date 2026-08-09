@@ -81,15 +81,21 @@ pub fn get_origin_errors_url() -> Option<String> {
 
 /// Build a `LoggingClient` with optional base URL override.
 ///
-/// Read-only surface (no mutating endpoints) — no `debug_reveal_secrets` to wire.
-pub fn logging_client(debug: bool, record: Option<&str>) -> Result<LoggingClient> {
+/// Read-only surface, but access-log responses can carry signed URLs —
+/// response-body debug output is redacted unless `reveal` is set.
+pub fn logging_client_with_reveal(
+    debug: bool,
+    record: Option<&str>,
+    reveal: bool,
+) -> Result<LoggingClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_logging_url() {
         LoggingClient::with_base_url(api_key, url)
     } else {
         LoggingClient::new(api_key)
     }
-    .with_debug(debug);
+    .with_debug(debug)
+    .with_debug_reveal_secrets(reveal);
     if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }
@@ -98,15 +104,21 @@ pub fn logging_client(debug: bool, record: Option<&str>) -> Result<LoggingClient
 
 /// Build an `OriginErrorsClient` with optional base URL override.
 ///
-/// Read-only surface (no mutating endpoints) — no `debug_reveal_secrets` to wire.
-pub fn origin_errors_client(debug: bool, record: Option<&str>) -> Result<OriginErrorsClient> {
+/// Read-only surface, but log responses can carry signed URLs —
+/// response-body debug output is redacted unless `reveal` is set.
+pub fn origin_errors_client_with_reveal(
+    debug: bool,
+    record: Option<&str>,
+    reveal: bool,
+) -> Result<OriginErrorsClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_origin_errors_url() {
         OriginErrorsClient::with_base_url(api_key, url)
     } else {
         OriginErrorsClient::new(api_key)
     }
-    .with_debug(debug);
+    .with_debug(debug)
+    .with_debug_reveal_secrets(reveal);
     if let Some(dir) = get_record_dir(record) {
         client = client.with_record(dir);
     }

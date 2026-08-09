@@ -23,7 +23,14 @@
 #
 #   `--prefix=<p>` NARROWS the sweep to a single prefix. It can never widen it:
 #   any `<p>` that does not itself begin with one of the prefixes above is
-#   refused. An empty `--prefix=` is refused too.
+#   refused, as are empty and whitespace-containing overrides.
+#
+#   One deliberate exception to the name check: `container app delete
+#   --cascade` also removes the app's AUTO-MANAGED pull zones, whose generated
+#   names are never prefix-checked. Those zones exist only as plumbing for the
+#   (allowlisted) app, so this cannot reach user resources. Storage-zone
+#   deletion passes --keep-linked-pull-zones so the upstream cascade default
+#   never fires.
 #
 # DRY RUN IS THE DEFAULT
 #   With no arguments the script only lists what it would delete, one line per
@@ -106,6 +113,15 @@ if [[ "$HAVE_OVERRIDE" -eq 1 ]]; then
         echo "refusing to run with an empty --prefix= — it would match every resource" >&2
         exit 2
     fi
+    # ACTIVE_PREFIXES is word-split by the matching loops below, so a prefix
+    # containing whitespace would smuggle extra patterns past the allowlist
+    # check (e.g. --prefix='hoppy-test- www' would sweep www-*).
+    case "$PREFIX_OVERRIDE" in
+        *[[:space:]]*)
+            echo "refusing --prefix containing whitespace — prefixes are single tokens" >&2
+            exit 2
+            ;;
+    esac
     allowed=0
     for p in $ALLOWED_PREFIXES; do
         case "$PREFIX_OVERRIDE" in
@@ -157,7 +173,7 @@ matches_prefix() {
 # wrap this in a command substitution, and the resulting subshell would discard
 # every counter this function updates.
 LIST_OUT=""
-TMP_DIR="$(mktemp -d)"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/hoppy-cleanup.XXXXXX")"
 
 # shellcheck disable=SC2329  # invoked indirectly by the EXIT trap below
 cleanup_tmp_dir() {
@@ -174,6 +190,27 @@ list_json() {
     "$HOPPY" "$@" --format json >"$LIST_OUT" 2>"$err_file" || rc=$?
     if [[ "$rc" -ne 0 ]]; then
         record_failure "$label: list failed: $(tr '\n' ' ' <"$err_file")"
+        return 1
+    fi
+    return 0
+}
+
+
+# extract_json <surface-label> <json-file> <jq-filter>
+#
+# Runs jq over a list response and leaves the extracted lines in the file
+# named by $EXTRACT_OUT. Process substitution (`< <(jq …)`) would hide jq
+# failures — pipefail doesn't cover it, so a shape change in the JSON would
+# silently sweep zero resources. Here a jq failure is recorded and the
+# surface is skipped loudly instead.
+EXTRACT_OUT=""
+extract_json() {
+    local label="$1" json="$2" filter="$3" err_file rc=0
+    EXTRACT_OUT="$(mktemp "$TMP_DIR/extract.XXXXXX")"
+    err_file="$(mktemp "$TMP_DIR/err.XXXXXX")"
+    jq -r "$filter" "$json" >"$EXTRACT_OUT" 2>"$err_file" || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        record_failure "$label: jq failed (unexpected JSON shape?): $(tr '\n' ' ' <"$err_file")"
         return 1
     fi
     return 0
@@ -219,12 +256,13 @@ cleanup_container_apps() {
     local json id name
     list_json "container apps" container app list --all || return 0
     json="$LIST_OUT"
+    extract_json "container apps" "$json" '.items[]? | "\(.id)\t\(.name)"' || return 0
     while IFS=$'\t' read -r id name; do
         [[ -n "$id" ]] || continue
         matches_prefix "$name" || continue
         delete_one "container-app" "$id" "$name" \
             container app delete --id "$id" --cascade --yes
-    done < <(jq -r '.items[]? | "\(.id)\t\(.name)"' "$json")
+    done <"$EXTRACT_OUT"
 }
 
 cleanup_stream_libraries() {
@@ -232,12 +270,13 @@ cleanup_stream_libraries() {
     local json id name
     list_json "stream libraries" stream library list --all || return 0
     json="$LIST_OUT"
+    extract_json "stream libraries" "$json" '.Items[]? | "\(.Id)\t\(.Name)"' || return 0
     while IFS=$'\t' read -r id name; do
         [[ -n "$id" ]] || continue
         matches_prefix "$name" || continue
         delete_one "stream-library" "$id" "$name" \
             stream library delete --id "$id" --yes
-    done < <(jq -r '.Items[]? | "\(.Id)\t\(.Name)"' "$json")
+    done <"$EXTRACT_OUT"
 }
 
 cleanup_scripts() {
@@ -245,6 +284,7 @@ cleanup_scripts() {
     local json id name
     list_json "edge scripts" script list --all || return 0
     json="$LIST_OUT"
+    extract_json "edge scripts" "$json" '.Items[]? | "\(.Id)\t\(.Name)"' || return 0
     while IFS=$'\t' read -r id name; do
         [[ -n "$id" ]] || continue
         matches_prefix "$name" || continue
@@ -253,7 +293,7 @@ cleanup_scripts() {
         # pull-zone sweep below, so we never reach outside the allowlist.
         delete_one "edge-script" "$id" "$name" \
             script delete --id "$id" --yes
-    done < <(jq -r '.Items[]? | "\(.Id)\t\(.Name)"' "$json")
+    done <"$EXTRACT_OUT"
 }
 
 cleanup_pull_zones() {
@@ -261,12 +301,13 @@ cleanup_pull_zones() {
     local json id name
     list_json "pull zones" pull-zone list --all || return 0
     json="$LIST_OUT"
+    extract_json "pull zones" "$json" '.Items[]? | "\(.Id)\t\(.Name)"' || return 0
     while IFS=$'\t' read -r id name; do
         [[ -n "$id" ]] || continue
         matches_prefix "$name" || continue
         delete_one "pull-zone" "$id" "$name" \
             pull-zone delete --id "$id" --yes
-    done < <(jq -r '.Items[]? | "\(.Id)\t\(.Name)"' "$json")
+    done <"$EXTRACT_OUT"
 }
 
 cleanup_storage_zones() {
@@ -274,14 +315,17 @@ cleanup_storage_zones() {
     local json id name
     list_json "storage zones" storage-zone list --all || return 0
     json="$LIST_OUT"
+    extract_json "storage zones" "$json" '.Items[]? | "\(.Id)\t\(.Name)"' || return 0
     while IFS=$'\t' read -r id name; do
         [[ -n "$id" ]] || continue
         matches_prefix "$name" || continue
-        # Upstream default also deletes pull zones still linked to the zone;
-        # by this point the pull-zone sweep has already cleared the test ones.
+        # --keep-linked-pull-zones: the upstream default would also delete any
+        # pull zone still linked to the zone — including one whose name never
+        # passed the allowlist check. Test pull zones were already swept above;
+        # anything still linked is deliberately left alone.
         delete_one "storage-zone" "$id" "$name" \
-            storage-zone delete --id "$id" --yes
-    done < <(jq -r '.Items[]? | "\(.Id)\t\(.Name)"' "$json")
+            storage-zone delete --id "$id" --keep-linked-pull-zones --yes
+    done <"$EXTRACT_OUT"
 }
 
 cleanup_dns_zones() {
@@ -289,12 +333,13 @@ cleanup_dns_zones() {
     local json id domain
     list_json "dns zones" dns zone list --all || return 0
     json="$LIST_OUT"
+    extract_json "dns zones" "$json" '.Items[]? | "\(.Id)\t\(.Domain)"' || return 0
     while IFS=$'\t' read -r id domain; do
         [[ -n "$id" ]] || continue
         matches_prefix "$domain" || continue
         delete_one "dns-zone" "$id" "$domain" \
             dns zone delete --id "$id" --yes
-    done < <(jq -r '.Items[]? | "\(.Id)\t\(.Domain)"' "$json")
+    done <"$EXTRACT_OUT"
 }
 
 # Shield zones cannot be deleted: the public API has no
@@ -303,18 +348,20 @@ cleanup_dns_zones() {
 # many shield zones point at a pull zone that no longer exists.
 report_orphan_shield_zones() {
     echo "== shield zones (report only) =="
-    local pz_json sz_json existing orphans=0 shield_id pz_id
+    local pz_json sz_json existing_file orphans=0 shield_id pz_id
     list_json "shield orphan check" pull-zone list --all || return 0
     pz_json="$LIST_OUT"
     list_json "shield zones" shield zone list --per-page 1000 || return 0
     sz_json="$LIST_OUT"
-    existing="$(jq -r '.Items[]?.Id' "$pz_json")"
+    extract_json "shield orphan check" "$pz_json" '.Items[]?.Id' || return 0
+    existing_file="$EXTRACT_OUT"
+    extract_json "shield zones" "$sz_json" '.Items[]? | "\(.shieldZoneId)\t\(.pullZoneId)"' || return 0
     while IFS=$'\t' read -r shield_id pz_id; do
-        [[ -n "$shield_id" ]] || continue
-        if ! printf '%s\n' "$existing" | grep -qx -- "$pz_id"; then
+        [[ -n "$shield_id" && -n "$pz_id" && "$pz_id" != "null" ]] || continue
+        if ! grep -qxF -- "$pz_id" "$existing_file"; then
             orphans=$((orphans + 1))
         fi
-    done < <(jq -r '.Items[]? | "\(.shieldZoneId)\t\(.pullZoneId)"' "$sz_json")
+    done <"$EXTRACT_OUT"
     echo "  $orphans orphaned shield zones (no delete API — ignore)"
 }
 

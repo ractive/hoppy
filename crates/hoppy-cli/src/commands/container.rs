@@ -2984,6 +2984,21 @@ async fn handle_logs(
 
     // If --replace-existing was used, restore the prior config (best-effort).
     if let Some(prior) = prior_config {
+        // The GET response is write-only for `token` (always null), and the
+        // API rejects tokenless configs with an empty 400 — restoring with
+        // `prior.token` verbatim would delete the user's config and then fail
+        // to put it back. Substitute a fresh token and say so.
+        let restore_token = match prior.token {
+            Some(t) if !t.is_empty() => Some(t),
+            _ => {
+                eprintln!(
+                    "Note: the previous config's token is not readable from the API; \
+                     restoring with a newly generated token. If your syslog endpoint \
+                     validates the token, update it via `container log-forwarding update`."
+                );
+                Some(generate_forwarding_token())
+            }
+        };
         let restore_req = LogForwardingRequest {
             app: prior.app.clone(),
             forwarding_type: prior.forwarding_type,
@@ -2991,7 +3006,7 @@ async fn handle_logs(
             port: prior.port,
             format: prior.format,
             enabled: prior.enabled,
-            token: prior.token,
+            token: restore_token,
         };
         if let Err(e) = c.create_log_forwarding(&restore_req).await {
             eprintln!(

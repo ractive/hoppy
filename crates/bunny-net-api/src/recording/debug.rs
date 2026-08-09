@@ -63,49 +63,51 @@ pub fn format_debug_body(bytes: &[u8], reveal: bool) -> String {
     }
 }
 
-/// Walk a JSON value and redact string-valued fields whose names suggest
-/// they hold secrets (token, password, secret, _key).
+/// Walk a JSON value and redact secret-shaped fields, delegating the
+/// what-is-sensitive decision to [`super::redact::is_sensitive_key`] /
+/// [`super::redact::is_sensitive_value`] — the same rules that protect
+/// `--record` fixtures — so debug output can never be weaker than the
+/// fixture redactor. Unlike the fixture redactor, string secrets keep
+/// their length (`<set, length=N>`) because "did I send a token at all,
+/// and roughly the right one" is exactly what --debug is for.
+///
+/// A key matching the sensitive rules force-redacts every string and
+/// number leaf beneath it (arrays of tokens included); a string value
+/// that itself looks sensitive (JWT, signed URL, 72-char account key)
+/// is redacted wherever it appears.
 fn redact_debug_body(value: &mut serde_json::Value) {
-    const KEY_SUFFIX_NOT_SECRET: &[&str] = &["zonesecuritykey", "userpkkey", "publickey"];
+    redact_debug_value(value, false);
+}
+
+fn redact_debug_value(value: &mut serde_json::Value, force: bool) {
     match value {
         serde_json::Value::Object(map) => {
             for (k, v) in map.iter_mut() {
-                let lower = k.to_lowercase();
-                let is_allowlisted = KEY_SUFFIX_NOT_SECRET.iter().any(|s| lower.ends_with(s));
-                let is_secret = !is_allowlisted
-                    && (lower.ends_with("password")
-                        || lower.ends_with("_password")
-                        || lower.ends_with("secret")
-                        || lower.ends_with("_secret")
-                        || lower.ends_with("token")
-                        || lower.ends_with("_token")
-                        || lower.ends_with("apikey")
-                        || lower.ends_with("api_key")
-                        || lower.ends_with("_key")
-                        || lower.contains("credential"));
-                if is_secret {
-                    if let serde_json::Value::String(raw) = v {
-                        let len = raw.chars().count();
-                        if len == 0 {
-                            *v = serde_json::Value::String("<unset>".to_owned());
-                        } else {
-                            *v = serde_json::Value::String(format!("<set, length={len}>"));
-                        }
-                    } else if v.is_null() {
-                        *v = serde_json::Value::String("<unset>".to_owned());
-                    } else {
-                        redact_debug_body(v);
-                    }
+                let sensitive = force || super::redact::is_sensitive_key(k);
+                if sensitive && v.is_null() {
+                    *v = serde_json::Value::String("<unset>".to_owned());
                 } else {
-                    redact_debug_body(v);
+                    redact_debug_value(v, sensitive);
                 }
             }
         }
         serde_json::Value::Array(arr) => {
             for v in arr {
-                redact_debug_body(v);
+                redact_debug_value(v, force);
             }
         }
+        serde_json::Value::String(s) if force || super::redact::is_sensitive_value(s) => {
+            let len = s.chars().count();
+            *value = if len == 0 {
+                serde_json::Value::String("<unset>".to_owned())
+            } else {
+                serde_json::Value::String(format!("<set, length={len}>"))
+            };
+        }
+        serde_json::Value::Number(_) if force => {
+            *value = serde_json::Value::Number(0.into());
+        }
+        // Bool and Null (outside sensitive keys) are never redacted.
         _ => {}
     }
 }
@@ -132,6 +134,51 @@ mod tests {
         let bytes = serde_json::to_vec(&body).unwrap();
         let out = format_debug_body(&bytes, true);
         assert!(out.contains("abc"), "expected token revealed, got: {out}");
+    }
+
+    #[test]
+    fn format_debug_body_redacts_pascal_case_key_fields() {
+        // Regression: the original suffix heuristic (`ends_with("_key")`)
+        // missed every PascalCase `…Key` name, printing account API keys,
+        // AccessKey and DeploymentKey values in cleartext.
+        let account_key = format!(
+            "{}{}",
+            "12345678-1234-1234-1234-123456789abc", "12345678-1234-1234-1234-123456789abc"
+        );
+        let body = serde_json::json!({
+            "Key": account_key,
+            "AccessKey": "s3cr3t",
+            "DeploymentKey": "dk-value",
+            "PublicKey": "keep-me-readable",
+        });
+        let out = format_debug_body(&serde_json::to_vec(&body).unwrap(), false);
+        assert!(!out.contains(&account_key), "account key leaked: {out}");
+        assert!(!out.contains("s3cr3t"), "AccessKey leaked: {out}");
+        assert!(!out.contains("dk-value"), "DeploymentKey leaked: {out}");
+        assert!(
+            out.contains("keep-me-readable"),
+            "PublicKey wrongly redacted: {out}"
+        );
+    }
+
+    #[test]
+    fn format_debug_body_redacts_arrays_under_secret_keys() {
+        let body = serde_json::json!({"Tokens": ["tok-one", "tok-two"]});
+        let out = format_debug_body(&serde_json::to_vec(&body).unwrap(), false);
+        assert!(!out.contains("tok-one"), "array token leaked: {out}");
+        assert!(!out.contains("tok-two"), "array token leaked: {out}");
+    }
+
+    #[test]
+    fn format_debug_body_redacts_sensitive_values_anywhere() {
+        // JWTs and signed URLs are secrets regardless of the field name.
+        let body = serde_json::json!({
+            "Playback": "https://cdn.example/video.m3u8?token=abc123",
+            "Session": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln",
+        });
+        let out = format_debug_body(&serde_json::to_vec(&body).unwrap(), false);
+        assert!(!out.contains("token=abc123"), "signed URL leaked: {out}");
+        assert!(!out.contains("eyJhbGciOiJIUzI1NiJ9"), "JWT leaked: {out}");
     }
 
     #[test]
