@@ -46,7 +46,7 @@ is blocked upstream, and runs a dogfood round against the test account
 - [x] Live-verify fixes: `live_stream_library_lifecycle`,
   `live_stream_collection_lifecycle`, `live_container_app_lifecycle`
   green + no new leaks after run
-- [ ] Quality gates (fmt, clippy -D warnings, test --quiet), PR
+- [x] Quality gates (fmt, clippy -D warnings, test --quiet), PR
 
 ## Dogfood round (2026-08-09)
 
