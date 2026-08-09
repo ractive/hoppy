@@ -35,13 +35,19 @@ pub struct StatisticsArgs<'a> {
 pub async fn handle(
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     args: StatisticsArgs<'_>,
 ) -> Result<()> {
     let date_from = date::normalise_datetime_opt(args.date_from)?;
     let date_to = date::normalise_datetime_opt(args.date_to)?;
     let hourly = args.hourly;
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        ..Default::default()
+    })?;
     let query = StatisticsQuery {
         date_from: date_from.as_deref(),
         date_to: date_to.as_deref(),

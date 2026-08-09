@@ -37,6 +37,9 @@ fn main() {
 async fn run(cli: Cli) {
     let record = cli.record.as_deref();
     let redact_cfg = RedactConfig::new(cli.reveal, cli.reveal_env.clone());
+    // `--dry-run` skips confirmation prompts too — the mutation is blocked at
+    // the client layer regardless, so there is nothing to confirm.
+    let yes = cli.yes || cli.dry_run;
 
     // Hints are off when --no-hints or --quiet is set, or whenever output is
     // machine readable (`--format json`) so paired stdout/stderr stays clean.
@@ -46,18 +49,36 @@ async fn run(cli: Cli) {
 
     let result = match &cli.command {
         Commands::Auth { action } => {
-            commands::auth::handle(action, cli.format, cli.debug, cli.yes, cli.quiet, record).await
+            commands::auth::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                yes,
+                cli.quiet,
+                record,
+            )
+            .await
         }
         Commands::PullZone { action } => {
-            commands::pull_zone::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
-                .await
+            commands::pull_zone::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                yes,
+                record,
+                &redact_cfg,
+            )
+            .await
         }
         Commands::StorageZone { action } => {
             commands::storage_zone::handle(
                 action,
                 cli.format,
                 cli.debug,
-                cli.yes,
+                cli.dry_run,
+                yes,
                 record,
                 &redact_cfg,
             )
@@ -68,7 +89,8 @@ async fn run(cli: Cli) {
                 action,
                 cli.format,
                 cli.debug,
-                cli.yes,
+                cli.dry_run,
+                yes,
                 cli.quiet,
                 record,
                 redact_cfg.reveal_all,
@@ -76,14 +98,15 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::Dns { action } => {
-            commands::dns::handle(action, cli.format, cli.debug, cli.yes, record).await
+            commands::dns::handle(action, cli.format, cli.debug, cli.dry_run, yes, record).await
         }
         Commands::Stream { action } => {
             commands::stream::handle(
                 action,
                 cli.format,
                 cli.debug,
-                cli.yes,
+                cli.dry_run,
+                yes,
                 cli.quiet,
                 record,
                 &redact_cfg,
@@ -95,7 +118,8 @@ async fn run(cli: Cli) {
                 action,
                 cli.format,
                 cli.debug,
-                cli.yes,
+                cli.dry_run,
+                yes,
                 record,
                 redact_cfg.reveal_all,
             )
@@ -106,22 +130,32 @@ async fn run(cli: Cli) {
                 action,
                 cli.format,
                 cli.debug,
-                cli.yes,
+                cli.dry_run,
+                yes,
                 record,
                 redact_cfg.reveal_all,
             )
             .await
         }
         Commands::Container { action } => {
-            commands::container::handle(action, cli.format, cli.debug, cli.yes, record, &redact_cfg)
-                .await
+            commands::container::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                yes,
+                record,
+                &redact_cfg,
+            )
+            .await
         }
         Commands::Db { action } => {
             commands::database::handle(
                 action,
                 cli.format,
                 cli.debug,
-                cli.yes,
+                cli.dry_run,
+                yes,
                 cli.quiet,
                 record,
                 &redact_cfg,
@@ -146,6 +180,7 @@ async fn run(cli: Cli) {
             commands::statistics::handle(
                 cli.format,
                 cli.debug,
+                cli.dry_run,
                 record,
                 commands::statistics::StatisticsArgs {
                     date_from: date_from.as_deref(),
@@ -170,6 +205,7 @@ async fn run(cli: Cli) {
                 action,
                 cli.format,
                 cli.debug,
+                cli.dry_run,
                 cli.quiet,
                 record,
                 redact_cfg.reveal_all,
@@ -177,36 +213,69 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::VideoLibrary { action } => {
-            commands::video_library::handle(action, cli.format, cli.debug, record).await
+            commands::video_library::handle(action, cli.format, cli.debug, cli.dry_run, record)
+                .await
         }
         Commands::Purge {
             url,
             exact_path,
             is_async,
         } => {
-            commands::purge::handle(url, *exact_path, *is_async, cli.format, cli.debug, record)
-                .await
+            commands::purge::handle(
+                url,
+                *exact_path,
+                *is_async,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                record,
+            )
+            .await
         }
         Commands::Apikey { action } => {
-            commands::account::handle_apikey(action, cli.format, cli.debug, cli.reveal, record)
-                .await
+            commands::account::handle_apikey(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                cli.reveal,
+                record,
+            )
+            .await
         }
         Commands::Billing { action } => {
-            commands::account::handle_billing(action, cli.format, cli.debug, cli.quiet, record)
-                .await
+            commands::account::handle_billing(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                cli.quiet,
+                record,
+            )
+            .await
         }
         Commands::Region { action } => {
-            commands::account::handle_region(action, cli.format, cli.debug, record).await
-        }
-        Commands::Country { action } => {
-            commands::account::handle_country(action, cli.format, cli.debug, record).await
-        }
-        Commands::Search { query, from, size } => {
-            commands::account::handle_search(query, *from, *size, cli.format, cli.debug, record)
+            commands::account::handle_region(action, cli.format, cli.debug, cli.dry_run, record)
                 .await
         }
+        Commands::Country { action } => {
+            commands::account::handle_country(action, cli.format, cli.debug, cli.dry_run, record)
+                .await
+        }
+        Commands::Search { query, from, size } => {
+            commands::account::handle_search(
+                query,
+                *from,
+                *size,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                record,
+            )
+            .await
+        }
         Commands::User { action } => {
-            commands::account::handle_user(action, cli.format, cli.debug, record).await
+            commands::account::handle_user(action, cli.format, cli.debug, cli.dry_run, record).await
         }
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();
@@ -216,7 +285,61 @@ async fn run(cli: Cli) {
     };
 
     if let Err(err) = result {
+        if let Some(skipped) = find_dry_run_skipped(&err) {
+            print_dry_run_preview(skipped, cli.format);
+            return;
+        }
         output::print_error(&format!("{err:#}"), cli.format);
         std::process::exit(1);
+    }
+}
+
+/// Walk the error chain looking for a [`bunny_net_api::dry_run::DryRunSkipped`],
+/// which any domain client returns instead of actually sending a mutating
+/// request under `--dry-run`. Walking the chain (rather than matching the
+/// top-level error) means this still finds the marker after callers wrap it
+/// with `anyhow::Context`.
+fn find_dry_run_skipped(err: &anyhow::Error) -> Option<&bunny_net_api::dry_run::DryRunSkipped> {
+    err.chain()
+        .find_map(|e| e.downcast_ref::<bunny_net_api::dry_run::DryRunSkipped>())
+}
+
+/// Render the dry-run preview and exit 0 — a blocked mutation is the
+/// intended, successful outcome of `--dry-run`, not a failure.
+///
+/// `--format json` prints a machine-readable envelope to stdout (matching
+/// the `print_mutation_result` envelope contract elsewhere in the CLI);
+/// `table`/`text` print an `[dry-run]`-prefixed preview to stderr, keeping
+/// stdout pipe-clean either way.
+fn print_dry_run_preview(
+    skipped: &bunny_net_api::dry_run::DryRunSkipped,
+    format: cli::OutputFormat,
+) {
+    match format {
+        cli::OutputFormat::Json => {
+            let body = skipped
+                .body
+                .as_deref()
+                .and_then(|b| serde_json::from_str::<serde_json::Value>(b).ok())
+                .or_else(|| skipped.body.clone().map(serde_json::Value::String));
+            let mut envelope = serde_json::json!({
+                "status": "dry-run",
+                "method": skipped.method,
+                "url": skipped.url,
+            });
+            if let Some(body) = body {
+                envelope["body"] = body;
+            }
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&envelope).unwrap_or_else(|_| envelope.to_string())
+            );
+        }
+        cli::OutputFormat::Table | cli::OutputFormat::Text => {
+            eprintln!("[dry-run] Would send: {} {}", skipped.method, skipped.url);
+            if let Some(body) = &skipped.body {
+                eprintln!("[dry-run] Body: {body}");
+            }
+        }
     }
 }

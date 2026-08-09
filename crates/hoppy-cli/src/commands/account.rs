@@ -186,6 +186,7 @@ pub async fn handle_apikey(
     action: &ApikeyAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     reveal_global: bool,
     record: Option<&str>,
 ) -> Result<()> {
@@ -195,7 +196,12 @@ pub async fn handle_apikey(
             per_page,
             reveal,
         } => {
-            let client = auth::core_client_with_reveal(debug, record, *reveal || reveal_global)?;
+            let client = auth::core_client_with_reveal(&auth::ClientOpts {
+                debug,
+                dry_run,
+                record,
+                reveal_secrets: *reveal || reveal_global,
+            })?;
             let list = client.list_api_keys(*page, *per_page).await?;
             let reveal = *reveal || reveal_global;
 
@@ -235,10 +241,16 @@ pub async fn handle_billing(
     action: &BillingAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     quiet: bool,
     record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        ..Default::default()
+    })?;
     match action {
         BillingAction::Summary => {
             let entries = client.get_billing_summary().await?;
@@ -285,11 +297,17 @@ pub async fn handle_region(
     action: &RegionAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
         RegionAction::List => {
-            let client = auth::core_client(debug, record)?;
+            let client = auth::core_client(&auth::ClientOpts {
+                debug,
+                dry_run,
+                record,
+                ..Default::default()
+            })?;
             let regions = client.list_regions().await?;
             if let OutputFormat::Json = format {
                 print_json(&regions)?;
@@ -306,11 +324,17 @@ pub async fn handle_country(
     action: &CountryAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
         CountryAction::List => {
-            let client = auth::core_client(debug, record)?;
+            let client = auth::core_client(&auth::ClientOpts {
+                debug,
+                dry_run,
+                record,
+                ..Default::default()
+            })?;
             let countries = client.list_countries().await?;
             if let OutputFormat::Json = format {
                 print_json(&countries)?;
@@ -332,9 +356,15 @@ pub async fn handle_search(
     size: Option<i32>,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        ..Default::default()
+    })?;
     let results: SearchResults = client.search(query, from, size).await?;
     if let OutputFormat::Json = format {
         print_json(&results)?;
@@ -365,6 +395,7 @@ pub async fn handle_user(
     action: &UserAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
@@ -378,7 +409,12 @@ pub async fn handle_user(
             continuation_token,
             limit,
         } => {
-            let client = auth::core_client(debug, record)?;
+            let client = auth::core_client(&auth::ClientOpts {
+                debug,
+                dry_run,
+                record,
+                ..Default::default()
+            })?;
             let query = UserAuditQuery {
                 product: product.clone(),
                 resource_type: resource_type.clone(),

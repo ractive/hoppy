@@ -335,17 +335,23 @@ fn confirm_destructive(prompt: &str, yes: bool) -> Result<bool> {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)]
 pub async fn handle(
     action: &DbAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     quiet: bool,
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
-    let client = auth::database_client_with_reveal(debug, record, redact_cfg.reveal_all)?;
+    let client = auth::database_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: redact_cfg.reveal_all,
+    })?;
     match action {
         DbAction::List { group_id } => {
             let resp = client.list_databases(group_id.as_deref()).await?;

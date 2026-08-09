@@ -40,22 +40,30 @@ impl From<&StorageObject> for StorageObjectRow {
 // Handler
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle(
     action: &StorageAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     quiet: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
+    let opts = auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    };
     match action {
         StorageAction::Ls {
             zone,
             remote_path,
             region,
         } => {
-            let client = build_storage_client(zone, region, debug, record, reveal).await?;
+            let client = build_storage_client(zone, region, &opts).await?;
             let path = remote_path.trim_matches('/');
             let objects = client.list_files(zone, path).await?;
             if let OutputFormat::Json = format {
@@ -75,7 +83,7 @@ pub async fn handle(
             region,
             checksum,
         } => {
-            let client = build_storage_client(zone, region, debug, record, reveal).await?;
+            let client = build_storage_client(zone, region, &opts).await?;
             let (dir, name) = split_remote_path(remote_path)?;
 
             // Resolve the optional integrity checksum. `--checksum <hex>` supplies
@@ -103,7 +111,9 @@ pub async fn handle(
                 .with_context(|| format!("reading metadata for: {file}"))?
                 .len();
 
-            let pb = progress::file_progress(file_size, quiet);
+            // No point animating a progress bar for an upload that will be
+            // blocked before the first byte leaves the process.
+            let pb = progress::file_progress(file_size, quiet || dry_run);
 
             // Wrap the file in a streaming body so the progress bar can track
             // bytes as they are sent, without loading the whole file into memory.
@@ -141,7 +151,7 @@ pub async fn handle(
             file,
             region,
         } => {
-            let client = build_storage_client(zone, region, debug, record, reveal).await?;
+            let client = build_storage_client(zone, region, &opts).await?;
             let (dir, name) = split_remote_path(remote_path)?;
             let display_path = remote_path.trim_start_matches('/');
 
@@ -204,7 +214,7 @@ pub async fn handle(
                     return Ok(());
                 }
             }
-            let client = build_storage_client(zone, region, debug, record, reveal).await?;
+            let client = build_storage_client(zone, region, &opts).await?;
             if is_directory {
                 let dir = remote_path.trim_matches('/');
                 if dir.is_empty() {
@@ -308,15 +318,15 @@ async fn sha256_file_hex(path: &str) -> Result<String> {
 async fn build_storage_client(
     zone_name: &str,
     region: &str,
-    debug: bool,
-    record: Option<&str>,
-    reveal: bool,
+    opts: &auth::ClientOpts<'_>,
 ) -> Result<StorageClient> {
     let access_key = if let Some(key) = auth::get_storage_key() {
         key
     } else {
-        // Fall back to fetching the password from the Core API.
-        let core = auth::core_client(debug, record).context(
+        // Fall back to fetching the password from the Core API. This is a
+        // GET, so it always runs — even under `--dry-run` — to keep the
+        // composite command truthful (see iter-82 dry-run design notes).
+        let core = auth::core_client(opts).context(
             "BUNNY_STORAGE_KEY is not set and BUNNY_API_KEY is needed to fetch the storage key",
         )?;
         let result = core
@@ -342,8 +352,11 @@ async fn build_storage_client(
     } else {
         StorageClient::new(region, access_key)?
     };
-    client = client.with_debug(debug).with_debug_reveal_secrets(reveal);
-    if let Some(dir) = auth::get_record_dir(record) {
+    client = client
+        .with_debug(opts.debug)
+        .with_debug_reveal_secrets(opts.reveal_secrets)
+        .with_dry_run(opts.dry_run);
+    if let Some(dir) = auth::get_record_dir(opts.record) {
         client = client.with_record(dir);
     }
     Ok(client)

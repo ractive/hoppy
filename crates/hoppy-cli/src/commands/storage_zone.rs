@@ -73,11 +73,17 @@ pub async fn handle(
     action: &StorageZoneAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
-    let client = auth::core_client_with_reveal(debug, record, redact_cfg.reveal_all)?;
+    let client = auth::core_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: redact_cfg.reveal_all,
+    })?;
 
     match action {
         StorageZoneAction::List {

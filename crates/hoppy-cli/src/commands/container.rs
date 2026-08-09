@@ -33,8 +33,18 @@ use tokio_util::sync::CancellationToken;
 // Helper: build the client
 // ---------------------------------------------------------------------------
 
-fn client(debug: bool, record: Option<&str>, reveal: bool) -> Result<ContainersClient> {
-    auth::containers_client_with_reveal(debug, record, reveal)
+fn client(
+    debug: bool,
+    dry_run: bool,
+    record: Option<&str>,
+    reveal: bool,
+) -> Result<ContainersClient> {
+    auth::containers_client_with_reveal(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        reveal_secrets: reveal,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -764,38 +774,77 @@ pub async fn handle(
     action: &ContainerAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     redact: &RedactConfig,
 ) -> Result<()> {
     match action {
         ContainerAction::App { action } => {
-            handle_app(action, format, debug, yes, record, redact).await
+            handle_app(action, format, debug, dry_run, yes, record, redact).await
         }
         ContainerAction::Template { action } => {
-            handle_template(action, format, debug, yes, record, redact).await
+            handle_template(action, format, debug, dry_run, yes, record, redact).await
         }
         ContainerAction::Endpoint { action } => {
-            handle_endpoint(action, format, debug, yes, record, redact.reveal_all).await
+            handle_endpoint(
+                action,
+                format,
+                debug,
+                dry_run,
+                yes,
+                record,
+                redact.reveal_all,
+            )
+            .await
         }
         ContainerAction::Volume { action } => {
-            handle_volume(action, format, debug, yes, record, redact.reveal_all).await
+            handle_volume(
+                action,
+                format,
+                debug,
+                dry_run,
+                yes,
+                record,
+                redact.reveal_all,
+            )
+            .await
         }
         ContainerAction::Registry { action } => {
-            handle_registry(action, format, debug, yes, record, redact.reveal_all).await
+            handle_registry(
+                action,
+                format,
+                debug,
+                dry_run,
+                yes,
+                record,
+                redact.reveal_all,
+            )
+            .await
         }
         ContainerAction::Region { action } => {
-            handle_region(action, format, debug, record, redact.reveal_all).await
+            handle_region(action, format, debug, dry_run, record, redact.reveal_all).await
         }
         ContainerAction::Node { action } => {
-            handle_node(action, format, debug, record, redact.reveal_all).await
+            handle_node(action, format, debug, dry_run, record, redact.reveal_all).await
         }
         ContainerAction::Pod { action } => {
-            handle_pod(action, debug, record, redact.reveal_all).await
+            handle_pod(action, debug, dry_run, record, redact.reveal_all).await
         }
-        ContainerAction::Limits => handle_limits(format, debug, record, redact.reveal_all).await,
+        ContainerAction::Limits => {
+            handle_limits(format, debug, dry_run, record, redact.reveal_all).await
+        }
         ContainerAction::LogForwarding { action } => {
-            handle_log_forwarding(action, format, debug, yes, record, redact.reveal_all).await
+            handle_log_forwarding(
+                action,
+                format,
+                debug,
+                dry_run,
+                yes,
+                record,
+                redact.reveal_all,
+            )
+            .await
         }
         ContainerAction::List { cursor, limit, all } => {
             handle_app(
@@ -806,6 +855,7 @@ pub async fn handle(
                 },
                 format,
                 debug,
+                dry_run,
                 yes,
                 record,
                 redact,
@@ -817,6 +867,7 @@ pub async fn handle(
                 &ContainerAppAction::Get { id: id.clone() },
                 format,
                 debug,
+                dry_run,
                 yes,
                 record,
                 redact,
@@ -836,6 +887,7 @@ pub async fn handle(
                 },
                 format,
                 debug,
+                dry_run,
                 yes,
                 record,
                 redact,
@@ -860,6 +912,7 @@ pub async fn handle(
                 format,
                 bore_server.as_deref(),
                 debug,
+                dry_run,
                 record,
                 redact.reveal_all,
             )
@@ -876,11 +929,12 @@ async fn handle_app(
     action: &ContainerAppAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     redact: &RedactConfig,
 ) -> Result<()> {
-    let c = client(debug, record, redact.reveal_all)?;
+    let c = client(debug, dry_run, record, redact.reveal_all)?;
     match action {
         ContainerAppAction::List { cursor, limit, all } => {
             if *all {
@@ -1180,7 +1234,18 @@ async fn handle_app(
             cascade,
             no_cascade,
         } => {
-            handle_app_delete(&c, id, *cascade, *no_cascade, yes, format, debug, record).await?;
+            handle_app_delete(
+                &c,
+                id,
+                *cascade,
+                *no_cascade,
+                yes,
+                format,
+                debug,
+                dry_run,
+                record,
+            )
+            .await?;
         }
         ContainerAppAction::Overview { id } => {
             let overview = c.get_application_overview(id).await?;
@@ -1356,6 +1421,7 @@ async fn handle_app_delete(
     yes: bool,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let auto_pzs = match discover_auto_pull_zones(c, id).await {
@@ -1411,7 +1477,12 @@ async fn handle_app_delete(
     );
 
     if has_auto_pzs && cascade {
-        let core = auth::core_client(debug, record)?;
+        let core = auth::core_client(&auth::ClientOpts {
+            debug,
+            dry_run,
+            record,
+            ..Default::default()
+        })?;
         let mut failures: Vec<(i64, String)> = Vec::new();
         for (_ep, pz) in &auto_pzs {
             match core.delete_pull_zone(*pz).await {
@@ -1449,11 +1520,12 @@ async fn handle_template(
     action: &ContainerTemplateAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     redact: &RedactConfig,
 ) -> Result<()> {
-    let c = client(debug, record, redact.reveal_all)?;
+    let c = client(debug, dry_run, record, redact.reveal_all)?;
     match action {
         ContainerTemplateAction::Get {
             app_id,
@@ -1907,11 +1979,12 @@ async fn handle_endpoint(
     action: &ContainerEndpointAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     match action {
         ContainerEndpointAction::List { app_id } => {
             let result = c.list_endpoints(app_id).await?;
@@ -2036,11 +2109,12 @@ async fn handle_volume(
     action: &ContainerVolumeAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     match action {
         ContainerVolumeAction::List { app_id } => {
             let result = c.list_volumes(app_id).await?;
@@ -2147,11 +2221,12 @@ async fn handle_registry(
     action: &ContainerRegistryAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     match action {
         ContainerRegistryAction::List => {
             let result = c.list_registries().await?;
@@ -2406,10 +2481,11 @@ async fn handle_region(
     action: &ContainerRegionAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     match action {
         ContainerRegionAction::List { cursor, limit, all } => {
             if *all {
@@ -2475,10 +2551,11 @@ async fn handle_node(
     action: &ContainerNodeAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     match action {
         ContainerNodeAction::List { cursor, limit, all } => {
             if *all {
@@ -2547,10 +2624,11 @@ async fn handle_node(
 async fn handle_pod(
     action: &ContainerPodAction,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     match action {
         ContainerPodAction::Recreate { app_id, pod_id } => {
             c.recreate_pod(app_id, pod_id).await?;
@@ -2567,10 +2645,11 @@ async fn handle_pod(
 async fn handle_limits(
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     let limits = c.get_user_limits().await?;
     if let OutputFormat::Json = format {
         println!(
@@ -2592,11 +2671,12 @@ async fn handle_log_forwarding(
     action: &ContainerLogForwardingAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     yes: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     match action {
         ContainerLogForwardingAction::List => {
             let result = c.list_log_forwarding().await?;
@@ -2776,6 +2856,7 @@ async fn handle_logs(
     format: OutputFormat,
     bore_server: Option<&str>,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
     reveal: bool,
 ) -> Result<()> {
@@ -2789,7 +2870,7 @@ async fn handle_logs(
     };
 
     // --- 2. Build client and verify app exists --------------------------------
-    let c = client(debug, record, reveal)?;
+    let c = client(debug, dry_run, record, reveal)?;
     c.get_application(app_id)
         .await
         .with_context(|| format!("application '{app_id}' not found or inaccessible"))?;

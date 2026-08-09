@@ -14,6 +14,7 @@ use std::sync::Mutex;
 use anyhow::{Context, Result, anyhow};
 use reqwest::{Client, StatusCode};
 
+use crate::dry_run::check_dry_run;
 use crate::recording::{capture_request, maybe_record_response};
 
 use super::types::{ErrorResponse, LegacyLogParams, LogQueryParams, LogQueryResponse};
@@ -30,6 +31,7 @@ pub struct LoggingClient {
     api_key: String,
     debug: bool,
     debug_reveal_secrets: bool,
+    dry_run: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -48,6 +50,7 @@ impl LoggingClient {
             api_key: api_key.into(),
             debug: false,
             debug_reveal_secrets: false,
+            dry_run: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -65,6 +68,16 @@ impl LoggingClient {
     #[must_use]
     pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
         self.debug_reveal_secrets = reveal;
+        self
+    }
+
+    /// Preview mutating (POST/PUT/PATCH/DELETE) requests instead of sending
+    /// them. Read-only requests (GET/HEAD) are unaffected. This client only
+    /// issues GET requests today, but the flag is threaded through for
+    /// consistency and future-proofing.
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
         self
     }
 
@@ -91,6 +104,7 @@ impl LoggingClient {
         if self.record_dir.is_some() {
             capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         }
+        check_dry_run(&req, self.dry_run, self.debug_reveal_secrets)?;
         self.http.execute(req).await.context("request failed")
     }
 

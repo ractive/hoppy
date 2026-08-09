@@ -1,3 +1,4 @@
+use crate::dry_run::check_dry_run;
 use crate::recording::debug::{format_debug_body, print_debug_request_body};
 use crate::recording::{capture_request, maybe_record_response};
 use anyhow::{Context, Result, anyhow};
@@ -23,6 +24,7 @@ pub struct ComputeClient {
     api_key: String,
     debug: bool,
     debug_reveal_secrets: bool,
+    dry_run: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -41,6 +43,7 @@ impl ComputeClient {
             api_key: api_key.into(),
             debug: false,
             debug_reveal_secrets: false,
+            dry_run: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -58,6 +61,14 @@ impl ComputeClient {
     #[must_use]
     pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
         self.debug_reveal_secrets = reveal;
+        self
+    }
+
+    /// Preview mutating (POST/PUT/PATCH/DELETE) requests instead of sending
+    /// them. Read-only requests (GET/HEAD) are unaffected.
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
         self
     }
 
@@ -87,6 +98,7 @@ impl ComputeClient {
         if self.record_dir.is_some() {
             capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         }
+        check_dry_run(&req, self.dry_run, self.debug_reveal_secrets)?;
         self.http.execute(req).await.context("request failed")
     }
 

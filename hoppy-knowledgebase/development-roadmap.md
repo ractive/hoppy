@@ -120,8 +120,7 @@ New coverage work should start from a fresh spec pull, not this file.
 
 ## Possible Future Iterations (Non-API-Coverage)
 
-- **Config file support + profiles** — `~/.config/hoppy/config.toml` for defaults (default format, etc.) plus named API-key profiles (`--profile test`); makes the test-account discipline structural. **Recommended next ergonomics iteration (iter-82 candidate, noted 2026-08-09)**, with `--dry-run` as follow-up.
-- **`--dry-run` for mutating operations** — show what would happen without executing
+- **Config file support + profiles** — `~/.config/hoppy/config.toml` for defaults (default format, etc.) plus named API-key profiles (`--profile test`); makes the test-account discipline structural. **Recommended next ergonomics iteration.**
 - **`--wait` for async operations** — poll until operation completes
 - **Optimizer commands** — image transformation presets
 - **AI image generation** — `hoppy ai generate --prompt "..."`

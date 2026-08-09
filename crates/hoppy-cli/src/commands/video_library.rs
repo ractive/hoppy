@@ -15,9 +15,15 @@ pub async fn handle(
     action: &VideoLibraryAction,
     format: OutputFormat,
     debug: bool,
+    dry_run: bool,
     record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(debug, record)?;
+    let client = auth::core_client(&auth::ClientOpts {
+        debug,
+        dry_run,
+        record,
+        ..Default::default()
+    })?;
 
     match action {
         VideoLibraryAction::DrmStatistics {

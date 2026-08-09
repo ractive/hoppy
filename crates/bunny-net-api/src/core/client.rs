@@ -10,6 +10,7 @@ use reqwest::{
 // `format_debug_body` used to live here; it moved to `crate::recording::debug`
 // (iter-81) so every domain client can share it. Re-exported at this path for
 // backward compatibility.
+use crate::dry_run::check_dry_run;
 pub use crate::recording::debug::format_debug_body;
 use crate::recording::debug::print_debug_request_body;
 use crate::recording::{capture_request, maybe_record_response};
@@ -41,6 +42,7 @@ pub struct CoreClient {
     api_key: String,
     debug: bool,
     debug_reveal_secrets: bool,
+    dry_run: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -53,6 +55,7 @@ impl Clone for CoreClient {
             api_key: self.api_key.clone(),
             debug: self.debug,
             debug_reveal_secrets: self.debug_reveal_secrets,
+            dry_run: self.dry_run,
             record_dir: self.record_dir.clone(),
             last_request: Mutex::new(None),
         }
@@ -84,6 +87,7 @@ impl CoreClient {
             api_key: api_key.into(),
             debug: false,
             debug_reveal_secrets: false,
+            dry_run: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -101,6 +105,14 @@ impl CoreClient {
     #[must_use]
     pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
         self.debug_reveal_secrets = reveal;
+        self
+    }
+
+    /// Preview mutating (POST/PUT/PATCH/DELETE) requests instead of sending
+    /// them. Read-only requests (GET/HEAD) are unaffected.
+    #[must_use]
+    pub fn with_dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = dry_run;
         self
     }
 
@@ -1455,6 +1467,7 @@ impl CoreClient {
             request.method().as_ref(),
             request.url().path(),
         );
+        check_dry_run(&request, self.dry_run, self.debug_reveal_secrets)?;
         self.http
             .execute(request)
             .await
