@@ -120,16 +120,14 @@ New coverage work should start from a fresh spec pull, not this file.
 
 ## Possible Future Iterations (Non-API-Coverage)
 
-- **Config file support** — `~/.config/hoppy/config.toml` for defaults (API key, default format, etc.)
+- **Config file support + profiles** — `~/.config/hoppy/config.toml` for defaults (default format, etc.) plus named API-key profiles (`--profile test`); makes the test-account discipline structural. **Recommended next ergonomics iteration (iter-82 candidate, noted 2026-08-09)**, with `--dry-run` as follow-up.
 - **`--dry-run` for mutating operations** — show what would happen without executing
 - **`--wait` for async operations** — poll until operation completes
-- **Billing commands** — `hoppy billing summary`, invoices
 - **Optimizer commands** — image transformation presets
 - **AI image generation** — `hoppy ai generate --prompt "..."`
-- **Database commands** — `hoppy db query --sql "SELECT ..."`
+- **`db query --sql`** — direct libSQL data-plane queries (rest of the db surface shipped in iters 66-77; only `db ping` touches the data plane today)
 - **Bulk operations** — pipe JSON in, batch create/update/delete
 - **JSON output normalization** — per-domain casing/wrapper divergence (see [[backlog/json-output-casing-inconsistency]]); candidate: non-breaking NDJSON `--flat` mode with stable field names
-- **Profile support** — multiple named API key profiles
 - **Auto-update** — self-update mechanism
 - **MCP server mode** — run as a Model Context Protocol server for direct LLM integration
 
