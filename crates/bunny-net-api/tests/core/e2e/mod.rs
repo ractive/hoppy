@@ -1,6 +1,7 @@
 mod account_api;
 mod billing_api;
 mod dns_api;
+mod dry_run_api;
 mod pullzone_api;
 mod recording_api;
 mod statistics_api;
