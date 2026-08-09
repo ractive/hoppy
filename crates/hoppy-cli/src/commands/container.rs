@@ -33,8 +33,8 @@ use tokio_util::sync::CancellationToken;
 // Helper: build the client
 // ---------------------------------------------------------------------------
 
-fn client(debug: bool, record: Option<&str>) -> Result<ContainersClient> {
-    auth::containers_client(debug, record)
+fn client(debug: bool, record: Option<&str>, reveal: bool) -> Result<ContainersClient> {
+    auth::containers_client_with_reveal(debug, record, reveal)
 }
 
 // ---------------------------------------------------------------------------
@@ -776,20 +776,26 @@ pub async fn handle(
             handle_template(action, format, debug, yes, record, redact).await
         }
         ContainerAction::Endpoint { action } => {
-            handle_endpoint(action, format, debug, yes, record).await
+            handle_endpoint(action, format, debug, yes, record, redact.reveal_all).await
         }
         ContainerAction::Volume { action } => {
-            handle_volume(action, format, debug, yes, record).await
+            handle_volume(action, format, debug, yes, record, redact.reveal_all).await
         }
         ContainerAction::Registry { action } => {
-            handle_registry(action, format, debug, yes, record).await
+            handle_registry(action, format, debug, yes, record, redact.reveal_all).await
         }
-        ContainerAction::Region { action } => handle_region(action, format, debug, record).await,
-        ContainerAction::Node { action } => handle_node(action, format, debug, record).await,
-        ContainerAction::Pod { action } => handle_pod(action, debug, record).await,
-        ContainerAction::Limits => handle_limits(format, debug, record).await,
+        ContainerAction::Region { action } => {
+            handle_region(action, format, debug, record, redact.reveal_all).await
+        }
+        ContainerAction::Node { action } => {
+            handle_node(action, format, debug, record, redact.reveal_all).await
+        }
+        ContainerAction::Pod { action } => {
+            handle_pod(action, debug, record, redact.reveal_all).await
+        }
+        ContainerAction::Limits => handle_limits(format, debug, record, redact.reveal_all).await,
         ContainerAction::LogForwarding { action } => {
-            handle_log_forwarding(action, format, debug, yes, record).await
+            handle_log_forwarding(action, format, debug, yes, record, redact.reveal_all).await
         }
         ContainerAction::List { cursor, limit, all } => {
             handle_app(
@@ -855,6 +861,7 @@ pub async fn handle(
                 bore_server.as_deref(),
                 debug,
                 record,
+                redact.reveal_all,
             )
             .await
         }
@@ -873,7 +880,7 @@ async fn handle_app(
     record: Option<&str>,
     redact: &RedactConfig,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, redact.reveal_all)?;
     match action {
         ContainerAppAction::List { cursor, limit, all } => {
             if *all {
@@ -1446,7 +1453,7 @@ async fn handle_template(
     record: Option<&str>,
     redact: &RedactConfig,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, redact.reveal_all)?;
     match action {
         ContainerTemplateAction::Get {
             app_id,
@@ -1902,8 +1909,9 @@ async fn handle_endpoint(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ContainerEndpointAction::List { app_id } => {
             let result = c.list_endpoints(app_id).await?;
@@ -2030,8 +2038,9 @@ async fn handle_volume(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ContainerVolumeAction::List { app_id } => {
             let result = c.list_volumes(app_id).await?;
@@ -2140,8 +2149,9 @@ async fn handle_registry(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ContainerRegistryAction::List => {
             let result = c.list_registries().await?;
@@ -2397,8 +2407,9 @@ async fn handle_region(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ContainerRegionAction::List { cursor, limit, all } => {
             if *all {
@@ -2465,8 +2476,9 @@ async fn handle_node(
     format: OutputFormat,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ContainerNodeAction::List { cursor, limit, all } => {
             if *all {
@@ -2532,8 +2544,13 @@ async fn handle_node(
 // Pod sub-handlers
 // ---------------------------------------------------------------------------
 
-async fn handle_pod(action: &ContainerPodAction, debug: bool, record: Option<&str>) -> Result<()> {
-    let c = client(debug, record)?;
+async fn handle_pod(
+    action: &ContainerPodAction,
+    debug: bool,
+    record: Option<&str>,
+    reveal: bool,
+) -> Result<()> {
+    let c = client(debug, record, reveal)?;
     match action {
         ContainerPodAction::Recreate { app_id, pod_id } => {
             c.recreate_pod(app_id, pod_id).await?;
@@ -2547,8 +2564,13 @@ async fn handle_pod(action: &ContainerPodAction, debug: bool, record: Option<&st
 // Limits handler
 // ---------------------------------------------------------------------------
 
-async fn handle_limits(format: OutputFormat, debug: bool, record: Option<&str>) -> Result<()> {
-    let c = client(debug, record)?;
+async fn handle_limits(
+    format: OutputFormat,
+    debug: bool,
+    record: Option<&str>,
+    reveal: bool,
+) -> Result<()> {
+    let c = client(debug, record, reveal)?;
     let limits = c.get_user_limits().await?;
     if let OutputFormat::Json = format {
         println!(
@@ -2572,8 +2594,9 @@ async fn handle_log_forwarding(
     debug: bool,
     yes: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     match action {
         ContainerLogForwardingAction::List => {
             let result = c.list_log_forwarding().await?;
@@ -2628,7 +2651,7 @@ async fn handle_log_forwarding(
                 forwarding_type: forwarding_type.parse().map_err(anyhow::Error::msg)?,
                 endpoint: endpoint.clone(),
                 port: *port,
-                token: token.clone(),
+                token: Some(token.clone()),
                 format: syslog_format.parse().map_err(anyhow::Error::msg)?,
                 enabled: *enabled,
             };
@@ -2657,7 +2680,7 @@ async fn handle_log_forwarding(
                 forwarding_type: forwarding_type.parse().map_err(anyhow::Error::msg)?,
                 endpoint: endpoint.clone(),
                 port: *port,
-                token: token.clone(),
+                token: Some(token.clone()),
                 format: syslog_format.parse().map_err(anyhow::Error::msg)?,
                 enabled: *enabled,
             };
@@ -2729,6 +2752,20 @@ fn print_log_text(ev: &LogEvent) {
     println!("{time_str} {coloured_sev} {app_name} | {}", ev.message);
 }
 
+/// Generate a per-session log-forwarding token.
+///
+/// The API rejects tokenless configurations with an empty 400 even though the
+/// spec marks `token` optional (verified live 2026-08-09, see
+/// `backlog/log-forwarding-create-empty-400.md`). hoppy's syslog listener
+/// doesn't authenticate senders, so uniqueness is all that matters here.
+fn generate_forwarding_token() -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("hoppy-{:x}-{nanos:x}", std::process::id())
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn handle_logs(
     app_id: &str,
@@ -2740,6 +2777,7 @@ async fn handle_logs(
     bore_server: Option<&str>,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     // --- 1. Validate format ---------------------------------------------------
     // Tail output is a live stream, not tabular data. The global `--format`
@@ -2751,7 +2789,7 @@ async fn handle_logs(
     };
 
     // --- 2. Build client and verify app exists --------------------------------
-    let c = client(debug, record)?;
+    let c = client(debug, record, reveal)?;
     c.get_application(app_id)
         .await
         .with_context(|| format!("application '{app_id}' not found or inaccessible"))?;
@@ -2858,7 +2896,7 @@ async fn handle_logs(
             port: i32::from(tunnel_handle.public_port),
             format: SyslogFormat::SyslogRfc5424,
             enabled: true,
-            token: None,
+            token: Some(generate_forwarding_token()),
         };
         let cfg = c
             .create_log_forwarding(&req)

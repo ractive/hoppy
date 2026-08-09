@@ -345,6 +345,22 @@ PascalCase renaming of `optimizer_minify_css` would produce
 hoppy applies `#[serde(rename = "OptimizerMinifyCSS")]` explicitly
 on this field in both the response and request structs.
 
+## Magic Containers: log forwarding requires `token` (spec says optional)
+
+**Endpoint:** `POST /mc/log/forwarding`
+
+The spec marks `token` optional, but the live API rejects any payload
+without it — HTTP 400 with a completely empty body, which masqueraded as
+a broken endpoint from 2026-05-15 until an A/B test on 2026-08-09 found
+the cause (identical payload: no `token` → 400 empty, with `token` →
+201). hoppy compensates: `container logs` auto-generates a session
+token, and `container log-forwarding create`/`update` require `--token`.
+See [[backlog/log-forwarding-create-empty-400]].
+
+Related observation from the same session: the endpoint performs **no
+app-id validation** — it happily creates (and lists/deletes) forwarding
+configs for app ids that don't exist. Don't rely on it to catch typos.
+
 ## Related
 
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks

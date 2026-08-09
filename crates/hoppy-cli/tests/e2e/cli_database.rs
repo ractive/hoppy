@@ -811,6 +811,31 @@ async fn db_fork_sends_slug_and_date() {
 }
 
 #[tokio::test]
+async fn db_fork_rejects_group() {
+    // iter-81: --group was removed after a live check proved the API ignores
+    // it (forks always land in the source namespace). Must be a clap usage
+    // error (no HTTP call).
+    let output = hoppy_db_cmd("test-api-key", "http://127.0.0.1:1")
+        .args([
+            "db",
+            "fork",
+            "--id",
+            "db_01",
+            "--target",
+            "my-fork",
+            "--date",
+            "2026-07-10T12:00:00Z",
+            "--group",
+            "group_01",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--group"), "got: {stderr}");
+}
+
+#[tokio::test]
 async fn db_fork_requires_date() {
     // Missing --date must be a clap usage error (exit 2), no HTTP call.
     let output = hoppy_db_cmd("test-api-key", "http://127.0.0.1:1")

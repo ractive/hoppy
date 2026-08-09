@@ -146,14 +146,13 @@ hoppy container limits
 
 ### Tailing Magic Containers logs
 
-> **Known broken upstream (as of 2026-08-09):** `POST /mc/log/forwarding`
-> returns HTTP 400 with an empty body for every request shape we have
-> tried, on multiple apps and accounts, since at least 2026-05-15. This
-> breaks both `container log-forwarding create` and `container logs`
-> (which registers a forwarding config as its first step). The listener
-> and tunnel plumbing work; only the Bunny-side registration fails. Until
-> Bunny fixes or documents the endpoint, treat these commands as
-> non-functional.
+> **Token is required (undocumented upstream):** `POST /mc/log/forwarding`
+> rejects any configuration without a `token` with an empty HTTP 400, even
+> though Bunny's spec marks the field optional. hoppy handles this for
+> you: `container logs` auto-generates a session token, and
+> `container log-forwarding create`/`update` make `--token` a required
+> flag. (This empty 400 masqueraded as a broken endpoint from 2026-05-15
+> until the root cause was found on 2026-08-09.)
 
 Bunny does not expose a logs-fetch API for Magic Containers — logs are syslog-forwarded only, so there's no `--tail` flag to look for.
 

@@ -43,6 +43,26 @@ is blocked upstream, and runs a dogfood round against the test account
   `container app delete --id <id> --cascade` (root cause was the cascade
   refusal on the auto-managed pull zone, not the rename)
 - [x] Dogfood round (see below)
+- [x] Round 2 — fix `--debug` request-body omission across ALL non-core
+  clients (containers/stream/database/compute/storage/shield; shared
+  `recording/debug.rs` helper; response bodies now redacted too — shield
+  and friends were leaking secrets into `<<<` output; reveal flag plumbed
+  through ~35 handler signatures; 2 new e2e tests)
+  ([[backlog/mc-debug-omits-request-body]])
+- [x] Round 2 — live-settle db fork `--group`: API ignores it (fork into
+  empty group hit source-namespace quota while direct create into the
+  same group succeeded) → field + flag removed, pinned by
+  `db_fork_rejects_group` ([[backlog/db-fork-group-field-drift]])
+- [x] Round 2 — SOLVED the 3-month log-forwarding empty-400: the API
+  requires `token` despite the spec marking it optional (A/B on same app:
+  tokenless → 400, with token → 201). `container logs` now auto-generates
+  a session token; `--token` required on create/update; quirk + no-app-id
+  validation recorded in [[api/bunny-api-quirks]]
+  ([[backlog/log-forwarding-create-empty-400]])
+- [x] Round 2 — new friction filed: [[backlog/db-create-slug-length-mismatch]]
+  (local 24-char validation doesn't prevent upstream 500 at 19 chars),
+  [[backlog/db-group-create-region-vocab]] (two region vocabularies,
+  unvalidated)
 - [x] Live-verify fixes: `live_stream_library_lifecycle`,
   `live_stream_collection_lifecycle`, `live_container_app_lifecycle`
   green + no new leaks after run

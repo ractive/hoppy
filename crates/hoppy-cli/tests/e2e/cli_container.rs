@@ -996,6 +996,8 @@ async fn container_log_forwarding_create_json() {
             "514",
             "--syslog-format",
             "SyslogRfc5424",
+            "--token",
+            "tok-e2e",
             "--enabled",
         ])
         .output()
@@ -1003,6 +1005,156 @@ async fn container_log_forwarding_create_json() {
 
     assert!(output.status.success());
     insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+}
+
+/// iter-81: `--token` is required on create — the API rejects tokenless
+/// configurations with an empty 400 (undocumented upstream requirement, see
+/// backlog/log-forwarding-create-empty-400.md). Must be a clap usage error,
+/// no HTTP call.
+#[tokio::test]
+async fn container_log_forwarding_create_requires_token() {
+    let output = mock_cmd("test-api-key", "http://127.0.0.1:1")
+        .args([
+            "container",
+            "log-forwarding",
+            "create",
+            "--app-id",
+            "test-app-id",
+            "--forwarding-type",
+            "SyslogTcp",
+            "--endpoint",
+            "logs.example.com",
+            "--port",
+            "514",
+            "--syslog-format",
+            "SyslogRfc5424",
+            "--enabled",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--token"), "got: {stderr}");
+}
+
+// ---------------------------------------------------------------------------
+// --debug request-body printing (iter-81: mc-debug-omits-request-body)
+// ---------------------------------------------------------------------------
+
+/// `--debug` on a mutating containers command must print the serialized
+/// request body (`>>>` line), same as the core client, and redact
+/// secret-shaped fields (e.g. the log-forwarding `token`) unless `--reveal`
+/// is also passed.
+#[tokio::test]
+async fn container_log_forwarding_create_debug_prints_and_redacts_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/log/forwarding"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/log_forwarding_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--debug",
+            "--format",
+            "json",
+            "container",
+            "log-forwarding",
+            "create",
+            "--app-id",
+            "test-app-id",
+            "--forwarding-type",
+            "SyslogTcp",
+            "--endpoint",
+            "logs.example.com",
+            "--port",
+            "514",
+            "--syslog-format",
+            "SyslogRfc5424",
+            "--token",
+            "supersecrettoken123",
+            "--enabled",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(">>>"),
+        "expected a >>> request-body line in --debug output, got: {stderr}"
+    );
+    assert!(
+        stderr.contains("\"token\""),
+        "expected the token field name in the printed body, got: {stderr}"
+    );
+    assert!(
+        !stderr.contains("supersecrettoken123"),
+        "expected the token value to be redacted by default, got: {stderr}"
+    );
+    assert!(
+        stderr.contains("<set, length=19>"),
+        "expected a redacted-length placeholder for the token, got: {stderr}"
+    );
+}
+
+/// `--debug --reveal` shows the raw (unredacted) request body.
+#[tokio::test]
+async fn container_log_forwarding_create_debug_reveal_shows_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/log/forwarding"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("containers/log_forwarding_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--debug",
+            "--reveal",
+            "--format",
+            "json",
+            "container",
+            "log-forwarding",
+            "create",
+            "--app-id",
+            "test-app-id",
+            "--forwarding-type",
+            "SyslogTcp",
+            "--endpoint",
+            "logs.example.com",
+            "--port",
+            "514",
+            "--syslog-format",
+            "SyslogRfc5424",
+            "--token",
+            "supersecrettoken123",
+            "--enabled",
+        ])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(">>>"),
+        "expected a >>> request-body line in --debug output, got: {stderr}"
+    );
+    assert!(
+        stderr.contains("supersecrettoken123"),
+        "expected the raw token value with --reveal, got: {stderr}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -2006,6 +2158,8 @@ async fn container_log_forwarding_update() {
             "514",
             "--syslog-format",
             "SyslogRfc5424",
+            "--token",
+            "tok-e2e",
         ])
         .output()
         .unwrap();

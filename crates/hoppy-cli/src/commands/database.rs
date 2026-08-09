@@ -345,7 +345,7 @@ pub async fn handle(
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
-    let client = auth::database_client(debug, record)?;
+    let client = auth::database_client_with_reveal(debug, record, redact_cfg.reveal_all)?;
     match action {
         DbAction::List { group_id } => {
             let resp = client.list_databases(group_id.as_deref()).await?;
@@ -378,12 +378,7 @@ pub async fn handle(
                 &format!("Deleted database {}", resp.database),
             );
         }
-        DbAction::Fork {
-            id,
-            target,
-            date,
-            group,
-        } => {
+        DbAction::Fork { id, target, date } => {
             validate_slug(target)?;
             let resp = client
                 .fork_database(
@@ -391,7 +386,6 @@ pub async fn handle(
                     &ForkDatabasePayload {
                         slug: target.clone(),
                         date: date.clone(),
-                        group: group.clone(),
                     },
                 )
                 .await?;
