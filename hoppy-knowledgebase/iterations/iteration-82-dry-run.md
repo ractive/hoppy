@@ -176,7 +176,7 @@ global arg duplicating a local arg name, so:
 
 ### 5. Dogfood
 
-- [ ] `cargo build --release`; against the test account
+- [x] `cargo build --release`; against the test account
       (TEST_BUNNY_API_KEY): `pull-zone create --dry-run`,
       `pull-zone delete --dry-run`, `storage upload --dry-run`,
       `db create --dry-run` — verify nothing appears in the account; file
