@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Global `--dry-run` flag: previews mutating (POST/PUT/PATCH/DELETE) API
+  calls — method, URL, and (redacted, unless `--reveal`) body — without
+  sending them. Read-only (GET/HEAD) requests still execute, so composite
+  commands (e.g. resolving a storage zone's password, a stream library's
+  key, or a container app's linked pull zones) stay truthful; only the
+  first blocked mutation is previewed, not any follow-up requests.
+  `--dry-run` implies `--yes` (confirmation prompts are skipped since the
+  mutation never reaches the API regardless). `--format json` prints a
+  `{"status":"dry-run",...}` envelope to stdout; `table`/`text` print an
+  `[dry-run]`-prefixed preview to stderr.
+
+### Changed
+
+- `stream video resolutions cleanup`'s local `--dry-run` flag was folded
+  into the new global `--dry-run` — it now drives the same server-side
+  `?dryRun=true` preview as before, just via the global flag instead of a
+  subcommand-local one.
+
 ## [0.5.0] - 2026-07-11
 
 Release-infrastructure release: iterations 79 and 80 (scope A).

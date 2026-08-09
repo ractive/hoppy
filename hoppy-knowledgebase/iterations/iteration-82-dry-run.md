@@ -114,64 +114,64 @@ global arg duplicating a local arg name, so:
 
 ### 1. bunny-net-api: dry-run plumbing
 
-- [ ] New `src/dry_run.rs`: `DryRunSkipped { method, url, body: Option<String> }`
+- [x] New `src/dry_run.rs`: `DryRunSkipped { method, url, body: Option<String> }`
       error type (implements `std::error::Error` + `Display`) and a shared
       `check_dry_run(&reqwest::Request, dry_run: bool, reveal: bool) -> Result<(), DryRunSkipped>`
       helper reusing `is_mutating` + `format_debug_body`
-- [ ] `with_dry_run(bool)` builder + field on all 9 service clients
-- [ ] Intercept in all 9 `send()`/`execute()` fns (core, shield, containers,
+- [x] `with_dry_run(bool)` builder + field on all 9 service clients
+- [x] Intercept in all 9 `send()`/`execute()` fns (core, shield, containers,
       stream, storage, database, compute, logging, origin-errors) — after
       `rb.build()`, before `http.execute()`; debug logging still fires first
-- [ ] `TusUploader`: `with_dry_run` + intercept its three request sites
+- [x] `TusUploader`: `with_dry_run` + intercept its three request sites
       (create POST / offset HEAD passes / upload PATCH)
-- [ ] `StreamClient::cleanup_resolutions`: exempt the `?dryRun=true` call
+- [x] `StreamClient::cleanup_resolutions`: exempt the `?dryRun=true` call
       from the block via a private unchecked send
-- [ ] Unit tests (wiremock, per-crate e2e targets): mutating call under
+- [x] Unit tests (wiremock, per-crate e2e targets): mutating call under
       dry_run → `DryRunSkipped` error, zero requests received; GET under
       dry_run → executes normally; TUS create blocked; cleanup_resolutions
       exemption still sends
 
 ### 2. hoppy-cli: flag, threading, output
 
-- [ ] `cli.rs`: global `--dry-run` flag with doc comment ("Preview mutating
+- [x] `cli.rs`: global `--dry-run` flag with doc comment ("Preview mutating
       API calls without sending them; read-only requests still execute;
       implies --yes")
-- [ ] Remove local `dry_run` from `StreamCleanupResolutions`; rewire the
+- [x] Remove local `dry_run` from `StreamCleanupResolutions`; rewire the
       cleanup handler arm to the global flag
-- [ ] `auth.rs`: `ClientOpts` struct; migrate factories + call sites +
+- [x] `auth.rs`: `ClientOpts` struct; migrate factories + call sites +
       `build_storage_client` + `resolve_stream_client`
-- [ ] `main.rs`: fold `yes = cli.yes || cli.dry_run`; after `run()` error,
+- [x] `main.rs`: fold `yes = cli.yes || cli.dry_run`; after `run()` error,
       walk `err.chain()` for `DryRunSkipped`; print preview (json → stdout
       envelope, table/text → stderr `[dry-run]` lines); exit 0
-- [ ] Suppress progress bars under dry-run where cheap (storage/stream
+- [x] Suppress progress bars under dry-run where cheap (storage/stream
       upload arms) — polish, don't chase every spinner
 
 ### 3. e2e tests (crates/hoppy-cli/tests/e2e/)
 
-- [ ] `pull-zone create --dry-run`: exit 0, zero requests to mock, stderr
+- [x] `pull-zone create --dry-run`: exit 0, zero requests to mock, stderr
       has `[dry-run]` + method/URL, body shown redacted
-- [ ] `pull-zone delete --dry-run` WITHOUT `--yes`, no stdin: exits 0
+- [x] `pull-zone delete --dry-run` WITHOUT `--yes`, no stdin: exits 0
       without hanging (prompt skipped), zero requests
-- [ ] `--dry-run --format json`: snapshot the stdout envelope
-- [ ] `storage upload --dry-run`: mock the `GET /storagezone` preflight
+- [x] `--dry-run --format json`: snapshot the stdout envelope
+- [x] `storage upload --dry-run`: mock the `GET /storagezone` preflight
       (expect 1), assert zero PUTs (filter `received_requests()` by method)
-- [ ] One delete-path test each for dns record / shield / container app /
+- [x] One delete-path test each for dns record / shield / container app /
       db — mechanical clones of the pull-zone pattern
-- [ ] `stream video resolutions cleanup --dry-run`: request IS sent with
+- [x] `stream video resolutions cleanup --dry-run`: request IS sent with
       `dryRun=true` query param (the documented exception)
-- [ ] `--dry-run --reveal`: body shown unredacted
-- [ ] Read-only command with `--dry-run` (e.g. `pull-zone list`): request
+- [x] `--dry-run --reveal`: body shown unredacted
+- [x] Read-only command with `--dry-run` (e.g. `pull-zone list`): request
       still sent, normal output
 
 ### 4. Docs + housekeeping
 
-- [ ] CHANGELOG entry (Added: global `--dry-run`; Changed: stream cleanup
+- [x] CHANGELOG entry (Added: global `--dry-run`; Changed: stream cleanup
       local flag folded into the global one)
-- [ ] README global-flags section (if flags are listed there)
-- [ ] KB: `cli/command-tree.md` top-level flags; decision-log entry
+- [x] README global-flags section (if flags are listed there)
+- [x] KB: `cli/command-tree.md` top-level flags; decision-log entry
       (interception layer + error-abort + implies-yes + cleanup exception);
       prune the `--dry-run` bullet from [[development-roadmap]]
-- [ ] `cargo fmt` && `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo fmt` && `cargo clippy --workspace --all-targets -- -D warnings`
       && `cargo test --workspace --quiet` — all green
 
 ### 5. Dogfood
@@ -184,15 +184,15 @@ global arg duplicating a local arg name, so:
 
 ## Acceptance
 
-- [ ] Every mutating command under `--dry-run` sends zero mutating requests
+- [x] Every mutating command under `--dry-run` sends zero mutating requests
       (e2e-asserted for representative commands across services), prints a
       method/URL/body preview, and exits 0
-- [ ] `--dry-run` skips confirmation prompts without hanging on stdin
-- [ ] Read-only commands behave identically with and without `--dry-run`
-- [ ] `stream video resolutions cleanup --dry-run` still performs the
+- [x] `--dry-run` skips confirmation prompts without hanging on stdin
+- [x] Read-only commands behave identically with and without `--dry-run`
+- [x] `stream video resolutions cleanup --dry-run` still performs the
       server-side preview (`?dryRun=true`)
-- [ ] Secrets in previewed bodies are redacted unless `--reveal`
-- [ ] All three quality gates pass
+- [x] Secrets in previewed bodies are redacted unless `--reveal`
+- [x] All three quality gates pass
 
 ## Related
 
