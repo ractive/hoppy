@@ -2,8 +2,12 @@
 title: Iter-81 — Backlog burn-down + dogfood round
 type: iteration
 date: 2026-08-09
-tags: [iteration, backlog, dogfooding, testing]
-status: in-progress
+tags:
+  - iteration
+  - backlog
+  - dogfooding
+  - testing
+status: completed
 branch: iter-81/backlog-burndown
 ---
 
@@ -92,7 +96,7 @@ is blocked upstream, and runs a dogfood round against the test account
 - [x] All 8 previously-open backlog items either resolved with evidence
   or annotated with a concrete path forward
 - [x] Test account clean after full round (cleanup.sh dry-run: 0 matches)
-- [ ] Gates green, PR merged
+- [x] Gates green, PR merged
 
 ## Related
 
