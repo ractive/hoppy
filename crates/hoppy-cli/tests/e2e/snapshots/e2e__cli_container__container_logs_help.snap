@@ -1,6 +1,5 @@
 ---
 source: crates/hoppy-cli/tests/e2e/cli_container.rs
-assertion_line: 2205
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 Stream live syslog output from a Magic Containers application.
@@ -58,20 +57,23 @@ Options:
   -y, --yes
           Skip confirmation prompts
 
+      --dry-run
+          Preview mutating API calls without sending them; read-only requests still execute. Implies --yes. A blocked composite command (e.g. `container app delete --cascade`) previews only the first mutating request it would have sent, not any follow-up requests
+
       --replace-existing
           Overwrite an existing log-forwarding configuration and restore it on clean exit
-
-      --reveal
-          Reveal redacted secrets in output (env values, passwords, tokens). Off by default for safety; opt in explicitly
 
       --follow
           Accept the --follow flag for forward-compatibility (no-op; the command always follows)
 
-      --reveal-env <KEY>
-          Reveal a specific env-var by name (case-insensitive). Repeatable. Useful when you want one variable but not all secrets
+      --reveal
+          Reveal redacted secrets in output (env values, passwords, tokens). Off by default for safety; opt in explicitly
 
       --bore-server <BORE_SERVER>
           Bore relay server host.  Defaults to bore.pub.  Use this to point at a self-hosted bore server
+
+      --reveal-env <KEY>
+          Reveal a specific env-var by name (case-insensitive). Repeatable. Useful when you want one variable but not all secrets
 
       --no-hints
           Suppress drill-down hints (next-step suggestions) on stderr. `--format json` implies this so machine output stays clean

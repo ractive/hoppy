@@ -5,6 +5,7 @@ mod cli_auth;
 mod cli_container;
 mod cli_database;
 mod cli_dns;
+mod cli_dry_run;
 mod cli_fixture_refresh;
 mod cli_help_completeness;
 mod cli_hints;
