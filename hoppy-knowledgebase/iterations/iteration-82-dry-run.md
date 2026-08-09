@@ -7,7 +7,7 @@ tags:
   - cli
   - dx
   - safety
-status: in-progress
+status: completed
 branch: iter-82/dry-run
 ---
 
