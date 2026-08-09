@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use crate::recording::debug::{format_debug_body, print_debug_request_body};
 use crate::recording::{capture_request, maybe_record_response};
 
 use super::types::*;
@@ -21,6 +22,7 @@ pub struct ContainersClient {
     base_url: String,
     api_key: String,
     debug: bool,
+    debug_reveal_secrets: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -39,6 +41,7 @@ impl ContainersClient {
             base_url: base_url.trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
+            debug_reveal_secrets: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -48,6 +51,14 @@ impl ContainersClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// When debug is enabled, reveal secret field values in request/response
+    /// bodies instead of redacting them.
+    #[must_use]
+    pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
+        self.debug_reveal_secrets = reveal;
         self
     }
 
@@ -70,6 +81,7 @@ impl ContainersClient {
         let req = rb.build().context("failed to build request")?;
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
+            print_debug_request_body(&req, self.debug_reveal_secrets);
         }
         capture_request(&self.last_request, req.method().as_ref(), req.url().path());
         self.http.execute(req).await.context("request failed")
@@ -81,7 +93,10 @@ impl ContainersClient {
         let bytes = resp.bytes().await.context("failed to read response body")?;
         if self.debug {
             eprintln!("<< {status}");
-            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+            eprintln!(
+                "<<< {}",
+                format_debug_body(&bytes, self.debug_reveal_secrets)
+            );
         }
         maybe_record_response(
             self.record_dir.as_deref(),

@@ -1,3 +1,4 @@
+use crate::recording::debug::{format_debug_body, print_debug_request_body};
 use crate::recording::{capture_request, maybe_record_response};
 use anyhow::{Context, Result, anyhow};
 use reqwest::{Client, Request, StatusCode};
@@ -21,6 +22,7 @@ pub struct ComputeClient {
     base_url: String,
     api_key: String,
     debug: bool,
+    debug_reveal_secrets: bool,
     record_dir: Option<PathBuf>,
     last_request: Mutex<Option<(String, String)>>,
 }
@@ -38,6 +40,7 @@ impl ComputeClient {
             base_url: base_url.into().trim_end_matches('/').to_owned(),
             api_key: api_key.into(),
             debug: false,
+            debug_reveal_secrets: false,
             record_dir: None,
             last_request: Mutex::new(None),
         }
@@ -47,6 +50,14 @@ impl ComputeClient {
     #[must_use]
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// When debug is enabled, reveal secret field values in request/response
+    /// bodies instead of redacting them.
+    #[must_use]
+    pub fn with_debug_reveal_secrets(mut self, reveal: bool) -> Self {
+        self.debug_reveal_secrets = reveal;
         self
     }
 
@@ -71,6 +82,7 @@ impl ComputeClient {
         let req: Request = rb.build().context("failed to build request")?;
         if self.debug {
             eprintln!(">> {} {}", req.method(), req.url());
+            print_debug_request_body(&req, self.debug_reveal_secrets);
         }
         if self.record_dir.is_some() {
             capture_request(&self.last_request, req.method().as_ref(), req.url().path());
@@ -84,7 +96,10 @@ impl ComputeClient {
         let bytes = resp.bytes().await.context("failed to read response body")?;
         if self.debug {
             eprintln!("<< {status}");
-            eprintln!("<<< {}", String::from_utf8_lossy(&bytes));
+            eprintln!(
+                "<<< {}",
+                format_debug_body(&bytes, self.debug_reveal_secrets)
+            );
         }
         maybe_record_response(
             self.record_dir.as_deref(),

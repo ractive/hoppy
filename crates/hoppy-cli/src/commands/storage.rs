@@ -47,6 +47,7 @@ pub async fn handle(
     yes: bool,
     quiet: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<()> {
     match action {
         StorageAction::Ls {
@@ -54,7 +55,7 @@ pub async fn handle(
             remote_path,
             region,
         } => {
-            let client = build_storage_client(zone, region, debug, record).await?;
+            let client = build_storage_client(zone, region, debug, record, reveal).await?;
             let path = remote_path.trim_matches('/');
             let objects = client.list_files(zone, path).await?;
             if let OutputFormat::Json = format {
@@ -74,7 +75,7 @@ pub async fn handle(
             region,
             checksum,
         } => {
-            let client = build_storage_client(zone, region, debug, record).await?;
+            let client = build_storage_client(zone, region, debug, record, reveal).await?;
             let (dir, name) = split_remote_path(remote_path)?;
 
             // Resolve the optional integrity checksum. `--checksum <hex>` supplies
@@ -140,7 +141,7 @@ pub async fn handle(
             file,
             region,
         } => {
-            let client = build_storage_client(zone, region, debug, record).await?;
+            let client = build_storage_client(zone, region, debug, record, reveal).await?;
             let (dir, name) = split_remote_path(remote_path)?;
             let display_path = remote_path.trim_start_matches('/');
 
@@ -203,7 +204,7 @@ pub async fn handle(
                     return Ok(());
                 }
             }
-            let client = build_storage_client(zone, region, debug, record).await?;
+            let client = build_storage_client(zone, region, debug, record, reveal).await?;
             if is_directory {
                 let dir = remote_path.trim_matches('/');
                 if dir.is_empty() {
@@ -309,6 +310,7 @@ async fn build_storage_client(
     region: &str,
     debug: bool,
     record: Option<&str>,
+    reveal: bool,
 ) -> Result<StorageClient> {
     let access_key = if let Some(key) = auth::get_storage_key() {
         key
@@ -340,7 +342,7 @@ async fn build_storage_client(
     } else {
         StorageClient::new(region, access_key)?
     };
-    client = client.with_debug(debug);
+    client = client.with_debug(debug).with_debug_reveal_secrets(reveal);
     if let Some(dir) = auth::get_record_dir(record) {
         client = client.with_record(dir);
     }
