@@ -31,6 +31,17 @@ prepared:
 or "Workflows: read/write" (fine-grained), update the repo secret, then
 rerun the job. Every future release hits this until the token is fixed.
 
+**Resolved for v0.6.0 (2026-08-10):** james synced the fork via the web UI;
+the rerun succeeded and submitted
+<https://github.com/microsoft/winget-pkgs/pull/414763> (pending winget-pkgs
+moderation). Root cause remains: the scope-based `gh repo sync` failure
+recurs on any future release after upstream touches `.github/workflows`
+again, so the token fix (or a pre-release fork sync) is still needed. Note
+`workflow` scope only exists on classic PATs — for a fine-grained PAT it's
+the "Workflows" repository permission — and pushing over SSH (e.g. syncing
+the fork locally with a personal SSH key) bypasses the scope check
+entirely.
+
 ## AUR — pipeline works, AUR git service was in maintenance
 
 The job generates and commits the `hoppy-bin` 0.6.0 PKGBUILD + .SRCINFO
