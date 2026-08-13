@@ -7,7 +7,7 @@ tags:
   - api-coverage
   - cli
   - billing
-status: in-progress
+status: completed
 branch: iter-83/billing-records
 ---
 
