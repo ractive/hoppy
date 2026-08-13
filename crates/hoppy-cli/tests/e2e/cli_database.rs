@@ -211,6 +211,139 @@ async fn db_group_list_json() {
     insta::assert_snapshot!(String::from_utf8_lossy(&output.stdout));
 }
 
+// ---------------------------------------------------------------------------
+// iter-84: `db group create` pre-flight-validates --storage-region /
+// --primary-region / --replicas-region against the live vocabulary from
+// `GET /v1/config` (fixtures/database/config.json: storage eu-west-1,
+// us-east-1; primary DE, FR; replica UK) before the mutating POST.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn db_group_create_valid_regions_proceeds() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/config"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("database/config.json"), "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/v1/groups"))
+        .and(body_json(serde_json::json!({
+            "display_name": "EU",
+            "storage_region": "eu-west-1",
+            "primary_regions": ["DE"],
+            "replicas_regions": ["UK"]
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("database/group_create.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "db",
+            "group",
+            "create",
+            "--display-name",
+            "EU",
+            "--storage-region",
+            "eu-west-1",
+            "--primary-region",
+            "DE",
+            "--replicas-region",
+            "UK",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn db_group_create_unknown_region_fails_before_post() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/config"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("database/config.json"), "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    // No POST mock mounted — a hit would fail the test via wiremock's
+    // "no matching mock" panic, proving the pre-flight check runs first.
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "db",
+            "group",
+            "create",
+            "--display-name",
+            "EU",
+            "--storage-region",
+            "atlantis-1",
+            "--primary-region",
+            "DE",
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("atlantis-1") && stderr.contains("not a known region"),
+        "stderr: {stderr}"
+    );
+    assert!(
+        stderr.contains("eu-west-1"),
+        "expected the valid-values list in the error, got: {stderr}"
+    );
+}
+
+#[tokio::test]
+async fn db_group_create_casing_mismatch_shows_did_you_mean() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/config"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(support::fixture("database/config.json"), "application/json"),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = hoppy_db_cmd("test-api-key", &server.uri())
+        .args([
+            "db",
+            "group",
+            "create",
+            "--display-name",
+            "EU",
+            "--storage-region",
+            "eu-west-1",
+            "--primary-region",
+            "de", // lowercase — valid id is "DE"
+        ])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("did you mean 'DE'"), "stderr: {stderr}");
+}
+
 #[tokio::test]
 async fn db_group_update_display_name() {
     let server = MockServer::start().await;
