@@ -29,6 +29,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `hoppy billing invoice-pdf`: on a 404, the error message now explains that
   the record likely has no formal invoice (e.g. it's a top-up/payment
   receipt) and points at `hoppy billing receipt-pdf` instead.
+- `hoppy db group create`: `--storage-region`, `--primary-region`, and
+  `--replicas-region` are now validated case-sensitively against the live
+  vocabulary from `GET /v1/config` before the create request is sent. An
+  unknown value fails locally with the valid-value list; a casing-only
+  mismatch (e.g. `de` instead of `DE`) gets a did-you-mean. No region
+  vocabulary is hardcoded — the check always reflects the current API. The
+  config fetch is read-only, so it still runs (and stays truthful) under
+  `--dry-run`. Help text for both flags now names the vocabulary shape with
+  examples and points at `hoppy db config show` for the full list.
+
+### Fixed
+
+- `hoppy db create --slug` / `hoppy db fork --target`: the local slug-length
+  limit was wrong (24 chars) and didn't actually prevent the upstream
+  `HTTP 500 "Internal error"` it claimed to guard against. Live-measured
+  against the real API on 2026-08-13: a 16-char slug creates fine; 17, 18,
+  and 19 chars all 500. The limit is now 16
+  (`^[a-z][a-z0-9-]{0,15}$`), and the error/help text reflect the real
+  boundary.
+- `--reveal`: threaded into every remaining `auth::core_client` call site
+  that was building `ClientOpts` via `..Default::default()`, which silently
+  pinned `reveal_secrets: false` regardless of the flag. Affected commands:
+  `auth check`, `billing summary`/`payment-requests`/`*-pdf`,
+  `region list`, `country list`, `search`, `user audit`, `dns` (all
+  subcommands), `purge`, `statistics`, `video-library`, and the nested
+  pull-zone cleanup client in `container app delete --cascade`. Fails safe
+  before this fix (nothing leaked), but `--debug --reveal` under-delivered
+  on those commands, still masking secret-shaped fields in the HTTP body
+  dump. `ClientOpts` no longer derives `Default`, so every construction
+  must state `reveal_secrets` explicitly — the compiler now catches this
+  class of bug at future call sites. The redundant `core_client_with_reveal`
+  alias was removed in favor of a single `core_client(opts)`.
 
 ## [0.6.0] - 2026-08-09
 

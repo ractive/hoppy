@@ -263,9 +263,13 @@ in once upstream fixes the issue.
 
 Long slugs cause an opaque `{"error":"Internal error"}` 500 — the API
 does not validate slug length and it leaks through to the storage layer.
-Empirically, 13 chars (`wa-admin-prod`) succeeds; 25 chars
-(`wardrobe-assistants-admin`) fails. hoppy validates locally with
-`^[a-z][a-z0-9-]{0,23}$` (max 24 chars) before any HTTP call.
+Live-measured against the real API on 2026-08-13 (test account,
+binary search): 16 chars creates fine; 17, 18, and 19 chars all 500.
+hoppy validates locally with `^[a-z][a-z0-9-]{0,15}$` (max 16 chars)
+before any HTTP call. The group ULID is always 26 chars, so a
+slug-length limit and a `<ulid>-<slug>` hostname-length limit are
+observationally identical from a single-group probe — either way, 16
+is the effective slug limit to encode.
 
 ## Database (libSQL): URL preservation
 
