@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `hoppy billing records`: lists individual billing records (invoices,
+  top-ups, refunds, coupon credits, …) from `GET /billing`'s `BillingRecords`
+  array, which `BillingDetails` previously dropped entirely. Shows id,
+  timestamp, amount, type (friendly name, falling back to the raw number for
+  unrecognised future values), payer, and invoice availability. `payer` is
+  redacted by default (`--reveal` to show it); the pre-signed
+  `DocumentDownloadUrl` is likewise redacted in `--format json`.
+- `hoppy billing receipt-pdf --record-id <ID> --output <file>`: downloads a
+  billing record's document via its pre-signed `DocumentDownloadUrl`. Covers
+  record types — top-ups in particular — for which `billing invoice-pdf`
+  (`GET /billing/summary/{id}/pdf`) 404s, since their PDF only exists behind
+  the signed URL. The request to that URL (a different host,
+  `billing.b-cdn.net`) never carries the `AccessKey` header, and the URL's
+  `token` query parameter is never logged, even under `--debug`.
+
+### Changed
+
+- `hoppy billing invoice-pdf`: on a 404, the error message now explains that
+  the record likely has no formal invoice (e.g. it's a top-up/payment
+  receipt) and points at `hoppy billing receipt-pdf` instead.
+
 ## [0.6.0] - 2026-08-09
 
 ### Added

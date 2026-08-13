@@ -51,7 +51,7 @@ Available on every command (`global = true` in clap), not repeated per-subcomman
 | `video-library` | container | Library-level core API (DRM, transcribe stats) |
 | `purge` | leaf | Purge a single URL from cache |
 | `apikey` | container | Account API keys (iter-75) |
-| `billing` | container | Billing summary, payment requests, invoice PDFs (iter-75) |
+| `billing` | container | Billing summary, records, payment requests, invoice/receipt PDFs (iter-75, iter-83) |
 | `region` | container | Core CDN edge regions + pricing (iter-75) |
 | `country` | container | Countries recognised by bunny.net / valid ISO codes (iter-75) |
 | `search` | leaf | Global cross-resource search (iter-75) |
@@ -338,12 +338,16 @@ the two invoice PDF endpoints, `GET /region`, `GET /country`, `GET /search`,
 | Verb / sub | Description |
 |---|---|
 | `summary` | Per-pull-zone billing summary for the current month (`GET /billing/summary`). |
+| `records [--reveal]` | List individual billing records — invoices, top-ups, refunds, etc. — from `GET /billing`'s `BillingRecords` array (iter-83). Columns: id, timestamp, amount, type (friendly name, e.g. `MonthlyUsage`/`CreditCard`; unrecognised future values shown as the raw number), payer, invoice-available. `payer` is redacted (`<set, length=N>`) in every format unless `--reveal` (or the global flag) is passed; the pre-signed `DocumentDownloadUrl` is likewise redacted in `--format json`. |
 | `payment-requests` | List payment requests, open and settled (`GET /billing/payment-requests`). |
-| `invoice-pdf --record-id --output` | Download a billing-record invoice PDF (`GET /billing/summary/{billingRecordId}/pdf`); streamed chunk-by-chunk to the `--output` file. |
+| `invoice-pdf --record-id --output` | Download a billing-record invoice PDF (`GET /billing/summary/{billingRecordId}/pdf`); streamed chunk-by-chunk to the `--output` file. 404s for record types with no formal invoice (e.g. top-ups) — the error message points at `receipt-pdf` for those. |
+| `receipt-pdf --record-id --output` | Download a billing record's document via its pre-signed `DocumentDownloadUrl` (iter-83); works for every record type that has one, including top-ups (record type 2), for which `invoice-pdf` 404s. The request to the signed URL never carries the `AccessKey` header (that host, `billing.b-cdn.net`, isn't the bunny.net API), and the URL's `token` query parameter is never logged, even under `--debug`. |
 | `payment-request-pdf --id --output` | Download a payment-request invoice PDF (`GET /billing/payment-request-invoice/{id}/pdf`); streamed to disk. |
 
-- The two PDF downloads never buffer the whole payload — they stream via the
-  core client's `stream_to_writer` helper (project streaming rule).
+- The PDF/document downloads never buffer the whole payload — they stream via
+  the core client's `stream_to_writer` helper (`receipt-pdf` uses a dedicated
+  variant that skips authentication and URL logging; see the security note
+  above) (project streaming rule).
 
 ### `region`
 
