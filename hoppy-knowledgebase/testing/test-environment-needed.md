@@ -2,7 +2,7 @@
 title: Test Environment Needed on bunny.net
 type: action-item
 priority: high
-status: open
+status: resolved
 created: 2026-03-18
 ---
 
@@ -28,6 +28,13 @@ Without a test environment, we cannot safely:
 - Test `create_pull_zone`, `update_pull_zone`, `delete_pull_zone` against the real API
 - Record fixtures for write operations
 - Run end-to-end integration tests in CI
+
+## Resolution (2026-08-13)
+
+Resolved: a real bunny.net test account exists and is used routinely —
+the API key is provided via the `TEST_BUNNY_API_KEY` env var for all
+live tests and dogfooding (`live-api` Cargo feature, dogfooding
+playbook). Closing this action item.
 
 ## Related
 

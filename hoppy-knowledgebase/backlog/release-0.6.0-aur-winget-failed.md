@@ -1,5 +1,5 @@
 ---
-title: v0.6.0 release — AUR and winget publications failed (retry needed)
+title: v0.6.0 release — AUR publication still pending (winget done 2026-08-13)
 type: backlog
 date: 2026-08-10
 origin: release-v0.6.0
@@ -41,6 +41,10 @@ again, so the token fix (or a pre-release fork sync) is still needed. Note
 the "Workflows" repository permission — and pushing over SSH (e.g. syncing
 the fork locally with a personal SSH key) bypasses the scope check
 entirely.
+
+**Closed (2026-08-13):** the winget-pkgs PR passed moderation — winget
+publication for v0.6.0 is done. Only the recurring token-scope caveat
+above remains relevant for future releases.
 
 ## AUR — pipeline works, AUR git service was in maintenance
 
