@@ -105,7 +105,7 @@ documented; wrong casing produces a raw JSON-schema dump or an upstream
 - [x] Dogfood: `--debug --reveal` on a core command, `db create` with an
       over-limit slug (local rejection), `db group create` with bad casing
 - [x] Mark the three backlog items `status=resolved` with resolution notes
-- [ ] PR `iter-84/backlog-fixes`, self-review diff first
+- [x] PR `iter-84/backlog-fixes`, self-review diff first
 
 ## Acceptance criteria
 
