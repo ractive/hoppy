@@ -3816,6 +3816,67 @@ pub struct BillingDetails {
     /// Total bandwidth used this month (bytes).
     #[serde(default)]
     pub monthly_bandwidth_used: i64,
+    /// Individual billing-record line items (invoices, top-ups, refunds,
+    /// coupon credits, …) for the account.
+    ///
+    /// `#[serde(default)]` so responses from before this field was modelled
+    /// (or partial responses) still parse as an empty list.
+    #[serde(rename = "BillingRecords", default)]
+    pub billing_records: Vec<BillingRecord>,
+}
+
+/// A single billing-record line item, part of `BillingDetails.BillingRecords`
+/// (`GET /billing`).
+///
+/// Covers invoices, top-ups, refunds, coupon credits, and other financial
+/// events on the account. `Type` is kept as a plain `i32` rather than an enum
+/// so an unrecognised future value still deserializes instead of failing the
+/// whole `GET /billing` response — the CLI maps known values (per the spec's
+/// `BillingRecordType`) to friendly names and falls back to the raw number.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BillingRecord {
+    /// Billing record identifier — pass to `billing receipt-pdf
+    /// --record-id` or `billing invoice-pdf --record-id`.
+    #[serde(default)]
+    pub id: i64,
+    /// Payment processor reference, if any.
+    #[serde(default)]
+    pub payment_id: Option<String>,
+    /// Amount for this record (USD).
+    #[serde(default)]
+    pub amount: f64,
+    /// Payer identifier (typically an email address). Sensitive — treat as
+    /// PII and redact in output unless the caller explicitly reveals it.
+    #[serde(default)]
+    pub payer: Option<String>,
+    /// When the record was created. Plain string — bunny.net returns this
+    /// without a timezone suffix (e.g. `"2026-08-01T00:13:38"`), matching
+    /// the repo's existing precedent of not parsing display-only timestamps.
+    #[serde(default)]
+    pub timestamp: String,
+    /// Record type as a raw integer (spec `BillingRecordType`): 0=PayPal,
+    /// 1=Crypto, 2=CreditCard, 3=MonthlyUsage, 4=Refund, 5=CouponCode,
+    /// 6=BankTransfer, 7=AffiliateCredits. Kept as `i32` (not an enum) so
+    /// unrecognised future values don't break deserialization.
+    #[serde(rename = "Type", default)]
+    pub record_type: i32,
+    /// Whether a formal invoice PDF is available via
+    /// `GET /billing/summary/{id}/pdf` (`billing invoice-pdf`). `false` for
+    /// records such as top-ups, where only `document_download_url` has a
+    /// document and the same-host endpoint 404s.
+    #[serde(default)]
+    pub invoice_available: bool,
+    /// Pre-signed, time-limited download URL for this record's document, on
+    /// a different host (`billing.b-cdn.net`) than the rest of the API.
+    /// Treat as an opaque secret: never log it or send the `AccessKey`
+    /// header to it — see `CoreClient::download_billing_record_document`.
+    #[serde(default)]
+    pub document_download_url: Option<String>,
+    /// Same-host download link (`/billing/summary/{id}/pdf`) for the
+    /// detailed invoice, when available.
+    #[serde(default)]
+    pub detailed_document_download_url: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

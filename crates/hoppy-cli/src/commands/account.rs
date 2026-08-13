@@ -10,8 +10,8 @@ use crate::output;
 use crate::redact::placeholder;
 use anyhow::{Context, Result};
 use bunny_net_api::core::types::{
-    ApiKey, BillingSummaryEntry, Country, PaymentRequest, Region, SearchResults, UserAuditLog,
-    UserAuditLogList, UserAuditQuery,
+    ApiError, ApiKey, BillingRecord, BillingSummaryEntry, Country, PaymentRequest, Region,
+    SearchResults, UserAuditLog, UserAuditLogList, UserAuditQuery,
 };
 
 // ---------------------------------------------------------------------------
@@ -58,6 +58,58 @@ impl From<&BillingSummaryEntry> for BillingSummaryRow {
             monthly_usage: format!("${:.4}", e.monthly_usage),
             bandwidth: format_bytes(e.monthly_bandwidth_used),
         }
+    }
+}
+
+#[derive(serde::Serialize, tabled::Tabled)]
+struct BillingRecordRow {
+    #[tabled(rename = "ID")]
+    id: i64,
+    #[tabled(rename = "Timestamp")]
+    timestamp: String,
+    #[tabled(rename = "Amount")]
+    amount: String,
+    #[tabled(rename = "Type")]
+    record_type: String,
+    #[tabled(rename = "Payer")]
+    payer: String,
+    #[tabled(rename = "Invoice Available")]
+    invoice_available: bool,
+}
+
+impl BillingRecordRow {
+    fn from_record(r: &BillingRecord, reveal: bool) -> Self {
+        let raw_payer = r.payer.clone().unwrap_or_default();
+        let payer = if reveal {
+            raw_payer
+        } else {
+            placeholder(&raw_payer)
+        };
+        Self {
+            id: r.id,
+            timestamp: r.timestamp.clone(),
+            amount: format!("${:.2}", r.amount),
+            record_type: billing_record_type_name(r.record_type),
+            payer,
+            invoice_available: r.invoice_available,
+        }
+    }
+}
+
+/// Map the spec's `BillingRecordType` to a friendly name; unknown values
+/// (future record types the CLI doesn't know about yet) are shown as the
+/// raw number rather than failing to render.
+fn billing_record_type_name(t: i32) -> String {
+    match t {
+        0 => "PayPal".to_owned(),
+        1 => "Crypto".to_owned(),
+        2 => "CreditCard".to_owned(),
+        3 => "MonthlyUsage".to_owned(),
+        4 => "Refund".to_owned(),
+        5 => "CouponCode".to_owned(),
+        6 => "BankTransfer".to_owned(),
+        7 => "AffiliateCredits".to_owned(),
+        other => other.to_string(),
     }
 }
 
@@ -243,6 +295,7 @@ pub async fn handle_billing(
     debug: bool,
     dry_run: bool,
     quiet: bool,
+    reveal_global: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let client = auth::core_client(&auth::ClientOpts {
@@ -260,6 +313,33 @@ pub async fn handle_billing(
                 let rows: Vec<BillingSummaryRow> =
                     entries.iter().map(BillingSummaryRow::from).collect();
                 output::print_data(&rows, format);
+            }
+        }
+        BillingAction::Records { reveal } => {
+            let reveal = *reveal || reveal_global;
+            let billing = client.get_billing().await?;
+            if let OutputFormat::Json = format {
+                // Redact Payer (PII) and the pre-signed DocumentDownloadUrl
+                // unless revealed, mirroring `apikey list`'s JSON redaction.
+                let mut value = serde_json::to_value(&billing.billing_records)
+                    .context("failed to serialize to JSON")?;
+                if !reveal {
+                    redact_billing_records_json(&mut value);
+                }
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&value).context("failed to serialize to JSON")?
+                );
+            } else {
+                let rows: Vec<BillingRecordRow> = billing
+                    .billing_records
+                    .iter()
+                    .map(|r| BillingRecordRow::from_record(r, reveal))
+                    .collect();
+                output::print_data(&rows, format);
+                if !reveal {
+                    output::hints::tip("re-run with --reveal to show the raw payer value");
+                }
             }
         }
         BillingAction::PaymentRequests => {
@@ -280,14 +360,39 @@ pub async fn handle_billing(
                 .with_context(|| format!("creating output file: {output}"))?;
             let n = client
                 .download_billing_invoice_pdf(*record_id, &mut file)
+                .await
+                .map_err(|e| improve_invoice_pdf_404(e, *record_id))?;
+            report_pdf_saved(format, n, output, quiet, "invoice-pdf");
+        }
+        BillingAction::ReceiptPdf { record_id, output } => {
+            let billing = client.get_billing().await?;
+            let record = billing
+                .billing_records
+                .iter()
+                .find(|r| r.id == *record_id)
+                .with_context(|| {
+                    format!(
+                        "no billing record with id {record_id} — run `hoppy billing records` to list valid ids"
+                    )
+                })?;
+            let url = record.document_download_url.as_deref().with_context(|| {
+                format!(
+                    "billing record {record_id} has no downloadable document \
+                     (DocumentDownloadUrl is empty)"
+                )
+            })?;
+            let mut file = std::fs::File::create(output)
+                .with_context(|| format!("creating output file: {output}"))?;
+            let n = client
+                .download_billing_record_document(url, &mut file)
                 .await?;
-            report_pdf_saved(format, n, output, quiet);
+            report_pdf_saved(format, n, output, quiet, "receipt-pdf");
         }
         BillingAction::PaymentRequestPdf { id, output } => {
             let mut file = std::fs::File::create(output)
                 .with_context(|| format!("creating output file: {output}"))?;
             let n = client.download_payment_request_pdf(*id, &mut file).await?;
-            report_pdf_saved(format, n, output, quiet);
+            report_pdf_saved(format, n, output, quiet, "payment-request-pdf");
         }
     }
     Ok(())
@@ -462,13 +567,13 @@ fn print_json<T: serde::Serialize>(value: &T) -> Result<()> {
 }
 
 /// Emit a success message / envelope after a PDF download.
-fn report_pdf_saved(format: OutputFormat, bytes: u64, path: &str, quiet: bool) {
+fn report_pdf_saved(format: OutputFormat, bytes: u64, path: &str, quiet: bool, resource: &str) {
     match format {
         OutputFormat::Json => {
             output::print_mutation_result(
                 format,
                 "download",
-                "invoice-pdf",
+                resource,
                 serde_json::json!({ "Path": path, "Bytes": bytes }),
                 "",
             );
@@ -481,6 +586,31 @@ fn report_pdf_saved(format: OutputFormat, bytes: u64, path: &str, quiet: bool) {
     }
 }
 
+/// On a 404 from `billing invoice-pdf` (`GET /billing/summary/{id}/pdf`),
+/// the record most likely has no formal invoice at all (e.g. a top-up or
+/// payment receipt, which only exists behind the pre-signed
+/// `DocumentDownloadUrl`) — point at `billing receipt-pdf` instead of just
+/// surfacing the bare 404.
+fn improve_invoice_pdf_404(err: anyhow::Error, record_id: i64) -> anyhow::Error {
+    // The client surfaces 404s two ways: a structured `ApiError` when the
+    // body is parseable JSON, or a plain `HTTP 404 ...` string when the
+    // body is empty — the live `/billing/summary/{id}/pdf` 404 is the
+    // latter. Match both.
+    let is_404 = err
+        .downcast_ref::<ApiError>()
+        .is_some_and(|e| e.status_code == 404)
+        || err
+            .chain()
+            .any(|cause| cause.to_string().starts_with("HTTP 404"));
+    if is_404 {
+        return err.context(format!(
+            "record {record_id} likely has no formal invoice (e.g. a top-up/payment receipt) — \
+             try `hoppy billing receipt-pdf --record-id {record_id} --output <file>` instead"
+        ));
+    }
+    err
+}
+
 /// Redact `Key` fields inside an `/apikey` list JSON payload.
 fn redact_api_keys_json(value: &mut serde_json::Value) {
     if let Some(items) = value.get_mut("Items").and_then(|v| v.as_array_mut()) {
@@ -489,6 +619,24 @@ fn redact_api_keys_json(value: &mut serde_json::Value) {
                 let raw = key.as_str().unwrap_or("");
                 *key = serde_json::Value::String(placeholder(raw));
             }
+        }
+    }
+}
+
+/// Redact `Payer` (PII) and the pre-signed `DocumentDownloadUrl` inside a
+/// `billing records` JSON payload (a bare array of billing-record objects).
+fn redact_billing_records_json(value: &mut serde_json::Value) {
+    let Some(records) = value.as_array_mut() else {
+        return;
+    };
+    for record in records {
+        if let Some(payer) = record.get_mut("Payer") {
+            let raw = payer.as_str().unwrap_or("");
+            *payer = serde_json::Value::String(placeholder(raw));
+        }
+        if let Some(url) = record.get_mut("DocumentDownloadUrl") {
+            let raw = url.as_str().unwrap_or("");
+            *url = serde_json::Value::String(placeholder(raw));
         }
     }
 }
@@ -557,6 +705,106 @@ mod tests {
         // Non-secret fields untouched.
         assert_eq!(v["Items"][0]["Id"], json!(1));
         assert_eq!(v["TotalItems"], json!(2));
+    }
+
+    fn sample_billing_record() -> BillingRecord {
+        BillingRecord {
+            id: 4291069,
+            payment_id: None,
+            amount: 12.5,
+            payer: Some("customer@example.com".to_owned()),
+            timestamp: "2026-05-24T15:37:04".to_owned(),
+            record_type: 2,
+            invoice_available: false,
+            document_download_url: Some(
+                "https://billing.b-cdn.net/invoice/4291069?token=tok_secret".to_owned(),
+            ),
+            detailed_document_download_url: None,
+        }
+    }
+
+    #[test]
+    fn billing_record_type_name_known_and_unknown() {
+        assert_eq!(billing_record_type_name(0), "PayPal");
+        assert_eq!(billing_record_type_name(2), "CreditCard");
+        assert_eq!(billing_record_type_name(3), "MonthlyUsage");
+        assert_eq!(billing_record_type_name(7), "AffiliateCredits");
+        // Unrecognised future value must render as the raw number, not fail.
+        assert_eq!(billing_record_type_name(99), "99");
+    }
+
+    #[test]
+    fn billing_record_row_redacts_payer_by_default() {
+        let r = sample_billing_record();
+        let redacted = BillingRecordRow::from_record(&r, false);
+        assert!(
+            redacted.payer.starts_with("<set, length="),
+            "expected redaction placeholder, got: {}",
+            redacted.payer
+        );
+        assert_eq!(redacted.record_type, "CreditCard");
+        let revealed = BillingRecordRow::from_record(&r, true);
+        assert_eq!(revealed.payer, "customer@example.com");
+    }
+
+    #[test]
+    fn redact_billing_records_json_masks_payer_and_document_url() {
+        let mut v = json!([
+            {
+                "Id": 4291069,
+                "Payer": "customer@example.com",
+                "DocumentDownloadUrl": "https://billing.b-cdn.net/invoice/4291069?token=tok_secret",
+                "DetailedDocumentDownloadUrl": null,
+                "Amount": 12.5,
+            }
+        ]);
+        redact_billing_records_json(&mut v);
+        let payer = v[0]["Payer"].as_str().unwrap();
+        assert!(
+            payer.starts_with("<set, length="),
+            "payer not redacted: {payer}"
+        );
+        let url = v[0]["DocumentDownloadUrl"].as_str().unwrap();
+        assert!(
+            !url.contains("tok_secret"),
+            "signed URL token leaked: {url}"
+        );
+        // Non-secret fields untouched.
+        assert_eq!(v[0]["Id"], json!(4291069));
+        assert_eq!(v[0]["Amount"], json!(12.5));
+    }
+
+    #[test]
+    fn improve_invoice_pdf_404_mentions_receipt_pdf() {
+        let err = anyhow::Error::new(ApiError {
+            message: "not found".to_owned(),
+            error_key: "not_found".to_owned(),
+            status_code: 404,
+        });
+        let improved = improve_invoice_pdf_404(err, 4291069);
+        let msg = improved.to_string();
+        assert!(msg.contains("receipt-pdf"), "expected hint, got: {msg}");
+    }
+
+    #[test]
+    fn improve_invoice_pdf_404_matches_plain_string_404() {
+        // The live `/billing/summary/{id}/pdf` 404 has an empty body, so the
+        // client surfaces it as a plain string, not a structured ApiError.
+        let err = anyhow::anyhow!("HTTP 404 Not Found: ");
+        let improved = improve_invoice_pdf_404(err, 4291069);
+        let msg = improved.to_string();
+        assert!(msg.contains("receipt-pdf"), "expected hint, got: {msg}");
+    }
+
+    #[test]
+    fn improve_invoice_pdf_404_leaves_other_errors_untouched() {
+        let err = anyhow::Error::new(ApiError {
+            message: "server error".to_owned(),
+            error_key: "internal".to_owned(),
+            status_code: 500,
+        });
+        let improved = improve_invoice_pdf_404(err, 1);
+        assert!(!improved.to_string().contains("receipt-pdf"));
     }
 
     #[test]

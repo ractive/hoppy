@@ -146,6 +146,266 @@ async fn billing_payment_requests_json() {
 }
 
 // ---------------------------------------------------------------------------
+// billing records (iter-83)
+// ---------------------------------------------------------------------------
+
+/// A single billing record with a real payer email and a signed document
+/// URL — defined inline (not under fixtures/) so redaction assertions have
+/// an unambiguous secret to look for.
+fn billing_records_body(document_download_url: &str) -> String {
+    format!(
+        r#"{{"BillingRecords":[{{"Id":4291069,"PaymentId":null,"Amount":12.5,"Payer":"customer@example.com","Timestamp":"2026-05-24T15:37:04","Type":2,"InvoiceAvailable":false,"DocumentDownloadUrl":"{document_download_url}","DetailedDocumentDownloadUrl":null}}]}}"#
+    )
+}
+
+#[tokio::test]
+async fn billing_records_table_redacts_payer_by_default() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            billing_records_body("https://billing.b-cdn.net/invoice/4291069?token=tok_secret"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "billing", "records"])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("customer@example.com"),
+        "raw payer leaked into table output:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("<set, length="),
+        "expected redaction placeholder, got:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("CreditCard"),
+        "expected friendly type name, got:\n{stdout}"
+    );
+}
+
+#[tokio::test]
+async fn billing_records_reveal_shows_raw_payer() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            billing_records_body("https://billing.b-cdn.net/invoice/4291069?token=tok_secret"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "billing", "records", "--reveal"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("customer@example.com"),
+        "expected raw payer with --reveal, got:\n{stdout}"
+    );
+}
+
+#[tokio::test]
+async fn billing_records_json_redacts_payer_and_document_url_by_default() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            billing_records_body("https://billing.b-cdn.net/invoice/4291069?token=tok_secret"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "billing", "records"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let payer = json[0]["Payer"].as_str().unwrap();
+    assert!(
+        payer.starts_with("<set, length="),
+        "expected redacted payer in JSON, got: {payer}"
+    );
+    let url = json[0]["DocumentDownloadUrl"].as_str().unwrap();
+    assert!(
+        !url.contains("tok_secret"),
+        "signed URL token leaked into JSON output: {url}"
+    );
+    assert_eq!(json[0]["Id"], 4291069);
+}
+
+#[tokio::test]
+async fn billing_records_json_reveal_shows_raw_values() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            billing_records_body("https://billing.b-cdn.net/invoice/4291069?token=tok_secret"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "billing", "records", "--reveal"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json[0]["Payer"], "customer@example.com");
+    assert!(
+        json[0]["DocumentDownloadUrl"]
+            .as_str()
+            .unwrap()
+            .contains("tok_secret")
+    );
+}
+
+// ---------------------------------------------------------------------------
+// receipt-pdf (signed-URL document download; iter-83)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn billing_receipt_pdf_downloads_document_via_signed_url() {
+    let server = MockServer::start().await;
+    let pdf: &[u8] = b"%PDF-1.4\n%mock receipt\n%%EOF\n";
+
+    // The signed DocumentDownloadUrl is patched at test time to point back
+    // at this mock server — fixtures/ stays untouched.
+    let document_url = format!("{}/receipt/4291069?token=tok_secret", server.uri());
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(billing_records_body(&document_url), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/receipt/4291069"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(pdf.to_vec(), "application/pdf"))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let out_path = dir.path().join("receipt.pdf");
+    let out_str = out_path.to_str().unwrap();
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "billing",
+            "receipt-pdf",
+            "--record-id",
+            "4291069",
+            "--output",
+            out_str,
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let written = std::fs::read(&out_path).unwrap();
+    assert_eq!(written, pdf);
+}
+
+#[tokio::test]
+async fn billing_receipt_pdf_unknown_record_id_errors() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            billing_records_body("https://billing.b-cdn.net/invoice/4291069?token=tok_secret"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let out_path = dir.path().join("receipt.pdf");
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "billing",
+            "receipt-pdf",
+            "--record-id",
+            "999999",
+            "--output",
+            out_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("billing records"),
+        "expected a hint pointing at `billing records`, got: {stderr}"
+    );
+    assert!(
+        !out_path.exists(),
+        "output file must not be created on error"
+    );
+}
+
+#[tokio::test]
+async fn billing_receipt_pdf_missing_document_url_errors() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"BillingRecords":[{"Id":42,"Amount":0,"Timestamp":"2026-01-01T00:00:00","Type":3,"InvoiceAvailable":true,"DocumentDownloadUrl":null}]}"#,
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let out_path = dir.path().join("receipt.pdf");
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "billing",
+            "receipt-pdf",
+            "--record-id",
+            "42",
+            "--output",
+            out_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("no downloadable document"),
+        "expected a clear no-document error, got: {stderr}"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // invoice PDF downloads (streamed to file)
 // ---------------------------------------------------------------------------
 
@@ -183,6 +443,41 @@ async fn billing_invoice_pdf_writes_file() {
     let written = std::fs::read(&out_path).unwrap();
     assert_eq!(written, pdf);
     assert!(written.starts_with(b"%PDF"));
+}
+
+#[tokio::test]
+async fn billing_invoice_pdf_404_points_at_receipt_pdf() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing/summary/4291069/pdf"))
+        .respond_with(ResponseTemplate::new(404).set_body_raw(
+            support::fixture("core/error_not_found_videolibrary.json"),
+            "application/json",
+        ))
+        .mount(&server)
+        .await;
+
+    let dir = tempfile::tempdir().unwrap();
+    let out_path = dir.path().join("invoice.pdf");
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "billing",
+            "invoice-pdf",
+            "--record-id",
+            "4291069",
+            "--output",
+            out_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("receipt-pdf"),
+        "expected 404 message to point at `billing receipt-pdf`, got: {stderr}"
+    );
 }
 
 #[tokio::test]

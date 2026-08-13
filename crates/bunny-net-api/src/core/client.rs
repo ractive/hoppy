@@ -1153,6 +1153,87 @@ impl CoreClient {
         self.stream_to_writer(rb, writer).await
     }
 
+    /// Download a billing record's document from its pre-signed
+    /// `DocumentDownloadUrl` (see [`BillingRecord::document_download_url`]),
+    /// streaming the response body into `writer` chunk-by-chunk. Covers
+    /// record types (e.g. top-ups) for which `download_billing_invoice_pdf`
+    /// (`/billing/summary/{id}/pdf`) 404s.
+    ///
+    /// **Security:** `url` lives on `billing.b-cdn.net`, a different host
+    /// than the rest of this client's requests, and carries its own
+    /// short-lived `token`/`expires` query parameters. Unlike every other
+    /// method on this client, the request built here deliberately does
+    /// *not* go through [`Self::auth`] / [`Self::send`] — sending the
+    /// `AccessKey` header to a third-party host would leak the API key, and
+    /// `send`'s `--debug` logging prints the full request URL (query string
+    /// included), which would print the token. This method never logs the
+    /// query string, with or without `--debug`.
+    ///
+    /// [`BillingRecord`]: super::types::BillingRecord
+    pub async fn download_billing_record_document<W>(
+        &self,
+        url: &str,
+        writer: &mut W,
+    ) -> Result<u64>
+    where
+        W: std::io::Write,
+    {
+        let rb = self.http.get(url);
+        let request = rb.build().context("failed to build request")?;
+        if self.debug {
+            eprintln!(
+                ">> {} {}",
+                request.method(),
+                redact_query_string(request.url())
+            );
+        }
+        // reqwest errors embed the request URL (query string — and thus the
+        // token — included) in their Display; strip it before it can reach
+        // an error chain that gets printed.
+        let mut response = self
+            .http
+            .execute(request)
+            .await
+            .map_err(reqwest::Error::without_url)
+            .context("HTTP request failed")?;
+        let status = response.status();
+        if self.debug {
+            eprintln!("<< {status}");
+        }
+        if !status.is_success() {
+            // Error bodies are small — buffer to parse the structured error.
+            // The response body comes from the server, not the request URL,
+            // so it carries no risk of echoing the token.
+            let bytes = response
+                .bytes()
+                .await
+                .map_err(reqwest::Error::without_url)
+                .context("failed to read response body")?;
+            if self.debug {
+                eprintln!(
+                    "<<< {}",
+                    format_debug_body(&bytes, self.debug_reveal_secrets)
+                );
+            }
+            return Err(self.extract_api_error(status, &bytes));
+        }
+
+        let mut total: u64 = 0;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(reqwest::Error::without_url)
+            .context("failed to read response chunk")?
+        {
+            writer
+                .write_all(&chunk)
+                .context("failed to write downloaded chunk")?;
+            total += chunk.len() as u64;
+        }
+        writer.flush().context("failed to flush writer")?;
+        Ok(total)
+    }
+
     /// List the core CDN edge regions with per-region pricing.
     ///
     /// Backs `GET /region` (distinct from the containers `/regions` endpoint).
@@ -1600,6 +1681,24 @@ impl CoreClient {
             let body_text = String::from_utf8_lossy(bytes);
             anyhow::anyhow!("HTTP {status}: {body_text}")
         }
+    }
+}
+
+/// Render a URL for `--debug` logging with its query string stripped.
+///
+/// Used exclusively by [`CoreClient::download_billing_record_document`]: the
+/// pre-signed billing document URL carries a secret `token` query parameter
+/// that must never be printed, even under `--debug`. Keeping the scheme,
+/// host, and path intact (while dropping the query string) still tells the
+/// caller which host/endpoint was hit, without risking the token.
+fn redact_query_string(url: &reqwest::Url) -> String {
+    let mut redacted = url.clone();
+    let had_query = redacted.query().is_some();
+    redacted.set_query(None);
+    if had_query {
+        format!("{redacted}?<redacted>")
+    } else {
+        redacted.to_string()
     }
 }
 
