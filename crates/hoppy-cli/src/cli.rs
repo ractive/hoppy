@@ -675,11 +675,38 @@ pub enum ApikeyAction {
 pub enum BillingAction {
     /// Show the per-pull-zone billing summary for the current month
     Summary,
+    /// List individual billing records (invoices, top-ups, refunds, …)
+    ///
+    /// Each record's ID can be passed to `billing invoice-pdf --record-id`
+    /// or `billing receipt-pdf --record-id`. `Payer` is redacted by default;
+    /// pass `--reveal` (or the global `--reveal` flag) to show it.
+    Records {
+        /// Show the raw payer value instead of redacting it.
+        #[arg(long)]
+        reveal: bool,
+    },
     /// List payment requests (open and settled)
     PaymentRequests,
     /// Download a billing-record invoice as a PDF (streamed to a file)
+    ///
+    /// Backed by `GET /billing/summary/{id}/pdf`. Returns 404 for record
+    /// types that have no formal invoice (e.g. top-ups) — use
+    /// `billing receipt-pdf` for those instead.
     InvoicePdf {
-        /// Billing record ID (from `billing summary` / `--format json`)
+        /// Billing record ID (from `billing records` / `billing summary`)
+        #[arg(long)]
+        record_id: i64,
+        /// Path to write the PDF to
+        #[arg(long)]
+        output: String,
+    },
+    /// Download a billing record's receipt/document via its pre-signed URL
+    /// (streamed to a file)
+    ///
+    /// Works for every record type that has a document, including top-ups
+    /// (record type 2), for which `billing invoice-pdf` 404s.
+    ReceiptPdf {
+        /// Billing record ID (from `billing records`)
         #[arg(long)]
         record_id: i64,
         /// Path to write the PDF to

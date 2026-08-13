@@ -250,6 +250,7 @@ async fn run(cli: Cli) {
                 cli.debug,
                 cli.dry_run,
                 cli.quiet,
+                cli.reveal,
                 record,
             )
             .await
