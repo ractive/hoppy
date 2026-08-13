@@ -19,10 +19,14 @@ use crate::cli::{
 use crate::output;
 use crate::redact::{RedactConfig, placeholder};
 
-// Slug validation: lowercase letter start, then [a-z0-9-]{0,23}. Conservative
-// upper bound — bunny silently 500s on long slugs (the field report saw 25
-// chars fail; 13 chars passed). Adjust here if upstream changes.
-const SLUG_MAX_LEN: usize = 24;
+// Slug validation: lowercase letter start, then [a-z0-9-]{0,15}. Measured
+// live against the real API on 2026-08-13 (test account): a 16-char slug
+// creates fine; 17, 18, and 19 chars all return HTTP 500 "Internal error".
+// The real upstream limit is 16. The group ULID is always 26 chars, so a
+// slug-length limit and a `<ulid>-<slug>` hostname-length limit are
+// observationally identical from a single-group probe — we encode the
+// effective slug limit here either way. Adjust if upstream changes.
+const SLUG_MAX_LEN: usize = 16;
 
 fn validate_slug(slug: &str) -> Result<()> {
     if slug.is_empty() {
@@ -30,7 +34,8 @@ fn validate_slug(slug: &str) -> Result<()> {
     }
     if slug.len() > SLUG_MAX_LEN {
         bail!(
-            "slug too long ({} chars; max {SLUG_MAX_LEN}). Bunny silently 500s on long slugs.",
+            "slug too long ({} chars; max {SLUG_MAX_LEN}). Bunny returns an upstream 500 \
+             \"Internal error\" on longer slugs.",
             slug.len()
         );
     }
@@ -43,6 +48,34 @@ fn validate_slug(slug: &str) -> Result<()> {
         if !(b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-') {
             bail!("slug may only contain lowercase letters, digits, and '-'");
         }
+    }
+    Ok(())
+}
+
+/// Validate `provided` region values against the live `valid` vocabulary
+/// (case-sensitive exact match). On a mismatch, fails before any mutating
+/// call: an exact case-insensitive match yields a did-you-mean pointing at
+/// the correctly cased id, otherwise the full valid-value list is shown.
+///
+/// No region vocabulary is hardcoded here — `valid` always comes from a
+/// fresh `DatabaseClient::get_config()` call so the check tracks the API.
+fn validate_region_values(flag: &str, provided: &[String], valid: &[&str]) -> Result<()> {
+    for v in provided {
+        if valid.contains(&v.as_str()) {
+            continue;
+        }
+        if let Some(correct) = valid.iter().find(|id| id.eq_ignore_ascii_case(v)) {
+            bail!(
+                "{flag} value '{v}' is not valid — did you mean '{correct}'? \
+                 Valid values: {}. Run `hoppy db config show` for the full list.",
+                valid.join(", ")
+            );
+        }
+        bail!(
+            "{flag} value '{v}' is not a known region. Valid values: {}. \
+             Run `hoppy db config show` for the full list.",
+            valid.join(", ")
+        );
     }
     Ok(())
 }
@@ -668,6 +701,34 @@ async fn handle_group(
             primary_regions,
             replicas_regions,
         } => {
+            // Pre-flight against the live vocabulary before the mutating
+            // call — a GET, so it still runs (and stays truthful) under
+            // `--dry-run`. Wrong casing otherwise surfaces as a raw
+            // JSON-schema dump or an upstream 500.
+            let config = client.get_config().await?;
+            let storage_ids: Vec<&str> = config
+                .storage_region_available
+                .iter()
+                .map(|r| r.id.as_str())
+                .collect();
+            let primary_ids: Vec<&str> = config
+                .primary_regions
+                .iter()
+                .map(|r| r.id.as_str())
+                .collect();
+            let replica_ids: Vec<&str> = config
+                .replica_regions
+                .iter()
+                .map(|r| r.id.as_str())
+                .collect();
+            validate_region_values(
+                "--storage-region",
+                std::slice::from_ref(storage_region),
+                &storage_ids,
+            )?;
+            validate_region_values("--primary-region", primary_regions, &primary_ids)?;
+            validate_region_values("--replicas-region", replicas_regions, &replica_ids)?;
+
             let body = CreateDatabaseGroupPayload::new(
                 display_name,
                 storage_region,
@@ -957,6 +1018,20 @@ mod tests {
     fn slug_rejects_long() {
         // 25 chars — failed in the field report
         assert!(validate_slug("wardrobe-assistants-admin").is_err());
+    }
+
+    #[test]
+    fn slug_accepts_boundary_16_chars() {
+        // Measured live 2026-08-13: 16 chars creates fine.
+        assert!(validate_slug("abcdefghijklmnop").is_ok());
+        assert_eq!("abcdefghijklmnop".len(), 16);
+    }
+
+    #[test]
+    fn slug_rejects_boundary_17_chars() {
+        // Measured live 2026-08-13: 17 chars returns upstream HTTP 500.
+        assert!(validate_slug("abcdefghijklmnopq").is_err());
+        assert_eq!("abcdefghijklmnopq".len(), 17);
     }
 
     #[test]

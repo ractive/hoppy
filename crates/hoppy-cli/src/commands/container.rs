@@ -1243,6 +1243,7 @@ async fn handle_app(
                 format,
                 debug,
                 dry_run,
+                redact.reveal_all,
                 record,
             )
             .await?;
@@ -1422,6 +1423,7 @@ async fn handle_app_delete(
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let auto_pzs = match discover_auto_pull_zones(c, id).await {
@@ -1481,7 +1483,7 @@ async fn handle_app_delete(
             debug,
             dry_run,
             record,
-            ..Default::default()
+            reveal_secrets: reveal,
         })?;
         let mut failures: Vec<(i64, String)> = Vec::new();
         for (_ep, pz) in &auto_pzs {

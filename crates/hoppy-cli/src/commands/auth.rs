@@ -74,6 +74,7 @@ fn billing_to_rows(b: &BillingDetails) -> Vec<AccountRow> {
 // Top-level handler
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle(
     action: &AuthAction,
     format: OutputFormat,
@@ -81,10 +82,11 @@ pub async fn handle(
     dry_run: bool,
     _yes: bool,
     quiet: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
-        AuthAction::Check => handle_check(format, debug, dry_run, quiet, record).await,
+        AuthAction::Check => handle_check(format, debug, dry_run, quiet, reveal, record).await,
     }
 }
 
@@ -93,13 +95,14 @@ async fn handle_check(
     debug: bool,
     dry_run: bool,
     quiet: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let client = auth::core_client(&auth::ClientOpts {
         debug,
         dry_run,
         record,
-        ..Default::default()
+        reveal_secrets: reveal,
     })?;
     let billing = client.get_billing().await?;
 

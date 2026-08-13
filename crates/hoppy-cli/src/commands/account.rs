@@ -248,7 +248,7 @@ pub async fn handle_apikey(
             per_page,
             reveal,
         } => {
-            let client = auth::core_client_with_reveal(&auth::ClientOpts {
+            let client = auth::core_client(&auth::ClientOpts {
                 debug,
                 dry_run,
                 record,
@@ -302,7 +302,7 @@ pub async fn handle_billing(
         debug,
         dry_run,
         record,
-        ..Default::default()
+        reveal_secrets: reveal_global,
     })?;
     match action {
         BillingAction::Summary => {
@@ -403,6 +403,7 @@ pub async fn handle_region(
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
@@ -411,7 +412,7 @@ pub async fn handle_region(
                 debug,
                 dry_run,
                 record,
-                ..Default::default()
+                reveal_secrets: reveal,
             })?;
             let regions = client.list_regions().await?;
             if let OutputFormat::Json = format {
@@ -430,6 +431,7 @@ pub async fn handle_country(
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
@@ -438,7 +440,7 @@ pub async fn handle_country(
                 debug,
                 dry_run,
                 record,
-                ..Default::default()
+                reveal_secrets: reveal,
             })?;
             let countries = client.list_countries().await?;
             if let OutputFormat::Json = format {
@@ -455,6 +457,7 @@ pub async fn handle_country(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_search(
     query: &str,
     from: Option<i32>,
@@ -462,13 +465,14 @@ pub async fn handle_search(
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let client = auth::core_client(&auth::ClientOpts {
         debug,
         dry_run,
         record,
-        ..Default::default()
+        reveal_secrets: reveal,
     })?;
     let results: SearchResults = client.search(query, from, size).await?;
     if let OutputFormat::Json = format {
@@ -496,11 +500,13 @@ pub async fn handle_search(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_user(
     action: &UserAction,
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     match action {
@@ -518,7 +524,7 @@ pub async fn handle_user(
                 debug,
                 dry_run,
                 record,
-                ..Default::default()
+                reveal_secrets: reveal,
             })?;
             let query = UserAuditQuery {
                 product: product.clone(),

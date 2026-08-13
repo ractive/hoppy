@@ -32,10 +32,12 @@ pub struct StatisticsArgs<'a> {
     pub load_user_balance_history: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle(
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
     args: StatisticsArgs<'_>,
 ) -> Result<()> {
@@ -46,7 +48,7 @@ pub async fn handle(
         debug,
         dry_run,
         record,
-        ..Default::default()
+        reveal_secrets: reveal,
     })?;
     let query = StatisticsQuery {
         date_from: date_from.as_deref(),

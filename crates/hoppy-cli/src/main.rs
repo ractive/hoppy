@@ -56,6 +56,7 @@ async fn run(cli: Cli) {
                 cli.dry_run,
                 yes,
                 cli.quiet,
+                cli.reveal,
                 record,
             )
             .await
@@ -98,7 +99,16 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::Dns { action } => {
-            commands::dns::handle(action, cli.format, cli.debug, cli.dry_run, yes, record).await
+            commands::dns::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                yes,
+                cli.reveal,
+                record,
+            )
+            .await
         }
         Commands::Stream { action } => {
             commands::stream::handle(
@@ -181,6 +191,7 @@ async fn run(cli: Cli) {
                 cli.format,
                 cli.debug,
                 cli.dry_run,
+                cli.reveal,
                 record,
                 commands::statistics::StatisticsArgs {
                     date_from: date_from.as_deref(),
@@ -213,8 +224,15 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::VideoLibrary { action } => {
-            commands::video_library::handle(action, cli.format, cli.debug, cli.dry_run, record)
-                .await
+            commands::video_library::handle(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                cli.reveal,
+                record,
+            )
+            .await
         }
         Commands::Purge {
             url,
@@ -228,6 +246,7 @@ async fn run(cli: Cli) {
                 cli.format,
                 cli.debug,
                 cli.dry_run,
+                cli.reveal,
                 record,
             )
             .await
@@ -256,12 +275,26 @@ async fn run(cli: Cli) {
             .await
         }
         Commands::Region { action } => {
-            commands::account::handle_region(action, cli.format, cli.debug, cli.dry_run, record)
-                .await
+            commands::account::handle_region(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                cli.reveal,
+                record,
+            )
+            .await
         }
         Commands::Country { action } => {
-            commands::account::handle_country(action, cli.format, cli.debug, cli.dry_run, record)
-                .await
+            commands::account::handle_country(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                cli.reveal,
+                record,
+            )
+            .await
         }
         Commands::Search { query, from, size } => {
             commands::account::handle_search(
@@ -271,12 +304,21 @@ async fn run(cli: Cli) {
                 cli.format,
                 cli.debug,
                 cli.dry_run,
+                cli.reveal,
                 record,
             )
             .await
         }
         Commands::User { action } => {
-            commands::account::handle_user(action, cli.format, cli.debug, cli.dry_run, record).await
+            commands::account::handle_user(
+                action,
+                cli.format,
+                cli.debug,
+                cli.dry_run,
+                cli.reveal,
+                record,
+            )
+            .await
         }
         Commands::Completions { shell } => {
             let mut cmd = <Cli as clap::CommandFactory>::command();
