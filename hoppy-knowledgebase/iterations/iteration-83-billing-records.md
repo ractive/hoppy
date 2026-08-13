@@ -142,7 +142,7 @@ Rust type drops it.
       -- -D warnings` → `cargo test --workspace --quiet`
 - [x] Dogfood against real account (`TEST_BUNNY_API_KEY`): `billing
       records`, `receipt-pdf` on a Type 2 record, `invoice-pdf` 404 message
-- [ ] PR `iter-83/billing-records`, self-review diff first
+- [x] PR `iter-83/billing-records`, self-review diff first
 
 ## Acceptance criteria
 
