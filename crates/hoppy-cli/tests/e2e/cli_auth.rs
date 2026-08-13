@@ -211,8 +211,9 @@ async fn auth_check_debug_redacts_by_default() {
         "expected the field to be masked without --reveal, got:\n{stderr}"
     );
     assert!(
-        stderr.contains("<set, length="),
-        "expected a redaction placeholder in --debug output, got:\n{stderr}"
+        stderr.contains("\"AutomaticPaymentCardType\": \"<set, length="),
+        "expected the AutomaticPaymentCardType value to be a length-only \
+         placeholder in --debug output, got:\n{stderr}"
     );
 }
 

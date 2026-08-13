@@ -223,6 +223,7 @@ async fn db_group_create_valid_regions_proceeds() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/v1/config"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_raw(support::fixture("database/config.json"), "application/json"),
@@ -232,6 +233,7 @@ async fn db_group_create_valid_regions_proceeds() {
         .await;
     Mock::given(method("POST"))
         .and(path("/v1/groups"))
+        .and(header("AccessKey", "test-api-key"))
         .and(body_json(serde_json::json!({
             "display_name": "EU",
             "storage_region": "eu-west-1",
@@ -276,6 +278,7 @@ async fn db_group_create_unknown_region_fails_before_post() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/v1/config"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_raw(support::fixture("database/config.json"), "application/json"),
@@ -283,8 +286,14 @@ async fn db_group_create_unknown_region_fails_before_post() {
         .expect(1)
         .mount(&server)
         .await;
-    // No POST mock mounted — a hit would fail the test via wiremock's
-    // "no matching mock" panic, proving the pre-flight check runs first.
+    // The pre-flight check must fail before any mutating request: a POST
+    // to /v1/groups is explicitly forbidden via expect(0).
+    Mock::given(method("POST"))
+        .and(path("/v1/groups"))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&server)
+        .await;
 
     let output = hoppy_db_cmd("test-api-key", &server.uri())
         .args([
@@ -317,11 +326,19 @@ async fn db_group_create_casing_mismatch_shows_did_you_mean() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/v1/config"))
+        .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_raw(support::fixture("database/config.json"), "application/json"),
         )
         .expect(1)
+        .mount(&server)
+        .await;
+    // Casing-only mismatch must also fail before any mutating request.
+    Mock::given(method("POST"))
+        .and(path("/v1/groups"))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
         .mount(&server)
         .await;
 

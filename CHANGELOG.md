@@ -36,8 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mismatch (e.g. `de` instead of `DE`) gets a did-you-mean. No region
   vocabulary is hardcoded — the check always reflects the current API. The
   config fetch is read-only, so it still runs (and stays truthful) under
-  `--dry-run`. Help text for both flags now names the vocabulary shape with
-  examples and points at `hoppy db config show` for the full list.
+  `--dry-run`. Help text for all three flags now names the vocabulary shape
+  with examples and points at `hoppy db config show` for the full list.
 
 ### Fixed
 
