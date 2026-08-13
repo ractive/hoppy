@@ -1,10 +1,10 @@
 ---
-title: v0.6.0 release — AUR publication still pending (winget done 2026-08-13)
+title: v0.6.0 release — resolved; AUR first-published as 0.7.0, winget done
 type: backlog
 date: 2026-08-10
 origin: release-v0.6.0
 priority: high
-status: open
+status: resolved
 tags:
   - backlog
   - release
@@ -59,7 +59,16 @@ ssh://aur@aur.archlinux.org/hoppy-bin.git` still returns the maintenance
 banner — their git service lagged the SSH frontend. Watched ~20 min
 (3 rerun attempts, 22:14–22:32 UTC); still down.
 
-**Fix:** once AUR git is back (`git ls-remote
+**Closed (2026-08-13):** the v0.7.0 release run published `hoppy-bin` to
+the AUR successfully — first-ever publish, so it went out as 0.7.0
+directly (0.6.0 was never separately published there;
+<https://aur.archlinux.org/packages/hoppy-bin> is live). The v0.6.0 rerun
+below is obsolete. The winget fork sync also succeeded in the same run
+(upstream hadn't touched `.github/workflows` since the manual web-UI
+sync), so the token-scope caveat didn't bite — it remains a latent risk
+for future releases until `WINGET_TOKEN` gets the workflow scope.
+
+**Original fix (obsolete):** once AUR git is back (`git ls-remote
 ssh://aur@aur.archlinux.org/hoppy-bin.git` lists refs), rerun:
 
 ```bash
