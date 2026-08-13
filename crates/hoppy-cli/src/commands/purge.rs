@@ -3,6 +3,7 @@ use crate::cli::OutputFormat;
 use crate::output;
 use anyhow::Result;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle(
     url: &str,
     exact_path: bool,
@@ -10,13 +11,14 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let client = auth::core_client(&auth::ClientOpts {
         debug,
         dry_run,
         record,
-        ..Default::default()
+        reveal_secrets: reveal,
     })?;
     client.purge_url(url, exact_path, is_async).await?;
     output::print_mutation_result(

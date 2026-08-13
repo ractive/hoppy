@@ -123,9 +123,16 @@ The bunny API silently 500s on long slugs. The field report tested:
 - `wa-admin-prod` (13 chars) — OK
 - `wardrobe-assistants-admin` (25 chars) — `{"error":"Internal error"}`
 
-hoppy validates slugs locally (`^[a-z][a-z0-9-]{0,23}$`) before the
-API call. Conservative max of 24 chars; adjust `SLUG_MAX_LEN` in
-`src/commands/database.rs` if upstream raises the limit.
+Iter-84 binary-searched the real boundary live (2026-08-13, test
+account): 16 chars creates fine; 17, 18, and 19 chars all 500. The
+group ULID is always 26 chars, so a slug-length limit and a
+`<ulid>-<slug>` hostname-length limit are observationally identical
+from a single-group probe.
+
+hoppy validates slugs locally (`^[a-z][a-z0-9-]{0,15}$`) before the
+API call. Max 16 chars, matching the measured boundary; adjust
+`SLUG_MAX_LEN` in `src/commands/database.rs` if upstream changes the
+limit.
 
 ## v2-only endpoints
 

@@ -16,13 +16,14 @@ pub async fn handle(
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let client = auth::core_client(&auth::ClientOpts {
         debug,
         dry_run,
         record,
-        ..Default::default()
+        reveal_secrets: reveal,
     })?;
 
     match action {

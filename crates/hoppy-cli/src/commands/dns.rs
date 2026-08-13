@@ -225,19 +225,21 @@ impl From<&DnsDiscoveredRecord> for DnsDiscoveredRecordRow {
 // Handler
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 pub async fn handle(
     action: &DnsAction,
     format: OutputFormat,
     debug: bool,
     dry_run: bool,
     yes: bool,
+    reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
     let client = auth::core_client(&auth::ClientOpts {
         debug,
         dry_run,
         record,
-        ..Default::default()
+        reveal_secrets: reveal,
     })?;
 
     match action {

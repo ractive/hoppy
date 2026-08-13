@@ -14,7 +14,7 @@ use std::env;
 ///
 /// Kept separate from [`crate::redact::RedactConfig`], which governs output
 /// redaction rather than client construction.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct ClientOpts<'a> {
     /// `--debug`: log HTTP requests/responses to stderr.
     pub debug: bool,
@@ -168,13 +168,8 @@ pub fn get_storage_key() -> Option<String> {
     }
 }
 
-/// Build a `CoreClient` with optional base URL override.
-pub fn core_client(opts: &ClientOpts) -> Result<CoreClient> {
-    core_client_with_reveal(opts)
-}
-
 /// Build a `CoreClient` with optional base URL override and reveal-secrets flag.
-pub fn core_client_with_reveal(opts: &ClientOpts) -> Result<CoreClient> {
+pub fn core_client(opts: &ClientOpts) -> Result<CoreClient> {
     let api_key = get_api_key()?;
     let mut client = if let Some(url) = get_api_url() {
         CoreClient::with_base_url(api_key, url)

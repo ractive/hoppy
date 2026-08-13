@@ -173,6 +173,84 @@ async fn auth_check_quiet_failure_prints_error() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// iter-84: --reveal wasn't threaded into `auth::core_client` call sites that
+// built `ClientOpts` via `..Default::default()` (which silently pinned
+// `reveal_secrets: false`). `auth check` was one of them — `--debug --reveal`
+// still showed redacted `--debug` request/response bodies. Now that
+// `ClientOpts` has no `Default` impl, every call site must state
+// `reveal_secrets` explicitly, and `cli.reveal` is threaded through.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn auth_check_debug_redacts_by_default() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/billing_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--debug", "--quiet", "auth", "check"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // "AutomaticPaymentCardType" matches the sensitive-key patterns
+    // ("payment") — without --reveal its string value is masked to a
+    // length-only placeholder, not printed raw.
+    assert!(
+        !stderr.contains("\"AutomaticPaymentCardType\": \"<redacted>\""),
+        "expected the field to be masked without --reveal, got:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("\"AutomaticPaymentCardType\": \"<set, length="),
+        "expected the AutomaticPaymentCardType value to be a length-only \
+         placeholder in --debug output, got:\n{stderr}"
+    );
+}
+
+#[tokio::test]
+async fn auth_check_debug_reveal_shows_unredacted_body() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/billing"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/billing_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--debug", "--reveal", "--quiet", "auth", "check"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // With --reveal threaded all the way to `auth::core_client`, the raw
+    // fixture value now passes through the --debug response body dump
+    // unmasked.
+    assert!(
+        stderr.contains("\"AutomaticPaymentCardType\": \"<redacted>\""),
+        "expected --reveal to show the raw field value in --debug output, got:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("<set, length="),
+        "expected no redaction placeholders under --reveal, got:\n{stderr}"
+    );
+}
+
 #[cfg(feature = "live-api")]
 #[test]
 fn live_auth_check() {

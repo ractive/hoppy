@@ -98,7 +98,7 @@ pub async fn handle(
     record: Option<&str>,
     redact_cfg: &RedactConfig,
 ) -> Result<()> {
-    let client = auth::core_client_with_reveal(&auth::ClientOpts {
+    let client = auth::core_client(&auth::ClientOpts {
         debug,
         dry_run,
         record,
