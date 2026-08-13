@@ -5331,15 +5331,17 @@ pub enum DbAction {
     /// EXAMPLES:
     ///   hoppy db create --slug my-app --group group_01HX...
     ///
-    /// Slug must be lowercase, start with a letter, max 24 chars
-    /// (`^[a-z][a-z0-9-]{0,23}$`). Long slugs return "Internal error"
-    /// upstream — hoppy validates locally before hitting the API.
+    /// Slug must be lowercase, start with a letter, max 16 chars
+    /// (`^[a-z][a-z0-9-]{0,15}$`). Longer slugs return "Internal error"
+    /// upstream (measured live 2026-08-13) — hoppy validates locally before
+    /// hitting the API.
     Create {
-        /// Database slug (lowercase, max 24 chars, see --help)
+        /// Database slug (lowercase, max 16 chars, see --help)
         #[arg(
             long,
-            long_help = "Database slug — must match `^[a-z][a-z0-9-]{0,23}$`. \
-The bunny API silently fails on long slugs ('Internal error' 500). \
+            long_help = "Database slug — must match `^[a-z][a-z0-9-]{0,15}$`. \
+The bunny API returns an upstream 500 'Internal error' on longer slugs \
+(measured live 2026-08-13: 16 chars OK, 17+ fails). \
 Hoppy validates locally before the API call."
         )]
         slug: String,
@@ -5358,7 +5360,8 @@ Hoppy validates locally before the API call."
         /// Source database ID
         #[arg(long)]
         id: String,
-        /// New slug for the fork
+        /// New slug for the fork (same constraints as `db create --slug`,
+        /// max 16 chars — see `hoppy db create --help`)
         #[arg(long)]
         target: String,
         /// Point-in-time to fork from (RFC 3339 date-time, e.g.
@@ -5545,17 +5548,28 @@ pub enum DbGroupAction {
     ///
     /// long_help: storage-region uses flat regions (eu-west-1, us-east-1).
     /// primary-region/replicas-region use compute codes (DE, FR, AMS, UK, …).
+    /// hoppy validates all three, case-sensitively, against the live
+    /// vocabulary from `GET /v1/config` before sending the create request —
+    /// an unknown or wrongly-cased value fails locally with the valid list
+    /// (and a did-you-mean on casing-only mismatches) instead of an upstream
+    /// JSON-schema dump or a 500.
     Create {
         /// Display name (max 64 chars)
         #[arg(long)]
         display_name: String,
-        /// Storage region (e.g. eu-west-1; see `db config show`)
+        /// Storage region — flat id, e.g. `eu-west-1`, `us-east-1`, `sg-1`.
+        /// Validated against `hoppy db config show` (Storage regions) before
+        /// the request is sent.
         #[arg(long)]
         storage_region: String,
-        /// Primary region (compute code, repeatable). Examples: DE, FR, AMS.
+        /// Primary region — compute code (repeatable). Examples: DE, FR,
+        /// AMS. Validated against `hoppy db config show` (Primary regions)
+        /// before the request is sent.
         #[arg(long = "primary-region", value_name = "REGION")]
         primary_regions: Vec<String>,
-        /// Replica region (compute code, repeatable). Examples: UK, NY.
+        /// Replica region — compute code (repeatable). Examples: UK, NY.
+        /// Validated against `hoppy db config show` (Replica regions)
+        /// before the request is sent.
         #[arg(long = "replicas-region", value_name = "REGION")]
         replicas_regions: Vec<String>,
     },
