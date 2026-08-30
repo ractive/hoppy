@@ -4,6 +4,11 @@
 //! * `CARGO_HOPPY_FORCE_NO_GIT=1` forces empty values (used in repro tests).
 //! * `GIT_COMMIT` / `GIT_COMMIT_DATE` override the values when set (used by
 //!   CI / tarball builds that don't ship a `.git` tree).
+//! * A published crate (`cargo install hoppy-cli` from crates.io) carries no
+//!   `.git` tree but does carry `.cargo_vcs_info.json`, written by
+//!   `cargo publish` with the commit it was packaged from. When that file is
+//!   present we take the SHA from it (no commit date is recorded there, so
+//!   `-V` prints `hoppy 0.7.0 (3d32c922ab92)`).
 //! * Otherwise we shell out to `git`. Missing-git or missing-checkout fall
 //!   back to empty strings rather than failing the build.
 //!
@@ -13,9 +18,13 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+#[path = "build_support/vcs_info.rs"]
+mod vcs_info;
+
 const ENV_FORCE_NO_GIT: &str = "CARGO_HOPPY_FORCE_NO_GIT";
 const ENV_GIT_COMMIT: &str = "GIT_COMMIT";
 const ENV_GIT_COMMIT_DATE: &str = "GIT_COMMIT_DATE";
+const CARGO_VCS_INFO: &str = ".cargo_vcs_info.json";
 
 fn main() {
     println!("cargo:rerun-if-env-changed={ENV_FORCE_NO_GIT}");
@@ -26,26 +35,30 @@ fn main() {
 
     let (sha, date) = if force_no_git {
         (String::new(), String::new())
+    } else if let Some(sha) = env_override(ENV_GIT_COMMIT) {
+        // CI / hermetic path: caller-supplied SHA, date from env or git.
+        let date = env_override(ENV_GIT_COMMIT_DATE)
+            .or_else(git_commit_date)
+            .unwrap_or_default();
+        (sha, date)
+    } else if let Some(sha) = vcs_info_sha() {
+        // Published-tarball path: `.cargo_vcs_info.json` records the SHA but
+        // no date, and there is no `.git` tree to ask, so only an explicit
+        // GIT_COMMIT_DATE can fill the date in.
+        (sha, env_override(ENV_GIT_COMMIT_DATE).unwrap_or_default())
     } else {
-        let sha = std::env::var(ENV_GIT_COMMIT)
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| {
-                let raw = git_short_sha()?;
+        let sha = git_short_sha()
+            .map(|raw| {
                 if git_is_dirty() {
-                    Some(format!("{raw}+dirty"))
+                    format!("{raw}+dirty")
                 } else {
-                    Some(raw)
+                    raw
                 }
             })
             .unwrap_or_default();
-
-        let date = std::env::var(ENV_GIT_COMMIT_DATE)
-            .ok()
-            .filter(|s| !s.is_empty())
+        let date = env_override(ENV_GIT_COMMIT_DATE)
             .or_else(git_commit_date)
             .unwrap_or_default();
-
         (sha, date)
     };
 
@@ -68,6 +81,23 @@ fn main() {
     // accurate when the working tree flips between clean/dirty without
     // touching HEAD or refs.
     println!("cargo:rerun-if-changed=src");
+}
+
+fn env_override(name: &str) -> Option<String> {
+    std::env::var(name).ok().filter(|s| !s.is_empty())
+}
+
+/// Read the packaging commit from `.cargo_vcs_info.json` next to `Cargo.toml`.
+///
+/// The file is only present inside a `cargo package`/`cargo publish` tarball;
+/// see `build_support/vcs_info.rs` for the shape and parser. Anything
+/// unexpected yields `None` and we fall through to `git`.
+fn vcs_info_sha() -> Option<String> {
+    let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")?;
+    let path = PathBuf::from(manifest_dir).join(CARGO_VCS_INFO);
+    println!("cargo:rerun-if-changed={}", path.display());
+    let contents = std::fs::read_to_string(path).ok()?;
+    vcs_info::parse_vcs_info_sha(&contents)
 }
 
 fn git_dir() -> Option<PathBuf> {

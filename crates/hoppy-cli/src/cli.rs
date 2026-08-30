@@ -5767,6 +5767,16 @@ mod cli_parse_tests {
     }
 
     #[test]
+    fn version_string_sha_only_no_date() {
+        // Mirrors a crates.io tarball build: `.cargo_vcs_info.json` supplies
+        // the SHA but records no commit date.
+        assert_eq!(
+            super::format_version("0.3.0", "abc123def456", ""),
+            "0.3.0 (abc123def456)"
+        );
+    }
+
+    #[test]
     fn version_string_dirty_suffix_preserved() {
         assert_eq!(
             super::format_version("0.3.0", "abc123def456+dirty", "2026-05-26"),
