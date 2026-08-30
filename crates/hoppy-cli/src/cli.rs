@@ -174,7 +174,7 @@ pub struct Cli {
     pub reveal_env: Vec<String>,
 
     /// Suppress drill-down hints (next-step suggestions) on stderr.
-    /// `--format json` implies this so machine output stays clean.
+    /// Hints never touch stdout, so piped/JSON payloads stay clean either way.
     #[arg(long, global = true)]
     pub no_hints: bool,
 

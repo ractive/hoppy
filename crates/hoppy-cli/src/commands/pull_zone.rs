@@ -163,13 +163,15 @@ pub async fn handle(
                     let rows: Vec<PullZoneRow> =
                         result.items.iter().map(PullZoneRow::from).collect();
                     output::print_data(&rows, format);
-                    if let Some(first) = result.items.first() {
-                        let id = first.id;
-                        output::hints::tips(&[
-                            &format!("hoppy pull-zone get --id {id}"),
-                            &format!("hoppy pull-zone statistics --id {id}"),
-                        ]);
-                    }
+                }
+                // Drill-down tips go to stderr and apply to every format,
+                // JSON included (iter-86).
+                if let Some(first) = result.items.first() {
+                    let id = first.id;
+                    output::hints::tips(&[
+                        &format!("hoppy pull-zone get --id {id}"),
+                        &format!("hoppy pull-zone statistics --id {id}"),
+                    ]);
                 }
             }
         }
