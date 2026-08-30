@@ -18,6 +18,9 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+#[path = "build_support/vcs_info.rs"]
+mod vcs_info;
+
 const ENV_FORCE_NO_GIT: &str = "CARGO_HOPPY_FORCE_NO_GIT";
 const ENV_GIT_COMMIT: &str = "GIT_COMMIT";
 const ENV_GIT_COMMIT_DATE: &str = "GIT_COMMIT_DATE";
@@ -86,35 +89,15 @@ fn env_override(name: &str) -> Option<String> {
 
 /// Read the packaging commit from `.cargo_vcs_info.json` next to `Cargo.toml`.
 ///
-/// The file is only present inside a `cargo package`/`cargo publish` tarball
-/// and looks like `{"git":{"sha1":"<40 hex>","dirty":true},"path_in_vcs":…}`
-/// (`dirty` is emitted by newer cargo only when the tree had uncommitted
-/// changes, e.g. `--allow-dirty`). Parsed with a plain string scan to keep
-/// the build script dependency-free; anything unexpected yields `None` and
-/// we fall through to `git`.
+/// The file is only present inside a `cargo package`/`cargo publish` tarball;
+/// see `build_support/vcs_info.rs` for the shape and parser. Anything
+/// unexpected yields `None` and we fall through to `git`.
 fn vcs_info_sha() -> Option<String> {
     let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")?;
     let path = PathBuf::from(manifest_dir).join(CARGO_VCS_INFO);
     println!("cargo:rerun-if-changed={}", path.display());
     let contents = std::fs::read_to_string(path).ok()?;
-    parse_vcs_info_sha(&contents)
-}
-
-fn parse_vcs_info_sha(contents: &str) -> Option<String> {
-    let after_key = &contents[contents.find("\"sha1\"")? + "\"sha1\"".len()..];
-    let after_colon = &after_key[after_key.find(':')? + 1..];
-    let start = after_colon.find('"')? + 1;
-    let end = start + after_colon[start..].find('"')?;
-    let sha = &after_colon[start..end];
-    if sha.len() < 12 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return None;
-    }
-    let short = &sha[..12];
-    if contents.contains("\"dirty\":true") || contents.contains("\"dirty\": true") {
-        Some(format!("{short}+dirty"))
-    } else {
-        Some(short.to_owned())
-    }
+    vcs_info::parse_vcs_info_sha(&contents)
 }
 
 fn git_dir() -> Option<PathBuf> {

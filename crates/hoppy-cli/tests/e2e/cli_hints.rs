@@ -100,14 +100,16 @@ async fn version_dash_v_matches_pattern() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     let trimmed = stdout.trim();
 
-    // Either bare `hoppy <semver>` (when build script could not find git,
-    // e.g. CARGO_HOPPY_FORCE_NO_GIT=1) or the full form with SHA + date.
+    // Bare `hoppy <semver>` (build script could not find git, e.g.
+    // CARGO_HOPPY_FORCE_NO_GIT=1), SHA-only (crates.io tarball build via
+    // `.cargo_vcs_info.json`, which carries no date), or full SHA + date.
     let full = Regex::new(r"^hoppy \d+\.\d+\.\d+ \([0-9a-f]{12}(?:\+dirty)? \d{4}-\d{2}-\d{2}\)$")
         .unwrap();
+    let sha_only = Regex::new(r"^hoppy \d+\.\d+\.\d+ \([0-9a-f]{12}(?:\+dirty)?\)$").unwrap();
     let bare = Regex::new(r"^hoppy \d+\.\d+\.\d+$").unwrap();
 
     assert!(
-        full.is_match(trimmed) || bare.is_match(trimmed),
-        "version output {trimmed:?} matched neither the full nor the bare pattern"
+        full.is_match(trimmed) || sha_only.is_match(trimmed) || bare.is_match(trimmed),
+        "version output {trimmed:?} matched none of the full, sha-only or bare patterns"
     );
 }
