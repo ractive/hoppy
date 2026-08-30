@@ -346,7 +346,9 @@ hoppy 0.3.0 (abc123def456 2026-05-26)
 ```
 
 When the working tree had uncommitted changes at build time, the SHA is
-suffixed `+dirty`. Tarball / packaged builds without `.git` fall back to
-just `hoppy 0.3.0`; CI can override either field via the `GIT_COMMIT` and
-`GIT_COMMIT_DATE` build-time env vars, or force the no-git path with
-`CARGO_HOPPY_FORCE_NO_GIT=1`.
+suffixed `+dirty`. Builds from a crates.io tarball (`cargo install hoppy-cli`)
+have no `.git` tree but carry the publishing commit in `.cargo_vcs_info.json`,
+so they print the SHA without a date: `hoppy 0.3.0 (abc123def456)`. Other
+tarball builds without either fall back to just `hoppy 0.3.0`; CI can
+override either field via the `GIT_COMMIT` and `GIT_COMMIT_DATE` build-time
+env vars, or force the no-git path with `CARGO_HOPPY_FORCE_NO_GIT=1`.
