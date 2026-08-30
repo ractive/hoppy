@@ -1,5 +1,6 @@
 ---
 source: crates/hoppy-cli/tests/e2e/cli_container.rs
+assertion_line: 2366
 expression: "String::from_utf8_lossy(&output.stdout)"
 ---
 Stream live syslog output from a Magic Containers application.
@@ -76,7 +77,7 @@ Options:
           Reveal a specific env-var by name (case-insensitive). Repeatable. Useful when you want one variable but not all secrets
 
       --no-hints
-          Suppress drill-down hints (next-step suggestions) on stderr. `--format json` implies this so machine output stays clean
+          Suppress drill-down hints (next-step suggestions) on stderr. Hints never touch stdout, so piped/JSON payloads stay clean either way
 
       --record <DIR>
           Record API responses as JSON fixtures under `<DIR>/<domain>/` (one subdirectory per service: core, compute, containers, database, logging, origin-errors, shield, storage, stream). Writes are idempotent — unchanged files are left alone. May also be set via `HOPPY_RECORD_DIR=<DIR>`
