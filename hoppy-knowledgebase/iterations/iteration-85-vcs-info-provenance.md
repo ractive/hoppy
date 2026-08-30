@@ -43,5 +43,5 @@ repo can't pick up that repo's HEAD. Parsing is a dependency-free string scan.
 
 ## Acceptance criteria
 
-- [ ] `cargo install hoppy-cli` (next release) prints the SHA in `-V`
+- `cargo install hoppy-cli` (next release) prints the SHA in `-V` — verify after the v0.8.0 publish; until then the local check is `cargo package` → build from tarball (done above)
 - [x] Git-checkout and `GIT_COMMIT` builds unchanged
