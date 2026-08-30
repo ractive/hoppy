@@ -6,7 +6,7 @@ tags:
   - iteration
   - dx
   - release
-status: in-progress
+status: completed
 branch: iter-85/vcs-info-provenance
 ---
 
