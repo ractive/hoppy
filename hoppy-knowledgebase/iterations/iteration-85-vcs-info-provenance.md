@@ -39,7 +39,7 @@ repo can't pick up that repo's HEAD. Parsing is a dependency-free string scan.
 - [x] `.cargo_vcs_info.json` fallback in `crates/hoppy-cli/build.rs`
 - [x] Verified: `cargo package` → extract to scratch → build → `hoppy 0.7.0 (f4f878570bd7)`
 - [x] fmt / clippy / test gates
-- [ ] PR
+- [x] PR
 
 ## Acceptance criteria
 
