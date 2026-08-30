@@ -649,7 +649,7 @@ async fn handle_scan(
             let next_cmd = match (id, domain) {
                 (Some(zone_id), _) => format!("hoppy dns zone scan results --id {zone_id}"),
                 (None, Some(d)) => format!("hoppy dns zone scan results --domain {d}"),
-                (None, None) => unreachable!(),
+                (None, None) => unreachable!("clap ArgGroup ensures one of --id/--domain is set"),
             };
             output::hints::tip(&format!("Run: {next_cmd}"));
         }

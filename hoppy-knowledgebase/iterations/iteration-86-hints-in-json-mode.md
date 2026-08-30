@@ -27,7 +27,8 @@ payload (an envelope field would break `jq '.[]'` and be stripped by filters).
   `--no-hints` / `--quiet` remain the opt-outs.
 - Move format-agnostic drill-down tips out of non-JSON branches at call
   sites that had them table-gated: pull-zone list, dns zone scan start,
-  search pagination, country list, stream library list.
+  search pagination, country list, stream library list, billing
+  payment-requests (the last caught in review).
 - Format-*specific* tips stay gated where they are: truncation tips
   ("use --format json for full values") and the statistics `--hourly`
   table-view tip would be self-referential noise under JSON.
@@ -36,10 +37,10 @@ payload (an envelope field would break `jq '.[]'` and be stripped by filters).
 
 - [x] Remove JSON clause from `hints_enabled` in `main.rs`
 - [x] Ungate drill-down tips (pull_zone, dns, account x2, stream)
-- [x] Flip coupled e2e tests; assert stdout stays pure JSON with hints on
+- [x] Flip coupled e2e tests; assert stdout stays pure JSON while hints print on stderr
 - [x] Update `--no-hints` help text, MANUAL, help snapshot
 - [x] fmt / clippy / test gates
-- [ ] PR
+- [x] PR — #99, reviewed (local + Copilot), findings fixed
 
 ## Deferred
 

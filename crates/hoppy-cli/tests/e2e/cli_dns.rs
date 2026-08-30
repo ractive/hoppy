@@ -1583,7 +1583,7 @@ async fn dns_zone_scan_start_prints_next_command_hint() {
 }
 
 #[tokio::test]
-async fn dns_zone_scan_start_json_suppresses_hint() {
+async fn dns_zone_scan_start_json_prints_hint() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/dnszone/records/scan"))

@@ -350,10 +350,10 @@ pub async fn handle_billing(
                 let rows: Vec<PaymentRequestRow> =
                     requests.iter().map(PaymentRequestRow::from).collect();
                 output::print_data(&rows, format);
-                output::hints::tip(
-                    "download an invoice: hoppy billing payment-request-pdf --id <ID> --output invoice.pdf",
-                );
             }
+            output::hints::tip(
+                "download an invoice: hoppy billing payment-request-pdf --id <ID> --output invoice.pdf",
+            );
         }
         BillingAction::InvoicePdf { record_id, output } => {
             let mut file = std::fs::File::create(output)
