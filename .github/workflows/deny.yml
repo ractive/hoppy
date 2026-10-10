@@ -1,0 +1,24 @@
+name: Deny
+
+# Separate from ci.yml so it can also run on main without putting the
+# build, clippy and fmt jobs there: an advisory published after a PR
+# merged still turns main red.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+          arguments: --workspace --locked
+          manifest-path: ./Cargo.toml
+          config: deny.toml
