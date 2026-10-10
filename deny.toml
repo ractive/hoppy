@@ -1,7 +1,7 @@
 # Configuration for cargo-deny — https://embarkstudios.github.io/cargo-deny/
 #
 # Run locally: cargo deny check
-# Runs automatically in the release workflow as a quality gate.
+# Runs in CI on every PR and on main (.github/workflows/deny.yml).
 
 [advisories]
 ignore = [
@@ -16,13 +16,9 @@ allow = [
     "MIT",
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
-    "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
-    "Zlib",
     "Unicode-3.0",
-    "Unicode-DFS-2016",
-    "OpenSSL",
     # webpki-root-certs (transitively pulled in by rustls-platform-verifier)
     # ships the Mozilla CCADB root list under a Community Data License.
     "CDLA-Permissive-2.0",
