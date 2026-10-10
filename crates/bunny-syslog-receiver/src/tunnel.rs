@@ -78,6 +78,7 @@ impl TunnelHandle {
 
 /// A pluggable public-ingress provider.
 #[async_trait::async_trait]
+#[allow(clippy::double_must_use)] // async-trait 0.1.89 adds a bare #[must_use] to the boxed future it returns
 pub trait Tunnel: Send + Sync {
     /// Open a tunnel from `local_port` to a public endpoint.
     async fn start(&self, local_port: u16) -> Result<TunnelHandle>;
