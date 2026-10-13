@@ -77,7 +77,10 @@ async fn quiet_keeps_table_but_drops_hint_on_data_command() {
 }
 
 #[tokio::test]
-async fn hints_suppressed_by_json_format() {
+async fn hints_print_on_stderr_in_json_format() {
+    // iter-86: hints are no longer suppressed by --format json — they live on
+    // stderr, so JSON stdout stays parseable while agents piping through jq
+    // still get next-step guidance.
     let server = mock_pull_zone_list().await;
 
     let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
@@ -88,9 +91,11 @@ async fn hints_suppressed_by_json_format() {
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        !stderr.contains("tip:"),
-        "--format json implies --no-hints; got stderr:\n{stderr}"
+        stderr.contains("tip:"),
+        "hints must print on stderr under --format json; got stderr:\n{stderr}"
     );
+    serde_json::from_slice::<serde_json::Value>(&output.stdout)
+        .expect("stdout must remain pure JSON with hints enabled");
 }
 
 #[tokio::test]

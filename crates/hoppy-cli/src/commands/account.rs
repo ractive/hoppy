@@ -350,10 +350,10 @@ pub async fn handle_billing(
                 let rows: Vec<PaymentRequestRow> =
                     requests.iter().map(PaymentRequestRow::from).collect();
                 output::print_data(&rows, format);
-                output::hints::tip(
-                    "download an invoice: hoppy billing payment-request-pdf --id <ID> --output invoice.pdf",
-                );
             }
+            output::hints::tip(
+                "download an invoice: hoppy billing payment-request-pdf --id <ID> --output invoice.pdf",
+            );
         }
         BillingAction::InvoicePdf { record_id, output } => {
             let mut file = std::fs::File::create(output)
@@ -448,10 +448,10 @@ pub async fn handle_country(
             } else {
                 let rows: Vec<CountryRow> = countries.iter().map(CountryRow::from).collect();
                 output::print_data(&rows, format);
-                output::hints::tip(
-                    "use an ISO code with: hoppy pull-zone update --id <id> --blocked-countries <CODE>",
-                );
             }
+            output::hints::tip(
+                "use an ISO code with: hoppy pull-zone update --id <id> --blocked-countries <CODE>",
+            );
         }
     }
     Ok(())
@@ -490,12 +490,12 @@ pub async fn handle_search(
             })
             .collect();
         output::print_data(&rows, format);
-        if results.total > results.from + results.size {
-            output::hints::tip(&format!(
-                "more results available — re-run with --from {}",
-                results.from + results.size
-            ));
-        }
+    }
+    if results.total > results.from + results.size {
+        output::hints::tip(&format!(
+            "more results available — re-run with --from {}",
+            results.from + results.size
+        ));
     }
     Ok(())
 }

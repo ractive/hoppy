@@ -518,9 +518,10 @@ pub fn print_error(message: &str, format: OutputFormat) {
 /// Drill-down hint helpers. Commands invoke [`hints::tip`] after their primary
 /// output to suggest one or two natural follow-up commands on stderr.
 ///
-/// Hints are globally toggled by `main()` based on `--no-hints` and the
-/// chosen output format (json output suppresses hints so machine-readable
-/// stdout stays paired with quiet stderr).
+/// Hints are globally toggled by `main()` based on `--no-hints` and
+/// `--quiet` only; they print on stderr in every output format (iter-86), so
+/// machine-readable stdout stays clean while `jq`-piping agents still see
+/// next-step guidance.
 pub mod hints {
     use std::sync::atomic::{AtomicBool, Ordering};
 

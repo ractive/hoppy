@@ -253,7 +253,7 @@ via a continuation token surfaced in a stderr hint (or the JSON
 | `--yes` / `-y` | Skip confirmation prompts |
 | `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
 | `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
-| `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`) |
+| `--no-hints` | Suppress drill-down hint lines on stderr (they print in every format; stdout is never touched) |
 
 ### JSON output shapes
 

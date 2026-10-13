@@ -645,13 +645,13 @@ async fn handle_scan(
                         .unwrap_or_else(|| "-".to_owned()),
                 };
                 output::print_single(&row, format);
-                let next_cmd = match (id, domain) {
-                    (Some(zone_id), _) => format!("hoppy dns zone scan results --id {zone_id}"),
-                    (None, Some(d)) => format!("hoppy dns zone scan results --domain {d}"),
-                    (None, None) => unreachable!(),
-                };
-                output::hints::tip(&format!("Run: {next_cmd}"));
             }
+            let next_cmd = match (id, domain) {
+                (Some(zone_id), _) => format!("hoppy dns zone scan results --id {zone_id}"),
+                (None, Some(d)) => format!("hoppy dns zone scan results --domain {d}"),
+                (None, None) => unreachable!("clap ArgGroup ensures one of --id/--domain is set"),
+            };
+            output::hints::tip(&format!("Run: {next_cmd}"));
         }
         DnsScanAction::Results { id, domain } => {
             let (zone_id, resolved_domain) = match (id, domain) {

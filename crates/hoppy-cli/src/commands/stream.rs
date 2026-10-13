@@ -312,12 +312,12 @@ async fn handle_library(
                     let rows: Vec<VideoLibraryRow> =
                         result.items.iter().map(VideoLibraryRow::from).collect();
                     output::print_data(&rows, format);
-                    if let Some(first) = result.items.first() {
-                        output::hints::tip(&format!(
-                            "hoppy stream video list --library-id {}",
-                            first.id
-                        ));
-                    }
+                }
+                if let Some(first) = result.items.first() {
+                    output::hints::tip(&format!(
+                        "hoppy stream video list --library-id {}",
+                        first.id
+                    ));
                 }
             }
         }

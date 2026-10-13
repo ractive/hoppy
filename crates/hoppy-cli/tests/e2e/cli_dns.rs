@@ -1583,7 +1583,7 @@ async fn dns_zone_scan_start_prints_next_command_hint() {
 }
 
 #[tokio::test]
-async fn dns_zone_scan_start_json_suppresses_hint() {
+async fn dns_zone_scan_start_json_prints_hint() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/dnszone/records/scan"))
@@ -1604,8 +1604,8 @@ async fn dns_zone_scan_start_json_suppresses_hint() {
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        !stderr.contains("hoppy dns zone scan results"),
-        "JSON output should not emit the next-command hint, stderr was: {stderr}"
+        stderr.contains("hoppy dns zone scan results"),
+        "next-command hint must print on stderr under --format json (iter-86), stderr was: {stderr}"
     );
 }
 

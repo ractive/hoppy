@@ -41,10 +41,11 @@ async fn run(cli: Cli) {
     // the client layer regardless, so there is nothing to confirm.
     let yes = cli.yes || cli.dry_run;
 
-    // Hints are off when --no-hints or --quiet is set, or whenever output is
-    // machine readable (`--format json`) so paired stdout/stderr stays clean.
-    let hints_enabled =
-        !cli.no_hints && !cli.quiet && !matches!(cli.format, cli::OutputFormat::Json);
+    // Hints are off when --no-hints or --quiet is set. They always go to
+    // stderr, so machine-readable stdout stays clean in every format —
+    // agents piping `--format json | jq` still see next-step tips (iter-86;
+    // previously `--format json` implied --no-hints).
+    let hints_enabled = !cli.no_hints && !cli.quiet;
     output::hints::set_enabled(hints_enabled);
 
     let result = match &cli.command {

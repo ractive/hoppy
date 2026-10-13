@@ -160,6 +160,10 @@ async fn hourly_table_hint_suppressed_by_quiet() {
 
 #[tokio::test]
 async fn hourly_json_has_no_hint() {
+    // The hourly tip is emitted only from the table branch ("hourly buckets
+    // aren't shown in table view"); under --format json it would be
+    // self-referential noise, so it stays absent even though hints are
+    // globally enabled in JSON mode since iter-86.
     let server = mock_account_statistics().await;
 
     let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
@@ -171,7 +175,7 @@ async fn hourly_json_has_no_hint() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         !stderr.contains("tip:"),
-        "--format json must stay pure — no hint expected, got:\n{stderr}"
+        "the hourly table-view tip must not fire in JSON mode, got:\n{stderr}"
     );
     let json: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("invalid JSON output");
