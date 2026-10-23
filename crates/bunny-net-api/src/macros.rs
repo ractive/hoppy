@@ -97,6 +97,84 @@ macro_rules! forward_compat_repr_enum {
     };
 }
 
+/// Attach the spec label table to a [`forward_compat_repr_enum!`] enum.
+///
+/// Generates, from ONE table of `Variant => "SpecName"` pairs:
+///
+/// - `NAMES`: every declared variant with its spec name (also drives help-text
+///   sync tests),
+/// - `name()` and `describe_all()` (`"1=Allow, 2=Block, ..."`),
+/// - `Display` (the spec name, or `Unknown(n)`),
+/// - `FromStr` accepting a spec name (case-insensitive) or a declared wire
+///   number. Labels that older hoppy versions used for a *different* number are
+///   deliberately not accepted: an alias would silently flip behaviour.
+#[allow(unused_macros)]
+macro_rules! repr_enum_names {
+    (
+        $name:ident : $repr:ty, $what:literal, [
+            $( $variant:ident => $label:literal ),+ $(,)?
+        ]
+    ) => {
+        impl $name {
+            /// Spec name for every declared variant. Single source of truth for
+            /// `Display`, `FromStr` and the CLI help text.
+            pub const NAMES: &'static [($name, &'static str)] = &[
+                $( ($name::$variant, $label) ),+
+            ];
+
+            /// The spec name, or `None` for [`Self::Unknown`].
+            #[must_use]
+            pub fn name(self) -> Option<&'static str> {
+                Self::NAMES
+                    .iter()
+                    .find_map(|(v, name)| (*v == self).then_some(*name))
+            }
+
+            /// `"1=Allow, 2=Block, ..."`, for help and error text.
+            #[must_use]
+            pub fn describe_all() -> String {
+                Self::NAMES
+                    .iter()
+                    .map(|(v, name)| format!("{}={name}", v.to_repr()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }
+        }
+
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                match self.name() {
+                    Some(name) => f.write_str(name),
+                    None => write!(f, "Unknown({})", self.to_repr()),
+                }
+            }
+        }
+
+        /// Parses a spec name (case-insensitive) or a declared wire number.
+        impl ::std::str::FromStr for $name {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let t = s.trim();
+                let found = if let Ok(n) = t.parse::<$repr>() {
+                    Self::try_from_repr(n)
+                } else {
+                    Self::NAMES
+                        .iter()
+                        .find_map(|(v, name)| name.eq_ignore_ascii_case(t).then_some(*v))
+                };
+                found.ok_or_else(|| {
+                    format!(
+                        "invalid {} '{s}': expected a name or number ({})",
+                        $what,
+                        Self::describe_all()
+                    )
+                })
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
     forward_compat_repr_enum! {

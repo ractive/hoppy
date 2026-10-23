@@ -10,22 +10,19 @@ use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table}
 use anyhow::{Context, Result, bail};
 use bunny_net_api::core::serde_helpers::KnownRepr;
 use bunny_net_api::shield::types::{
-    AccessListAction, AccessListDetails, AccessListType, BotCategorizationAction,
-    BotCategorizationGroup, BotCategoryAction, BotDetectionConfigurationState,
-    BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
-    BrowserFingerprintConfiguration, CreateCustomAccessList, CreateCustomWafRule,
-    CreateRateLimitRule, CustomAccessList, CustomWafRule, DdosShieldSensitivity, EventLog,
+    AccessListDetails, BotCategorizationAction, BotCategorizationGroup, BotCategoryAction,
+    BotDetectionConfigurationState, BrowserFingerprintConfiguration, CreateCustomAccessList,
+    CreateCustomWafRule, CreateRateLimitRule, CustomAccessList, CustomWafRule, EventLog,
     IpAddressConfiguration, RateLimitActionType, RateLimitBlockDuration, RateLimitCounterKey,
     RateLimitRule, RateLimitRuleConfiguration, RateLimitTimeframe, RequestIntegrityConfiguration,
-    ReviewActionType, ShieldZonePullZoneMapping, ShieldZoneRequest, ShieldZoneResponse,
-    TriggeredRuleItem, UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest,
-    UpdateApiGuardianRequest, UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule,
-    UpdateRateLimitRule, UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
+    ShieldZonePullZoneMapping, ShieldZoneRequest, ShieldZoneResponse, TriggeredRuleItem,
+    UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest, UpdateApiGuardianRequest,
+    UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
+    UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
     UpdateUploadScanningConfigurationRequest, UploadOpenApiSpecificationRequest,
-    UploadScanningConfigurationState, UploadScanningScannerMode, WafChainedRuleCondition,
-    WafExecutionMode, WafProfileMinimal, WafRuleActionType, WafRuleConfiguration,
-    WafRuleMainGroupModel, WafRuleOperatorType, WafRuleSeverityType, WafRuleTransformationType,
-    WafRuleVariableTypes,
+    UploadScanningConfigurationState, WafChainedRuleCondition, WafProfileMinimal,
+    WafRuleActionType, WafRuleConfiguration, WafRuleMainGroupModel, WafRuleOperatorType,
+    WafRuleSeverityType, WafRuleTransformationType, WafRuleVariableTypes,
 };
 use std::io::{self, BufRead, Write};
 
@@ -555,15 +552,6 @@ fn u16_to_enum<T: KnownRepr<Repr = u16>>(n: u16, type_name: &str) -> Result<T> {
     T::try_from_known(n).ok_or_else(|| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
-/// Convert a repeatable list of `--transformation-type N` values into the
-/// strongly-typed enum vector, validating each entry.
-fn parse_transformation_types(values: &[u8]) -> Result<Vec<WafRuleTransformationType>> {
-    values
-        .iter()
-        .map(|n| u8_to_enum::<WafRuleTransformationType>(*n, "transformation-type"))
-        .collect()
-}
-
 /// Nested `ruleConfiguration` fields supplied via `--config-json <file>`.
 ///
 /// Only the free-form / repeated fields that are awkward on the command line
@@ -795,12 +783,10 @@ async fn handle_zone(
                 zone_req.waf_enabled = Some(*v);
             }
             if let Some(v) = waf_execution_mode {
-                zone_req.waf_execution_mode =
-                    Some(u8_to_enum::<WafExecutionMode>(*v, "waf-execution-mode")?);
+                zone_req.waf_execution_mode = Some(*v);
             }
             if let Some(v) = ddos_sensitivity {
-                zone_req.d_do_s_shield_sensitivity =
-                    Some(u8_to_enum::<DdosShieldSensitivity>(*v, "ddos-sensitivity")?);
+                zone_req.d_do_s_shield_sensitivity = Some(*v);
             }
             if let Some(v) = ddos_challenge_window {
                 zone_req.d_do_s_challenge_window = Some(*v);
@@ -925,16 +911,16 @@ async fn handle_waf(
                     .and_then(|o| o.transformation_types.clone())
                     .unwrap_or_default()
             } else {
-                parse_transformation_types(transformation_types)?
+                transformation_types.clone()
             };
             let config = WafRuleConfiguration {
-                action_type: u8_to_enum::<WafRuleActionType>(*action_type, "action-type")?,
+                action_type: *action_type,
                 variable_types: overrides
                     .as_ref()
                     .and_then(|o| o.variable_types.clone())
                     .or_else(|| Some(Default::default())),
                 operator_type: *operator_type,
-                severity_type: u8_to_enum::<WafRuleSeverityType>(*severity_type, "severity-type")?,
+                severity_type: *severity_type,
                 transformation_types: Some(transformation_types),
                 value: value.clone(),
                 is_negated: None,
@@ -995,7 +981,7 @@ async fn handle_waf(
                 // `Eq` (wire 5) is what the old default meant to say; the old
                 // `WafRuleOperatorType::Eq` actually sent 0 = BEGINSWITH.
                 operator_type: WafRuleOperatorType::Eq,
-                severity_type: WafRuleSeverityType::Low,
+                severity_type: WafRuleSeverityType::Notice,
                 transformation_types: Some(vec![]),
                 value: None,
                 is_negated: None,
@@ -1003,20 +989,19 @@ async fn handle_waf(
                 chained_rule_conditions: None,
             });
             if let Some(v) = action_type {
-                config.action_type = u8_to_enum::<WafRuleActionType>(*v, "action-type")?;
+                config.action_type = *v;
             }
             if let Some(v) = operator_type {
                 config.operator_type = *v;
             }
             if let Some(v) = severity_type {
-                config.severity_type = u8_to_enum::<WafRuleSeverityType>(*v, "severity-type")?;
+                config.severity_type = *v;
             }
             if let Some(v) = value {
                 config.value = Some(v.clone());
             }
             if !transformation_types.is_empty() {
-                config.transformation_types =
-                    Some(parse_transformation_types(transformation_types)?);
+                config.transformation_types = Some(transformation_types.clone());
             }
             if let Some(o) = overrides {
                 if let Some(vt) = o.variable_types {
@@ -1091,7 +1076,7 @@ async fn handle_waf(
         } => {
             let body = UpdateReviewTriggeredRuleRequest {
                 rule_id: Some(rule_id.clone()),
-                action: u8_to_enum::<ReviewActionType>(*action, "action")?,
+                action: *action,
             };
             let result = client
                 .review_triggered_waf_rule(*shield_zone_id, body)
@@ -1255,23 +1240,20 @@ async fn handle_rate_limit(
                     .and_then(|o| o.transformation_types.clone())
                     .unwrap_or_default()
             } else {
-                parse_transformation_types(transformation_types)?
+                transformation_types.clone()
             };
             let config = RateLimitRuleConfiguration {
-                action_type: u8_to_enum(*action_type, "action-type")?,
+                action_type: *action_type,
                 variable_types: overrides
                     .as_ref()
                     .and_then(|o| o.variable_types.clone())
                     .or_else(|| Some(Default::default())),
                 operator_type: *operator_type,
-                severity_type: u8_to_enum(*severity_type, "severity-type")?,
+                severity_type: *severity_type,
                 transformation_types: Some(transformation_types),
                 value: value.clone(),
                 request_count: *request_count,
-                counter_key_type: u8_to_enum::<RateLimitCounterKey>(
-                    *counter_key_type,
-                    "counter-key-type",
-                )?,
+                counter_key_type: *counter_key_type,
                 timeframe: u16_to_enum(*timeframe, "timeframe")?,
                 block_time: u16_to_enum(*block_time, "block-time")?,
                 is_negated: None,
@@ -1339,28 +1321,28 @@ async fn handle_rate_limit(
             let mut config = current
                 .rule_configuration
                 .unwrap_or(RateLimitRuleConfiguration {
-                    action_type: RateLimitActionType::Block,
+                    action_type: RateLimitActionType::RateLimit,
                     variable_types: Some(Default::default()),
                     operator_type: WafRuleOperatorType::Eq,
-                    severity_type: WafRuleSeverityType::Low,
+                    severity_type: WafRuleSeverityType::Notice,
                     transformation_types: Some(vec![]),
                     value: None,
                     is_negated: None,
                     is_regex_variable: None,
                     request_count: 0,
-                    counter_key_type: RateLimitCounterKey::PerIp,
+                    counter_key_type: RateLimitCounterKey::Ip,
                     timeframe: RateLimitTimeframe::Sec60,
                     block_time: RateLimitBlockDuration::Sec60,
                     chained_rule_conditions: None,
                 });
             if let Some(v) = action_type {
-                config.action_type = u8_to_enum(*v, "action-type")?;
+                config.action_type = *v;
             }
             if let Some(v) = operator_type {
                 config.operator_type = *v;
             }
             if let Some(v) = severity_type {
-                config.severity_type = u8_to_enum(*v, "severity-type")?;
+                config.severity_type = *v;
             }
             if let Some(v) = value {
                 config.value = Some(v.clone());
@@ -1369,8 +1351,7 @@ async fn handle_rate_limit(
                 config.request_count = *v;
             }
             if let Some(v) = counter_key_type {
-                config.counter_key_type =
-                    u8_to_enum::<RateLimitCounterKey>(*v, "counter-key-type")?;
+                config.counter_key_type = *v;
             }
             if let Some(v) = timeframe {
                 config.timeframe = u16_to_enum(*v, "timeframe")?;
@@ -1379,8 +1360,7 @@ async fn handle_rate_limit(
                 config.block_time = u16_to_enum(*v, "block-time")?;
             }
             if !transformation_types.is_empty() {
-                config.transformation_types =
-                    Some(parse_transformation_types(transformation_types)?);
+                config.transformation_types = Some(transformation_types.clone());
             }
             if let Some(o) = overrides {
                 if let Some(vt) = o.variable_types {
@@ -1490,7 +1470,7 @@ async fn handle_access_list(
             let body = CreateCustomAccessList {
                 name: name.clone(),
                 description: None,
-                list_type: u8_to_enum::<AccessListType>(*r#type, "list-type")?,
+                list_type: *r#type,
                 content: content.clone(),
                 checksum: None,
             };
@@ -1565,9 +1545,7 @@ async fn handle_access_list(
             }
             let body = UpdateAccessListConfiguration {
                 is_enabled: *is_enabled,
-                action: action
-                    .map(|v| u8_to_enum::<AccessListAction>(v, "action"))
-                    .transpose()?,
+                action: *action,
             };
             client
                 .update_access_list_configuration(*shield_zone_id, *configuration_id, body)
@@ -1648,32 +1626,17 @@ async fn handle_bot_detection(
                 );
             }
 
-            let request_integrity = request_integrity_sensitivity
-                .map(|v| {
-                    u8_to_enum::<BotDetectionSensitivity>(v, "request-integrity-sensitivity").map(
-                        |s| RequestIntegrityConfiguration {
-                            sensitivity: Some(s),
-                        },
-                    )
-                })
-                .transpose()?;
+            let request_integrity =
+                request_integrity_sensitivity.map(|s| RequestIntegrityConfiguration {
+                    sensitivity: Some(s),
+                });
 
-            let ip_address = ip_address_sensitivity
-                .map(|v| {
-                    u8_to_enum::<BotDetectionSensitivity>(v, "ip-address-sensitivity").map(|s| {
-                        IpAddressConfiguration {
-                            sensitivity: Some(s),
-                        }
-                    })
-                })
-                .transpose()?;
+            let ip_address = ip_address_sensitivity.map(|s| IpAddressConfiguration {
+                sensitivity: Some(s),
+            });
 
-            let fingerprint_sens = fingerprint_sensitivity
-                .map(|v| u8_to_enum::<BotDetectionSensitivity>(v, "fingerprint-sensitivity"))
-                .transpose()?;
-            let fingerprint_aggr = fingerprint_aggression
-                .map(|v| u8_to_enum::<BrowserFingerprintAggression>(v, "fingerprint-aggression"))
-                .transpose()?;
+            let fingerprint_sens = *fingerprint_sensitivity;
+            let fingerprint_aggr = *fingerprint_aggression;
 
             let browser_fingerprint = if fingerprint_sens.is_some()
                 || fingerprint_aggr.is_some()
@@ -1690,9 +1653,7 @@ async fn handle_bot_detection(
 
             let body = UpdateBotDetection {
                 shield_zone_id: *shield_zone_id,
-                execution_mode: execution_mode
-                    .map(|v| u8_to_enum::<BotDetectionExecutionMode>(v, "execution-mode"))
-                    .transpose()?,
+                execution_mode: *execution_mode,
                 request_integrity,
                 ip_address,
                 browser_fingerprint,
@@ -2331,12 +2292,8 @@ async fn handle_upload_scanning(
                 shield_zone_id: i32::try_from(*shield_zone_id)
                     .context("shield-zone-id too large for i32")?,
                 is_enabled: *enabled,
-                antivirus_scanning_mode: antivirus_mode
-                    .map(|v| u8_to_enum::<UploadScanningScannerMode>(v, "antivirus-mode"))
-                    .transpose()?,
-                csam_scanning_mode: csam_mode
-                    .map(|v| u8_to_enum::<UploadScanningScannerMode>(v, "csam-mode"))
-                    .transpose()?,
+                antivirus_scanning_mode: *antivirus_mode,
+                csam_scanning_mode: *csam_mode,
             };
             let result = client.update_upload_scanning(*shield_zone_id, body).await?;
             if let OutputFormat::Json = format {

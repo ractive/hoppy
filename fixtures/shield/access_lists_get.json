@@ -7,7 +7,7 @@
       "description": "Bunny-managed list of known malicious IPs",
       "isEnabled": true,
       "type": 0,
-      "action": 1,
+      "action": 2,
       "entryCount": 5000
     }
   ],
@@ -18,8 +18,8 @@
       "name": "Blocked Countries",
       "description": "Block traffic from specific countries",
       "isEnabled": true,
-      "type": 1,
-      "action": 1,
+      "type": 3,
+      "action": 2,
       "entryCount": 3
     }
   ],

@@ -1,18 +1,23 @@
 {
+  "ShieldPlanType": {
+    "0": "Basic",
+    "1": "Advanced",
+    "2": "Business",
+    "3": "Enterprise"
+  },
   "AccessListAction": {
-    "NoAction": "0",
-    "Block": "1",
-    "Allow": "2",
-    "LogOnly": "3",
-    "Challenge": "4",
-    "ChallengeInterstitial": "5"
+    "1": "Allow",
+    "2": "Block",
+    "3": "Challenge",
+    "4": "Log",
+    "5": "Bypass"
   },
   "AccessListType": {
-    "Ip": "0",
-    "Country": "1",
-    "Asn": "2",
-    "Hostname": "3",
-    "UserAgent": "4",
-    "Custom": "5"
+    "0": "IP",
+    "1": "CIDR",
+    "2": "ASN",
+    "3": "Country",
+    "4": "Organization",
+    "5": "JA4"
   }
 }

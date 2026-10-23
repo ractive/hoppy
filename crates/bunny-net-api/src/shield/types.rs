@@ -3,87 +3,83 @@ use std::collections::{BTreeMap, HashMap};
 
 // ---------------------------------------------------------------------------
 // Enums
+//
+// Variant names, `Display` output and the CLI-accepted names all come from the
+// spec's `x-enum-varnames` (`specs/shield.json`). Wire numbers are what the API
+// sends; the labels are only for humans. Iter-90 fixed a batch of enums whose
+// labels had never matched the spec (see CHANGELOG, "Breaking").
 // ---------------------------------------------------------------------------
 
 forward_compat_repr_enum! {
-    /// WAF execution mode for a Shield Zone.
+    /// WAF execution mode for a Shield Zone (spec `WAFExecutionMode`).
     ///
-    /// Values from the spec: 0 = Disabled, 1 = Enabled.
+    /// Values: 0 = Log, 1 = Block.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WafExecutionMode: u8 {
-        Disabled = 0,
-        Enabled = 1,
+        Log = 0,
+        Block = 1,
     }
 }
 
-impl std::fmt::Display for WafExecutionMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            WafExecutionMode::Disabled => write!(f, "Disabled"),
-            WafExecutionMode::Enabled => write!(f, "Enabled"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(WafExecutionMode: u8, "WAF execution mode", [
+    Log => "Log",
+    Block => "Block",
+]);
 
 forward_compat_repr_enum! {
-    /// Action taken when WAF payload size limit is exceeded.
+    /// Action taken when WAF payload size limit is exceeded (spec
+    /// `WAFPayloadLimitAction`).
     ///
-    /// Values from the spec: 0 = Allow, 1 = Block, 2 = Ignore.
+    /// Values: 0 = Block, 1 = Log, 2 = Ignore.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WafPayloadLimitAction: u8 {
-        Allow = 0,
-        Block = 1,
+        Block = 0,
+        Log = 1,
         Ignore = 2,
     }
 }
 
-impl std::fmt::Display for WafPayloadLimitAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            WafPayloadLimitAction::Allow => write!(f, "Allow"),
-            WafPayloadLimitAction::Block => write!(f, "Block"),
-            WafPayloadLimitAction::Ignore => write!(f, "Ignore"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(WafPayloadLimitAction: u8, "payload limit action", [
+    Block => "Block",
+    Log => "Log",
+    Ignore => "Ignore",
+]);
 
 forward_compat_repr_enum! {
-    /// Shield plan tier.
+    /// Shield plan tier (spec `ShieldPlanType`).
     ///
-    /// Values from the spec: 0 = Basic, 1 = Standard, 2 = Advanced, 3 = Enterprise.
+    /// Values: 0 = Basic, 1 = Advanced, 2 = Business, 3 = Enterprise.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum ShieldPlanType: u8 {
         Basic = 0,
-        Standard = 1,
-        Advanced = 2,
+        Advanced = 1,
+        Business = 2,
         Enterprise = 3,
     }
 }
 
-impl std::fmt::Display for ShieldPlanType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ShieldPlanType::Basic => write!(f, "Basic"),
-            ShieldPlanType::Standard => write!(f, "Standard"),
-            ShieldPlanType::Advanced => write!(f, "Advanced"),
-            ShieldPlanType::Enterprise => write!(f, "Enterprise"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
+repr_enum_names!(ShieldPlanType: u8, "plan type", [
+    Basic => "Basic",
+    Advanced => "Advanced",
+    Business => "Business",
+    Enterprise => "Enterprise",
+]);
+
+forward_compat_repr_enum! {
+    /// DDoS protection execution mode (spec `DDoSExecutionMode`).
+    ///
+    /// Values: 0 = Log, 1 = Block.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DdosExecutionMode: u8 {
+        Log = 0,
+        Block = 1,
     }
 }
 
-forward_compat_repr_enum! {
-    /// DDoS protection execution mode.
-    ///
-    /// Values from the spec: 0 = Disabled, 1 = Enabled.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum DdosExecutionMode: u8 {
-        Disabled = 0,
-        Enabled = 1,
-    }
-}
+repr_enum_names!(DdosExecutionMode: u8, "DDoS execution mode", [
+    Log => "Log",
+    Block => "Block",
+]);
 
 forward_compat_repr_enum! {
     /// DDoS shield detection sensitivity level.
@@ -101,101 +97,86 @@ forward_compat_repr_enum! {
     }
 }
 
-impl std::fmt::Display for DdosShieldSensitivity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DdosShieldSensitivity::Off => write!(f, "Off"),
-            DdosShieldSensitivity::Low => write!(f, "Low"),
-            DdosShieldSensitivity::Medium => write!(f, "Medium"),
-            DdosShieldSensitivity::High => write!(f, "High"),
-            DdosShieldSensitivity::Challenge => write!(f, "Challenge"),
-            DdosShieldSensitivity::ChallengeInteractive => write!(f, "ChallengeInteractive"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(DdosShieldSensitivity: u8, "DDoS sensitivity", [
+    Off => "Off",
+    Low => "Low",
+    Medium => "Medium",
+    High => "High",
+    Challenge => "Challenge",
+    ChallengeInteractive => "ChallengeInteractive",
+]);
 
 forward_compat_repr_enum! {
-    /// Action to take when an access list entry matches a request.
+    /// Action to take when an access list entry matches a request (spec
+    /// `AccessListAction`).
     ///
-    /// Values from the spec: 0 = NoAction, 1 = Block, 2 = Allow, 3 = LogOnly,
-    /// 4 = Challenge, 5 = ChallengeInterstitial.
+    /// Values: 0 = None, 1 = Allow, 2 = Block, 3 = Challenge, 4 = Log,
+    /// 5 = Bypass. Confirmed against the live `access-list enums` endpoint in
+    /// iter-90; before that hoppy had 1 and 2 swapped.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum AccessListAction: u8 {
-        NoAction = 0,
-        Block = 1,
-        Allow = 2,
-        LogOnly = 3,
-        Challenge = 4,
-        ChallengeInterstitial = 5,
+        None = 0,
+        Allow = 1,
+        Block = 2,
+        Challenge = 3,
+        Log = 4,
+        Bypass = 5,
     }
 }
 
-impl std::fmt::Display for AccessListAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AccessListAction::NoAction => write!(f, "NoAction"),
-            AccessListAction::Block => write!(f, "Block"),
-            AccessListAction::Allow => write!(f, "Allow"),
-            AccessListAction::LogOnly => write!(f, "LogOnly"),
-            AccessListAction::Challenge => write!(f, "Challenge"),
-            AccessListAction::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(AccessListAction: u8, "access list action", [
+    None => "None",
+    Allow => "Allow",
+    Block => "Block",
+    Challenge => "Challenge",
+    Log => "Log",
+    Bypass => "Bypass",
+]);
 
 forward_compat_repr_enum! {
-    /// Type of access list (IP, Country, ASN, etc.).
+    /// Type of access list (spec `AccessListType`).
     ///
-    /// Values from the spec: 0 = Ip, 1 = Country, 2 = Asn, 3 = Hostname, 4 = UserAgent, 5 = Custom.
+    /// Values: 0 = IP, 1 = CIDR, 2 = ASN, 3 = Country, 4 = Organization,
+    /// 5 = JA4. Confirmed live in iter-90 (a CIDR list is wire `1`, and wire `3`
+    /// validates its content as country codes).
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum AccessListType: u8 {
         Ip = 0,
-        Country = 1,
+        Cidr = 1,
         Asn = 2,
-        Hostname = 3,
-        UserAgent = 4,
-        Custom = 5,
+        Country = 3,
+        Organization = 4,
+        Ja4 = 5,
     }
 }
 
-impl std::fmt::Display for AccessListType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AccessListType::Ip => write!(f, "Ip"),
-            AccessListType::Country => write!(f, "Country"),
-            AccessListType::Asn => write!(f, "Asn"),
-            AccessListType::Hostname => write!(f, "Hostname"),
-            AccessListType::UserAgent => write!(f, "UserAgent"),
-            AccessListType::Custom => write!(f, "Custom"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(AccessListType: u8, "access list type", [
+    Ip => "IP",
+    Cidr => "CIDR",
+    Asn => "ASN",
+    Country => "Country",
+    Organization => "Organization",
+    Ja4 => "JA4",
+]);
 
 forward_compat_repr_enum! {
-    /// Action taken when a rate limit rule is breached.
+    /// Action taken when a rate limit rule is breached (spec
+    /// `RatelimitRuleActionType`).
     ///
-    /// Values from the spec: 1 = Block, 2 = LogOnly, 3 = Challenge.
+    /// Values: 1 = RateLimit, 2 = Log, 3 = Challenge.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum RateLimitActionType: u8 {
-        Block = 1,
-        LogOnly = 2,
+        RateLimit = 1,
+        Log = 2,
         Challenge = 3,
     }
 }
 
-impl std::fmt::Display for RateLimitActionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RateLimitActionType::Block => write!(f, "Block"),
-            RateLimitActionType::LogOnly => write!(f, "LogOnly"),
-            RateLimitActionType::Challenge => write!(f, "Challenge"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(RateLimitActionType: u8, "rate-limit action type", [
+    RateLimit => "RateLimit",
+    Log => "Log",
+    Challenge => "Challenge",
+]);
 
 forward_compat_repr_enum! {
     /// Time window (in seconds) for rate limit counting.
@@ -256,66 +237,56 @@ impl std::fmt::Display for RateLimitBlockDuration {
 }
 
 forward_compat_repr_enum! {
-    /// What key to count requests by for rate limiting.
+    /// What key to count requests by for rate limiting (spec
+    /// `WafRatelimitCounterKeyType`).
     ///
-    /// Values from the spec: 0 = Global, 1 = PerIp, 2 = PerCountry, 3 = PerAsn,
-    /// 4 = PerHeader, 5 = PerCookie, 6 = PerQuery, 7 = PerFingerprint.
+    /// Values: 0 = IP, 1 = Host, 2 = Country, 3 = City, 4 = ASN,
+    /// 5 = Organization, 6 = JA4, 7 = IP_JA4.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum RateLimitCounterKey: u8 {
-        Global = 0,
-        PerIp = 1,
-        PerCountry = 2,
-        PerAsn = 3,
-        PerHeader = 4,
-        PerCookie = 5,
-        PerQuery = 6,
-        PerFingerprint = 7,
+        Ip = 0,
+        Host = 1,
+        Country = 2,
+        City = 3,
+        Asn = 4,
+        Organization = 5,
+        Ja4 = 6,
+        IpJa4 = 7,
     }
 }
 
-impl std::fmt::Display for RateLimitCounterKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RateLimitCounterKey::Global => write!(f, "Global"),
-            RateLimitCounterKey::PerIp => write!(f, "PerIp"),
-            RateLimitCounterKey::PerCountry => write!(f, "PerCountry"),
-            RateLimitCounterKey::PerAsn => write!(f, "PerAsn"),
-            RateLimitCounterKey::PerHeader => write!(f, "PerHeader"),
-            RateLimitCounterKey::PerCookie => write!(f, "PerCookie"),
-            RateLimitCounterKey::PerQuery => write!(f, "PerQuery"),
-            RateLimitCounterKey::PerFingerprint => write!(f, "PerFingerprint"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(RateLimitCounterKey: u8, "counter key type", [
+    Ip => "IP",
+    Host => "Host",
+    Country => "Country",
+    City => "City",
+    Asn => "ASN",
+    Organization => "Organization",
+    Ja4 => "JA4",
+    IpJa4 => "IP_JA4",
+]);
 
 forward_compat_repr_enum! {
-    /// Action taken by a custom WAF rule.
+    /// Action taken by a custom WAF rule (spec `WafRuleActionType`).
     ///
-    /// Values from the spec: 1 = Block, 2 = LogOnly, 3 = Challenge,
-    /// 4 = ChallengeInterstitial, 5 = Allow.
+    /// Values: 1 = Block, 2 = Log, 3 = Challenge, 4 = Allow, 5 = Bypass.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WafRuleActionType: u8 {
         Block = 1,
-        LogOnly = 2,
+        Log = 2,
         Challenge = 3,
-        ChallengeInterstitial = 4,
-        Allow = 5,
+        Allow = 4,
+        Bypass = 5,
     }
 }
 
-impl std::fmt::Display for WafRuleActionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            WafRuleActionType::Block => write!(f, "Block"),
-            WafRuleActionType::LogOnly => write!(f, "LogOnly"),
-            WafRuleActionType::Challenge => write!(f, "Challenge"),
-            WafRuleActionType::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
-            WafRuleActionType::Allow => write!(f, "Allow"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(WafRuleActionType: u8, "WAF rule action type", [
+    Block => "Block",
+    Log => "Log",
+    Challenge => "Challenge",
+    Allow => "Allow",
+    Bypass => "Bypass",
+]);
 
 forward_compat_repr_enum! {
     /// Operator used to match a WAF rule variable against a value.
@@ -349,194 +320,165 @@ forward_compat_repr_enum! {
     }
 }
 
-impl WafRuleOperatorType {
-    /// Spec name for every declared operator. Single source of truth for
-    /// [`Display`](std::fmt::Display), [`FromStr`](std::str::FromStr) and the
-    /// CLI help text.
-    pub const NAMES: &'static [(WafRuleOperatorType, &'static str)] = &[
-        (Self::BeginsWith, "BEGINSWITH"),
-        (Self::EndsWith, "ENDSWITH"),
-        (Self::Contains, "CONTAINS"),
-        (Self::ContainsWord, "CONTAINSWORD"),
-        (Self::StrMatch, "STRMATCH"),
-        (Self::Eq, "EQ"),
-        (Self::Ge, "GE"),
-        (Self::Gt, "GT"),
-        (Self::Le, "LE"),
-        (Self::Lt, "LT"),
-        (Self::Within, "WITHIN"),
-        (Self::IpMatch, "IPMATCH"),
-        (Self::Rx, "RX"),
-        (Self::StrEq, "STREQ"),
-        (Self::DetectSqli, "DETECTSQLI"),
-        (Self::DetectXss, "DETECTXSS"),
-    ];
-
-    /// The spec name (`"IPMATCH"`), or `None` for [`Self::Unknown`].
-    #[must_use]
-    pub fn name(self) -> Option<&'static str> {
-        Self::NAMES
-            .iter()
-            .find_map(|(op, name)| (*op == self).then_some(*name))
-    }
-
-    /// `"0=BEGINSWITH, 1=ENDSWITH, ..."`, for help and error text.
-    #[must_use]
-    pub fn describe_all() -> String {
-        Self::NAMES
-            .iter()
-            .map(|(op, name)| format!("{}={name}", op.to_repr()))
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-}
-
-impl std::fmt::Display for WafRuleOperatorType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.name() {
-            Some(name) => f.write_str(name),
-            None => write!(f, "Unknown({})", self.to_repr()),
-        }
-    }
-}
-
-/// Parses a spec name (case-insensitive, for example `beginswith` or `rx`) or
-/// a declared wire number (`13`). Old pre-iter-87 labels are not accepted.
-impl std::str::FromStr for WafRuleOperatorType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let t = s.trim();
-        let found = if let Ok(n) = t.parse::<u8>() {
-            Self::try_from_repr(n)
-        } else {
-            Self::NAMES
-                .iter()
-                .find_map(|(op, name)| name.eq_ignore_ascii_case(t).then_some(*op))
-        };
-        found.ok_or_else(|| {
-            format!(
-                "invalid operator '{s}': expected a name or number ({})",
-                Self::describe_all()
-            )
-        })
-    }
-}
+repr_enum_names!(WafRuleOperatorType: u8, "operator", [
+    BeginsWith => "BEGINSWITH",
+    EndsWith => "ENDSWITH",
+    Contains => "CONTAINS",
+    ContainsWord => "CONTAINSWORD",
+    StrMatch => "STRMATCH",
+    Eq => "EQ",
+    Ge => "GE",
+    Gt => "GT",
+    Le => "LE",
+    Lt => "LT",
+    Within => "WITHIN",
+    IpMatch => "IPMATCH",
+    Rx => "RX",
+    StrEq => "STREQ",
+    DetectSqli => "DETECTSQLI",
+    DetectXss => "DETECTXSS",
+]);
 
 forward_compat_repr_enum! {
-    /// Severity level of a custom WAF rule.
+    /// Severity level of a custom WAF rule (spec `WafRuleSeverityType`).
     ///
-    /// Values from the spec: 0 = Low, 1 = Medium, 2 = High.
+    /// Values: 0 = NOTICE, 1 = WARNING, 2 = CRITICAL.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WafRuleSeverityType: u8 {
-        Low = 0,
-        Medium = 1,
-        High = 2,
+        Notice = 0,
+        Warning = 1,
+        Critical = 2,
     }
 }
 
+repr_enum_names!(WafRuleSeverityType: u8, "severity type", [
+    Notice => "NOTICE",
+    Warning => "WARNING",
+    Critical => "CRITICAL",
+]);
+
 forward_compat_repr_enum! {
-    /// Transformation applied to the variable value before matching.
+    /// Transformation applied to the variable value before matching (spec
+    /// `WafRuleTransformationType`).
     ///
-    /// Values from the spec: 1–21.
+    /// Values: 1 = CMDLINE, 2 = COMPRESSWHITESPACE, 3 = CSSDECODE,
+    /// 4 = HEXENCODE, 5 = HTMLENTITYDECODE, 6 = JSDECODE, 7 = LENGTH,
+    /// 8 = LOWERCASE, 9 = MD5, 10 = NORMALIZEPATH, 11 = NORMALISEPATH,
+    /// 12 = NORMALIZEPATHWIN, 13 = NORMALISEPATHWIN, 14 = REMOVECOMMENTS,
+    /// 15 = REMOVENULLS, 16 = REMOVEWHITESPACE, 17 = REPLACECOMMENTS,
+    /// 18 = SHA1, 19 = URLDECODE, 20 = URLDECODEUNI, 21 = UTF8TOUNICODE.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WafRuleTransformationType: u8 {
-        Lowercase = 1,
-        Uppercase = 2,
-        UrlDecode = 3,
-        UrlDecodeUni = 4,
+        CmdLine = 1,
+        CompressWhitespace = 2,
+        CssDecode = 3,
+        HexEncode = 4,
         HtmlEntityDecode = 5,
-        Base64Decode = 6,
-        Base64DecodeExt = 7,
-        Base64Encode = 8,
-        JsDecode = 9,
-        CssDecode = 10,
-        Trim = 11,
-        TrimLeft = 12,
-        TrimRight = 13,
-        NormalisePath = 14,
-        NormalisePathWin = 15,
-        RemoveComments = 16,
-        RemoveNulls = 17,
-        RemoveWhitespace = 18,
-        ReplaceComments = 19,
-        CompressWhitespace = 20,
-        None = 21,
+        JsDecode = 6,
+        Length = 7,
+        Lowercase = 8,
+        Md5 = 9,
+        NormalizePath = 10,
+        NormalisePath = 11,
+        NormalizePathWin = 12,
+        NormalisePathWin = 13,
+        RemoveComments = 14,
+        RemoveNulls = 15,
+        RemoveWhitespace = 16,
+        ReplaceComments = 17,
+        Sha1 = 18,
+        UrlDecode = 19,
+        UrlDecodeUni = 20,
+        Utf8ToUnicode = 21,
     }
 }
 
+repr_enum_names!(WafRuleTransformationType: u8, "transformation type", [
+    CmdLine => "CMDLINE",
+    CompressWhitespace => "COMPRESSWHITESPACE",
+    CssDecode => "CSSDECODE",
+    HexEncode => "HEXENCODE",
+    HtmlEntityDecode => "HTMLENTITYDECODE",
+    JsDecode => "JSDECODE",
+    Length => "LENGTH",
+    Lowercase => "LOWERCASE",
+    Md5 => "MD5",
+    NormalizePath => "NORMALIZEPATH",
+    NormalisePath => "NORMALISEPATH",
+    NormalizePathWin => "NORMALIZEPATHWIN",
+    NormalisePathWin => "NORMALISEPATHWIN",
+    RemoveComments => "REMOVECOMMENTS",
+    RemoveNulls => "REMOVENULLS",
+    RemoveWhitespace => "REMOVEWHITESPACE",
+    ReplaceComments => "REPLACECOMMENTS",
+    Sha1 => "SHA1",
+    UrlDecode => "URLDECODE",
+    UrlDecodeUni => "URLDECODEUNI",
+    Utf8ToUnicode => "UTF8TOUNICODE",
+]);
+
 forward_compat_repr_enum! {
-    /// Bot detection execution mode.
+    /// Bot detection execution mode (spec `BotDetectionExecutionMode`).
     ///
-    /// Values from the spec: 0 = Disabled, 1 = Enabled.
+    /// Values: 0 = LogOnly, 1 = Challenge.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum BotDetectionExecutionMode: u8 {
-        Disabled = 0,
-        Enabled = 1,
+        LogOnly = 0,
+        Challenge = 1,
     }
 }
 
-impl std::fmt::Display for BotDetectionExecutionMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BotDetectionExecutionMode::Disabled => write!(f, "Disabled"),
-            BotDetectionExecutionMode::Enabled => write!(f, "Enabled"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(BotDetectionExecutionMode: u8, "execution mode", [
+    LogOnly => "LogOnly",
+    Challenge => "Challenge",
+]);
 
 forward_compat_repr_enum! {
-    /// Sensitivity level for bot detection signals.
+    /// Sensitivity level for bot detection signals (spec
+    /// `BotDetectionSensitivity`).
     ///
-    /// Values from the spec: 0 = Disabled, 1 = Low, 2 = Medium, 3 = High.
+    /// Values: 0 = Off, 1 = Low, 2 = Medium, 3 = High.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum BotDetectionSensitivity: u8 {
-        Disabled = 0,
+        Off = 0,
         Low = 1,
         Medium = 2,
         High = 3,
     }
 }
 
-impl std::fmt::Display for BotDetectionSensitivity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BotDetectionSensitivity::Disabled => write!(f, "Disabled"),
-            BotDetectionSensitivity::Low => write!(f, "Low"),
-            BotDetectionSensitivity::Medium => write!(f, "Medium"),
-            BotDetectionSensitivity::High => write!(f, "High"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(BotDetectionSensitivity: u8, "sensitivity", [
+    Off => "Off",
+    Low => "Low",
+    Medium => "Medium",
+    High => "High",
+]);
 
 forward_compat_repr_enum! {
-    /// Aggressiveness of browser fingerprint challenge injection.
+    /// Aggressiveness of browser fingerprint challenge injection (spec
+    /// `BrowserFingerprintAggression`).
     ///
-    /// Values from the spec: 0 = Disabled, 1 = VeryLow, 2 = Low, 3 = Medium, 4 = High.
+    /// Values: 0 = Unknown, 1 = Low, 2 = Medium, 3 = High, 4 = Custom. The
+    /// spec's `Unknown` (0) is spelled `Unspecified` in Rust because
+    /// `Unknown(n)` is the forward-compat catch-all variant; its display name
+    /// stays `Unknown`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum BrowserFingerprintAggression: u8 {
-        Disabled = 0,
-        VeryLow = 1,
-        Low = 2,
-        Medium = 3,
-        High = 4,
+        Unspecified = 0,
+        Low = 1,
+        Medium = 2,
+        High = 3,
+        Custom = 4,
     }
 }
 
-impl std::fmt::Display for BrowserFingerprintAggression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BrowserFingerprintAggression::Disabled => write!(f, "Disabled"),
-            BrowserFingerprintAggression::VeryLow => write!(f, "VeryLow"),
-            BrowserFingerprintAggression::Low => write!(f, "Low"),
-            BrowserFingerprintAggression::Medium => write!(f, "Medium"),
-            BrowserFingerprintAggression::High => write!(f, "High"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(BrowserFingerprintAggression: u8, "fingerprint aggression", [
+    Unspecified => "Unknown",
+    Low => "Low",
+    Medium => "Medium",
+    High => "High",
+    Custom => "Custom",
+]);
 
 // ---------------------------------------------------------------------------
 // Error / problem types
@@ -1694,29 +1636,24 @@ pub struct UpdateApiGuardianEndpointResponse {
 // ---------------------------------------------------------------------------
 
 forward_compat_repr_enum! {
-    /// Scanner mode for upload scanning (antivirus/CSAM).
+    /// Scanner mode for upload scanning (antivirus/CSAM), spec
+    /// `UploadScanningScannerMode`.
     ///
-    /// Values from the spec: 0 = Disabled, 1 = LogOnly, 2 = Block.
-    /// The spec provides only integer values 0/1/2 without explicit names;
-    /// these names reflect Bunny's actual semantics.
+    /// Values: 0 = Disabled, 1 = Log, 2 = Block. Before iter-90 `Log` was
+    /// spelled `LogOnly`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum UploadScanningScannerMode: u8 {
         Disabled = 0,
-        LogOnly = 1,
+        Log = 1,
         Block = 2,
     }
 }
 
-impl std::fmt::Display for UploadScanningScannerMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            UploadScanningScannerMode::Disabled => write!(f, "Disabled"),
-            UploadScanningScannerMode::LogOnly => write!(f, "LogOnly"),
-            UploadScanningScannerMode::Block => write!(f, "Block"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(UploadScanningScannerMode: u8, "scanning mode", [
+    Disabled => "Disabled",
+    Log => "Log",
+    Block => "Block",
+]);
 
 /// Current upload scanning configuration state for a Shield Zone.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1826,28 +1763,23 @@ pub struct WafLoggingResponse {
 // ---------------------------------------------------------------------------
 
 forward_compat_repr_enum! {
-    /// Action type for reviewing a triggered WAF rule.
+    /// Action type for reviewing a triggered WAF rule (spec `ReviewActionType`).
     ///
-    /// Values from the spec: 0 = Pending, 1 = Approve, 2 = Reject.
-    /// The spec provides only integer values 0/1/2 without explicit names.
+    /// Values: 0 = Ignore, 1 = LogOnly, 2 = DisableRule. Before iter-90 hoppy
+    /// labelled these Pending / Approve / Reject.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum ReviewActionType: u8 {
-        Pending = 0,
-        Approve = 1,
-        Reject = 2,
+        Ignore = 0,
+        LogOnly = 1,
+        DisableRule = 2,
     }
 }
 
-impl std::fmt::Display for ReviewActionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ReviewActionType::Pending => write!(f, "Pending"),
-            ReviewActionType::Approve => write!(f, "Approve"),
-            ReviewActionType::Reject => write!(f, "Reject"),
-            Self::Unknown(n) => write!(f, "Unknown({n})"),
-        }
-    }
-}
+repr_enum_names!(ReviewActionType: u8, "review action", [
+    Ignore => "Ignore",
+    LogOnly => "LogOnly",
+    DisableRule => "DisableRule",
+]);
 
 /// A single triggered WAF rule item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2377,22 +2309,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn waf_execution_mode_round_trips() {
-        let json = serde_json::to_string(&WafExecutionMode::Enabled).unwrap();
-        assert_eq!(json, "1");
-        let decoded: WafExecutionMode = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, WafExecutionMode::Enabled);
-    }
-
-    #[test]
-    fn access_list_action_round_trips() {
-        let json = serde_json::to_string(&AccessListAction::Block).unwrap();
-        assert_eq!(json, "1");
-        let decoded: AccessListAction = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, AccessListAction::Block);
-    }
-
-    #[test]
     fn rate_limit_timeframe_round_trips() {
         let json = serde_json::to_string(&RateLimitTimeframe::Sec3600).unwrap();
         assert_eq!(json, "3600");
@@ -2434,7 +2350,7 @@ mod tests {
         let zone: ShieldZoneResponse = serde_json::from_str(json).unwrap();
         assert_eq!(zone.shield_zone_id, 42);
         assert_eq!(zone.pull_zone_id, Some(100));
-        assert_eq!(zone.waf_execution_mode, Some(WafExecutionMode::Enabled));
+        assert_eq!(zone.waf_execution_mode, Some(WafExecutionMode::Block));
     }
 
     #[test]
@@ -2447,7 +2363,7 @@ mod tests {
                 action_type: WafRuleActionType::Block,
                 variable_types: None,
                 operator_type: WafRuleOperatorType::Contains,
-                severity_type: WafRuleSeverityType::High,
+                severity_type: WafRuleSeverityType::Critical,
                 transformation_types: None,
                 value: Some("SELECT".to_string()),
                 is_negated: None,
@@ -2526,46 +2442,313 @@ mod tests {
         assert_eq!(serde_json::to_string(&op).unwrap(), "99");
     }
 
-    #[test]
-    fn upload_scanning_scanner_mode_round_trips() {
-        // Disabled = 0
-        let json = serde_json::to_string(&UploadScanningScannerMode::Disabled).unwrap();
-        assert_eq!(json, "0");
-        let decoded: UploadScanningScannerMode = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, UploadScanningScannerMode::Disabled);
+    // -----------------------------------------------------------------------
+    // Spec label tables (iter-90). Each enum is pinned twice: against a
+    // hand-written (number, name) table below, and against
+    // `x-enum-varnames` in `specs/shield.json`, so a spec refresh that moves a
+    // label fails here instead of silently mislabelling a policy.
+    // -----------------------------------------------------------------------
 
-        // LogOnly = 1
-        let json = serde_json::to_string(&UploadScanningScannerMode::LogOnly).unwrap();
-        assert_eq!(json, "1");
-        let decoded: UploadScanningScannerMode = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, UploadScanningScannerMode::LogOnly);
+    fn shield_spec() -> serde_json::Value {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../specs/shield.json");
+        let text = std::fs::read_to_string(&path).unwrap();
+        serde_json::from_str(&text).unwrap()
+    }
 
-        // Block = 2
-        let json = serde_json::to_string(&UploadScanningScannerMode::Block).unwrap();
-        assert_eq!(json, "2");
-        let decoded: UploadScanningScannerMode = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, UploadScanningScannerMode::Block);
+    fn check_enum<T>(spec_name: &str, pinned: &[(u8, &str)], names: &[(T, &'static str)])
+    where
+        T: Copy
+            + PartialEq
+            + std::fmt::Debug
+            + std::fmt::Display
+            + std::str::FromStr<Err = String>
+            + Serialize
+            + serde::de::DeserializeOwned,
+    {
+        assert_eq!(names.len(), pinned.len(), "{spec_name}: table length");
+        for (n, label) in pinned {
+            let by_name: T = label.parse().unwrap();
+            let by_lower: T = label.to_lowercase().parse().unwrap();
+            let by_number: T = n.to_string().parse().unwrap();
+            assert_eq!(by_name, by_lower, "{spec_name} {label}");
+            assert_eq!(by_name, by_number, "{spec_name} {label}");
+            assert_eq!(by_name.to_string(), *label, "{spec_name} display");
+            assert_eq!(serde_json::to_string(&by_name).unwrap(), n.to_string());
+            let back: T = serde_json::from_str(&n.to_string()).unwrap();
+            assert_eq!(back, by_name);
+            assert!(
+                names.iter().any(|(v, l)| *v == by_name && l == label),
+                "{spec_name}: NAMES lacks {n}={label}"
+            );
+        }
+        // Undeclared numbers and names are rejected for user input.
+        assert!("250".parse::<T>().is_err(), "{spec_name}: 250");
+        assert!("".parse::<T>().is_err(), "{spec_name}: empty");
+
+        // Same table, straight from the spec file.
+        let spec = shield_spec();
+        let schema = &spec["components"]["schemas"][spec_name];
+        let numbers: Vec<u64> = schema["enum"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{spec_name} missing in spec"))
+            .iter()
+            .map(|v| v.as_u64().unwrap())
+            .collect();
+        let labels: Vec<&str> = schema["x-enum-varnames"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        let from_spec: Vec<(u64, &str)> = numbers.into_iter().zip(labels).collect();
+        let from_pinned: Vec<(u64, &str)> =
+            pinned.iter().map(|(n, l)| (u64::from(*n), *l)).collect();
+        assert_eq!(
+            from_pinned, from_spec,
+            "{spec_name} differs from specs/shield.json"
+        );
     }
 
     #[test]
-    fn review_action_type_round_trips() {
-        // Pending = 0
-        let json = serde_json::to_string(&ReviewActionType::Pending).unwrap();
-        assert_eq!(json, "0");
-        let decoded: ReviewActionType = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, ReviewActionType::Pending);
+    fn access_list_action_matches_spec() {
+        check_enum::<AccessListAction>(
+            "AccessListAction",
+            &[
+                (0, "None"),
+                (1, "Allow"),
+                (2, "Block"),
+                (3, "Challenge"),
+                (4, "Log"),
+                (5, "Bypass"),
+            ],
+            AccessListAction::NAMES,
+        );
+        // The pre-iter-90 swap: wire 1 is Allow, wire 2 is Block.
+        assert_eq!("allow".parse::<AccessListAction>().unwrap().to_repr(), 1);
+        assert_eq!("block".parse::<AccessListAction>().unwrap().to_repr(), 2);
+        for old in ["noaction", "logonly", "challengeinterstitial"] {
+            assert!(old.parse::<AccessListAction>().is_err(), "{old}");
+        }
+    }
 
-        // Approve = 1
-        let json = serde_json::to_string(&ReviewActionType::Approve).unwrap();
-        assert_eq!(json, "1");
-        let decoded: ReviewActionType = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, ReviewActionType::Approve);
+    #[test]
+    fn access_list_type_matches_spec() {
+        check_enum::<AccessListType>(
+            "AccessListType",
+            &[
+                (0, "IP"),
+                (1, "CIDR"),
+                (2, "ASN"),
+                (3, "Country"),
+                (4, "Organization"),
+                (5, "JA4"),
+            ],
+            AccessListType::NAMES,
+        );
+        for old in ["hostname", "useragent", "custom"] {
+            assert!(old.parse::<AccessListType>().is_err(), "{old}");
+        }
+    }
 
-        // Reject = 2
-        let json = serde_json::to_string(&ReviewActionType::Reject).unwrap();
-        assert_eq!(json, "2");
-        let decoded: ReviewActionType = serde_json::from_str(&json).unwrap();
-        assert_eq!(decoded, ReviewActionType::Reject);
+    #[test]
+    fn rate_limit_action_type_matches_spec() {
+        check_enum::<RateLimitActionType>(
+            "RatelimitRuleActionType",
+            &[(1, "RateLimit"), (2, "Log"), (3, "Challenge")],
+            RateLimitActionType::NAMES,
+        );
+        for old in ["block", "logonly"] {
+            assert!(old.parse::<RateLimitActionType>().is_err(), "{old}");
+        }
+    }
+
+    #[test]
+    fn waf_rule_action_type_matches_spec() {
+        check_enum::<WafRuleActionType>(
+            "WafRuleActionType",
+            &[
+                (1, "Block"),
+                (2, "Log"),
+                (3, "Challenge"),
+                (4, "Allow"),
+                (5, "Bypass"),
+            ],
+            WafRuleActionType::NAMES,
+        );
+        for old in ["logonly", "challengeinterstitial"] {
+            assert!(old.parse::<WafRuleActionType>().is_err(), "{old}");
+        }
+    }
+
+    #[test]
+    fn waf_rule_severity_matches_spec() {
+        check_enum::<WafRuleSeverityType>(
+            "WafRuleSeverityType",
+            &[(0, "NOTICE"), (1, "WARNING"), (2, "CRITICAL")],
+            WafRuleSeverityType::NAMES,
+        );
+        for old in ["low", "medium", "high"] {
+            assert!(old.parse::<WafRuleSeverityType>().is_err(), "{old}");
+        }
+    }
+
+    #[test]
+    fn shield_plan_type_matches_spec() {
+        check_enum::<ShieldPlanType>(
+            "ShieldPlanType",
+            &[
+                (0, "Basic"),
+                (1, "Advanced"),
+                (2, "Business"),
+                (3, "Enterprise"),
+            ],
+            ShieldPlanType::NAMES,
+        );
+        assert!("standard".parse::<ShieldPlanType>().is_err());
+    }
+
+    #[test]
+    fn execution_modes_match_spec() {
+        check_enum::<WafExecutionMode>(
+            "WAFExecutionMode",
+            &[(0, "Log"), (1, "Block")],
+            WafExecutionMode::NAMES,
+        );
+        check_enum::<DdosExecutionMode>(
+            "DDoSExecutionMode",
+            &[(0, "Log"), (1, "Block")],
+            DdosExecutionMode::NAMES,
+        );
+        check_enum::<BotDetectionExecutionMode>(
+            "BotDetectionExecutionMode",
+            &[(0, "LogOnly"), (1, "Challenge")],
+            BotDetectionExecutionMode::NAMES,
+        );
+        for old in ["disabled", "enabled"] {
+            assert!(old.parse::<WafExecutionMode>().is_err(), "{old}");
+            assert!(old.parse::<DdosExecutionMode>().is_err(), "{old}");
+            assert!(old.parse::<BotDetectionExecutionMode>().is_err(), "{old}");
+        }
+    }
+
+    #[test]
+    fn sensitivities_and_aggression_match_spec() {
+        check_enum::<BotDetectionSensitivity>(
+            "BotDetectionSensitivity",
+            &[(0, "Off"), (1, "Low"), (2, "Medium"), (3, "High")],
+            BotDetectionSensitivity::NAMES,
+        );
+        check_enum::<DdosShieldSensitivity>(
+            "DDoSShieldSensitivity",
+            &[
+                (0, "Off"),
+                (1, "Low"),
+                (2, "Medium"),
+                (3, "High"),
+                (4, "Challenge"),
+                (5, "ChallengeInteractive"),
+            ],
+            DdosShieldSensitivity::NAMES,
+        );
+        check_enum::<BrowserFingerprintAggression>(
+            "BrowserFingerprintAggression",
+            &[
+                (0, "Unknown"),
+                (1, "Low"),
+                (2, "Medium"),
+                (3, "High"),
+                (4, "Custom"),
+            ],
+            BrowserFingerprintAggression::NAMES,
+        );
+        assert!("verylow".parse::<BrowserFingerprintAggression>().is_err());
+        assert!("disabled".parse::<BotDetectionSensitivity>().is_err());
+    }
+
+    #[test]
+    fn remaining_shield_enums_match_spec() {
+        check_enum::<WafPayloadLimitAction>(
+            "WAFPayloadLimitAction",
+            &[(0, "Block"), (1, "Log"), (2, "Ignore")],
+            WafPayloadLimitAction::NAMES,
+        );
+        check_enum::<ReviewActionType>(
+            "ReviewActionType",
+            &[(0, "Ignore"), (1, "LogOnly"), (2, "DisableRule")],
+            ReviewActionType::NAMES,
+        );
+        check_enum::<UploadScanningScannerMode>(
+            "UploadScanningScannerMode",
+            &[(0, "Disabled"), (1, "Log"), (2, "Block")],
+            UploadScanningScannerMode::NAMES,
+        );
+        check_enum::<RateLimitCounterKey>(
+            "WafRatelimitCounterKeyType",
+            &[
+                (0, "IP"),
+                (1, "Host"),
+                (2, "Country"),
+                (3, "City"),
+                (4, "ASN"),
+                (5, "Organization"),
+                (6, "JA4"),
+                (7, "IP_JA4"),
+            ],
+            RateLimitCounterKey::NAMES,
+        );
+        for old in ["pending", "approve", "reject"] {
+            assert!(old.parse::<ReviewActionType>().is_err(), "{old}");
+        }
+        for old in ["global", "perip", "percountry"] {
+            assert!(old.parse::<RateLimitCounterKey>().is_err(), "{old}");
+        }
+    }
+
+    #[test]
+    fn waf_operator_and_transformation_match_spec() {
+        let operators: Vec<(u8, &str)> = OPERATOR_SPEC.iter().map(|(n, v)| (*v, *n)).collect();
+        check_enum::<WafRuleOperatorType>(
+            "WafRuleOperatorType",
+            &operators,
+            WafRuleOperatorType::NAMES,
+        );
+        check_enum::<WafRuleTransformationType>(
+            "WafRuleTransformationType",
+            &[
+                (1, "CMDLINE"),
+                (2, "COMPRESSWHITESPACE"),
+                (3, "CSSDECODE"),
+                (4, "HEXENCODE"),
+                (5, "HTMLENTITYDECODE"),
+                (6, "JSDECODE"),
+                (7, "LENGTH"),
+                (8, "LOWERCASE"),
+                (9, "MD5"),
+                (10, "NORMALIZEPATH"),
+                (11, "NORMALISEPATH"),
+                (12, "NORMALIZEPATHWIN"),
+                (13, "NORMALISEPATHWIN"),
+                (14, "REMOVECOMMENTS"),
+                (15, "REMOVENULLS"),
+                (16, "REMOVEWHITESPACE"),
+                (17, "REPLACECOMMENTS"),
+                (18, "SHA1"),
+                (19, "URLDECODE"),
+                (20, "URLDECODEUNI"),
+                (21, "UTF8TOUNICODE"),
+            ],
+            WafRuleTransformationType::NAMES,
+        );
+    }
+
+    #[test]
+    fn unknown_values_round_trip_for_relabelled_enums() {
+        let a: AccessListAction = serde_json::from_str("42").unwrap();
+        assert_eq!(a, AccessListAction::Unknown(42));
+        assert_eq!(a.to_string(), "Unknown(42)");
+        assert_eq!(serde_json::to_string(&a).unwrap(), "42");
+        let t: AccessListType = serde_json::from_str("42").unwrap();
+        assert_eq!(serde_json::to_string(&t).unwrap(), "42");
     }
 
     #[test]

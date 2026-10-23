@@ -3,7 +3,7 @@
     "id": 9001,
     "name": "Blocked Countries",
     "description": "Block traffic from specific countries",
-    "type": 1,
+    "type": 3,
     "content": "CN\nRU\nKP",
     "checksum": "abc123def456",
     "entryCount": 3,

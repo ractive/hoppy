@@ -13,6 +13,6 @@ expression: "String::from_utf8_lossy(&output.stdout)"
     "id": 7002,
     "shield_zone_id": 55001,
     "rule_name": "Log XSS Attempts",
-    "action_type": "LogOnly"
+    "action_type": "Log"
   }
 ]

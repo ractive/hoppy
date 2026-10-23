@@ -6,7 +6,7 @@ expression: "String::from_utf8_lossy(&output.stdout)"
   {
     "list_id": 1,
     "name": "Known Bad IPs",
-    "list_type": "Ip",
+    "list_type": "IP",
     "is_enabled": true,
     "action": "Block",
     "entry_count": 5000
