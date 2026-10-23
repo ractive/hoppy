@@ -314,10 +314,7 @@ async fn handle_library(
                     output::print_data(&rows, format);
                 }
                 if let Some(first) = result.items.first() {
-                    output::hints::tip(&format!(
-                        "hoppy stream video list --library-id {}",
-                        first.id
-                    ));
+                    output::hints::tip(&crate::hint_cmds::stream_video_list(first.id));
                 }
             }
         }

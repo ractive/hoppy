@@ -659,7 +659,7 @@ async fn handle_scan(
             }
             let next_cmd = match (id, domain) {
                 (Some(zone_id), _) => crate::hint_cmds::dns_zone_scan_results(*zone_id),
-                (None, Some(d)) => format!("hoppy dns zone scan results --domain {d}"),
+                (None, Some(d)) => crate::hint_cmds::dns_zone_scan_results_domain(d),
                 (None, None) => unreachable!("clap ArgGroup ensures one of --id/--domain is set"),
             };
             output::hints::tip(&format!("Run: {next_cmd}"));

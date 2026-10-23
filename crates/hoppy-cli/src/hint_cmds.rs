@@ -49,6 +49,15 @@ pub fn dns_zone_scan_results(id: i64) -> String {
     format!("hoppy dns zone scan results --id {id}")
 }
 
+pub fn stream_video_list(library_id: i64) -> String {
+    format!("hoppy stream video list --library-id {library_id}")
+}
+
+/// Domain alternative to [`dns_zone_scan_results`].
+pub fn dns_zone_scan_results_domain(domain: &str) -> String {
+    format!("hoppy dns zone scan results --domain {domain}")
+}
+
 pub fn stream_library_get(id: i64) -> String {
     format!("hoppy stream library get {id}")
 }
@@ -85,6 +94,8 @@ mod tests {
             storage_zone_get(1520401),
             dns_zone_get(50001),
             stream_library_get(77),
+            stream_video_list(77),
+            dns_zone_scan_results_domain("example.com"),
             container_app_get("app-1"),
             pull_zone_update_blocked_countries(5871708),
             billing_payment_request_pdf(42),

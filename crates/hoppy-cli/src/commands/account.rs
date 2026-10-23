@@ -279,10 +279,11 @@ pub async fn handle_apikey(
                         .map(|k| ApiKeyRow::from_key(k, reveal))
                         .collect();
                     output::print_data(&rows, format);
-                    if !reveal {
-                        output::hints::tip("re-run with --reveal to show full key values");
-                    }
                 }
+            }
+            // JSON output is redacted too, so this applies to every format.
+            if !reveal {
+                output::hints::tip("re-run with --reveal to show full key values");
             }
         }
     }
@@ -337,9 +338,10 @@ pub async fn handle_billing(
                     .map(|r| BillingRecordRow::from_record(r, reveal))
                     .collect();
                 output::print_data(&rows, format);
-                if !reveal {
-                    output::hints::tip("re-run with --reveal to show the raw payer value");
-                }
+            }
+            // JSON output is redacted too, so this applies to every format.
+            if !reveal {
+                output::hints::tip("re-run with --reveal to show the raw payer value");
             }
         }
         BillingAction::PaymentRequests => {
@@ -351,10 +353,12 @@ pub async fn handle_billing(
                     requests.iter().map(PaymentRequestRow::from).collect();
                 output::print_data(&rows, format);
             }
-            output::hints::tip(&format!(
-                "download an invoice: {}",
-                crate::hint_cmds::billing_payment_request_pdf("<ID>")
-            ));
+            if !requests.is_empty() {
+                output::hints::tip(&format!(
+                    "download an invoice: {}",
+                    crate::hint_cmds::billing_payment_request_pdf("<ID>")
+                ));
+            }
         }
         BillingAction::InvoicePdf { record_id, output } => {
             let mut file = std::fs::File::create(output)
@@ -451,10 +455,12 @@ pub async fn handle_country(
                 let rows: Vec<CountryRow> = countries.iter().map(CountryRow::from).collect();
                 output::print_data(&rows, format);
             }
-            output::hints::tip(&format!(
-                "use an ISO code with: {}",
-                crate::hint_cmds::pull_zone_update_blocked_countries("<id>")
-            ));
+            if !countries.is_empty() {
+                output::hints::tip(&format!(
+                    "use an ISO code with: {}",
+                    crate::hint_cmds::pull_zone_update_blocked_countries("<id>")
+                ));
+            }
         }
     }
     Ok(())

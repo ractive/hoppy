@@ -114,34 +114,46 @@ async fn no_hints_still_suppresses_hints_in_json_format() {
     assert!(!stderr.contains("tip:"), "got stderr:\n{stderr}");
 }
 
-/// Mount `fixture` at `GET <route>`, run `hoppy --format json <args>` and
-/// assert stdout parses as JSON while the tip lands on stderr only.
-async fn assert_json_stdout_pure_with_stderr_tip(
+/// Mount `body` at `<http_method> <route>`, run `hoppy <extra_flags> --format
+/// json <args>`, assert stdout is pure JSON without a tip, and return
+/// `(stdout, stderr)`.
+async fn run_json(
+    http_method: &str,
     route: &str,
-    fixture: &str,
+    body: String,
+    extra_flags: &[&str],
     args: &[&str],
-    tip_fragment: &str,
-) {
+) -> (String, String) {
     let server = MockServer::start().await;
-    Mock::given(method("GET"))
+    Mock::given(method(http_method))
         .and(path(route))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_raw(support::fixture(fixture), "application/json"),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
         .mount(&server)
         .await;
 
     let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(extra_flags)
         .args(["--format", "json"])
         .args(args)
         .output()
         .unwrap();
 
     assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     assert!(!stdout.contains("tip:"), "hint leaked to stdout:\n{stdout}");
     serde_json::from_slice::<serde_json::Value>(&output.stdout).expect("stdout must be pure JSON");
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    (stdout, String::from_utf8_lossy(&output.stderr).into_owned())
+}
+
+/// stdout is pure JSON while the tip lands on stderr only.
+async fn assert_json_stdout_pure_with_stderr_tip(
+    http_method: &str,
+    route: &str,
+    body: String,
+    args: &[&str],
+    tip_fragment: &str,
+) {
+    let (_, stderr) = run_json(http_method, route, body, &[], args).await;
     assert!(
         stderr.contains("tip:") && stderr.contains(tip_fragment),
         "expected tip containing {tip_fragment:?} on stderr, got:\n{stderr}"
@@ -151,8 +163,9 @@ async fn assert_json_stdout_pure_with_stderr_tip(
 #[tokio::test]
 async fn country_list_json_tip_on_stderr_only() {
     assert_json_stdout_pure_with_stderr_tip(
+        "GET",
         "/country",
-        "core/country_list.json",
+        support::fixture("core/country_list.json"),
         &["country", "list"],
         "--blocked-countries",
     )
@@ -162,12 +175,102 @@ async fn country_list_json_tip_on_stderr_only() {
 #[tokio::test]
 async fn billing_payment_requests_json_tip_on_stderr_only() {
     assert_json_stdout_pure_with_stderr_tip(
+        "GET",
         "/billing/payment-requests",
-        "core/billing_payment_requests.json",
+        support::fixture("core/billing_payment_requests.json"),
         &["billing", "payment-requests"],
         "payment-request-pdf",
     )
     .await;
+}
+
+#[tokio::test]
+async fn empty_lists_json_emit_no_tip() {
+    let (_, stderr) = run_json("GET", "/country", "[]".into(), &[], &["country", "list"]).await;
+    assert!(!stderr.contains("tip:"), "got stderr:\n{stderr}");
+    let (_, stderr) = run_json(
+        "GET",
+        "/billing/payment-requests",
+        "[]".into(),
+        &[],
+        &["billing", "payment-requests"],
+    )
+    .await;
+    assert!(!stderr.contains("tip:"), "got stderr:\n{stderr}");
+}
+
+#[tokio::test]
+async fn search_pagination_json_tip_on_stderr_only() {
+    let body = r#"{"Query":"x","Total":25,"From":0,"Size":10,"SearchResults":[{"Type":"PullZone","Id":1,"Name":"a"}]}"#;
+    assert_json_stdout_pure_with_stderr_tip(
+        "GET",
+        "/search",
+        body.into(),
+        &["search", "x"],
+        "--from 10",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn user_audit_continuation_json_tip_on_stderr_only() {
+    assert_json_stdout_pure_with_stderr_tip(
+        "GET",
+        "/user/audit/2026-07-01",
+        support::fixture("core/user_audit.json"),
+        &["user", "audit", "--date", "2026-07-01"],
+        "--continuation-token next-page-token-abc",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn stream_library_list_json_tip_on_stderr_only() {
+    assert_json_stdout_pure_with_stderr_tip(
+        "GET",
+        "/videolibrary",
+        support::fixture("core/videolibrary_list_paginated.json"),
+        &["stream", "library", "list"],
+        "hoppy stream video list --library-id",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn dns_scan_start_json_tip_on_stderr_only() {
+    assert_json_stdout_pure_with_stderr_tip(
+        "POST",
+        "/dnszone/records/scan",
+        support::fixture("core/dnszone_scan_trigger.json"),
+        &["dns", "zone", "scan", "start", "--id", "50001"],
+        "hoppy dns zone scan results --id 50001",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn apikey_list_json_reveal_tip_on_stderr_only() {
+    assert_json_stdout_pure_with_stderr_tip(
+        "GET",
+        "/apikey",
+        support::fixture("core/apikey_list.json"),
+        &["apikey", "list"],
+        "--reveal",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn quiet_json_has_empty_stderr() {
+    let (_, stderr) = run_json(
+        "GET",
+        "/country",
+        support::fixture("core/country_list.json"),
+        &["--quiet"],
+        &["country", "list"],
+    )
+    .await;
+    assert!(stderr.is_empty(), "got stderr:\n{stderr}");
 }
 
 #[tokio::test]
