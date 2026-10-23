@@ -77,7 +77,10 @@ async fn quiet_keeps_table_but_drops_hint_on_data_command() {
 }
 
 #[tokio::test]
-async fn hints_suppressed_by_json_format() {
+async fn hints_print_on_stderr_in_json_format() {
+    // iter-89: hints are no longer suppressed by --format json — they live on
+    // stderr, so JSON stdout stays parseable while agents piping through jq
+    // still get next-step guidance.
     let server = mock_pull_zone_list().await;
 
     let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
@@ -88,9 +91,83 @@ async fn hints_suppressed_by_json_format() {
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        !stderr.contains("tip:"),
-        "--format json implies --no-hints; got stderr:\n{stderr}"
+        stderr.contains("tip:"),
+        "hints must print on stderr under --format json; got stderr:\n{stderr}"
     );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!stdout.contains("tip:"), "hint leaked to stdout:\n{stdout}");
+    serde_json::from_slice::<serde_json::Value>(&output.stdout)
+        .expect("stdout must remain pure JSON with hints enabled");
+}
+
+#[tokio::test]
+async fn no_hints_still_suppresses_hints_in_json_format() {
+    let server = mock_pull_zone_list().await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "--no-hints", "pull-zone", "list"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stderr.contains("tip:"), "got stderr:\n{stderr}");
+}
+
+/// Mount `fixture` at `GET <route>`, run `hoppy --format json <args>` and
+/// assert stdout parses as JSON while the tip lands on stderr only.
+async fn assert_json_stdout_pure_with_stderr_tip(
+    route: &str,
+    fixture: &str,
+    args: &[&str],
+    tip_fragment: &str,
+) {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(route))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(support::fixture(fixture), "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json"])
+        .args(args)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!stdout.contains("tip:"), "hint leaked to stdout:\n{stdout}");
+    serde_json::from_slice::<serde_json::Value>(&output.stdout).expect("stdout must be pure JSON");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("tip:") && stderr.contains(tip_fragment),
+        "expected tip containing {tip_fragment:?} on stderr, got:\n{stderr}"
+    );
+}
+
+#[tokio::test]
+async fn country_list_json_tip_on_stderr_only() {
+    assert_json_stdout_pure_with_stderr_tip(
+        "/country",
+        "core/country_list.json",
+        &["country", "list"],
+        "--blocked-countries",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn billing_payment_requests_json_tip_on_stderr_only() {
+    assert_json_stdout_pure_with_stderr_tip(
+        "/billing/payment-requests",
+        "core/billing_payment_requests.json",
+        &["billing", "payment-requests"],
+        "payment-request-pdf",
+    )
+    .await;
 }
 
 #[tokio::test]

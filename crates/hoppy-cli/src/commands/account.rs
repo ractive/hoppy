@@ -350,11 +350,11 @@ pub async fn handle_billing(
                 let rows: Vec<PaymentRequestRow> =
                     requests.iter().map(PaymentRequestRow::from).collect();
                 output::print_data(&rows, format);
-                output::hints::tip(&format!(
-                    "download an invoice: {}",
-                    crate::hint_cmds::billing_payment_request_pdf("<ID>")
-                ));
             }
+            output::hints::tip(&format!(
+                "download an invoice: {}",
+                crate::hint_cmds::billing_payment_request_pdf("<ID>")
+            ));
         }
         BillingAction::InvoicePdf { record_id, output } => {
             let mut file = std::fs::File::create(output)
@@ -450,11 +450,11 @@ pub async fn handle_country(
             } else {
                 let rows: Vec<CountryRow> = countries.iter().map(CountryRow::from).collect();
                 output::print_data(&rows, format);
-                output::hints::tip(&format!(
-                    "use an ISO code with: {}",
-                    crate::hint_cmds::pull_zone_update_blocked_countries("<id>")
-                ));
             }
+            output::hints::tip(&format!(
+                "use an ISO code with: {}",
+                crate::hint_cmds::pull_zone_update_blocked_countries("<id>")
+            ));
         }
     }
     Ok(())
@@ -493,12 +493,12 @@ pub async fn handle_search(
             })
             .collect();
         output::print_data(&rows, format);
-        if results.total > results.from + results.size {
-            output::hints::tip(&format!(
-                "more results available — re-run with --from {}",
-                results.from + results.size
-            ));
-        }
+    }
+    if results.total > results.from + results.size {
+        output::hints::tip(&format!(
+            "more results available — re-run with --from {}",
+            results.from + results.size
+        ));
     }
     Ok(())
 }
@@ -550,13 +550,13 @@ pub async fn handle_user(
                     .map(AuditLogRow::from)
                     .collect();
                 output::print_data(&rows, format);
-                if log.has_more_data
-                    && let Some(token) = &log.continuation_token
-                {
-                    output::hints::tip(&format!(
-                        "more entries — re-run with --continuation-token {token}"
-                    ));
-                }
+            }
+            if log.has_more_data
+                && let Some(token) = &log.continuation_token
+            {
+                output::hints::tip(&format!(
+                    "more entries — re-run with --continuation-token {token}"
+                ));
             }
         }
     }

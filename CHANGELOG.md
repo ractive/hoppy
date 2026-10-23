@@ -76,6 +76,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Drill-down `tip:` hints are now printed on stderr under `--format json`
+  too** (previously `--format json` implied `--no-hints`). stdout stays pure
+  JSON; `--no-hints` / `--quiet` still suppress them. **Migration:** scripts
+  that merge stderr into stdout (`2>&1`) while parsing JSON should pass
+  `--no-hints`. Format-agnostic tips (pull-zone list, dns zone scan start,
+  search pagination, country list, billing payment-requests, stream library
+  list, audit-log continuation) no longer depend on the output format;
+  "use --format json" truncation tips stay table-only.
 - The macOS release binaries are signed with a Developer ID certificate
   and notarised (ractive/release-workflows v0.2.4).
 

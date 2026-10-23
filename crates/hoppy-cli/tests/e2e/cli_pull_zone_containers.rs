@@ -143,6 +143,7 @@ async fn list_no_container_zones_skips_lookup() {
         .args([
             "--format",
             "json",
+            "--no-hints",
             "pull-zone",
             "list",
             "--no-container-zones",
