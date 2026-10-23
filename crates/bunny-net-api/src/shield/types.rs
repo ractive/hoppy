@@ -21,7 +21,7 @@ impl std::fmt::Display for WafExecutionMode {
         match self {
             WafExecutionMode::Disabled => write!(f, "Disabled"),
             WafExecutionMode::Enabled => write!(f, "Enabled"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -44,7 +44,7 @@ impl std::fmt::Display for WafPayloadLimitAction {
             WafPayloadLimitAction::Allow => write!(f, "Allow"),
             WafPayloadLimitAction::Block => write!(f, "Block"),
             WafPayloadLimitAction::Ignore => write!(f, "Ignore"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -69,7 +69,7 @@ impl std::fmt::Display for ShieldPlanType {
             ShieldPlanType::Standard => write!(f, "Standard"),
             ShieldPlanType::Advanced => write!(f, "Advanced"),
             ShieldPlanType::Enterprise => write!(f, "Enterprise"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -88,26 +88,29 @@ forward_compat_repr_enum! {
 forward_compat_repr_enum! {
     /// DDoS shield detection sensitivity level.
     ///
-    /// Values from the spec: 0 = Disabled, 1 = Low, 2 = Medium, 3 = High, 4 = VeryHigh.
+    /// Values from the spec: 0 = Off, 1 = Low, 2 = Medium, 3 = High,
+    /// 4 = Challenge, 5 = ChallengeInteractive.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum DdosShieldSensitivity: u8 {
-        Disabled = 0,
+        Off = 0,
         Low = 1,
         Medium = 2,
         High = 3,
-        VeryHigh = 4,
+        Challenge = 4,
+        ChallengeInteractive = 5,
     }
 }
 
 impl std::fmt::Display for DdosShieldSensitivity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DdosShieldSensitivity::Disabled => write!(f, "Disabled"),
+            DdosShieldSensitivity::Off => write!(f, "Off"),
             DdosShieldSensitivity::Low => write!(f, "Low"),
             DdosShieldSensitivity::Medium => write!(f, "Medium"),
             DdosShieldSensitivity::High => write!(f, "High"),
-            DdosShieldSensitivity::VeryHigh => write!(f, "VeryHigh"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            DdosShieldSensitivity::Challenge => write!(f, "Challenge"),
+            DdosShieldSensitivity::ChallengeInteractive => write!(f, "ChallengeInteractive"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -137,7 +140,7 @@ impl std::fmt::Display for AccessListAction {
             AccessListAction::LogOnly => write!(f, "LogOnly"),
             AccessListAction::Challenge => write!(f, "Challenge"),
             AccessListAction::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -166,7 +169,7 @@ impl std::fmt::Display for AccessListType {
             AccessListType::Hostname => write!(f, "Hostname"),
             AccessListType::UserAgent => write!(f, "UserAgent"),
             AccessListType::Custom => write!(f, "Custom"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -189,7 +192,7 @@ impl std::fmt::Display for RateLimitActionType {
             RateLimitActionType::Block => write!(f, "Block"),
             RateLimitActionType::LogOnly => write!(f, "LogOnly"),
             RateLimitActionType::Challenge => write!(f, "Challenge"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -218,7 +221,7 @@ impl std::fmt::Display for RateLimitTimeframe {
             RateLimitTimeframe::Sec300 => write!(f, "5m"),
             RateLimitTimeframe::Sec900 => write!(f, "15m"),
             RateLimitTimeframe::Sec3600 => write!(f, "1h"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -247,7 +250,7 @@ impl std::fmt::Display for RateLimitBlockDuration {
             RateLimitBlockDuration::Sec900 => write!(f, "15m"),
             RateLimitBlockDuration::Sec1800 => write!(f, "30m"),
             RateLimitBlockDuration::Sec3600 => write!(f, "1h"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -281,7 +284,7 @@ impl std::fmt::Display for RateLimitCounterKey {
             RateLimitCounterKey::PerCookie => write!(f, "PerCookie"),
             RateLimitCounterKey::PerQuery => write!(f, "PerQuery"),
             RateLimitCounterKey::PerFingerprint => write!(f, "PerFingerprint"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -309,7 +312,7 @@ impl std::fmt::Display for WafRuleActionType {
             WafRuleActionType::Challenge => write!(f, "Challenge"),
             WafRuleActionType::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
             WafRuleActionType::Allow => write!(f, "Allow"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -478,7 +481,7 @@ impl std::fmt::Display for BotDetectionExecutionMode {
         match self {
             BotDetectionExecutionMode::Disabled => write!(f, "Disabled"),
             BotDetectionExecutionMode::Enabled => write!(f, "Enabled"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -503,7 +506,7 @@ impl std::fmt::Display for BotDetectionSensitivity {
             BotDetectionSensitivity::Low => write!(f, "Low"),
             BotDetectionSensitivity::Medium => write!(f, "Medium"),
             BotDetectionSensitivity::High => write!(f, "High"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -530,7 +533,7 @@ impl std::fmt::Display for BrowserFingerprintAggression {
             BrowserFingerprintAggression::Low => write!(f, "Low"),
             BrowserFingerprintAggression::Medium => write!(f, "Medium"),
             BrowserFingerprintAggression::High => write!(f, "High"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -1709,7 +1712,7 @@ impl std::fmt::Display for UploadScanningScannerMode {
             UploadScanningScannerMode::Disabled => write!(f, "Disabled"),
             UploadScanningScannerMode::LogOnly => write!(f, "LogOnly"),
             UploadScanningScannerMode::Block => write!(f, "Block"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -1840,7 +1843,7 @@ impl std::fmt::Display for ReviewActionType {
             ReviewActionType::Pending => write!(f, "Pending"),
             ReviewActionType::Approve => write!(f, "Approve"),
             ReviewActionType::Reject => write!(f, "Reject"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -2160,11 +2163,25 @@ pub struct UploadScanningMetricsData {
 // ---------------------------------------------------------------------------
 
 forward_compat_repr_enum! {
-    /// Action applied to a categorised bot (or an entire bot category).
+    /// Action applied to a single categorised bot.
+    ///
+    /// `0 = None` (clear any override), `1 = Block`, `2 = Allow`, `3 = Ignore`.
+    /// Whole categories use [`BotCategoryAction`], which has no `Ignore`.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum BotCategorizationAction: u8 {
+        None = 0,
+        Block = 1,
+        Allow = 2,
+        Ignore = 3,
+    }
+}
+
+forward_compat_repr_enum! {
+    /// Action applied to an entire bot category.
     ///
     /// `0 = None` (clear any override), `1 = Block`, `2 = Allow`.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum BotCategorizationAction: u8 {
+    pub enum BotCategoryAction: u8 {
         None = 0,
         Block = 1,
         Allow = 2,
@@ -2200,7 +2217,7 @@ pub struct BotCategorizationDetails {
 pub struct BotCategorizationGroup {
     #[serde(default)]
     pub category: BotCategory,
-    pub category_action: BotCategorizationAction,
+    pub category_action: BotCategoryAction,
     #[serde(default)]
     pub bots: Option<Vec<BotCategorizationDetails>>,
 }
@@ -2215,11 +2232,18 @@ pub struct BotCategorizationListResponse {
     pub error: Option<GenericRequestResponse>,
 }
 
-/// Request body for the two bot-categorization `PUT` endpoints.
+/// Request body for `PUT …/bot-categorization/bots/{botId}`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateBotCategorizationConfigurationRequest {
     pub action: BotCategorizationAction,
+}
+
+/// Request body for `PUT …/bot-categorization/categories/{category}`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateBotCategoryConfigurationRequest {
+    pub action: BotCategoryAction,
 }
 
 /// The category-and-action pair echoed after setting a whole category's action.
@@ -2228,7 +2252,7 @@ pub struct UpdateBotCategorizationConfigurationRequest {
 pub struct BotCategoryDetails {
     #[serde(default)]
     pub category: BotCategory,
-    pub action: BotCategorizationAction,
+    pub action: BotCategoryAction,
 }
 
 /// Response for setting the action on a single categorised bot.

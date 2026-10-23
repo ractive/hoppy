@@ -3500,8 +3500,8 @@ pub enum ShieldBotCategorizationAction {
         /// Bot ID (discover via `shield bot-categorization list`)
         #[arg(long)]
         bot_id: i64,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow)
-        #[arg(long)]
+        /// Action (0 = None/clear, 1 = Block, 2 = Allow, 3 = Ignore)
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=3))]
         action: u8,
     },
     /// Set (or clear) the action for every bot in a category
@@ -3512,8 +3512,8 @@ pub enum ShieldBotCategorizationAction {
         /// Category (0 = None, 1 = SEO, 2 = AIScraper, 3 = AITool, 4 = Tool, 5 = Ads, 6 = Preview, 7 = Social, 255 = System)
         #[arg(long)]
         category: i32,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow)
-        #[arg(long)]
+        /// Action (0 = None/clear, 1 = Block, 2 = Allow; `Ignore` is bot-only)
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=2))]
         action: u8,
     },
 }
@@ -3671,7 +3671,7 @@ pub enum ShieldZoneAction {
         /// WAF execution mode (0 = Disabled, 1 = Enabled)
         #[arg(long)]
         waf_execution_mode: Option<u8>,
-        /// DDoS shield sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High, 4 = VeryHigh)
+        /// DDoS shield sensitivity (0 = Off, 1 = Low, 2 = Medium, 3 = High, 4 = Challenge, 5 = ChallengeInteractive)
         #[arg(long)]
         ddos_sensitivity: Option<u8>,
         /// DDoS execution mode (0 = Disabled, 1 = Enabled)

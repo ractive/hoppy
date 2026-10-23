@@ -7,13 +7,17 @@ use wiremock::matchers::{body_string_contains, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 async fn mount_get(server: &MockServer, p: &str, fixture: &str) {
+    mount_get_n(server, p, fixture, 1).await;
+}
+
+async fn mount_get_n(server: &MockServer, p: &str, fixture: &str, times: u64) {
     Mock::given(method("GET"))
         .and(path(p))
         .and(header("AccessKey", "test-api-key"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(support::fixture(fixture), "application/json"),
         )
-        .expect(1)
+        .expect(times)
         .mount(server)
         .await;
 }
@@ -207,4 +211,178 @@ async fn waf_update_rule_echoes_unknown_operator_and_is_negated() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+// ---------------------------------------------------------------------------
+// New enum values (task 3)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn shield_zone_get_and_list_accept_sensitivity_5_and_unknown_plan() {
+    let server = MockServer::start().await;
+    mount_get(
+        &server,
+        "/shield/shield-zone/55002",
+        "shield/shield_zone_get_new_enums.json",
+    )
+    .await;
+    mount_get(
+        &server,
+        "/shield/shield-zones",
+        "shield/shield_zones_list_new_enums.json",
+    )
+    .await;
+    let get = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "shield", "zone", "get", "--id", "55002"])
+        .output()
+        .unwrap();
+    assert!(
+        get.status.success(),
+        "{}",
+        String::from_utf8_lossy(&get.stderr)
+    );
+    // The raw values must survive a round trip through the typed response.
+    let stdout = String::from_utf8_lossy(&get.stdout);
+    assert!(
+        stdout.contains("\"dDoSShieldSensitivity\": 5"),
+        "got: {stdout}"
+    );
+    assert!(stdout.contains("\"planType\": 7"), "got: {stdout}");
+
+    let list = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "shield", "zone", "list"])
+        .output()
+        .unwrap();
+    assert!(
+        list.status.success(),
+        "{}",
+        String::from_utf8_lossy(&list.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&list.stdout);
+    assert!(stdout.contains("ChallengeInteractive"), "got: {stdout}");
+    assert!(stdout.contains("Unknown(7)"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_bot_categorization_list_renders_ignore_and_unknown_actions() {
+    let server = MockServer::start().await;
+    mount_get(
+        &server,
+        "/shield/shield-zone/42/bot-categorization",
+        "shield/bot_categorization_new_actions.json",
+    )
+    .await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "shield",
+            "bot-categorization",
+            "list",
+            "--id",
+            "42",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Ignore"), "got: {stdout}");
+    assert!(stdout.contains("Unknown(9)"), "got: {stdout}");
+}
+
+#[tokio::test]
+async fn shield_bot_categorization_set_category_rejects_ignore_locally() {
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(0)
+        .mount(&server)
+        .await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "bot-categorization",
+            "set-category",
+            "--id",
+            "42",
+            "--category",
+            "2",
+            "--action",
+            "3",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+}
+
+#[tokio::test]
+async fn shield_bot_categorization_set_bot_accepts_ignore() {
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path("/shield/shield-zone/42/bot-categorization/bots/7"))
+        .and(body_string_contains("\"action\":3"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"data":{"botId":7,"category":2,"action":3,"isVerifiable":true}}"#,
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "shield",
+            "bot-categorization",
+            "set-bot",
+            "--id",
+            "42",
+            "--bot-id",
+            "7",
+            "--action",
+            "3",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[tokio::test]
+async fn container_volume_list_accepts_maintenance_and_unknown_status() {
+    let server = MockServer::start().await;
+    mount_get_n(
+        &server,
+        "/apps/test-app-id/volumes",
+        "containers/volumes_list_maintenance.json",
+        2,
+    )
+    .await;
+    for format in ["json", "table"] {
+        let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+            .args([
+                "--format",
+                format,
+                "container",
+                "volume",
+                "list",
+                "--app-id",
+                "test-app-id",
+            ])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{format}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if format == "json" {
+            assert!(String::from_utf8_lossy(&output.stdout).contains("maintenance"));
+        }
+    }
 }

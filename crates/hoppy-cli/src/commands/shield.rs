@@ -11,16 +11,17 @@ use anyhow::{Context, Result, bail};
 use bunny_net_api::core::serde_helpers::KnownRepr;
 use bunny_net_api::shield::types::{
     AccessListAction, AccessListDetails, AccessListType, BotCategorizationAction,
-    BotCategorizationGroup, BotDetectionConfigurationState, BotDetectionExecutionMode,
-    BotDetectionSensitivity, BrowserFingerprintAggression, BrowserFingerprintConfiguration,
-    CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule, CustomAccessList,
-    CustomWafRule, DdosExecutionMode, DdosShieldSensitivity, EventLog, IpAddressConfiguration,
-    RateLimitActionType, RateLimitBlockDuration, RateLimitCounterKey, RateLimitRule,
-    RateLimitRuleConfiguration, RateLimitTimeframe, RequestIntegrityConfiguration,
-    ReviewActionType, ShieldZonePullZoneMapping, ShieldZoneRequest, ShieldZoneResponse,
-    TriggeredRuleItem, UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest,
-    UpdateApiGuardianRequest, UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule,
-    UpdateRateLimitRule, UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
+    BotCategorizationGroup, BotCategoryAction, BotDetectionConfigurationState,
+    BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
+    BrowserFingerprintConfiguration, CreateCustomAccessList, CreateCustomWafRule,
+    CreateRateLimitRule, CustomAccessList, CustomWafRule, DdosExecutionMode, DdosShieldSensitivity,
+    EventLog, IpAddressConfiguration, RateLimitActionType, RateLimitBlockDuration,
+    RateLimitCounterKey, RateLimitRule, RateLimitRuleConfiguration, RateLimitTimeframe,
+    RequestIntegrityConfiguration, ReviewActionType, ShieldZonePullZoneMapping, ShieldZoneRequest,
+    ShieldZoneResponse, TriggeredRuleItem, UpdateAccessListConfiguration,
+    UpdateApiGuardianEndpointRequest, UpdateApiGuardianRequest, UpdateBotDetection,
+    UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
+    UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
     UpdateUploadScanningConfigurationRequest, UploadOpenApiSpecificationRequest,
     UploadScanningConfigurationState, UploadScanningScannerMode, WafChainedRuleCondition,
     WafExecutionMode, WafProfileMinimal, WafRuleActionType, WafRuleConfiguration,
@@ -540,7 +541,7 @@ impl From<&bunny_net_api::shield::types::ConfigVariableValueMinimal> for WafEngi
 }
 
 // ---------------------------------------------------------------------------
-// Enum conversion helpers (integer -> serde_repr enum via serde_json)
+// Enum conversion helpers (user-supplied integer -> declared enum variant)
 // ---------------------------------------------------------------------------
 
 /// Validate a user-supplied number against the *declared* variants.
@@ -2504,7 +2505,17 @@ fn bot_action_name(action: BotCategorizationAction) -> String {
         BotCategorizationAction::None => "None".to_owned(),
         BotCategorizationAction::Block => "Block".to_owned(),
         BotCategorizationAction::Allow => "Allow".to_owned(),
+        BotCategorizationAction::Ignore => "Ignore".to_owned(),
         BotCategorizationAction::Unknown(n) => format!("Unknown({n})"),
+    }
+}
+
+fn bot_category_action_name(action: BotCategoryAction) -> String {
+    match action {
+        BotCategoryAction::None => "None".to_owned(),
+        BotCategoryAction::Block => "Block".to_owned(),
+        BotCategoryAction::Allow => "Allow".to_owned(),
+        BotCategoryAction::Unknown(n) => format!("Unknown({n})"),
     }
 }
 
@@ -2512,7 +2523,7 @@ fn flatten_bot_categorizations(groups: &[BotCategorizationGroup]) -> Vec<BotCate
     let mut rows = Vec::new();
     for group in groups {
         let category = bot_category_name(group.category);
-        let category_action = bot_action_name(group.category_action).to_string();
+        let category_action = bot_category_action_name(group.category_action);
         match &group.bots {
             Some(bots) if !bots.is_empty() => {
                 for bot in bots {
@@ -2600,7 +2611,7 @@ async fn handle_bot_categorization(
             category,
             action,
         } => {
-            let action_enum = u8_to_enum::<BotCategorizationAction>(*action, "action")?;
+            let action_enum = u8_to_enum::<BotCategoryAction>(*action, "action")?;
             let result = client
                 .set_bot_category_action(*shield_zone_id, *category, action_enum)
                 .await?;
@@ -2617,7 +2628,7 @@ async fn handle_bot_categorization(
                     &format!(
                         "Set category {} action to {} for Shield Zone {shield_zone_id}",
                         bot_category_name(*category),
-                        bot_action_name(action_enum)
+                        bot_category_action_name(action_enum)
                     ),
                 );
             }

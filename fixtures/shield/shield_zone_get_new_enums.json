@@ -1,0 +1,12 @@
+{
+  "data": {
+    "shieldZoneId": 55002,
+    "pullZoneId": 100002,
+    "wafEnabled": true,
+    "wafExecutionMode": 1,
+    "planType": 7,
+    "dDoSShieldSensitivity": 5,
+    "dDoSExecutionMode": 1,
+    "dDoSChallengeWindow": 60
+  }
+}

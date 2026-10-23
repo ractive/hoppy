@@ -1,0 +1,24 @@
+{
+  "categories": [
+    {
+      "category": 2,
+      "categoryAction": 2,
+      "bots": [
+        {
+          "botId": 7,
+          "userAgentMatch": "GPTBot",
+          "category": 2,
+          "action": 3,
+          "isVerifiable": true
+        },
+        {
+          "botId": 8,
+          "userAgentMatch": "FutureBot",
+          "category": 2,
+          "action": 9,
+          "isVerifiable": false
+        }
+      ]
+    }
+  ]
+}

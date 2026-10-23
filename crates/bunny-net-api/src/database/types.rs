@@ -24,6 +24,10 @@ use serde::{Deserialize, Serialize};
 pub enum Authorization {
     FullAccess,
     ReadOnly,
+    /// A scope this client does not model yet (forward-compat; the raw string
+    /// is not preserved, so never send this back).
+    #[serde(other)]
+    Unknown,
 }
 
 // ---------------------------------------------------------------------------

@@ -163,4 +163,93 @@ mod tests {
             Signed::Unknown(-5)
         );
     }
+
+    // -----------------------------------------------------------------------
+    // Regression guard (iter-87 decision "Response enums never fail on unknown
+    // values"). Scans the crate sources so a new enum cannot silently opt out.
+    // -----------------------------------------------------------------------
+
+    fn rust_sources(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                rust_sources(&path, out);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                out.push(path);
+            }
+        }
+    }
+
+    #[test]
+    fn no_closed_integer_enums_in_sources() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut files = Vec::new();
+        rust_sources(&src, &mut files);
+        for f in files {
+            if f.ends_with("macros.rs") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&f).unwrap();
+            for needle in ["Deserialize_repr", "serde_repr"] {
+                assert!(
+                    !text.contains(needle),
+                    "{} uses `{needle}`: declare integer enums with \
+                     forward_compat_repr_enum! so unknown values round-trip",
+                    f.display()
+                );
+            }
+        }
+    }
+
+    /// String-coded enums that derive `Deserialize` need a `#[serde(other)]`
+    /// fallback, unless they are request-only.
+    #[test]
+    fn string_enums_have_serde_other_fallback() {
+        // Request-only: never parsed from an API response.
+        const REQUEST_ONLY: &[&str] = &["Granularity", "AuditLogOrder"];
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut files = Vec::new();
+        rust_sources(&src, &mut files);
+        for f in files {
+            if f.ends_with("macros.rs") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&f).unwrap();
+            // Only look at code before the file's unit-test module.
+            let code = text.split("#[cfg(test)]").next().unwrap();
+            let lines: Vec<&str> = code.lines().collect();
+            let mut i = 0;
+            while i < lines.len() {
+                let l = lines[i];
+                if let Some(rest) = l.strip_prefix("pub enum ") {
+                    let name = rest.split(|c: char| !c.is_alphanumeric()).next().unwrap();
+                    let mut j = i;
+                    while j < lines.len() && lines[j] != "}" {
+                        j += 1;
+                    }
+                    let body = lines[i..j].join("\n");
+                    // Attributes directly above the enum.
+                    let mut k = i;
+                    let mut attrs = String::new();
+                    while k > 0
+                        && (lines[k - 1].starts_with("#[") || lines[k - 1].starts_with("///"))
+                    {
+                        k -= 1;
+                        attrs.push_str(lines[k]);
+                    }
+                    let derives_de = attrs.contains("Deserialize");
+                    if derives_de && !REQUEST_ONLY.contains(&name) && !body.contains("serde(other)")
+                    {
+                        panic!(
+                            "{}: enum {name} derives Deserialize without a \
+                             #[serde(other)] fallback; add one or list it as request-only",
+                            f.display()
+                        );
+                    }
+                    i = j;
+                }
+                i += 1;
+            }
+        }
+    }
 }

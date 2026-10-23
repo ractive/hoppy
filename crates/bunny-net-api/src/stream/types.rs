@@ -38,7 +38,7 @@ impl std::fmt::Display for VideoStatus {
             VideoStatus::UploadFailed => write!(f, "UploadFailed"),
             VideoStatus::JitSegmenting => write!(f, "JitSegmenting"),
             VideoStatus::JitPlaylistsCreated => write!(f, "JitPlaylistsCreated"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -464,7 +464,7 @@ impl std::fmt::Display for EncoderOutputCodec {
             Self::Vp9 => write!(f, "vp9"),
             Self::Hevc => write!(f, "hevc"),
             Self::Av1 => write!(f, "av1"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }

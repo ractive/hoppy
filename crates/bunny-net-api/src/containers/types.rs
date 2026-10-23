@@ -101,12 +101,15 @@ pub struct ValidationError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ApplicationStatus {
-    Unknown,
     Active,
     Progressing,
     Inactive,
     Failing,
     Suspended,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved). Also matches the API's own `unknown`.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Application runtime type.
@@ -115,6 +118,10 @@ pub enum ApplicationStatus {
 pub enum RuntimeType {
     Shared,
     Reserved,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Endpoint type.
@@ -125,6 +132,10 @@ pub enum EndpointType {
     CDN,
     Anycast,
     PublicIp,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Region provisioning type.
@@ -133,6 +144,10 @@ pub enum EndpointType {
 pub enum RegionProvisioningType {
     Static,
     Dynamic,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Container image pull policy.
@@ -141,6 +156,10 @@ pub enum RegionProvisioningType {
 pub enum ImagePullPolicy {
     Always,
     IfNotPresent,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Network protocol.
@@ -157,12 +176,20 @@ pub enum Protocol {
     Udp,
     #[serde(alias = "sctp", alias = "SCTP")]
     Sctp,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Anycast IP protocol version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnycastIpProtocolVersion {
     IPv4,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Overview status grade.
@@ -172,17 +199,24 @@ pub enum Grade {
     CouldBeBetter,
     NotBad,
     DoingGreat,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Deployment status for a region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DeploymentStatus {
-    Unknown,
     Active,
     Progressing,
     Inactive,
     Failing,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved). Also matches the API's own `unknown`.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Pod lifecycle status.
@@ -193,6 +227,10 @@ pub enum PodStatus {
     Scheduled,
     Ready,
     Deleting,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Container status within a pod.
@@ -202,6 +240,10 @@ pub enum ContainerStatus {
     NotStarted,
     Started,
     Ready,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Statistics granularity.
@@ -216,15 +258,19 @@ pub enum Granularity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum VolumeInstanceStatus {
-    Unknown,
     Attached,
     Detached,
     Extending,
     Deleting,
     Creating,
+    Maintenance,
     NotScheduled,
     Scheduled,
     Failed,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved). Also matches the API's own `unknown`.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Container registry type.
@@ -232,6 +278,10 @@ pub enum VolumeInstanceStatus {
 pub enum RegistryType {
     DockerHub,
     GitHub,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Result status after saving a container registry.
@@ -242,6 +292,10 @@ pub enum SavedContainerRegistryStatus {
     UnknownErrorOccured,
     NotFound,
     InvalidInput,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Result status after removing a container registry.
@@ -250,6 +304,10 @@ pub enum RemoveContainerRegistryStatus {
     NotFound,
     InUse,
     Removed,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Log forwarding transport type.
@@ -257,6 +315,10 @@ pub enum RemoveContainerRegistryStatus {
 pub enum LogForwardingType {
     SyslogUdp,
     SyslogTcp,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Syslog message format.
@@ -264,6 +326,10 @@ pub enum LogForwardingType {
 pub enum SyslogFormat {
     SyslogRfc3164,
     SyslogRfc5424,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 // ---------------------------------------------------------------------------
@@ -1772,5 +1838,38 @@ mod tests {
             SyslogFormat::SyslogRfc5424
         );
         assert!("json".parse::<SyslogFormat>().is_err());
+    }
+
+    /// Every string-coded response enum must map an unrecognised value to
+    /// `Unknown` instead of failing the whole response (iter-87 decision).
+    #[test]
+    fn string_enums_tolerate_unknown_values() {
+        fn unknown<T: serde::de::DeserializeOwned + std::fmt::Debug + PartialEq>(expected: T) {
+            let got: T = serde_json::from_str("\"someFutureValue\"").unwrap();
+            assert_eq!(got, expected);
+        }
+        unknown(ApplicationStatus::Unknown);
+        unknown(RuntimeType::Unknown);
+        unknown(EndpointType::Unknown);
+        unknown(RegionProvisioningType::Unknown);
+        unknown(ImagePullPolicy::Unknown);
+        unknown(Protocol::Unknown);
+        unknown(AnycastIpProtocolVersion::Unknown);
+        unknown(Grade::Unknown);
+        unknown(DeploymentStatus::Unknown);
+        unknown(PodStatus::Unknown);
+        unknown(ContainerStatus::Unknown);
+        unknown(VolumeInstanceStatus::Unknown);
+        unknown(RegistryType::Unknown);
+        unknown(SavedContainerRegistryStatus::Unknown);
+        unknown(RemoveContainerRegistryStatus::Unknown);
+        unknown(LogForwardingType::Unknown);
+        unknown(SyslogFormat::Unknown);
+    }
+
+    #[test]
+    fn volume_instance_status_maintenance_deserializes() {
+        let got: VolumeInstanceStatus = serde_json::from_str("\"maintenance\"").unwrap();
+        assert_eq!(got, VolumeInstanceStatus::Maintenance);
     }
 }

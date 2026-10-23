@@ -21,7 +21,7 @@ impl std::fmt::Display for PullZoneType {
         match self {
             PullZoneType::Premium => write!(f, "Premium"),
             PullZoneType::Volume => write!(f, "Volume"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -55,7 +55,7 @@ impl std::fmt::Display for OriginType {
             OriginType::Script => write!(f, "Script"),
             OriginType::MagicContainerEndpoint => write!(f, "MagicContainerEndpoint"),
             OriginType::PushZone => write!(f, "PushZone"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -277,7 +277,7 @@ impl std::fmt::Display for MatchingType {
             Self::MatchAny => write!(f, "match-any"),
             Self::MatchAll => write!(f, "match-all"),
             Self::MatchNone => write!(f, "match-none"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -2897,7 +2897,7 @@ impl std::fmt::Display for DnsRecordType {
             DnsRecordType::SVCB => write!(f, "SVCB"),
             DnsRecordType::HTTPS => write!(f, "HTTPS"),
             DnsRecordType::TLSA => write!(f, "TLSA"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -3202,7 +3202,7 @@ impl std::fmt::Display for DnsScanJobStatus {
             Self::InProgress => write!(f, "InProgress"),
             Self::Completed => write!(f, "Completed"),
             Self::Failed => write!(f, "Failed"),
-            Self::Unknown(n) => return write!(f, "Unknown({n})"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
