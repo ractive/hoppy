@@ -32,6 +32,7 @@ pub async fn handle(
             date_from,
             date_to,
         } => {
+            let id = id.get();
             let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
             let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
             let stats = client
@@ -54,6 +55,7 @@ pub async fn handle(
             date_from,
             date_to,
         } => {
+            let id = id.get();
             let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
             let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
             let stats = client

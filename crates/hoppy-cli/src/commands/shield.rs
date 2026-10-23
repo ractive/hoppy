@@ -862,6 +862,7 @@ async fn handle_waf(
             output::print_data(&rows, format);
         }
         ShieldWafAction::GetRule { id } => {
+            let id = id.get();
             let rule = client.get_waf_rule(*id).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -935,6 +936,7 @@ async fn handle_waf(
             transformation_types,
             config_json,
         } => {
+            let id = id.get();
             let overrides = load_config_json(config_json.as_deref())?;
             if name.is_none()
                 && description.is_none()
@@ -1011,6 +1013,7 @@ async fn handle_waf(
             }
         }
         ShieldWafAction::DeleteRule { id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete WAF rule {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -1180,6 +1183,7 @@ async fn handle_rate_limit(
             }
         }
         ShieldRateLimitAction::Get { id } => {
+            let id = id.get();
             let rule = client.get_rate_limit_rule(*id).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -1266,6 +1270,7 @@ async fn handle_rate_limit(
             block_time,
             config_json,
         } => {
+            let id = id.get();
             let overrides = load_config_json(config_json.as_deref())?;
             if name.is_none()
                 && description.is_none()
@@ -1368,6 +1373,7 @@ async fn handle_rate_limit(
             }
         }
         ShieldRateLimitAction::Delete { id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete rate limit rule {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -1421,6 +1427,7 @@ async fn handle_access_list(
             output::print_data(&rows, format);
         }
         ShieldAccessListAction::Get { shield_zone_id, id } => {
+            let id = id.get();
             let list = client.get_custom_access_list(*shield_zone_id, *id).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -1462,6 +1469,7 @@ async fn handle_access_list(
             name,
             content,
         } => {
+            let id = id.get();
             if name.is_none() && content.is_none() {
                 bail!("at least one update flag is required (--name, --content)");
             }
@@ -1484,6 +1492,7 @@ async fn handle_access_list(
             }
         }
         ShieldAccessListAction::Delete { shield_zone_id, id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete access list {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -1889,6 +1898,7 @@ async fn handle_metrics(
             }
         }
         ShieldMetricsAction::RateLimit { id } => {
+            let id = id.get();
             let metrics = client.get_metrics_rate_limit(*id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&metrics)

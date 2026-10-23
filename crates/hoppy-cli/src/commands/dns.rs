@@ -315,6 +315,7 @@ async fn handle_zone(
             }
         }
         DnsZoneAction::Get { id } => {
+            let id = id.get();
             let zone = client.get_dns_zone(*id).await?;
             print_dns_zone(&zone, format);
         }
@@ -333,6 +334,7 @@ async fn handle_zone(
             logging_ip_anonymization_enabled,
             log_anonymization_type,
         } => {
+            let id = id.get();
             if custom_nameservers_enabled.is_none()
                 && nameserver1.is_none()
                 && nameserver2.is_none()
@@ -385,6 +387,7 @@ async fn handle_zone(
             }
         }
         DnsZoneAction::Delete { id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete DNS zone {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -406,6 +409,7 @@ async fn handle_zone(
             );
         }
         DnsZoneAction::Export { id } => {
+            let id = id.get();
             let raw = client.export_dns_zone(*id).await?;
             let content = if raw.trim().is_empty() {
                 let zone = client.get_dns_zone(*id).await?;
@@ -428,6 +432,7 @@ async fn handle_zone(
             }
         }
         DnsZoneAction::Import { id, file } => {
+            let id = id.get();
             let zone_data = match file {
                 Some(path) => std::fs::read_to_string(path)
                     .with_context(|| format!("failed to read zone file: {path}"))?,
@@ -457,6 +462,7 @@ async fn handle_zone(
             return Ok(());
         }
         DnsZoneAction::IssueCert { id } => {
+            let id = id.get();
             if let Err(err) = client.issue_dns_zone_wildcard_certificate(*id).await {
                 return Err(annotate_issue_cert_error(err, *id));
             }
@@ -478,6 +484,7 @@ async fn handle_zone(
             date_from,
             date_to,
         } => {
+            let id = id.get();
             let stats = client
                 .get_dns_zone_statistics(*id, date_from.as_deref(), date_to.as_deref())
                 .await?;
@@ -531,10 +538,12 @@ async fn handle_dnssec(
 ) -> Result<()> {
     match action {
         DnsDnssecAction::Enable { id } => {
+            let id = id.get();
             let ds = client.enable_dns_zone_dnssec(*id).await?;
             print_dnssec(&ds, format)?;
         }
         DnsDnssecAction::Disable { id } => {
+            let id = id.get();
             if !yes {
                 eprintln!(
                     "WARNING: disabling DNSSEC at bunny.net while DS records remain at your registrar will break DNS resolution. Remove the DS records from your registrar first."
@@ -553,6 +562,7 @@ async fn handle_dnssec(
             print_dnssec(&ds, format)?;
         }
         DnsDnssecAction::Status { id } => {
+            let id = id.get();
             let zone = client.get_dns_zone(*id).await?;
             if let OutputFormat::Json = format {
                 // Enrich with DS record details when DNSSEC is enabled.

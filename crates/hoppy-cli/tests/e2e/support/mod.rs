@@ -58,6 +58,10 @@ pub fn hoppy_mock_cmd(api_key: &str, core_url: &str) -> Command {
     let mut cmd = hoppy_cmd();
     cmd.env("BUNNY_API_KEY", api_key);
     cmd.env("BUNNY_API_URL", core_url);
+    // `pull-zone list` / `count` also look up Magic Containers zones. Point the
+    // containers API at the same mock server so tests never reach the network;
+    // an unmocked `/apps` answers 404, which hoppy reports as a warning.
+    cmd.env("BUNNY_CONTAINERS_URL", core_url);
     cmd
 }
 

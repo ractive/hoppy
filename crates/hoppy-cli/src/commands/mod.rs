@@ -5,6 +5,7 @@ pub mod database;
 pub mod dns;
 pub mod logs;
 pub mod pull_zone;
+pub mod pull_zone_containers;
 pub mod purge;
 pub mod script;
 pub mod shield;

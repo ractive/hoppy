@@ -3102,3 +3102,61 @@ async fn container_node_ips_passthrough() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("203.0.113.1"), "got: {stdout}");
 }
+
+// ---------------------------------------------------------------------------
+// Template endpoints keep their `id`
+// ---------------------------------------------------------------------------
+
+/// `app_get.json` with one CDN endpoint (as returned by the live API,
+/// including its `id`) on the first container template.
+fn app_with_template_endpoint() -> String {
+    let mut app: serde_json::Value =
+        serde_json::from_str(&support::fixture("containers/app_get.json")).unwrap();
+    app["containerTemplates"][0]["endpoints"] = serde_json::json!([{
+        "id": "l3faCv1fWRHAYNU-relay-cdn-oZwIq0m7CF",
+        "displayName": "relay-cdn",
+        "publicHost": "relay.b-cdn.net",
+        "type": "cdn",
+        "isSslEnabled": true,
+        "pullZoneId": "6442567",
+        "portMappings": []
+    }]);
+    app.to_string()
+}
+
+async fn run_app_get(format: &str) -> String {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/apps/l3faCv1fWRHAYNU"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(app_with_template_endpoint(), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    let output = mock_cmd("test-api-key", &server.uri())
+        .args(["--format", format, "container", "get", "l3faCv1fWRHAYNU"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+#[tokio::test]
+async fn container_get_json_keeps_template_endpoint_id() {
+    let stdout = run_app_get("json").await;
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(
+        json["containerTemplates"][0]["endpoints"][0]["id"],
+        "l3faCv1fWRHAYNU-relay-cdn-oZwIq0m7CF"
+    );
+}
+
+#[tokio::test]
+async fn container_get_table_shows_template_endpoint_id() {
+    let stdout = run_app_get("table").await;
+    assert!(
+        stdout.contains("l3faCv1fWRHAYNU-relay-cdn-oZwIq0m7CF"),
+        "{stdout}"
+    );
+}

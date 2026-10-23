@@ -10,6 +10,9 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "OriginUrl": "https://origin.example.com",
       "OriginType": 2,
       "StorageZoneId": 3002,
+      "VideoLibraryId": -1,
+      "DnsZoneId": 0,
+      "DnsRecordId": 0,
       "CnameDomain": "test.b-cdn.net",
       "Hostnames": [
         {
@@ -197,6 +200,9 @@ expression: "String::from_utf8_lossy(&output.stdout)"
       "OriginUrl": "https://origin.example.com",
       "OriginType": 2,
       "StorageZoneId": 3001,
+      "VideoLibraryId": -1,
+      "DnsZoneId": 0,
+      "DnsRecordId": 0,
       "CnameDomain": "test.b-cdn.net",
       "Hostnames": [
         {

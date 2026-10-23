@@ -293,7 +293,9 @@ pub async fn handle(
             )
             .await
         }
-        ScriptAction::Get { id } => handle_get(*id, format, debug, dry_run, record, reveal).await,
+        ScriptAction::Get { id } => {
+            handle_get(*id.get(), format, debug, dry_run, record, reveal).await
+        }
         ScriptAction::Create {
             name,
             script_type,
@@ -320,6 +322,7 @@ pub async fn handle(
             name,
             script_type,
         } => {
+            let id = id.get();
             handle_update(
                 *id,
                 name.as_deref(),
@@ -336,6 +339,7 @@ pub async fn handle(
             id,
             delete_linked_pull_zones,
         } => {
+            let id = id.get();
             handle_delete(
                 *id,
                 *delete_linked_pull_zones,
@@ -352,6 +356,7 @@ pub async fn handle(
             handle_code(action, format, debug, dry_run, record, reveal).await
         }
         ScriptAction::Publish { id, note } => {
+            let id = id.get();
             handle_publish(*id, note.as_deref(), format, debug, dry_run, record, reveal).await
         }
         ScriptAction::Release { action } => {
@@ -370,6 +375,7 @@ pub async fn handle(
             hourly,
             load_latest,
         } => {
+            let id = id.get();
             handle_statistics(
                 *id,
                 date_from.as_deref(),
@@ -385,6 +391,7 @@ pub async fn handle(
             .await
         }
         ScriptAction::RotateDeploymentKey { id } => {
+            let id = id.get();
             if !yes {
                 eprint!(
                     "Rotate deployment key for script {id}? The old key will stop working immediately. [y/N] "
@@ -633,6 +640,7 @@ async fn handle_code(
     let c = client(debug, dry_run, record, reveal)?;
     match action {
         ScriptCodeAction::Get { id } => {
+            let id = id.get();
             let code = c.get_script_code(*id).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -645,6 +653,7 @@ async fn handle_code(
             }
         }
         ScriptCodeAction::Update { id, code, file } => {
+            let id = id.get();
             let source = match (code.as_deref(), file.as_deref()) {
                 (Some(c), _) => c.to_owned(),
                 (_, Some(path)) => tokio::fs::read_to_string(path)
@@ -713,6 +722,7 @@ async fn handle_release(
             per_page,
             all,
         } => {
+            let id = id.get();
             if *all {
                 const AUTO_PER_PAGE: i32 = 1000;
                 let mut current_page: i32 = 1;
@@ -769,6 +779,7 @@ async fn handle_release(
             }
         }
         ScriptReleaseAction::GetActive { id } => {
+            let id = id.get();
             let release = c.get_active_release(*id).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -800,6 +811,7 @@ async fn handle_variable(
     let c = client(debug, dry_run, record, reveal)?;
     match action {
         ScriptVariableAction::List { id } => {
+            let id = id.get();
             let script = c.get_script(*id).await?;
             let vars = script.edge_script_variables.unwrap_or_default();
             if let OutputFormat::Json = format {
@@ -818,6 +830,7 @@ async fn handle_variable(
             required,
             default_value,
         } => {
+            let id = id.get();
             let body = AddVariable {
                 name: name.clone(),
                 required: *required,
@@ -840,6 +853,7 @@ async fn handle_variable(
             required,
             default_value,
         } => {
+            let id = id.get();
             if required.is_none() && default_value.is_none() {
                 bail!("at least one update flag is required (--required, --default-value)");
             }
@@ -859,6 +873,7 @@ async fn handle_variable(
             }
         }
         ScriptVariableAction::Delete { id, variable_id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete variable {variable_id} from script {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -884,6 +899,7 @@ async fn handle_variable(
             required,
             default_value,
         } => {
+            let id = id.get();
             let body = UpsertVariable {
                 name: name.clone(),
                 required: *required,
@@ -920,6 +936,7 @@ async fn handle_secret(
     let c = client(debug, dry_run, record, reveal)?;
     match action {
         ScriptSecretAction::List { id } => {
+            let id = id.get();
             let result: SecretList = c.list_secrets(*id).await?;
             let secrets = result.secrets.unwrap_or_default();
             if let OutputFormat::Json = format {
@@ -933,6 +950,7 @@ async fn handle_secret(
             }
         }
         ScriptSecretAction::Add { id, name, value } => {
+            let id = id.get();
             let body = AddSecret {
                 name: name.clone(),
                 secret: Some(value.clone()),
@@ -953,6 +971,7 @@ async fn handle_secret(
             secret_id,
             value,
         } => {
+            let id = id.get();
             let body = UpdateSecret {
                 secret: Some(value.clone()),
             };
@@ -968,6 +987,7 @@ async fn handle_secret(
             }
         }
         ScriptSecretAction::Delete { id, secret_id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete secret {secret_id} from script {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -988,6 +1008,7 @@ async fn handle_secret(
             );
         }
         ScriptSecretAction::Upsert { id, name, value } => {
+            let id = id.get();
             let body = UpsertSecret {
                 name: Some(name.clone()),
                 secret: Some(value.clone()),

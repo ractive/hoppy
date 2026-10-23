@@ -49,6 +49,7 @@ wiremock = "0.6"
 # `.workspace = true` them without good reason — `syn = "full"` is a heavy
 # compile-time dependency.
 syn = { version = "2", features = ["full", "extra-traits", "visit"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -85,6 +85,8 @@ struct AppDetailWithIds {
     template_ids: String,
     #[tabled(rename = "Endpoint ID")]
     endpoint_id: String,
+    #[tabled(rename = "Template Endpoint IDs")]
+    template_endpoint_ids: String,
 }
 
 impl From<&bunny_net_api::containers::Application> for AppDetailWithIds {
@@ -103,13 +105,65 @@ impl From<&bunny_net_api::containers::Application> for AppDetailWithIds {
             .as_ref()
             .map(|e| e.id.clone())
             .unwrap_or_else(|| "-".to_owned());
+        let template_endpoint_ids = template_endpoint_ids(a);
         Self {
             id: a.id.clone(),
             name: a.name.clone(),
             status: format!("{:?}", a.status),
             template_ids,
             endpoint_id,
+            template_endpoint_ids,
         }
+    }
+}
+
+/// One endpoint attached to a container template.
+#[derive(serde::Serialize, tabled::Tabled)]
+struct TemplateEndpointRow {
+    #[tabled(rename = "Endpoint ID")]
+    id: String,
+    #[tabled(rename = "Template")]
+    template: String,
+    #[tabled(rename = "Name")]
+    display_name: String,
+    #[tabled(rename = "Type")]
+    endpoint_type: String,
+    #[tabled(rename = "Host")]
+    public_host: String,
+    #[tabled(rename = "Pull Zone ID")]
+    pull_zone_id: String,
+}
+
+fn template_endpoint_rows(
+    app: &bunny_net_api::containers::Application,
+) -> Vec<TemplateEndpointRow> {
+    app.container_templates
+        .iter()
+        .flat_map(|t| t.endpoints.iter().map(move |e| (t, e)))
+        .map(|(t, e)| TemplateEndpointRow {
+            id: e.id.clone(),
+            template: t.name.clone(),
+            display_name: e.display_name.clone(),
+            endpoint_type: format!("{:?}", e.endpoint_type),
+            public_host: e.public_host.clone(),
+            pull_zone_id: e.pull_zone_id.clone(),
+        })
+        .collect()
+}
+
+/// Comma-joined ids of every endpoint attached to the app's container
+/// templates, or `-` when there are none.
+fn template_endpoint_ids(app: &bunny_net_api::containers::Application) -> String {
+    let ids: Vec<&str> = app
+        .container_templates
+        .iter()
+        .flat_map(|t| t.endpoints.iter())
+        .map(|e| e.id.as_str())
+        .collect();
+    if ids.is_empty() {
+        "-".to_owned()
+    } else {
+        ids.join(", ")
     }
 }
 
@@ -975,15 +1029,24 @@ async fn handle_app(
             }
         }
         ContainerAppAction::Get { id } => {
+            let id = id.get();
             let app = c.get_application(id).await?;
             if let OutputFormat::Json = format {
                 print_json_with_redaction(&app, redact)?;
             } else {
                 let cmd = format!("container app get --id {id}");
                 output::print_single_vertical_with_cmd(&app, format, redact, Some(&cmd));
+                // The vertical view collapses nested lists, so spell out the
+                // template endpoints (their ids are what pull zones and
+                // OpenTofu reference).
+                let rows = template_endpoint_rows(&app);
+                if !rows.is_empty() {
+                    output::print_data(&rows, format);
+                }
             }
         }
         ContainerAppAction::Summary { id } => {
+            let id = id.get();
             // Schema-less upstream operation — emit the raw JSON verbatim.
             let summary = c.get_application_summary(id).await?;
             println!(
@@ -1132,6 +1195,7 @@ async fn handle_app(
             max,
             volumes,
         } => {
+            let id = id.get();
             if name.is_none()
                 && runtime_type.is_none()
                 && min.is_none()
@@ -1196,6 +1260,7 @@ async fn handle_app(
             }
         }
         ContainerAppAction::Deploy { id } => {
+            let id = id.get();
             c.deploy_application(id).await?;
             output::print_mutation_result(
                 format,
@@ -1206,6 +1271,7 @@ async fn handle_app(
             );
         }
         ContainerAppAction::Undeploy { id } => {
+            let id = id.get();
             if !yes && !confirm(format!("Undeploy application {id}?")).await? {
                 eprintln!("Aborted.");
                 return Ok(());
@@ -1220,6 +1286,7 @@ async fn handle_app(
             );
         }
         ContainerAppAction::Restart { id } => {
+            let id = id.get();
             c.restart_application(id).await?;
             output::print_mutation_result(
                 format,
@@ -1234,6 +1301,7 @@ async fn handle_app(
             cascade,
             no_cascade,
         } => {
+            let id = id.get();
             handle_app_delete(
                 &c,
                 id,
@@ -1249,6 +1317,7 @@ async fn handle_app(
             .await?;
         }
         ContainerAppAction::Overview { id } => {
+            let id = id.get();
             let overview = c.get_application_overview(id).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -1289,6 +1358,7 @@ async fn handle_app(
             to,
             granularity,
         } => {
+            let id = id.get();
             let gran = granularity
                 .as_deref()
                 .map(|s| s.parse().map_err(anyhow::Error::msg))
@@ -1404,7 +1474,7 @@ async fn discover_auto_pull_zones(
 
 /// Bunny stores `pullZoneId` as a string on the endpoint. Treat "0" / empty as
 /// "no auto-PZ" (Anycast / public-IP endpoints don't have one).
-fn parse_pull_zone_id(ep: &EndpointListItem) -> Option<i64> {
+pub(crate) fn parse_pull_zone_id(ep: &EndpointListItem) -> Option<i64> {
     let raw = ep.pull_zone_id.trim();
     if raw.is_empty() {
         return None;
@@ -2243,6 +2313,7 @@ async fn handle_registry(
             }
         }
         ContainerRegistryAction::Get { id } => {
+            let id = id.get();
             let registry = c.get_registry(*id).await?;
             if let OutputFormat::Json = format {
                 println!(
@@ -2303,6 +2374,7 @@ async fn handle_registry(
             username,
             password,
         } => {
+            let id = id.get();
             let credentials = match (username.as_deref(), password.as_deref()) {
                 (Some(u), Some(p)) => Some(RegistryCredentials {
                     user_name: u.to_owned(),
@@ -2333,6 +2405,7 @@ async fn handle_registry(
             }
         }
         ContainerRegistryAction::Delete { id } => {
+            let id = id.get();
             if !yes && !confirm(format!("Delete registry {id}?")).await? {
                 eprintln!("Aborted.");
                 return Ok(());

@@ -160,6 +160,7 @@ pub async fn handle(
             }
         }
         StorageZoneAction::Get { id } => {
+            let id = id.get();
             let sz = client.get_storage_zone(*id).await?;
             print_storage_zone(&sz, format, redact_cfg);
         }
@@ -219,6 +220,7 @@ pub async fn handle(
             custom_404_file_path,
             origin_url,
         } => {
+            let id = id.get();
             if rewrite_404_to_200.is_none()
                 && custom_404_file_path.is_none()
                 && origin_url.is_none()
@@ -250,6 +252,7 @@ pub async fn handle(
             id,
             keep_linked_pull_zones,
         } => {
+            let id = id.get();
             // Upstream default deletes linked pull zones; `Some(false)` opts out.
             let delete_linked = !*keep_linked_pull_zones;
             if !yes {
@@ -285,9 +288,11 @@ pub async fn handle(
             );
         }
         StorageZoneAction::ResetPassword { id } => {
+            let id = id.get();
             reset_password(&client, format, yes, redact_cfg, *id, false).await?;
         }
         StorageZoneAction::ResetReadOnlyPassword { id } => {
+            let id = id.get();
             reset_password(&client, format, yes, redact_cfg, *id, true).await?;
         }
         StorageZoneAction::Statistics {
@@ -295,6 +300,7 @@ pub async fn handle(
             date_from,
             date_to,
         } => {
+            let id = id.get();
             let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
             let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
             let stats = client
@@ -324,6 +330,7 @@ pub async fn handle(
             date_to,
             hourly,
         } => {
+            let id = id.get();
             let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
             let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
             let stats = client

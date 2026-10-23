@@ -691,6 +691,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "console",
+ "futures-util",
  "indicatif",
  "insta",
  "predicates",
