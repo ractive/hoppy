@@ -28,7 +28,7 @@ For a one-line tree of every subcommand, see
 
 ```bash
 hoppy pull-zone list
-hoppy pull-zone get --id 123456
+hoppy pull-zone get 123456          # or: --id 123456
 hoppy pull-zone create --name my-zone --origin-url https://origin.example.com
 hoppy pull-zone update --id 123456 --origin-url https://new-origin.example.com
 hoppy pull-zone delete --id 123456 --yes

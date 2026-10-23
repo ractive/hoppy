@@ -1,3 +1,4 @@
+use super::pull_zone_containers::{Discovered, ListedZone, discover_zones, merge};
 use crate::auth;
 use crate::cli::{
     EdgeRuleAction, OutputFormat, PullZoneAction, PullZoneHostnameAction, PullZoneIpAction,
@@ -15,6 +16,7 @@ use bunny_net_api::core::types::{
     PullZoneLogForwarderProtocolType, PullZonePrivateKeyType, PullZoneTierType, PullZoneType,
     PurgeCache, ShieldDDosProtectionType, StickySessionType, TriggerType, UpdatePullZone,
 };
+use std::collections::HashSet;
 use std::io::{self, BufRead, Write};
 
 // ---------------------------------------------------------------------------
@@ -36,6 +38,43 @@ struct PullZoneRow {
     suspended: bool,
     #[tabled(rename = "Bandwidth Used")]
     monthly_bandwidth_used: i64,
+}
+
+/// List row used when at least one zone belongs to a Magic Containers app.
+#[derive(serde::Serialize, tabled::Tabled)]
+struct PullZoneAppRow {
+    #[tabled(rename = "ID")]
+    id: i64,
+    #[tabled(rename = "Name")]
+    name: String,
+    #[tabled(rename = "App")]
+    app: String,
+    #[tabled(rename = "Origin")]
+    origin_url: String,
+    #[tabled(rename = "Enabled")]
+    enabled: bool,
+    #[tabled(rename = "Suspended")]
+    suspended: bool,
+    #[tabled(rename = "Bandwidth Used")]
+    monthly_bandwidth_used: i64,
+}
+
+impl From<&ListedZone> for PullZoneAppRow {
+    fn from(l: &ListedZone) -> Self {
+        let base = PullZoneRow::from(&l.zone);
+        Self {
+            id: base.id,
+            name: base.name,
+            app: l
+                .app
+                .as_ref()
+                .map_or_else(|| "-".to_owned(), |a| a.name.clone()),
+            origin_url: base.origin_url,
+            enabled: base.enabled,
+            suspended: base.suspended,
+            monthly_bandwidth_used: base.monthly_bandwidth_used,
+        }
+    }
 }
 
 impl From<&PullZone> for PullZoneRow {
@@ -111,8 +150,15 @@ pub async fn handle(
             page,
             per_page,
             all,
+            no_container_zones,
         } => {
-            if *all {
+            let opts = auth::ClientOpts {
+                debug,
+                dry_run,
+                record,
+                reveal_secrets: redact_cfg.reveal_all,
+            };
+            let (zones, envelope) = if *all {
                 const AUTO_PER_PAGE: u32 = 1000;
                 let mut current_page: u32 = 1;
                 let mut accumulated: Vec<PullZone> = Vec::new();
@@ -121,64 +167,106 @@ pub async fn handle(
                         .list_pull_zones(Some(current_page), Some(AUTO_PER_PAGE), search.as_deref())
                         .await?;
                     let has_more = result.has_more_items;
-                    if let OutputFormat::Json = format {
-                        accumulated.extend(result.items);
-                    } else {
-                        let rows: Vec<PullZoneRow> =
-                            result.items.iter().map(PullZoneRow::from).collect();
-                        output::print_data(&rows, format);
-                    }
+                    accumulated.extend(result.items);
                     if !has_more {
                         break;
                     }
                     current_page += 1;
                 }
-                if let OutputFormat::Json = format {
-                    let total = accumulated.len() as i64;
-                    let envelope = PaginatedListJson {
-                        items: &accumulated,
-                        current_page: current_page as i64,
-                        total_items: total,
-                        has_more_items: false,
-                    };
-                    let json = serde_json::to_string_pretty(&envelope)
-                        .context("failed to serialize to JSON")?;
-                    println!("{json}");
-                }
+                let known: HashSet<i64> = accumulated.iter().map(|z| z.id).collect();
+                let extra = if *no_container_zones {
+                    Discovered::default()
+                } else {
+                    discover_zones(&client, &opts, &known).await
+                };
+                let zones = merge(accumulated, extra, search.as_deref());
+                let total = zones.len() as i64;
+                (zones, (current_page as i64, total, false))
             } else {
                 let result = client
                     .list_pull_zones(*page, *per_page, search.as_deref())
                     .await?;
-                if let OutputFormat::Json = format {
-                    let envelope = PaginatedListJson {
-                        items: &result.items,
-                        current_page: result.current_page,
-                        total_items: result.total_items,
-                        has_more_items: result.has_more_items,
-                    };
-                    let json = serde_json::to_string_pretty(&envelope)
-                        .context("failed to serialize to JSON")?;
-                    println!("{json}");
+                let meta = (
+                    result.current_page,
+                    result.total_items,
+                    result.has_more_items,
+                );
+                // Container zones are appended on the last page only, so
+                // paging never repeats them.
+                let extra = if *no_container_zones || result.has_more_items {
+                    Discovered::default()
+                } else {
+                    let known: HashSet<i64> = result.items.iter().map(|z| z.id).collect();
+                    discover_zones(&client, &opts, &known).await
+                };
+                (merge(result.items, extra, search.as_deref()), meta)
+            };
+            let (current_page, total_items, has_more_items) = envelope;
+            if let OutputFormat::Json = format {
+                let envelope = PaginatedListJson {
+                    items: &zones,
+                    current_page,
+                    total_items: total_items.max(zones.len() as i64),
+                    has_more_items,
+                };
+                let json = serde_json::to_string_pretty(&envelope)
+                    .context("failed to serialize to JSON")?;
+                println!("{json}");
+            } else {
+                if zones.iter().any(|z| z.app.is_some()) {
+                    let rows: Vec<PullZoneAppRow> =
+                        zones.iter().map(PullZoneAppRow::from).collect();
+                    output::print_data(&rows, format);
                 } else {
                     let rows: Vec<PullZoneRow> =
-                        result.items.iter().map(PullZoneRow::from).collect();
+                        zones.iter().map(|z| PullZoneRow::from(&z.zone)).collect();
                     output::print_data(&rows, format);
-                    if let Some(first) = result.items.first() {
-                        let id = first.id;
-                        output::hints::tips(&[
-                            &format!("hoppy pull-zone get --id {id}"),
-                            &format!("hoppy pull-zone statistics --id {id}"),
-                        ]);
-                    }
+                }
+                if !*all && let Some(first) = zones.first() {
+                    let id = first.zone.id;
+                    output::hints::tips(&[
+                        &format!("hoppy pull-zone get --id {id}"),
+                        &format!("hoppy pull-zone statistics --id {id}"),
+                    ]);
                 }
             }
         }
         PullZoneAction::Get { id } => {
+            let id = id.get();
             let pz = client.get_pull_zone(*id).await?;
             print_pull_zone(&pz, format, redact_cfg);
         }
-        PullZoneAction::Count => {
-            let count = client.count_pull_zones().await?;
+        PullZoneAction::Count { no_container_zones } => {
+            let mut count = client.count_pull_zones().await?;
+            if !*no_container_zones {
+                let opts = auth::ClientOpts {
+                    debug,
+                    dry_run,
+                    record,
+                    reveal_secrets: redact_cfg.reveal_all,
+                };
+                // `GET /pullzone/count` omits Magic Containers zones. Only when
+                // some exist, list every ordinary zone so the total can be
+                // deduplicated instead of guessed.
+                let extra = discover_zones(&client, &opts, &HashSet::new()).await;
+                if !extra.zones.is_empty() {
+                    let mut ordinary: Vec<PullZone> = Vec::new();
+                    let mut current_page: u32 = 1;
+                    loop {
+                        let result = client
+                            .list_pull_zones(Some(current_page), Some(1000), None)
+                            .await?;
+                        let has_more = result.has_more_items;
+                        ordinary.extend(result.items);
+                        if !has_more {
+                            break;
+                        }
+                        current_page += 1;
+                    }
+                    let merged = merge(ordinary, extra, None);
+                    count.count = i32::try_from(merged.len()).unwrap_or(i32::MAX);
+                }
+            }
             if let OutputFormat::Json = format {
                 let json =
                     serde_json::to_string_pretty(&count).context("failed to serialize to JSON")?;
@@ -377,6 +465,7 @@ pub async fn handle(
             magic_containers_app_id,
             magic_containers_endpoint_id,
         } => {
+            let id = id.get();
             // Guard: if any log-forwarding sub-field is being set without also
             // enabling log forwarding in this same call, verify the zone has
             // log_forwarding_enabled=true; if not, bail with a clear message.
@@ -645,6 +734,7 @@ pub async fn handle(
             print_pull_zone(&pz, format, redact_cfg);
         }
         PullZoneAction::Delete { id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete pull zone {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -666,6 +756,7 @@ pub async fn handle(
             );
         }
         PullZoneAction::ResetSecurityKey { id } => {
+            let id = id.get();
             if !yes {
                 eprint!(
                     "Rotate the token-authentication security key for pull zone {id}? \
@@ -711,6 +802,7 @@ pub async fn handle(
             }
         }
         PullZoneAction::Purge { id, cache_tag } => {
+            let id = id.get();
             let body = match cache_tag {
                 Some(tag) => PurgeCache::by_tag(tag),
                 None => PurgeCache::all(),
@@ -743,6 +835,7 @@ pub async fn handle(
             date_to,
             hourly,
         } => {
+            let id = id.get();
             let df = date::normalise_datetime_opt(date_from.as_deref())?;
             let dt = date::normalise_datetime_opt(date_to.as_deref())?;
             let df = df.as_deref();
@@ -847,6 +940,7 @@ async fn handle_hostname(
 ) -> Result<()> {
     match action {
         PullZoneHostnameAction::Add { id, hostname } => {
+            let id = id.get();
             client.add_hostname(*id, hostname).await?;
             output::print_mutation_result(
                 format,
@@ -857,6 +951,7 @@ async fn handle_hostname(
             );
         }
         PullZoneHostnameAction::Remove { id, hostname } => {
+            let id = id.get();
             client.remove_hostname(*id, hostname).await?;
             output::print_mutation_result(
                 format,
@@ -881,6 +976,7 @@ async fn handle_hostname(
             hostname,
             enabled,
         } => {
+            let id = id.get();
             client.set_force_ssl(*id, hostname, *enabled).await?;
             let status = if *enabled { "enabled" } else { "disabled" };
             output::print_mutation_result(
@@ -897,6 +993,7 @@ async fn handle_hostname(
             certificate,
             key,
         } => {
+            let id = id.get();
             client
                 .add_certificate(*id, hostname, certificate, key)
                 .await?;
@@ -909,6 +1006,7 @@ async fn handle_hostname(
             );
         }
         PullZoneHostnameAction::RemoveCert { id, hostname } => {
+            let id = id.get();
             client.remove_certificate(*id, hostname).await?;
             output::print_mutation_result(
                 format,
@@ -923,6 +1021,7 @@ async fn handle_hostname(
             hostname,
             key_type,
         } => {
+            let id = id.get();
             let kt = PullZonePrivateKeyType::from(*key_type);
             client.update_private_key_type(*id, hostname, kt).await?;
             output::print_mutation_result(
@@ -1012,6 +1111,7 @@ async fn handle_referrer(
 ) -> Result<()> {
     match action {
         PullZoneReferrerAction::List { id } => {
+            let id = id.get();
             let pz = client.get_pull_zone(*id).await?;
             if let OutputFormat::Json = format {
                 let payload = serde_json::json!({
@@ -1039,6 +1139,7 @@ async fn handle_referrer(
             }
         }
         PullZoneReferrerAction::Allow { id, value } => {
+            let id = id.get();
             client.add_allowed_referrer(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -1049,6 +1150,7 @@ async fn handle_referrer(
             );
         }
         PullZoneReferrerAction::RemoveAllowed { id, value } => {
+            let id = id.get();
             client.remove_allowed_referrer(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -1059,6 +1161,7 @@ async fn handle_referrer(
             );
         }
         PullZoneReferrerAction::Block { id, value } => {
+            let id = id.get();
             client.add_blocked_referrer(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -1069,6 +1172,7 @@ async fn handle_referrer(
             );
         }
         PullZoneReferrerAction::RemoveBlocked { id, value } => {
+            let id = id.get();
             client.remove_blocked_referrer(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -1089,6 +1193,7 @@ async fn handle_ip(
 ) -> Result<()> {
     match action {
         PullZoneIpAction::List { id } => {
+            let id = id.get();
             let pz = client.get_pull_zone(*id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&pz.blocked_ips)
@@ -1104,6 +1209,7 @@ async fn handle_ip(
             }
         }
         PullZoneIpAction::Block { id, value } => {
+            let id = id.get();
             client.add_blocked_ip(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -1114,6 +1220,7 @@ async fn handle_ip(
             );
         }
         PullZoneIpAction::Unblock { id, value } => {
+            let id = id.get();
             client.remove_blocked_ip(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -1238,6 +1345,7 @@ async fn handle_edge_rule(
 ) -> Result<()> {
     match action {
         EdgeRuleAction::List { id } => {
+            let id = id.get();
             let pz = client.get_pull_zone(*id).await?;
             if let OutputFormat::Json = format {
                 let json = serde_json::to_string_pretty(&pz.edge_rules)
@@ -1276,6 +1384,7 @@ async fn handle_edge_rule(
             trigger_matching_type,
             triggers,
         } => {
+            let id = id.get();
             let body = build_edge_rule_body(
                 None,
                 action_type,
@@ -1304,6 +1413,7 @@ async fn handle_edge_rule(
             trigger_matching_type,
             triggers,
         } => {
+            let id = id.get();
             let body = build_edge_rule_body(
                 Some(rule_id),
                 action_type,
@@ -1323,6 +1433,7 @@ async fn handle_edge_rule(
             );
         }
         EdgeRuleAction::Delete { id, rule_id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete edge rule {rule_id} from pull zone {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -1348,6 +1459,7 @@ async fn handle_edge_rule(
             rule_id,
             enabled,
         } => {
+            let id = id.get();
             client.set_edge_rule_enabled(*id, rule_id, *enabled).await?;
             let action_verb = if *enabled { "enable" } else { "disable" };
             let status = if *enabled { "Enabled" } else { "Disabled" };

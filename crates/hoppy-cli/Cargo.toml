@@ -43,6 +43,7 @@ reqwest = { workspace = true, features = ["stream"] }
 walkdir.workspace = true
 syn.workspace = true
 regex.workspace = true
+futures-util.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true

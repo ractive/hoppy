@@ -389,6 +389,7 @@ pub async fn handle_billing(
             report_pdf_saved(format, n, output, quiet, "receipt-pdf");
         }
         BillingAction::PaymentRequestPdf { id, output } => {
+            let id = id.get();
             let mut file = std::fs::File::create(output)
                 .with_context(|| format!("creating output file: {output}"))?;
             let n = client.download_payment_request_pdf(*id, &mut file).await?;

@@ -4,8 +4,74 @@ use bunny_net_api::core::types::{
     PullZoneTierType, ShieldDDosProtectionType, StickySessionType,
 };
 use clap::error::{ContextKind, ContextValue, ErrorKind};
-use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
+
+/// A resource id accepted either positionally (`get 123`) or with `--id 123`.
+///
+/// Flatten it into a subcommand (`#[command(flatten)] id: IdArg<i64>`) and read
+/// it with [`IdArg::get`]. Supplying both forms is a usage error, and so is
+/// supplying neither. Implemented by hand (rather than derived) so that the
+/// parsed value is a plain `T`, which keeps `get` infallible.
+#[derive(Debug, Clone)]
+pub struct IdArg<T>(T);
+
+impl<T> IdArg<T> {
+    /// The id the user supplied, via whichever form.
+    pub fn get(&self) -> &T {
+        &self.0
+    }
+}
+
+const ID_POSITIONAL: &str = "id_positional";
+const ID_FLAG: &str = "id";
+
+impl<T> Args for IdArg<T>
+where
+    T: std::str::FromStr + Clone + Send + Sync + 'static,
+    T::Err: std::error::Error + Send + Sync + 'static,
+{
+    fn augment_args(cmd: clap::Command) -> clap::Command {
+        cmd.arg(
+            clap::Arg::new(ID_POSITIONAL)
+                .value_name("ID")
+                .help("Resource ID (positional form of --id)")
+                .value_parser(clap::value_parser!(T))
+                .conflicts_with(ID_FLAG)
+                .required_unless_present(ID_FLAG),
+        )
+        .arg(
+            clap::Arg::new(ID_FLAG)
+                .long("id")
+                .value_name("ID")
+                .help("Resource ID")
+                .value_parser(clap::value_parser!(T)),
+        )
+    }
+
+    fn augment_args_for_update(cmd: clap::Command) -> clap::Command {
+        Self::augment_args(cmd)
+    }
+}
+
+impl<T> clap::FromArgMatches for IdArg<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    fn from_arg_matches(matches: &clap::ArgMatches) -> Result<Self, clap::Error> {
+        matches
+            .get_one::<T>(ID_FLAG)
+            .or_else(|| matches.get_one::<T>(ID_POSITIONAL))
+            .cloned()
+            .map(Self)
+            .ok_or_else(|| clap::Error::new(ErrorKind::MissingRequiredArgument))
+    }
+
+    fn update_from_arg_matches(&mut self, matches: &clap::ArgMatches) -> Result<(), clap::Error> {
+        *self = Self::from_arg_matches(matches)?;
+        Ok(())
+    }
+}
 
 /// Build the `-V` / `--version` string from compile-time provenance. clap
 /// prepends the binary name when printing, so the user sees e.g.
@@ -715,9 +781,9 @@ pub enum BillingAction {
     },
     /// Download a payment-request invoice as a PDF (streamed to a file)
     PaymentRequestPdf {
-        /// Payment request ID (from `billing payment-requests`)
-        #[arg(long)]
-        id: i64,
+        /// Payment request ID (from `billing payment-requests`) (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Path to write the PDF to
         #[arg(long)]
         output: String,
@@ -820,9 +886,9 @@ pub enum LogsAction {
     ///   # Legacy v1 raw log for one date, streamed to a file
     ///   hoppy logs pull-zone --id 12345 --legacy --date 07-08-26 --output logs.txt
     PullZone {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
 
         // ── v2 time range ────────────────────────────────────────────────────
         /// Inclusive start of the time range (UTC, RFC 3339). Defaults to `to - 24h`.
@@ -937,9 +1003,9 @@ pub enum LogsAction {
     ///   # Origin errors for one day
     ///   hoppy logs origin-errors --id 12345 --date 10-29-2025
     OriginErrors {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Log date, formatted MM-DD-YYYY (e.g. 10-29-2025).
         #[arg(long, value_name = "MM-DD-YYYY")]
         date: String,
@@ -952,9 +1018,9 @@ pub enum LogsAction {
 pub enum VideoLibraryAction {
     /// Get DRM statistics for a video library
     DrmStatistics {
-        /// Video library ID
-        #[arg(long)]
-        id: i64,
+        /// Video library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
@@ -964,9 +1030,9 @@ pub enum VideoLibraryAction {
     },
     /// Get transcribing statistics for a video library
     TranscribingStatistics {
-        /// Video library ID
-        #[arg(long)]
-        id: i64,
+        /// Video library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
@@ -995,15 +1061,29 @@ pub enum PullZoneAction {
         /// Automatically paginate through all available pages
         #[arg(long)]
         all: bool,
+        /// Do not add the pull zones owned by Magic Containers apps.
+        ///
+        /// `GET /pullzone` never returns those zones, so by default they are
+        /// looked up via the container apps' endpoints and shown on the last
+        /// page (marked in an `App` column / `ContainerApp` JSON member).
+        #[arg(long)]
+        no_container_zones: bool,
     },
     /// Get a specific pull zone
     Get {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Count the total number of pull zones on the account.
-    Count,
+    ///
+    /// Includes the pull zones owned by Magic Containers apps, which the
+    /// bunny.net count endpoint omits.
+    Count {
+        /// Report the bunny.net count as-is, without Magic Containers zones.
+        #[arg(long)]
+        no_container_zones: bool,
+    },
     /// Check whether a pull zone name is available before creating it.
     Check {
         /// Pull zone name to check
@@ -1056,9 +1136,9 @@ pub enum PullZoneAction {
   # After enabling, read Optimizer usage stats
   hoppy pull-zone statistics --id <id> --type optimizer")]
     Update {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// HTTP/HTTPS origin URL. Mutually exclusive with --storage-zone-id.
         #[arg(long, conflicts_with = "storage_zone_id")]
         origin_url: Option<String>,
@@ -1667,9 +1747,9 @@ pub enum PullZoneAction {
     },
     /// Delete a pull zone
     Delete {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Rotate the token-authentication security key of a pull zone.
     ///
@@ -1678,24 +1758,24 @@ pub enum PullZoneAction {
     /// re-fetches the zone and prints it, redacted unless the global `--reveal`
     /// flag is set.
     ResetSecurityKey {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Purge pull zone cache
     Purge {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Limit purge to a specific cache tag
         #[arg(long)]
         cache_tag: Option<String>,
     },
     /// Get pull zone statistics
     Statistics {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Statistics type: optimizer, origin-shield, safehop
         #[arg(long, value_name = "TYPE")]
         r#type: String,
@@ -1735,42 +1815,42 @@ pub enum PullZoneAction {
 pub enum PullZoneReferrerAction {
     /// List allowed and blocked referrers for a pull zone
     List {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Add a hostname to the allowed referrer list
     Allow {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern (e.g. example.com or *.example.com)
         #[arg(long)]
         value: String,
     },
     /// Remove a hostname from the allowed referrer list
     RemoveAllowed {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern to remove
         #[arg(long)]
         value: String,
     },
     /// Add a hostname to the blocked referrer list
     Block {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern (e.g. example.com or *.example.com)
         #[arg(long)]
         value: String,
     },
     /// Remove a hostname from the blocked referrer list
     RemoveBlocked {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern to remove
         #[arg(long)]
         value: String,
@@ -1781,24 +1861,24 @@ pub enum PullZoneReferrerAction {
 pub enum PullZoneIpAction {
     /// List blocked IPs for a pull zone
     List {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Block an IP address (single IP or CIDR range)
     Block {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// IP address or CIDR range to block (e.g. 1.2.3.4 or 10.0.0.0/8)
         #[arg(long)]
         value: String,
     },
     /// Unblock an IP address
     Unblock {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// IP address or CIDR range to unblock
         #[arg(long)]
         value: String,
@@ -1809,15 +1889,15 @@ pub enum PullZoneIpAction {
 pub enum EdgeRuleAction {
     /// List edge rules on a pull zone
     List {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Add an edge rule to a pull zone
     Add {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Rule description
         #[arg(long)]
         description: Option<String>,
@@ -1839,9 +1919,9 @@ pub enum EdgeRuleAction {
     },
     /// Update an existing edge rule
     Update {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// GUID of the edge rule to update
         #[arg(long)]
         rule_id: String,
@@ -1866,18 +1946,18 @@ pub enum EdgeRuleAction {
     },
     /// Delete an edge rule from a pull zone
     Delete {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// GUID of the edge rule to delete
         #[arg(long)]
         rule_id: String,
     },
     /// Enable or disable an edge rule
     Enable {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// GUID of the edge rule
         #[arg(long)]
         rule_id: String,
@@ -1902,18 +1982,18 @@ pub enum PullZoneHostnameAction {
     ///   hoppy pull-zone hostname force-ssl --id 1001 \
     ///     --hostname cdn.example.com --enabled true
     Add {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Custom hostname to attach (e.g. cdn.example.com)
         #[arg(long)]
         hostname: String,
     },
     /// Remove a custom hostname
     Remove {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Custom hostname to remove
         #[arg(long)]
         hostname: String,
@@ -1926,9 +2006,9 @@ pub enum PullZoneHostnameAction {
     },
     /// Set Force SSL on a hostname
     ForceSsl {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Hostname to configure Force SSL on
         #[arg(long)]
         hostname: String,
@@ -1938,9 +2018,9 @@ pub enum PullZoneHostnameAction {
     },
     /// Add a custom SSL certificate (certificate and key must be Base64-encoded PEM)
     AddCert {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Hostname the certificate applies to
         #[arg(long)]
         hostname: String,
@@ -1953,18 +2033,18 @@ pub enum PullZoneHostnameAction {
     },
     /// Remove the SSL certificate from a hostname
     RemoveCert {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Hostname to remove the certificate from
         #[arg(long)]
         hostname: String,
     },
     /// Switch the private-key algorithm (RSA or EC) of a hostname's certificate
     UpdateKeyType {
-        /// Pull zone ID
-        #[arg(long)]
-        id: i64,
+        /// Pull zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Hostname whose certificate key type is being changed
         #[arg(long)]
         hostname: String,
@@ -2025,9 +2105,9 @@ pub enum StorageZoneAction {
     },
     /// Get a specific storage zone
     Get {
-        /// Storage zone ID
-        #[arg(long)]
-        id: i64,
+        /// Storage zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Check whether a storage zone name is available before creating it.
     Check {
@@ -2065,9 +2145,9 @@ pub enum StorageZoneAction {
     },
     /// Update a storage zone
     Update {
-        /// Storage zone ID
-        #[arg(long)]
-        id: i64,
+        /// Storage zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Rewrite 404 responses to 200 (useful for SPAs).
         #[arg(long)]
         rewrite_404_to_200: Option<bool>,
@@ -2083,9 +2163,9 @@ pub enum StorageZoneAction {
     /// WARNING: by default bunny.net also deletes every pull zone linked to this
     /// storage zone. Pass `--keep-linked-pull-zones` to keep them.
     Delete {
-        /// Storage zone ID
-        #[arg(long)]
-        id: i64,
+        /// Storage zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Keep pull zones linked to this storage zone instead of deleting them.
         ///
         /// The upstream default deletes linked pull zones; this flag opts out.
@@ -2097,23 +2177,23 @@ pub enum StorageZoneAction {
     /// The new password is not returned by the reset call; hoppy re-fetches the
     /// zone and prints it, redacted unless the global `--reveal` flag is set.
     ResetPassword {
-        /// Storage zone ID
-        #[arg(long)]
-        id: i64,
+        /// Storage zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Rotate the read-only password of a storage zone.
     ///
     /// The new password is redacted unless the global `--reveal` flag is set.
     ResetReadOnlyPassword {
-        /// Storage zone ID
-        #[arg(long)]
-        id: i64,
+        /// Storage zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Get statistics for a storage zone
     Statistics {
-        /// Storage zone ID
-        #[arg(long)]
-        id: i64,
+        /// Storage zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
@@ -2123,9 +2203,9 @@ pub enum StorageZoneAction {
     },
     /// Get egress statistics for a storage zone (per-protocol totals + charts).
     Egress {
-        /// Storage zone ID
-        #[arg(long)]
-        id: i64,
+        /// Storage zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
@@ -2252,9 +2332,9 @@ pub enum DnsZoneAction {
     },
     /// Get a specific DNS zone
     Get {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Create a DNS zone
     Create {
@@ -2264,9 +2344,9 @@ pub enum DnsZoneAction {
     },
     /// Update a DNS zone
     Update {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Enable custom nameservers
         #[arg(long)]
         custom_nameservers_enabled: Option<bool>,
@@ -2293,9 +2373,9 @@ pub enum DnsZoneAction {
     },
     /// Delete a DNS zone
     Delete {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Check whether a domain is available as a DNS zone before creating it.
     Check {
@@ -2305,9 +2385,9 @@ pub enum DnsZoneAction {
     },
     /// Get statistics for a DNS zone
     Statistics {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
@@ -2317,15 +2397,15 @@ pub enum DnsZoneAction {
     },
     /// Export DNS zone as a BIND zone file (text and table both emit raw BIND; --format json wraps it in {"Bind": ...})
     Export {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Import DNS records from a BIND zone file
     Import {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Path to zone file (reads from stdin if omitted)
         #[arg(long)]
         file: Option<String>,
@@ -2341,9 +2421,9 @@ pub enum DnsZoneAction {
     /// certificate authority needs to validate the domain via DNS challenge.
     /// If the zone isn't delegated, the API returns an error.
     IssueCert {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Scan a zone (or domain) for pre-existing DNS records and view results.
     ///
@@ -2359,9 +2439,9 @@ pub enum DnsZoneAction {
 pub enum DnsDnssecAction {
     /// Enable DNSSEC and display the DS record details to copy to your registrar.
     Enable {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Disable DNSSEC.
     ///
@@ -2369,15 +2449,15 @@ pub enum DnsDnssecAction {
     /// disabling DNSSEC at bunny.net will break resolution. Remove the DS
     /// records from your registrar first.
     Disable {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Show the current DNSSEC status (read from the DNS zone metadata).
     Status {
-        /// DNS zone ID
-        #[arg(long)]
-        id: i64,
+        /// DNS zone ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
 }
 
@@ -2655,9 +2735,9 @@ pub enum StreamLibraryAction {
     /// output format. Pass the global `--reveal` flag to print the raw
     /// values.
     Get {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Create a video library
     ///
@@ -2676,9 +2756,9 @@ pub enum StreamLibraryAction {
     /// referrer access control, DRM, and transcription defaults. Only the
     /// flags you pass are sent — everything else is left untouched.
     Update {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// New display name for the library.
         #[arg(long)]
         name: Option<String>,
@@ -2781,9 +2861,9 @@ pub enum StreamLibraryAction {
     },
     /// Delete a video library
     Delete {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Manage allowed / blocked referrers for a video library
     Referrer {
@@ -2802,23 +2882,23 @@ pub enum StreamLibraryAction {
     /// The new key is not returned by the reset call; hoppy re-fetches the
     /// library and prints it, redacted unless the global `--reveal` flag is set.
     ResetApiKey {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Rotate the read-only API key of a video library.
     ///
     /// The new key is redacted unless the global `--reveal` flag is set.
     ResetReadOnlyApiKey {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Get statistics for a video library
     Statistics {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
@@ -2838,36 +2918,36 @@ pub enum StreamLibraryAction {
 pub enum StreamLibraryReferrerAction {
     /// Add a hostname to the allowed-referrer list
     Allow {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern (e.g. example.com or *.example.com)
         #[arg(long)]
         value: String,
     },
     /// Remove a hostname from the allowed-referrer list
     RemoveAllowed {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern to remove
         #[arg(long)]
         value: String,
     },
     /// Add a hostname to the blocked-referrer list
     Block {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern (e.g. example.com or *.example.com)
         #[arg(long)]
         value: String,
     },
     /// Remove a hostname from the blocked-referrer list
     RemoveBlocked {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Referrer hostname pattern to remove
         #[arg(long)]
         value: String,
@@ -2878,18 +2958,18 @@ pub enum StreamLibraryReferrerAction {
 pub enum StreamLibraryWatermarkAction {
     /// Upload a watermark image for the library (streamed from disk)
     Set {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Local path to the watermark image file
         #[arg(long)]
         file: String,
     },
     /// Remove the watermark image from the library
     Delete {
-        /// Stream library ID
-        #[arg(long)]
-        id: i64,
+        /// Stream library ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
 }
 
@@ -3502,9 +3582,9 @@ pub enum ShieldMetricsAction {
     },
     /// Get rate limit metrics for a single rule
     RateLimit {
-        /// Rate limit rule ID
-        #[arg(long)]
-        id: i64,
+        /// Rate limit rule ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Get WAF rule metrics for a specific rule in a Shield Zone
     WafRule {
@@ -3631,9 +3711,9 @@ pub enum ShieldWafAction {
     },
     /// Get a custom WAF rule by ID
     GetRule {
-        /// WAF rule ID
-        #[arg(long)]
-        id: i64,
+        /// WAF rule ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Add a custom WAF rule
     AddRule {
@@ -3673,9 +3753,9 @@ pub enum ShieldWafAction {
     /// (the handler reads the rule first, then patches). Pass `--config-json`
     /// to supply the nested `ruleConfiguration` fields.
     UpdateRule {
-        /// WAF rule ID
-        #[arg(long)]
-        id: i64,
+        /// WAF rule ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Rule name
         #[arg(long)]
         name: Option<String>,
@@ -3705,9 +3785,9 @@ pub enum ShieldWafAction {
     },
     /// Delete a custom WAF rule
     DeleteRule {
-        /// WAF rule ID
-        #[arg(long)]
-        id: i64,
+        /// WAF rule ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// List triggered WAF rules for a Shield Zone
     TriggeredRules {
@@ -3852,9 +3932,9 @@ pub enum ShieldRateLimitAction {
     },
     /// Get a rate limit rule by ID
     Get {
-        /// Rate limit rule ID
-        #[arg(long)]
-        id: i64,
+        /// Rate limit rule ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Create a rate limit rule
     Create {
@@ -3906,9 +3986,9 @@ pub enum ShieldRateLimitAction {
     /// (the handler reads the rule first, then patches). Pass `--config-json`
     /// to supply the nested `ruleConfiguration` fields.
     Update {
-        /// Rate limit rule ID
-        #[arg(long)]
-        id: i64,
+        /// Rate limit rule ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Rule name
         #[arg(long)]
         name: Option<String>,
@@ -3950,9 +4030,9 @@ pub enum ShieldRateLimitAction {
     },
     /// Delete a rate limit rule
     Delete {
-        /// Rate limit rule ID
-        #[arg(long)]
-        id: i64,
+        /// Rate limit rule ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
 }
 
@@ -3969,9 +4049,9 @@ pub enum ShieldAccessListAction {
         /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
-        /// Access list ID
-        #[arg(long)]
-        id: i64,
+        /// Access list ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Create a custom access list
     Create {
@@ -3993,9 +4073,9 @@ pub enum ShieldAccessListAction {
         /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
-        /// Access list ID
-        #[arg(long)]
-        id: i64,
+        /// Access list ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// List name
         #[arg(long)]
         name: Option<String>,
@@ -4008,9 +4088,9 @@ pub enum ShieldAccessListAction {
         /// Shield zone ID
         #[arg(long)]
         shield_zone_id: i64,
-        /// Access list ID
-        #[arg(long)]
-        id: i64,
+        /// Access list ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Update access list configuration (enabled/action)
     UpdateConfig {
@@ -4099,9 +4179,9 @@ pub enum ScriptAction {
     },
     /// Get an edge script by ID
     Get {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Create a new edge script
     Create {
@@ -4123,9 +4203,9 @@ pub enum ScriptAction {
     },
     /// Update an edge script
     Update {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// New name for the script
         #[arg(long)]
         name: Option<String>,
@@ -4135,9 +4215,9 @@ pub enum ScriptAction {
     },
     /// Delete an edge script
     Delete {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Also delete linked pull zones
         #[arg(long)]
         delete_linked_pull_zones: bool,
@@ -4149,9 +4229,9 @@ pub enum ScriptAction {
     },
     /// Publish a new release of the script
     Publish {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Release note
         #[arg(long)]
         note: Option<String>,
@@ -4173,9 +4253,9 @@ pub enum ScriptAction {
     },
     /// Get script usage statistics
     Statistics {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         date_from: Option<String>,
@@ -4191,9 +4271,9 @@ pub enum ScriptAction {
     },
     /// Rotate the deployment key for a script
     RotateDeploymentKey {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
 }
 
@@ -4201,15 +4281,15 @@ pub enum ScriptAction {
 pub enum ScriptCodeAction {
     /// Get the current draft source code
     Get {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Update the draft source code
     Update {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Inline source code
         #[arg(long, conflicts_with = "file")]
         code: Option<String>,
@@ -4223,9 +4303,9 @@ pub enum ScriptCodeAction {
 pub enum ScriptReleaseAction {
     /// List all releases for a script
     List {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Page number (1-based)
         #[arg(long, conflicts_with = "all")]
         page: Option<i32>,
@@ -4238,9 +4318,9 @@ pub enum ScriptReleaseAction {
     },
     /// Get the active (live) release for a script
     GetActive {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
 }
 
@@ -4248,15 +4328,15 @@ pub enum ScriptReleaseAction {
 pub enum ScriptVariableAction {
     /// List environment variables for a script
     List {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Add an environment variable to a script
     Add {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Variable name
         #[arg(long)]
         name: String,
@@ -4269,9 +4349,9 @@ pub enum ScriptVariableAction {
     },
     /// Update an environment variable
     Update {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Variable ID
         #[arg(long)]
         variable_id: i64,
@@ -4284,18 +4364,18 @@ pub enum ScriptVariableAction {
     },
     /// Delete an environment variable
     Delete {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Variable ID
         #[arg(long)]
         variable_id: i64,
     },
     /// Upsert (create or update by name) an environment variable
     Upsert {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Variable name
         #[arg(long)]
         name: String,
@@ -4312,15 +4392,15 @@ pub enum ScriptVariableAction {
 pub enum ScriptSecretAction {
     /// List secrets for a script
     List {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Add a secret to a script
     Add {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Secret name
         #[arg(long)]
         name: String,
@@ -4330,9 +4410,9 @@ pub enum ScriptSecretAction {
     },
     /// Update a secret's value
     Update {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Secret ID
         #[arg(long)]
         secret_id: i64,
@@ -4342,18 +4422,18 @@ pub enum ScriptSecretAction {
     },
     /// Delete a secret
     Delete {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Secret ID
         #[arg(long)]
         secret_id: i64,
     },
     /// Upsert (create or update by name) a secret
     Upsert {
-        /// Script ID
-        #[arg(long)]
-        id: i64,
+        /// Script ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// Secret name
         #[arg(long)]
         name: String,
@@ -4508,15 +4588,15 @@ pub enum ContainerAction {
     },
     /// Shortcut for `container app get`. `app` is the canonical subcommand.
     Get {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Shortcut for `container app delete`. `app` is the canonical subcommand.
     Delete {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Also delete every auto-managed Pull Zone owned by this app.
         #[arg(long, conflicts_with = "no_cascade")]
         cascade: bool,
@@ -4542,9 +4622,9 @@ pub enum ContainerAppAction {
     },
     /// Get a specific application
     Get {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Create a new application
     Create {
@@ -4592,9 +4672,9 @@ pub enum ContainerAppAction {
     },
     /// Update an application
     Update {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// New name
         #[arg(long)]
         name: Option<String>,
@@ -4615,27 +4695,27 @@ pub enum ContainerAppAction {
     },
     /// Show an application usage summary (raw JSON; schema-less upstream)
     Summary {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Deploy an application
     Deploy {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Undeploy (suspend) an application
     Undeploy {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Restart all pods in an application
     Restart {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Delete an application.
     ///
@@ -4643,9 +4723,9 @@ pub enum ContainerAppAction {
     /// for CDN endpoints) — pass `--cascade` to also delete them, or
     /// `--no-cascade` to delete only the app and print the orphan IDs.
     Delete {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Also delete every auto-managed Pull Zone owned by this app.
         #[arg(long, conflicts_with = "no_cascade")]
         cascade: bool,
@@ -4656,15 +4736,15 @@ pub enum ContainerAppAction {
     },
     /// Show live overview for an application
     Overview {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Show statistics for an application
     Statistics {
-        /// Container app ID
-        #[arg(long)]
-        id: String,
+        /// Container app ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Start date (YYYY-MM-DD)
         #[arg(long)]
         from: String,
@@ -5071,9 +5151,9 @@ pub enum ContainerRegistryAction {
     List,
     /// Get a specific container registry
     Get {
-        /// Registry ID
-        #[arg(long)]
-        id: i64,
+        /// Registry ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// Create a container registry
     Create {
@@ -5092,9 +5172,9 @@ pub enum ContainerRegistryAction {
     },
     /// Update a container registry
     Update {
-        /// Registry ID
-        #[arg(long)]
-        id: i64,
+        /// Registry ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
         /// New display name
         #[arg(long)]
         name: String,
@@ -5107,9 +5187,9 @@ pub enum ContainerRegistryAction {
     },
     /// Delete a container registry
     Delete {
-        /// Registry ID
-        #[arg(long)]
-        id: i64,
+        /// Registry ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<i64>,
     },
     /// List container images in a registry
     Images {
@@ -5322,9 +5402,9 @@ pub enum DbAction {
     },
     /// Get a database (v1)
     Get {
-        /// Database ID (db_<ulid>)
-        #[arg(long)]
-        id: String,
+        /// Database ID (db_<ulid>) (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Create a database (v1).
     ///
@@ -5351,15 +5431,15 @@ Hoppy validates locally before the API call."
     },
     /// Delete a database (v1)
     Delete {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Fork a database into a new slug (preview)
     Fork {
-        /// Source database ID
-        #[arg(long)]
-        id: String,
+        /// Source database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// New slug for the fork (same constraints as `db create --slug`,
         /// max 16 chars — see `hoppy db create --help`)
         #[arg(long)]
@@ -5373,18 +5453,18 @@ Hoppy validates locally before the API call."
     },
     /// Destructive: restore a database to a previous generation (preview)
     Restore {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Generation UUID to restore (see `db versions`)
         #[arg(long)]
         version: String,
     },
     /// List database generation versions (preview)
     Versions {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Limit the number of generations returned
         #[arg(long)]
         limit: Option<u64>,
@@ -5404,18 +5484,18 @@ Hoppy validates locally before the API call."
     ///   # Provide a JWT instead of minting one
     ///   hoppy db ping --id db_01HX... --token-file ~/.bunny/db.jwt
     Ping {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// File containing a libSQL JWT (skips the implicit token mint)
         #[arg(long, value_name = "PATH")]
         token_file: Option<String>,
     },
     /// Get statistics for a database (v2)
     Statistics {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
@@ -5425,9 +5505,9 @@ Hoppy validates locally before the API call."
     },
     /// Get aggregated usage for a database (v2)
     Usage {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
@@ -5484,9 +5564,9 @@ pub enum DbV2Action {
     },
     /// Get a database (v2)
     Get {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Create a database (v2). NOTE: returns 500 upstream as of 2026-05-05.
     ///
@@ -5512,9 +5592,9 @@ pub enum DbV2Action {
     /// AMS, …). Supplying either flag replaces that whole region list; omit
     /// both to change nothing.
     Update {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Primary region (compute code, repeatable). Replaces the list.
         #[arg(long = "primary-region", value_name = "REGION")]
         primary_regions: Vec<String>,
@@ -5524,9 +5604,9 @@ pub enum DbV2Action {
     },
     /// Delete a database (v2)
     Delete {
-        /// Database ID
-        #[arg(long)]
-        id: String,
+        /// Database ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
 }
 
@@ -5540,9 +5620,9 @@ pub enum DbGroupAction {
     },
     /// Get a database group
     Get {
-        /// Database group ID
-        #[arg(long)]
-        id: String,
+        /// Database group ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Create a database group.
     ///
@@ -5579,9 +5659,9 @@ pub enum DbGroupAction {
     /// use compute codes (DE, FR, AMS, …); supplying either flag replaces that
     /// whole region list. Omit all three flags to change nothing.
     Update {
-        /// Database group ID
-        #[arg(long)]
-        id: String,
+        /// Database group ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// New display name (max 64 chars)
         #[arg(long)]
         display_name: Option<String>,
@@ -5594,15 +5674,15 @@ pub enum DbGroupAction {
     },
     /// Delete a database group
     Delete {
-        /// Database group ID
-        #[arg(long)]
-        id: String,
+        /// Database group ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
     /// Get statistics for a database group
     Stats {
-        /// Database group ID
-        #[arg(long)]
-        id: String,
+        /// Database group ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
@@ -5612,9 +5692,9 @@ pub enum DbGroupAction {
     },
     /// Get aggregated usage for a database group
     Usage {
-        /// Database group ID
-        #[arg(long)]
-        id: String,
+        /// Database group ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Start of the time window (YYYY-MM-DD or YYYY-MM-DDThh:mm:ssZ)
         #[arg(long)]
         from: String,
@@ -5630,9 +5710,9 @@ pub enum DbGroupAction {
     },
     /// Generate a new auth token for a whole group
     GenerateKeys {
-        /// Database group ID
-        #[arg(long)]
-        id: String,
+        /// Database group ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
         /// Token scope: full-access (default) or read-only
         #[arg(long, value_enum, default_value_t = TokenAuthorization::FullAccess)]
         authorization: TokenAuthorization,
@@ -5642,9 +5722,9 @@ pub enum DbGroupAction {
     },
     /// Invalidate every auth token for a group
     InvalidateKeys {
-        /// Database group ID
-        #[arg(long)]
-        id: String,
+        /// Database group ID (positional or `--id`)
+        #[command(flatten)]
+        id: IdArg<String>,
     },
 }
 
@@ -5738,7 +5818,25 @@ impl From<TokenAuthorization> for bunny_net_api::database::types::Authorization 
 #[cfg(test)]
 mod cli_parse_tests {
     use super::Cli;
-    use clap::Parser;
+    use clap::{CommandFactory, Parser};
+
+    /// Catches positional-ordering and duplicate-arg-id mistakes across the
+    /// whole command tree (including every `IdArg` use).
+    #[test]
+    fn command_tree_passes_clap_debug_asserts() {
+        Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn id_arg_accepts_positional_and_flag_but_not_both_or_neither() {
+        assert!(Cli::try_parse_from(["hoppy", "pull-zone", "get", "42"]).is_ok());
+        assert!(Cli::try_parse_from(["hoppy", "pull-zone", "get", "--id", "42"]).is_ok());
+        assert!(Cli::try_parse_from(["hoppy", "pull-zone", "get", "42", "--id", "42"]).is_err());
+        assert!(Cli::try_parse_from(["hoppy", "pull-zone", "get"]).is_err());
+        assert!(Cli::try_parse_from(["hoppy", "pull-zone", "get", "abc"]).is_err());
+        assert!(Cli::try_parse_from(["hoppy", "pull-zone", "delete", "42"]).is_ok());
+        assert!(Cli::try_parse_from(["hoppy", "container", "get", "appid"]).is_ok());
+    }
 
     /// Regression test: `container logs` must parse without panicking.
     /// Previously crashed with "Mismatch between definition and access of 'format'"

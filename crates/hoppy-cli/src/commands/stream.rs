@@ -322,6 +322,7 @@ async fn handle_library(
             }
         }
         StreamLibraryAction::Get { id } => {
+            let id = id.get();
             let lib = core.get_video_library(*id).await?;
             print_library(&lib, format, redact_cfg);
         }
@@ -366,6 +367,7 @@ async fn handle_library(
             transcribing_caption_languages,
             enable_content_tagging,
         } => {
+            let id = id.get();
             let mut body = UpdateVideoLibrary::new();
             let mut any = false;
             macro_rules! set_opt {
@@ -442,6 +444,7 @@ async fn handle_library(
             print_library(&lib, format, redact_cfg);
         }
         StreamLibraryAction::Delete { id } => {
+            let id = id.get();
             if !yes {
                 eprint!("Delete video library {id}? [y/N] ");
                 io::stderr().flush()?;
@@ -463,9 +466,11 @@ async fn handle_library(
             );
         }
         StreamLibraryAction::ResetApiKey { id } => {
+            let id = id.get();
             reset_library_key(&core, format, yes, redact_cfg, *id, false).await?;
         }
         StreamLibraryAction::ResetReadOnlyApiKey { id } => {
+            let id = id.get();
             reset_library_key(&core, format, yes, redact_cfg, *id, true).await?;
         }
         StreamLibraryAction::Statistics {
@@ -475,6 +480,7 @@ async fn handle_library(
             hourly,
             video_guid,
         } => {
+            let id = id.get();
             let date_from = date::normalise_datetime_opt(date_from.as_deref())?;
             let date_to = date::normalise_datetime_opt(date_to.as_deref())?;
             let stream = resolve_stream_client(*id, &opts).await?;
@@ -568,6 +574,7 @@ async fn handle_library_referrer(
 ) -> Result<()> {
     match action {
         StreamLibraryReferrerAction::Allow { id, value } => {
+            let id = id.get();
             core.add_video_library_allowed_referrer(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -578,6 +585,7 @@ async fn handle_library_referrer(
             );
         }
         StreamLibraryReferrerAction::RemoveAllowed { id, value } => {
+            let id = id.get();
             core.remove_video_library_allowed_referrer(*id, value)
                 .await?;
             output::print_mutation_result(
@@ -589,6 +597,7 @@ async fn handle_library_referrer(
             );
         }
         StreamLibraryReferrerAction::Block { id, value } => {
+            let id = id.get();
             core.add_video_library_blocked_referrer(*id, value).await?;
             output::print_mutation_result(
                 format,
@@ -599,6 +608,7 @@ async fn handle_library_referrer(
             );
         }
         StreamLibraryReferrerAction::RemoveBlocked { id, value } => {
+            let id = id.get();
             core.remove_video_library_blocked_referrer(*id, value)
                 .await?;
             output::print_mutation_result(
@@ -621,6 +631,7 @@ async fn handle_library_watermark(
 ) -> Result<()> {
     match action {
         StreamLibraryWatermarkAction::Set { id, file } => {
+            let id = id.get();
             // Stream the image from disk rather than buffering it in memory.
             let fh = tokio::fs::File::open(file)
                 .await
@@ -652,6 +663,7 @@ async fn handle_library_watermark(
             }
         }
         StreamLibraryWatermarkAction::Delete { id } => {
+            let id = id.get();
             core.delete_video_library_watermark(*id).await?;
             output::print_mutation_result(
                 format,

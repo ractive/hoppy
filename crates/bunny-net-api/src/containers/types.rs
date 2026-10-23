@@ -779,6 +779,9 @@ pub struct EnvironmentVariable {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ContainerEndpoint {
+    /// Endpoint id (e.g. `<appId>-<name>-<suffix>`); what pull zones and
+    /// OpenTofu reference. Required in the current OpenAPI spec.
+    pub id: String,
     pub display_name: String,
     pub public_host: String,
     #[serde(rename = "type")]
@@ -1529,6 +1532,23 @@ pub struct ListLogForwardingResponse {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn container_endpoint_keeps_id() {
+        let ep: ContainerEndpoint = serde_json::from_value(serde_json::json!({
+            "id": "app-relay-cdn-abc",
+            "displayName": "relay-cdn",
+            "publicHost": "relay.b-cdn.net",
+            "type": "cdn",
+            "isSslEnabled": true,
+            "pullZoneId": "6442567",
+            "portMappings": []
+        }))
+        .expect("endpoint deserialises");
+        assert_eq!(ep.id, "app-relay-cdn-abc");
+        let back = serde_json::to_value(&ep).expect("serialises");
+        assert_eq!(back["id"], "app-relay-cdn-abc");
+    }
+
     use super::*;
 
     #[test]

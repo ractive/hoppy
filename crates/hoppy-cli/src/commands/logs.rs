@@ -119,6 +119,7 @@ pub async fn handle(
             legacy_download,
             output,
         } => {
+            let id = id.get();
             let client = auth::logging_client_with_reveal(&auth::ClientOpts {
                 debug,
                 dry_run,
@@ -220,6 +221,7 @@ pub async fn handle(
             }
         }
         LogsAction::OriginErrors { id, date } => {
+            let id = id.get();
             let client = auth::origin_errors_client_with_reveal(&auth::ClientOpts {
                 debug,
                 dry_run,

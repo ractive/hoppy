@@ -392,6 +392,7 @@ pub async fn handle(
             output::print_data(&rows, format);
         }
         DbAction::Get { id } => {
+            let id = id.get();
             let resp = client.get_database(id).await?;
             let detail: DatabaseDetail = (&resp.database).into();
             output::print_single(&detail, format);
@@ -405,6 +406,7 @@ pub async fn handle(
             output::print_single(&detail, format);
         }
         DbAction::Delete { id } => {
+            let id = id.get();
             if !confirm_destructive(&format!("Delete database {id}?"), yes)? {
                 return Ok(());
             }
@@ -418,6 +420,7 @@ pub async fn handle(
             );
         }
         DbAction::Fork { id, target, date } => {
+            let id = id.get();
             validate_slug(target)?;
             let resp = client
                 .fork_database(
@@ -432,6 +435,7 @@ pub async fn handle(
             output::print_single(&detail, format);
         }
         DbAction::Restore { id, version } => {
+            let id = id.get();
             if !confirm_destructive(
                 &format!(
                     "Restore database {id} to generation {version}? Current data is overwritten."
@@ -462,6 +466,7 @@ pub async fn handle(
             older_than,
             newer_than,
         } => {
+            let id = id.get();
             let body = ListVersionsDatabasePayload {
                 limit: *limit,
                 older_than: older_than.clone(),
@@ -479,6 +484,7 @@ pub async fn handle(
             output::print_data(&rows, format);
         }
         DbAction::Ping { id, token_file } => {
+            let id = id.get();
             let db = client.get_database(id).await?.database;
             let token = if let Some(path) = token_file {
                 tokio::fs::read_to_string(path)
@@ -508,12 +514,14 @@ pub async fn handle(
             }
         }
         DbAction::Statistics { id, from, to } => {
+            let id = id.get();
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let stats = client.get_database_statistics_v2(id, &from, &to).await?;
             output::print_dynamic_pascal(&stats, format);
         }
         DbAction::Usage { id, from, to } => {
+            let id = id.get();
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let usage = client.get_database_usage_v2(id, &from, &to).await?;
@@ -612,6 +620,7 @@ async fn handle_v2(
             }
         }
         DbV2Action::Get { id } => {
+            let id = id.get();
             let resp = client.get_database_v2(id).await?;
             output::print_dynamic_pascal(&resp, format);
         }
@@ -646,6 +655,7 @@ async fn handle_v2(
             primary_regions,
             replicas_regions,
         } => {
+            let id = id.get();
             if primary_regions.is_empty() && replicas_regions.is_empty() {
                 bail!(
                     "at least one update flag is required \
@@ -661,6 +671,7 @@ async fn handle_v2(
             output::print_single(&row, format);
         }
         DbV2Action::Delete { id } => {
+            let id = id.get();
             if !confirm_destructive(&format!("Delete database {id} (v2)?"), yes)? {
                 return Ok(());
             }
@@ -691,6 +702,7 @@ async fn handle_group(
             output::print_data(&rows, format);
         }
         DbGroupAction::Get { id } => {
+            let id = id.get();
             let resp = client.get_group(id).await?;
             let row: GroupRow = (&resp.group).into();
             output::print_single(&row, format);
@@ -745,6 +757,7 @@ async fn handle_group(
             primary_regions,
             replicas_regions,
         } => {
+            let id = id.get();
             if display_name.is_none() && primary_regions.is_empty() && replicas_regions.is_empty() {
                 bail!(
                     "at least one update flag is required \
@@ -761,6 +774,7 @@ async fn handle_group(
             output::print_single(&row, format);
         }
         DbGroupAction::Delete { id } => {
+            let id = id.get();
             if !confirm_destructive(
                 &format!("Delete database group {id}? All databases in the group are affected."),
                 yes,
@@ -777,12 +791,14 @@ async fn handle_group(
             );
         }
         DbGroupAction::Stats { id, from, to } => {
+            let id = id.get();
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let stats = client.get_group_stats(id, &from, &to).await?;
             output::print_dynamic_pascal(&stats, format);
         }
         DbGroupAction::Usage { id, from, to } => {
+            let id = id.get();
             let from = date::normalise_datetime(from)?;
             let to = date::normalise_datetime(to)?;
             let usage = client.get_group_aggregated_usage(id, &from, &to).await?;
@@ -800,6 +816,7 @@ async fn handle_group(
             authorization,
             expires_at,
         } => {
+            let id = id.get();
             let mut body = GenerateTokenDatabaseGroupPayload::new((*authorization).into());
             if let Some(ts) = expires_at {
                 body.expires_at = Some(ts.clone());
@@ -814,6 +831,7 @@ async fn handle_group(
             );
         }
         DbGroupAction::InvalidateKeys { id } => {
+            let id = id.get();
             client.invalidate_group_keys(id).await?;
             output::print_mutation_result(
                 format,

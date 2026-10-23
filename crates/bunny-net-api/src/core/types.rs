@@ -37,20 +37,24 @@ impl std::fmt::Display for PullZoneType {
 #[repr(u8)]
 pub enum OriginType {
     OriginUrl = 0,
+    DnsAccelerate = 1,
     StorageZone = 2,
     LoadBalancer = 3,
     Script = 4,
     MagicContainerEndpoint = 5,
+    PushZone = 6,
 }
 
 impl std::fmt::Display for OriginType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             OriginType::OriginUrl => write!(f, "OriginUrl"),
+            OriginType::DnsAccelerate => write!(f, "DnsAccelerate"),
             OriginType::StorageZone => write!(f, "StorageZone"),
             OriginType::LoadBalancer => write!(f, "LoadBalancer"),
             OriginType::Script => write!(f, "Script"),
             OriginType::MagicContainerEndpoint => write!(f, "MagicContainerEndpoint"),
+            OriginType::PushZone => write!(f, "PushZone"),
         }
     }
 }
@@ -784,6 +788,15 @@ pub struct PullZone {
     pub origin_type: Option<OriginType>,
     #[serde(default)]
     pub storage_zone_id: Option<i64>,
+    /// Stream video library this zone fronts (`-1`/absent when none).
+    #[serde(default)]
+    pub video_library_id: Option<i64>,
+    /// DNS zone this zone is linked to (`0`/absent when none).
+    #[serde(default)]
+    pub dns_zone_id: Option<i64>,
+    /// DNS record this zone is linked to (`0`/absent when none).
+    #[serde(default)]
+    pub dns_record_id: Option<i64>,
 
     // Network / routing
     #[serde(default)]
@@ -4751,6 +4764,14 @@ pub struct StorageZoneEgressStatistics {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn origin_type_covers_dns_accelerate_and_push_zone() {
+        let parse = |n: u8| serde_json::from_str::<OriginType>(&n.to_string()).ok();
+        assert_eq!(parse(1), Some(OriginType::DnsAccelerate));
+        assert_eq!(parse(5), Some(OriginType::MagicContainerEndpoint));
+        assert_eq!(parse(6), Some(OriginType::PushZone));
+    }
+
     use super::*;
 
     /// Regression: the Bunny API returns `"Records": null` for in-progress
