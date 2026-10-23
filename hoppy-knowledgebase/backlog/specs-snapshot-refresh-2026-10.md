@@ -2,13 +2,14 @@
 title: Refresh specs/ snapshot to the 2026-10-23 bunny.net specs
 type: backlog
 date: 2026-10-23
-status: planned
+status: completed
 priority: medium
 origin: openapi-drift-2026-10-23
 tags:
   - openapi
   - specs
   - api-drift
+resolved-in: iter-87
 ---
 
 # Refresh `specs/`
@@ -23,8 +24,14 @@ iteration that also lands the type fixes, so that the code comments
 referencing `specs/*.json` versions stay truthful (for example,
 `database/types.rs:3` cites 0.0.130).
 
-- [ ] Download from the canonical URLs listed in [[research/openapi-drift-2026-10-23]]
-- [ ] Add `specs/partner-portal.json`
-- [ ] Update the version references in module docs
+- [x] Download from the canonical URLs listed in [[research/openapi-drift-2026-10-23]]
+- [x] Add `specs/partner-portal.json`
+- [x] Update the version references in module docs
 
 See [[research/openapi-drift-2026-10-23]].
+
+## Resolution (iter-87, 2026-10-23)
+
+Specs refreshed to the 2026-10-23 documents (6 replaced, `partner-portal.json` added, storage/logging/origin-errors byte-identical and untouched). `database/types.rs` now cites 0.0.144; no other code comment cites a spec version.
+
+See [[iterations/iteration-87-openapi-drift-fixes]].

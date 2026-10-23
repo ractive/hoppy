@@ -27,3 +27,9 @@ spec says `dockerHub`/`gitHub`.
 - [ ] Add `BunnyRegistry`, `is_platform_managed`, and the two new endpoints
 
 See [[research/openapi-drift-2026-10-23]].
+
+## Progress (iter-87, 2026-10-23)
+
+- `RegistryType` now has a `BunnyRegistry` read variant and accepts camelCase or PascalCase on responses (also for the two registry status enums).
+- **Casing on requests is still unverified.** `registry list` returns no `type` field, and exercising `registry add` needs a write, so hoppy keeps sending PascalCase (`DockerHub`). A test pins that. Verify against a real `registry add` before changing it.
+- Still open: `is_platform_managed`, `POST /registries/images/find`, `POST /registries/tags/paged`.

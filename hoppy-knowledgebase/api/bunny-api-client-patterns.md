@@ -43,33 +43,55 @@ pub has_mp4_fallback: bool,
 
 This applies to PascalCase APIs only. camelCase APIs don't have this issue.
 
-## 3. Integer Enums via `serde_repr`
+## 3. Integer Enums via `forward_compat_repr_enum!`
 
-Bunny.net uses integer-backed enums extensively. Use `serde_repr` with `#[repr(u8)]` (or `#[repr(u16)]` for larger values) for named variants:
-
-```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum PullZoneType {
-    Premium = 0,
-    Volume = 1,
-}
-```
-
-**Always add a `Display` impl** for enums that will appear in CLI table output:
+Bunny.net uses integer-backed enums extensively and adds values without
+versioning. Since iter-87 every integer enum in a request or response type is
+declared with the crate-internal macro in `crates/bunny-net-api/src/macros.rs`
+(not `serde_repr`, which was removed as a dependency):
 
 ```rust
-impl std::fmt::Display for PullZoneType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PullZoneType::Premium => write!(f, "Premium"),
-            PullZoneType::Volume => write!(f, "Volume"),
-        }
+forward_compat_repr_enum! {
+    /// Docs here (doc comments and derives go inside the macro).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum PullZoneType: u8 {
+        Premium = 0,
+        Volume = 1,
     }
 }
 ```
 
-**Gaps in enum values:** Some bunny.net enums skip integers (e.g. `OriginType` has 0, 2, 3, 4 — no 1). `serde_repr` handles this correctly; just map the values that exist.
+The macro adds an `Unknown(repr)` variant that captures any undeclared integer
+and serializes back to the same integer, plus `from_repr`, `try_from_repr`
+(strict), `to_repr`, `is_known` and `KNOWN`. Fields stay plain `Enum` /
+`Option<Enum>`; do **not** add per-field helpers. See the decision-log row
+"Response enums never fail on unknown values" (2026-10-23).
+
+Rules:
+
+- **Display:** add a `Display` impl with an `Unknown(n) => "Unknown({n})"` arm,
+  so tables show the raw number instead of a blank.
+- **Never construct from user input through serde.** Deserialization is
+  lenient now. Validate flags with `KnownRepr::try_from_known`
+  (`u8_to_enum` / `u16_to_enum` in `commands/shield.rs`) or a `FromStr` that
+  uses `try_from_repr`.
+- **String enums** in responses carry `#[serde(other)] Unknown` as the last
+  variant (serde cannot keep the raw string, so use it only for values that
+  are never written back). Request-only enums are listed in the guard test.
+- **Regression guard:** `macros::tests` in `bunny-net-api` scans `src/` and
+  fails on `Deserialize_repr`/`serde_repr`, and on a `Deserialize` string enum
+  without `#[serde(other)]` (request-only enums are allow-listed there).
+- Enums with a spec value literally named `Unknown` (for example
+  `DnsMonitoringStatus`) must rename that variant, because `Unknown(n)` is
+  reserved for the catch-all.
+
+**Always add a `Display` impl** for enums that will appear in CLI table output.
+
+**Gaps in enum values:** Some bunny.net enums skip integers (e.g. `OriginType` has 0, 2, 3, 4, 5 — no 1). Just map the values that exist.
+
+**Name enum variants after the spec**, not after guesses: `x-enum-varnames` /
+the `description` list in the OpenAPI schema. Iter-87 had to rename
+`WafRuleOperatorType` because the labels were invented and wrong.
 
 ## 4. Required vs Optional Fields
 
@@ -351,7 +373,7 @@ Always check the spec for the correct method per endpoint.
 
 ## 12. Workspace & Crate Layout
 
-```
+```text
 hoppy/
   Cargo.toml          (workspace root, resolver = "2")
   src/                (hoppy CLI binary)

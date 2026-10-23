@@ -2,12 +2,13 @@
 title: stream resolutions cleanup discards the new cleanup report (dry-run shows nothing)
 type: backlog
 date: 2026-10-23
-status: planned
+status: completed
 priority: medium
 origin: openapi-drift-2026-10-23
 tags:
   - stream
   - api-drift
+resolved-in: iter-87
 ---
 
 # `POST …/resolutions/cleanup` now returns a cleanup plan
@@ -22,7 +23,13 @@ That model has `resolutionsToDelete`, `resolutionsToDeleteFromPlaylist`,
 drops all of it. As a result, the server-side `--dry-run` preview tells the
 user nothing.
 
-- [ ] Model `ResolutionsCleanupModel` and return it
-- [ ] Render the plan in the CLI, especially for `--dry-run`
+- [x] Model `ResolutionsCleanupModel` and return it
+- [x] Render the plan in the CLI, especially for `--dry-run`
 
 See [[research/openapi-drift-2026-10-23]].
+
+## Resolution (iter-87, 2026-10-23)
+
+`cleanup_video_resolutions` returns `ResolutionsCleanupStatus` (status fields plus `Data: ResolutionsCleanupModel`); the CLI prints the plan and passes `Data` through in JSON.
+
+See [[iterations/iteration-87-openapi-drift-fixes]].

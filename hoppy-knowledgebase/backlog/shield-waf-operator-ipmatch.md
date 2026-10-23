@@ -2,7 +2,7 @@
 title: WAF operator enum lacks 13 = IPMATCH and its names do not match the spec
 type: backlog
 date: 2026-10-23
-status: planned
+status: completed
 priority: high
 origin: openapi-drift-2026-10-23
 tags:
@@ -10,6 +10,7 @@ tags:
   - waf
   - api-drift
   - deserialization
+resolved-in: iter-87
 ---
 
 # `WafRuleOperatorType` drift
@@ -28,9 +29,15 @@ meaning. The spec has `0 BEGINSWITH, 1 ENDSWITH, 2 CONTAINS, 3 CONTAINSWORD,
 15 IpMatch, …`, so `--operator eq` sends BEGINSWITH and `--operator regex`
 sends GE.
 
-- [ ] Rename the variants to the spec meanings and add `IpMatch = 13`
-- [ ] Add a forward-compatible fallback for unknown operators on the response structs
-- [ ] Add a CLI migration note, since the operator names change meaning
-- [ ] Model `isNegated` / `isRegexVariable`, which are new on all three condition schemas
+- [x] Rename the variants to the spec meanings and add `IpMatch = 13`
+- [x] Add a forward-compatible fallback for unknown operators on the response structs
+- [x] Add a CLI migration note, since the operator names change meaning
+- [x] Model `isNegated` / `isRegexVariable`, which are new on all three condition schemas
 
 See [[research/openapi-drift-2026-10-23]].
+
+## Resolution (iter-87, 2026-10-23)
+
+Variants renamed to the spec names with `IpMatch = 13`; `--operator-type` accepts spec names (case-insensitive) or numbers through one table (`WafRuleOperatorType::NAMES`); old labels are not aliases. Table test pins every name and number to the spec. `isNegated` / `isRegexVariable` are modelled on the three condition schemas and echoed on update. Unknown operators deserialize to `Unknown(n)` and round-trip on update-rule (e2e-tested). The update-rule fallback default is now EQ (5) instead of wire 0.
+
+See [[iterations/iteration-87-openapi-drift-fixes]].
