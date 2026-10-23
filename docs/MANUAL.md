@@ -253,7 +253,7 @@ via a continuation token surfaced in a stderr hint (or the JSON
 | `--yes` / `-y` | Skip confirmation prompts |
 | `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
 | `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
-| `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`). Hints use the positional id form (`hoppy pull-zone get 123456`) wherever the command accepts it |
+| `--no-hints` | Suppress drill-down hint lines on stderr (they print in every format; stdout is never touched). Hints use the positional id form (`hoppy pull-zone get 123456`) wherever the command accepts it |
 
 ### JSON output shapes
 

@@ -307,13 +307,14 @@ pub async fn handle(
                         .collect();
                     output::print_data(&rows, format);
                 }
-                if !*all && let Some(first) = zones.first() {
-                    let id = first.zone.id;
-                    output::hints::tips(&[
-                        &crate::hint_cmds::pull_zone_get(id),
-                        &crate::hint_cmds::pull_zone_statistics(id),
-                    ]);
-                }
+            }
+            // Drill-down tips go to stderr and apply to every format, JSON included.
+            if !*all && let Some(first) = zones.first() {
+                let id = first.zone.id;
+                output::hints::tips(&[
+                    &crate::hint_cmds::pull_zone_get(id),
+                    &crate::hint_cmds::pull_zone_statistics(id),
+                ]);
             }
         }
         PullZoneAction::Get { id } => {
