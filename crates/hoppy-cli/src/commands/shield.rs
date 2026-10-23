@@ -602,6 +602,19 @@ fn load_config_json(path: Option<&std::path::Path>) -> Result<Option<RuleConfigJ
             path.display()
         );
     }
+    if let Some(bad) = cfg
+        .chained_rule_conditions
+        .iter()
+        .flatten()
+        .map(|c| c.operator_type)
+        .find(|o| !o.is_known())
+    {
+        bail!(
+            "invalid chainedRuleConditions operatorType value {} in {}",
+            bad.to_repr(),
+            path.display()
+        );
+    }
     Ok(Some(cfg))
 }
 

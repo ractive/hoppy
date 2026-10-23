@@ -26,7 +26,7 @@ pub enum Authorization {
     ReadOnly,
     /// A scope this client does not model yet (forward-compat; the raw string
     /// is not preserved, so never send this back).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -559,6 +559,15 @@ pub struct PingResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unknown_authorization_deserialises_but_refuses_to_serialise() {
+        assert_eq!(
+            serde_json::from_str::<Authorization>("\"superuser\"").unwrap(),
+            Authorization::Unknown
+        );
+        assert!(serde_json::to_string(&Authorization::Unknown).is_err());
+    }
 
     #[test]
     fn authorization_serialises_kebab() {

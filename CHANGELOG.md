@@ -49,6 +49,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hidden aliases for the same wire values 0 / 1.
 - `shield zone update --ddos-execution-mode` is deprecated and ignored (hidden,
   prints a warning): the API no longer accepts it.
+- Known remaining Shield label mismatches (names only, wire numbers are
+  unchanged): `AccessListAction` 1/2 (Allow/Block) appear swapped versus the
+  spec, so an access-list action chosen by its label can apply the opposite
+  policy; `AccessListType`, `WafRuleActionType`, `RatelimitRuleActionType`,
+  `WafRuleSeverityType`, `ShieldPlanType`, `BotDetectionExecutionMode`,
+  `BotDetectionSensitivity`, `BrowserFingerprintAggression` and
+  `DDoSExecutionMode` also differ. Tracked in
+  `hoppy-knowledgebase/backlog/shield-enum-labels-disagree-with-spec.md`.
 
 ### Added
 

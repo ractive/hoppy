@@ -207,6 +207,19 @@ mod tests {
     fn string_enums_have_serde_other_fallback() {
         // Request-only: never parsed from an API response.
         const REQUEST_ONLY: &[&str] = &["Granularity", "AuditLogOrder"];
+        // Enums that can be sent in request bodies: their `Unknown` fallback
+        // must refuse to serialise rather than emit a bogus string.
+        const SENT_IN_REQUESTS: &[&str] = &[
+            "RuntimeType",
+            "EndpointType",
+            "ImagePullPolicy",
+            "Protocol",
+            "AnycastIpProtocolVersion",
+            "RegistryType",
+            "LogForwardingType",
+            "SyslogFormat",
+            "Authorization",
+        ];
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut files = Vec::new();
         rust_sources(&src, &mut files);
@@ -238,11 +251,20 @@ mod tests {
                         attrs.push_str(lines[k]);
                     }
                     let derives_de = attrs.contains("Deserialize");
-                    if derives_de && !REQUEST_ONLY.contains(&name) && !body.contains("serde(other)")
+                    if derives_de && !REQUEST_ONLY.contains(&name) && !body.contains("serde(other")
                     {
                         panic!(
                             "{}: enum {name} derives Deserialize without a \
                              #[serde(other)] fallback; add one or list it as request-only",
+                            f.display()
+                        );
+                    }
+                    if SENT_IN_REQUESTS.contains(&name)
+                        && !body.contains("serde(other, skip_serializing)")
+                    {
+                        panic!(
+                            "{}: enum {name} is sent in requests; its fallback must be \
+                             #[serde(other, skip_serializing)]",
                             f.display()
                         );
                     }

@@ -39,6 +39,11 @@ Spec (`specs/shield.json`, `description` / `x-enum-varnames`) versus hoppy
 
 (`WafExecutionMode`, `WafPayloadLimitAction`: the spec gives no names.)
 
+**Highest risk, review-pr-106:** `AccessListAction` 1 and 2 (Allow/Block) appear
+swapped versus the spec. A user who picks an action by its label gets the
+opposite policy (an intended Block becomes Allow and vice versa). Verify
+against the live API first and fix this enum before the other label work.
+
 - [ ] Re-derive every Shield enum from `x-enum-varnames` with a spec-table test like `waf_rule_operator_names_and_numbers_match_spec`
 - [ ] Rewrite the matching `--*-type` / `--action` help texts; keep numbers unchanged
 - [ ] Decide per enum whether to also accept names on the CLI (as `--operator-type` does)

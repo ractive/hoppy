@@ -516,3 +516,147 @@ async fn edge_rule_list_shows_actions_35_to_37_by_name_and_unknown_raw() {
         assert!(stdout.contains(needle), "missing {needle}: {stdout}");
     }
 }
+
+/// `rate-limit update` must echo an operator this client does not know, and
+/// keep `isNegated`, just like `waf update-rule`.
+#[tokio::test]
+async fn rate_limit_update_echoes_unknown_operator_and_is_negated() {
+    let server = MockServer::start().await;
+    mount_get(
+        &server,
+        "/shield/rate-limit/8201",
+        "shield/rate_limit_rule_get_unknown_operator.json",
+    )
+    .await;
+    Mock::given(method("PATCH"))
+        .and(path("/shield/rate-limit/8201"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"operatorType\":99"))
+        .and(body_string_contains("\"isNegated\":true"))
+        .and(body_string_contains("\"ruleDescription\":\"renamed\""))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/rate_limit_rule_get_unknown_operator.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "rate-limit",
+            "update",
+            "--id",
+            "8201",
+            "--description",
+            "renamed",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// --config-json strictness for chained conditions
+// ---------------------------------------------------------------------------
+
+/// An unknown chained operator in `--config-json` must be rejected before any
+/// request reaches the API.
+async fn assert_unknown_chained_operator_rejected(operator: u8, args: &[&str]) {
+    let dir = tempfile::tempdir().unwrap();
+    let cfg_path = dir.path().join("cfg.json");
+    std::fs::write(
+        &cfg_path,
+        format!(r#"{{"chainedRuleConditions":[{{"operatorType":{operator},"value":"x"}}]}}"#),
+    )
+    .unwrap();
+
+    let server = MockServer::start().await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(args)
+        .args(["--config-json", cfg_path.to_str().unwrap()])
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success(), "unknown operator was accepted");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("chainedRuleConditions operatorType"),
+        "unexpected error: {stderr}"
+    );
+    assert!(
+        server.received_requests().await.unwrap().is_empty(),
+        "a request was sent despite the invalid config"
+    );
+}
+
+#[tokio::test]
+async fn waf_add_rule_rejects_unknown_chained_operator() {
+    for operator in [10u8, 11, 16, 99] {
+        assert_unknown_chained_operator_rejected(
+            operator,
+            &[
+                "--format",
+                "json",
+                "shield",
+                "waf",
+                "add-rule",
+                "--shield-zone-id",
+                "55001",
+                "--name",
+                "chained",
+                "--action-type",
+                "1",
+                "--operator-type",
+                "0",
+                "--severity-type",
+                "1",
+                "--value",
+                "x",
+            ],
+        )
+        .await;
+    }
+}
+
+#[tokio::test]
+async fn rate_limit_create_rejects_unknown_chained_operator() {
+    assert_unknown_chained_operator_rejected(
+        99,
+        &[
+            "--format",
+            "json",
+            "shield",
+            "rate-limit",
+            "create",
+            "--shield-zone-id",
+            "55001",
+            "--name",
+            "chained",
+            "--action-type",
+            "1",
+            "--operator-type",
+            "0",
+            "--severity-type",
+            "1",
+            "--value",
+            "/api",
+            "--request-count",
+            "100",
+            "--counter-key-type",
+            "1",
+            "--timeframe",
+            "60",
+            "--block-time",
+            "60",
+        ],
+    )
+    .await;
+}

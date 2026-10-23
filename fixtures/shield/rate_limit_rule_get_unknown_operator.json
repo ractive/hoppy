@@ -1,0 +1,16 @@
+{
+  "id": 8201,
+  "shieldZoneId": 55001,
+  "ruleName": "Future operator",
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 99,
+    "severityType": 1,
+    "value": "x",
+    "isNegated": true,
+    "requestCount": 10,
+    "counterKeyType": 1,
+    "timeframe": 60,
+    "blockTime": 300
+  }
+}

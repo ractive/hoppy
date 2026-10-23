@@ -120,7 +120,7 @@ pub enum RuntimeType {
     Reserved,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -134,7 +134,7 @@ pub enum EndpointType {
     PublicIp,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -158,7 +158,7 @@ pub enum ImagePullPolicy {
     IfNotPresent,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -178,7 +178,7 @@ pub enum Protocol {
     Sctp,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -188,7 +188,7 @@ pub enum AnycastIpProtocolVersion {
     IPv4,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -290,7 +290,7 @@ pub enum RegistryType {
     BunnyRegistry,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -335,7 +335,7 @@ pub enum LogForwardingType {
     SyslogTcp,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -346,7 +346,7 @@ pub enum SyslogFormat {
     SyslogRfc5424,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
-    #[serde(other)]
+    #[serde(other, skip_serializing)]
     Unknown,
 }
 
@@ -1616,6 +1616,52 @@ pub struct ListLogForwardingResponse {
 
 #[cfg(test)]
 mod tests {
+
+    /// Request-capable string enums: unknown strings parse to `Unknown`, but
+    /// `Unknown` must never serialise (it would emit a bogus value).
+    #[test]
+    fn unknown_string_enum_deserialises_but_refuses_to_serialise() {
+        assert_eq!(
+            serde_json::from_str::<RuntimeType>("\"definitely-not-a-value\"").unwrap(),
+            RuntimeType::Unknown
+        );
+        assert!(serde_json::to_string(&RuntimeType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<EndpointType>("\"definitely-not-a-value\"").unwrap(),
+            EndpointType::Unknown
+        );
+        assert!(serde_json::to_string(&EndpointType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<ImagePullPolicy>("\"definitely-not-a-value\"").unwrap(),
+            ImagePullPolicy::Unknown
+        );
+        assert!(serde_json::to_string(&ImagePullPolicy::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<Protocol>("\"definitely-not-a-value\"").unwrap(),
+            Protocol::Unknown
+        );
+        assert!(serde_json::to_string(&Protocol::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<AnycastIpProtocolVersion>("\"definitely-not-a-value\"").unwrap(),
+            AnycastIpProtocolVersion::Unknown
+        );
+        assert!(serde_json::to_string(&AnycastIpProtocolVersion::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<RegistryType>("\"definitely-not-a-value\"").unwrap(),
+            RegistryType::Unknown
+        );
+        assert!(serde_json::to_string(&RegistryType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<LogForwardingType>("\"definitely-not-a-value\"").unwrap(),
+            LogForwardingType::Unknown
+        );
+        assert!(serde_json::to_string(&LogForwardingType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<SyslogFormat>("\"definitely-not-a-value\"").unwrap(),
+            SyslogFormat::Unknown
+        );
+        assert!(serde_json::to_string(&SyslogFormat::Unknown).is_err());
+    }
     #[test]
     fn container_endpoint_keeps_id() {
         let ep: ContainerEndpoint = serde_json::from_value(serde_json::json!({
