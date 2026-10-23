@@ -30,7 +30,7 @@ async fn hints_emitted_by_default_for_table() {
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("tip: hoppy pull-zone get --id"),
+        stderr.contains("tip: hoppy pull-zone get 1002"),
         "expected drill-down hint in stderr, got:\n{stderr}"
     );
 }

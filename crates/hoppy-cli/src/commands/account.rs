@@ -350,9 +350,10 @@ pub async fn handle_billing(
                 let rows: Vec<PaymentRequestRow> =
                     requests.iter().map(PaymentRequestRow::from).collect();
                 output::print_data(&rows, format);
-                output::hints::tip(
-                    "download an invoice: hoppy billing payment-request-pdf --id <ID> --output invoice.pdf",
-                );
+                output::hints::tip(&format!(
+                    "download an invoice: {}",
+                    crate::hint_cmds::billing_payment_request_pdf("<ID>")
+                ));
             }
         }
         BillingAction::InvoicePdf { record_id, output } => {
@@ -449,9 +450,10 @@ pub async fn handle_country(
             } else {
                 let rows: Vec<CountryRow> = countries.iter().map(CountryRow::from).collect();
                 output::print_data(&rows, format);
-                output::hints::tip(
-                    "use an ISO code with: hoppy pull-zone update --id <id> --blocked-countries <CODE>",
-                );
+                output::hints::tip(&format!(
+                    "use an ISO code with: {}",
+                    crate::hint_cmds::pull_zone_update_blocked_countries("<id>")
+                ));
             }
         }
     }

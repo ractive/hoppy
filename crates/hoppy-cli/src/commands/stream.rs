@@ -1903,7 +1903,8 @@ async fn reset_library_key(
     let lib = core.get_video_library(id).await.with_context(|| {
         format!(
             "{label} for video library {id} was rotated but the credential re-fetch failed — \
-             run `hoppy stream library get --id {id}` to retrieve it"
+             run `{}` to retrieve it",
+            crate::hint_cmds::stream_library_get(id)
         )
     })?;
     if !matches!(format, OutputFormat::Json) {

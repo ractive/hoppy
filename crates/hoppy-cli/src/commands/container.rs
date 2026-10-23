@@ -1034,8 +1034,9 @@ async fn handle_app(
             if let OutputFormat::Json = format {
                 print_json_with_redaction(&app, redact)?;
             } else {
-                let cmd = format!("container app get --id {id}");
-                output::print_single_vertical_with_cmd(&app, format, redact, Some(&cmd));
+                let cmd = crate::hint_cmds::container_app_get(id);
+                let cmd = crate::hint_cmds::without_binary(&cmd);
+                output::print_single_vertical_with_cmd(&app, format, redact, Some(cmd));
                 // The vertical view collapses nested lists, so spell out the
                 // template endpoints (their ids are what pull zones and
                 // OpenTofu reference).
@@ -1568,8 +1569,9 @@ async fn handle_app_delete(
         if !failures.is_empty() {
             bail!(
                 "deleted app {id} but {n} pull-zone cleanup(s) failed; \
-                 retry with: hoppy pull-zone delete --id <id> --yes",
-                n = failures.len()
+                 retry with: {retry}",
+                n = failures.len(),
+                retry = crate::hint_cmds::pull_zone_delete("<id>")
             );
         }
     } else if has_auto_pzs && no_cascade {
@@ -1578,7 +1580,7 @@ async fn handle_app_delete(
             n = auto_pzs.len()
         );
         for (_ep, pz) in &auto_pzs {
-            eprintln!("  hoppy pull-zone delete --id {pz} --yes");
+            eprintln!("  {}", crate::hint_cmds::pull_zone_delete(pz));
         }
     }
     Ok(())

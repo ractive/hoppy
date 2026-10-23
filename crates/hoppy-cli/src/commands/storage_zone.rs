@@ -208,8 +208,9 @@ pub async fn handle(
             let sz = client.get_storage_zone(created.id).await.with_context(|| {
                 format!(
                     "storage zone {} was created but credential fetch failed — \
-                     run `hoppy storage-zone get --id {}` to retrieve them",
-                    created.id, created.id
+                     run `{}` to retrieve them",
+                    created.id,
+                    crate::hint_cmds::storage_zone_get(created.id)
                 )
             })?;
             // On create, reveal the password so scripts can capture it — the user
@@ -395,8 +396,9 @@ pub async fn handle(
 /// Password / ReadOnlyPassword fields are redacted by default; the caller
 /// passes `--reveal` to bypass.
 fn print_storage_zone(sz: &StorageZone, format: OutputFormat, redact_cfg: &RedactConfig) {
-    let cmd = format!("storage-zone get --id {}", sz.id);
-    output::print_single_vertical_with_cmd(sz, format, redact_cfg, Some(&cmd));
+    let cmd = crate::hint_cmds::storage_zone_get(sz.id);
+    let cmd = crate::hint_cmds::without_binary(&cmd);
+    output::print_single_vertical_with_cmd(sz, format, redact_cfg, Some(cmd));
 }
 
 /// Confirm, rotate a storage-zone password, then re-fetch and display the zone.
@@ -439,7 +441,8 @@ async fn reset_password(
     let sz = client.get_storage_zone(id).await.with_context(|| {
         format!(
             "{label} for storage zone {id} was rotated but the credential re-fetch failed — \
-             run `hoppy storage-zone get --id {id}` to retrieve it"
+             run `{}` to retrieve it",
+            crate::hint_cmds::storage_zone_get(id)
         )
     })?;
     if !matches!(format, OutputFormat::Json) {

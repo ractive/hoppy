@@ -737,8 +737,9 @@ async fn handle_zone(
         ShieldZoneAction::Get { shield_zone_id } => {
             let zone = client.get_shield_zone(*shield_zone_id).await?;
             let redact_cfg = crate::redact::RedactConfig::default();
-            let cmd = format!("shield zone get --id {shield_zone_id}");
-            output::print_single_vertical_with_cmd(&zone, format, &redact_cfg, Some(&cmd));
+            let cmd = crate::hint_cmds::shield_zone_get(*shield_zone_id);
+            let cmd = crate::hint_cmds::without_binary(&cmd);
+            output::print_single_vertical_with_cmd(&zone, format, &redact_cfg, Some(cmd));
         }
         ShieldZoneAction::GetByPullzone { pull_zone_id } => {
             let zone = client.get_shield_zone_by_pull_zone(*pull_zone_id).await?;

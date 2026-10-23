@@ -27,25 +27,25 @@ For a one-line tree of every subcommand, see
 ## CDN Pull Zones
 
 ```bash
-hoppy pull-zone list
+hoppy pull-zone list                # Origin column: URL, "storage: <name>", "container app <name>", ...
 hoppy pull-zone get 123456          # or: --id 123456
 hoppy pull-zone create --name my-zone --origin-url https://origin.example.com
-hoppy pull-zone update --id 123456 --origin-url https://new-origin.example.com
-hoppy pull-zone delete --id 123456 --yes
-hoppy pull-zone purge --id 123456
-hoppy pull-zone purge --id 123456 --cache-tag static-assets
+hoppy pull-zone update 123456 --origin-url https://new-origin.example.com
+hoppy pull-zone delete 123456 --yes
+hoppy pull-zone purge 123456
+hoppy pull-zone purge 123456 --cache-tag static-assets
 
 # Referrer access control (anti-hotlinking)
-hoppy pull-zone referrer list --id 123456
-hoppy pull-zone referrer allow --id 123456 --value '*.example.com'
-hoppy pull-zone referrer block --id 123456 --value badsite.com
-hoppy pull-zone referrer remove-allowed --id 123456 --value '*.example.com'
-hoppy pull-zone referrer remove-blocked --id 123456 --value badsite.com
+hoppy pull-zone referrer list 123456
+hoppy pull-zone referrer allow 123456 --value '*.example.com'
+hoppy pull-zone referrer block 123456 --value badsite.com
+hoppy pull-zone referrer remove-allowed 123456 --value '*.example.com'
+hoppy pull-zone referrer remove-blocked 123456 --value badsite.com
 
 # IP block list
-hoppy pull-zone ip list --id 123456
-hoppy pull-zone ip block --id 123456 --value 192.0.2.1
-hoppy pull-zone ip unblock --id 123456 --value 192.0.2.1
+hoppy pull-zone ip list 123456
+hoppy pull-zone ip block 123456 --value 192.0.2.1
+hoppy pull-zone ip unblock 123456 --value 192.0.2.1
 ```
 
 ## Storage
@@ -74,12 +74,12 @@ hoppy dns record update --zone-id 123 --record-id 456 --value 5.6.7.8
 hoppy dns record delete --zone-id 123 --record-id 456 --yes
 
 # DNSSEC
-hoppy dns zone dnssec enable --id 123        # prints DS record to copy to your registrar
-hoppy dns zone dnssec status --id 123
-hoppy dns zone dnssec disable --id 123 --yes # warns: remove DS records at registrar first
+hoppy dns zone dnssec enable 123        # prints DS record to copy to your registrar
+hoppy dns zone dnssec status 123
+hoppy dns zone dnssec disable 123 --yes # warns: remove DS records at registrar first
 
 # Wildcard certificate (zone must be delegated to bunny.net nameservers)
-hoppy dns zone issue-cert --id 123
+hoppy dns zone issue-cert 123
 
 # Record discovery scan (auto-discover records during migration)
 hoppy dns zone scan start --id 123              # or: --domain example.com
@@ -123,19 +123,19 @@ hoppy shield bot-detection get --shield-zone-id 789
 
 ```bash
 hoppy script list
-hoppy script code get --id 123
-hoppy script code update --id 123 --file ./handler.js
-hoppy script publish --id 123
-hoppy script variable list --id 123
-hoppy script secret list --id 123
-hoppy script statistics --id 123 --date-from 2026-01-01 --date-to 2026-01-31
+hoppy script code get 123
+hoppy script code update 123 --file ./handler.js
+hoppy script publish 123
+hoppy script variable list 123
+hoppy script secret list 123
+hoppy script statistics 123 --date-from 2026-01-01 --date-to 2026-01-31
 ```
 
 ## Magic Containers
 
 ```bash
 hoppy container app list
-hoppy container app get --id app-uuid
+hoppy container app get app-uuid
 hoppy container app create --name my-app --runtime-type Shared --min 1 --max 3 --region DE
 hoppy container template get --app-id app-uuid --container-id ctr-uuid
 hoppy container endpoint list --app-id app-uuid
@@ -190,14 +190,14 @@ hoppy db group create --display-name EU --storage-region eu-west-1 \
     --primary-region DE --replicas-region UK
 hoppy db create --slug my-app --group group_01HX...
 hoppy db list
-hoppy db get --id db_01HX...
+hoppy db get db_01HX...
 
 # Auth tokens (JWT redacted by default — pass --reveal to print)
 hoppy db token mint --db-id db_01HX... --authorization full-access
 hoppy db token invalidate --db-id db_01HX...
 
 # Data-plane health check (mints a short-lived read-only token automatically)
-hoppy db ping --id db_01HX...
+hoppy db ping db_01HX...
 
 # Config & live metrics
 hoppy db config show
@@ -222,7 +222,7 @@ hoppy billing payment-requests
 
 # Invoice PDFs (streamed straight to disk, never buffered whole)
 hoppy billing invoice-pdf --record-id 44001 --output invoice.pdf
-hoppy billing payment-request-pdf --id 90002 --output payment-request.pdf
+hoppy billing payment-request-pdf 90002 --output payment-request.pdf
 
 # Reference data
 hoppy region list          # core CDN edge regions + per-GB pricing
@@ -253,7 +253,7 @@ via a continuation token surfaced in a stderr hint (or the JSON
 | `--yes` / `-y` | Skip confirmation prompts |
 | `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
 | `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
-| `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`) |
+| `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`). Hints use the positional id form (`hoppy pull-zone get 123456`) wherever the command accepts it |
 
 ### JSON output shapes
 

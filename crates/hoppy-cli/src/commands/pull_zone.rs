@@ -12,11 +12,11 @@ use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{
     AddOrUpdateEdgeRule, CreatePullZone, EdgeRule, EdgeRuleActionType, EdgeRuleTrigger,
     EdgeScriptExecutionPhase, ExternalDnsCertificateRecord, LogAnonymizationType, MatchingType,
-    OptimizerWatermarkPosition, PermaCacheType, PreloadingScreenTheme, PullZone,
+    OptimizerWatermarkPosition, OriginType, PermaCacheType, PreloadingScreenTheme, PullZone,
     PullZoneLogForwarderProtocolType, PullZonePrivateKeyType, PullZoneTierType, PullZoneType,
     PurgeCache, ShieldDDosProtectionType, StickySessionType, TriggerType, UpdatePullZone,
 };
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{self, BufRead, Write};
 
 // ---------------------------------------------------------------------------
@@ -31,7 +31,7 @@ struct PullZoneRow {
     #[tabled(rename = "Name")]
     name: String,
     #[tabled(rename = "Origin")]
-    origin_url: String,
+    origin: String,
     #[tabled(rename = "Enabled")]
     enabled: bool,
     #[tabled(rename = "Suspended")]
@@ -50,7 +50,7 @@ struct PullZoneAppRow {
     #[tabled(rename = "App")]
     app: String,
     #[tabled(rename = "Origin")]
-    origin_url: String,
+    origin: String,
     #[tabled(rename = "Enabled")]
     enabled: bool,
     #[tabled(rename = "Suspended")]
@@ -59,9 +59,72 @@ struct PullZoneAppRow {
     monthly_bandwidth_used: i64,
 }
 
-impl From<&ListedZone> for PullZoneAppRow {
-    fn from(l: &ListedZone) -> Self {
-        let base = PullZoneRow::from(&l.zone);
+/// Storage zone names keyed by id, used to label storage-backed origins.
+type StorageNames = HashMap<i64, String>;
+
+/// Upper bound on storage-zone list pages fetched for name lookup.
+const MAX_STORAGE_PAGES: u32 = 100;
+
+/// The storage zone id behind a pull zone's origin, if it has one: a storage
+/// origin type, or a URL-less zone that still carries a storage zone id.
+fn storage_origin_id(pz: &PullZone) -> Option<i64> {
+    let id = pz.storage_zone_id.filter(|id| *id > 0)?;
+    match pz.origin_type {
+        Some(OriginType::StorageZone) => Some(id),
+        Some(OriginType::OriginUrl) | None if pz.origin_url.is_empty() => Some(id),
+        _ => None,
+    }
+}
+
+/// Human-readable origin for the list table.
+///
+/// The raw `OriginUrl` is blank for storage-backed zones and a placeholder
+/// (`https://bunny.net`) for Magic Containers zones, so the label is derived
+/// from the origin type instead. JSON output is unaffected.
+fn origin_label(pz: &PullZone, app: Option<&str>, storage: &StorageNames) -> String {
+    match pz.origin_type {
+        Some(OriginType::StorageZone) => match pz.storage_zone_id {
+            Some(id) if id > 0 => storage
+                .get(&id)
+                .map_or_else(|| format!("storage zone {id}"), |n| format!("storage: {n}")),
+            _ => "storage zone".to_owned(),
+        },
+        Some(OriginType::MagicContainerEndpoint) => app.map_or_else(
+            || "magic container".to_owned(),
+            |name| format!("container app {name}"),
+        ),
+        Some(OriginType::DnsAccelerate) => "DNS accelerate".to_owned(),
+        Some(OriginType::PushZone) => "push zone".to_owned(),
+        Some(OriginType::Script) => "edge script".to_owned(),
+        Some(OriginType::LoadBalancer) => "load balancer".to_owned(),
+        Some(OriginType::Unknown(n)) => format!("origin type {n}"),
+        Some(OriginType::OriginUrl) | None => match storage_origin_id(pz) {
+            _ if !pz.origin_url.is_empty() => pz.origin_url.clone(),
+            Some(id) => storage
+                .get(&id)
+                .map_or_else(|| format!("storage zone {id}"), |n| format!("storage: {n}")),
+            None => "-".to_owned(),
+        },
+    }
+}
+
+impl PullZoneRow {
+    fn new(l: &ListedZone, storage: &StorageNames) -> Self {
+        let pz = &l.zone;
+        Self {
+            id: pz.id,
+            name: pz.name.clone(),
+            origin: origin_label(pz, l.app.as_ref().map(|a| a.name.as_str()), storage),
+            enabled: pz.enabled,
+            suspended: pz.suspended,
+            monthly_bandwidth_used: pz.monthly_bandwidth_used,
+        }
+    }
+}
+
+impl PullZoneAppRow {
+    fn new(l: &ListedZone, storage: &StorageNames) -> Self {
+        let base = PullZoneRow::new(l, storage);
         Self {
             id: base.id,
             name: base.name,
@@ -69,7 +132,7 @@ impl From<&ListedZone> for PullZoneAppRow {
                 .app
                 .as_ref()
                 .map_or_else(|| "-".to_owned(), |a| a.name.clone()),
-            origin_url: base.origin_url,
+            origin: base.origin,
             enabled: base.enabled,
             suspended: base.suspended,
             monthly_bandwidth_used: base.monthly_bandwidth_used,
@@ -77,17 +140,34 @@ impl From<&ListedZone> for PullZoneAppRow {
     }
 }
 
-impl From<&PullZone> for PullZoneRow {
-    fn from(pz: &PullZone) -> Self {
-        Self {
-            id: pz.id,
-            name: pz.name.clone(),
-            origin_url: pz.origin_url.clone(),
-            enabled: pz.enabled,
-            suspended: pz.suspended,
-            monthly_bandwidth_used: pz.monthly_bandwidth_used,
+/// Fetch storage zone names with one (paginated) list call, only when some
+/// zone actually has a storage origin. Any failure yields an empty map so the
+/// label falls back to `storage zone <id>`.
+async fn storage_names_for(client: &CoreClient, zones: &[ListedZone]) -> StorageNames {
+    let needs = zones.iter().any(|l| storage_origin_id(&l.zone).is_some());
+    let mut names = StorageNames::new();
+    if !needs {
+        return names;
+    }
+    for page in 1..=MAX_STORAGE_PAGES {
+        match client
+            .list_storage_zones(Some(page), Some(1000), None, None)
+            .await
+        {
+            Ok(result) => {
+                let more = result.has_more_items && !result.items.is_empty();
+                names.extend(result.items.into_iter().map(|z| (z.id, z.name)));
+                if !more {
+                    break;
+                }
+            }
+            Err(e) => {
+                eprintln!("warning: could not look up storage zone names: {e:#}");
+                break;
+            }
         }
     }
+    names
 }
 
 // ---------------------------------------------------------------------------
@@ -213,20 +293,25 @@ pub async fn handle(
                     .context("failed to serialize to JSON")?;
                 println!("{json}");
             } else {
+                let storage = storage_names_for(&client, &zones).await;
                 if zones.iter().any(|z| z.app.is_some()) {
-                    let rows: Vec<PullZoneAppRow> =
-                        zones.iter().map(PullZoneAppRow::from).collect();
+                    let rows: Vec<PullZoneAppRow> = zones
+                        .iter()
+                        .map(|z| PullZoneAppRow::new(z, &storage))
+                        .collect();
                     output::print_data(&rows, format);
                 } else {
-                    let rows: Vec<PullZoneRow> =
-                        zones.iter().map(|z| PullZoneRow::from(&z.zone)).collect();
+                    let rows: Vec<PullZoneRow> = zones
+                        .iter()
+                        .map(|z| PullZoneRow::new(z, &storage))
+                        .collect();
                     output::print_data(&rows, format);
                 }
                 if !*all && let Some(first) = zones.first() {
                     let id = first.zone.id;
                     output::hints::tips(&[
-                        &format!("hoppy pull-zone get --id {id}"),
-                        &format!("hoppy pull-zone statistics --id {id}"),
+                        &crate::hint_cmds::pull_zone_get(id),
+                        &crate::hint_cmds::pull_zone_statistics(id),
                     ]);
                 }
             }
@@ -307,8 +392,8 @@ pub async fn handle(
             let new_id = pz.id;
             print_pull_zone(&pz, format, redact_cfg);
             output::hints::tips(&[
-                &format!("hoppy pull-zone hostname add --id {new_id} --hostname <fqdn>"),
-                &format!("hoppy pull-zone edge-rule add --id {new_id} ..."),
+                &crate::hint_cmds::pull_zone_hostname_add(new_id),
+                &crate::hint_cmds::pull_zone_edge_rule_add(new_id),
             ]);
         }
         PullZoneAction::Update {
@@ -778,7 +863,8 @@ pub async fn handle(
             let pz = client.get_pull_zone(*id).await.with_context(|| {
                 format!(
                     "security key for pull zone {id} was rotated but the re-fetch failed — \
-                     run `hoppy pull-zone get --id {id}` to confirm"
+                     run `{}` to confirm",
+                    crate::hint_cmds::pull_zone_get(*id)
                 )
             })?;
             if !matches!(format, OutputFormat::Json) {
@@ -1238,8 +1324,9 @@ async fn handle_ip(
 /// Redacts secret-bearing fields (e.g. `LogForwardingToken`) unless
 /// `redact_cfg` has `reveal_all` set.
 fn print_pull_zone(pz: &PullZone, format: OutputFormat, redact_cfg: &RedactConfig) {
-    let cmd = format!("pull-zone get --id {}", pz.id);
-    output::print_single_vertical_with_cmd(pz, format, redact_cfg, Some(&cmd));
+    let cmd = crate::hint_cmds::pull_zone_get(pz.id);
+    let cmd = crate::hint_cmds::without_binary(&cmd);
+    output::print_single_vertical_with_cmd(pz, format, redact_cfg, Some(cmd));
 }
 
 // ---------------------------------------------------------------------------
@@ -1547,5 +1634,89 @@ mod tests {
             &Some(PullZoneLogForwardingProtocolArg::Udp),
             &None,
         ));
+    }
+
+    fn zone(origin_type: Option<i64>, origin_url: &str, storage_id: i64) -> PullZone {
+        serde_json::from_value(serde_json::json!({
+            "Id": 1,
+            "Name": "z",
+            "OriginUrl": origin_url,
+            "OriginType": origin_type,
+            "StorageZoneId": storage_id,
+        }))
+        .expect("valid pull zone")
+    }
+
+    fn names() -> StorageNames {
+        HashMap::from([(1520401, "my-storage".to_owned())])
+    }
+
+    #[test]
+    fn origin_storage_zone_uses_name_then_id() {
+        let pz = zone(Some(2), "", 1520401);
+        assert_eq!(origin_label(&pz, None, &names()), "storage: my-storage");
+        assert_eq!(
+            origin_label(&pz, None, &HashMap::new()),
+            "storage zone 1520401"
+        );
+        assert_eq!(
+            origin_label(&zone(Some(2), "", -1), None, &names()),
+            "storage zone"
+        );
+    }
+
+    #[test]
+    fn origin_magic_containers_uses_app_name() {
+        let pz = zone(Some(5), "https://bunny.net", -1);
+        assert_eq!(
+            origin_label(&pz, Some("my-app"), &names()),
+            "container app my-app"
+        );
+        assert_eq!(origin_label(&pz, None, &names()), "magic container");
+    }
+
+    #[test]
+    fn origin_url_and_other_types() {
+        let url = zone(Some(0), "https://origin.example.com", -1);
+        assert_eq!(
+            origin_label(&url, None, &names()),
+            "https://origin.example.com"
+        );
+        assert_eq!(
+            origin_label(&zone(Some(1), "", -1), None, &names()),
+            "DNS accelerate"
+        );
+        assert_eq!(
+            origin_label(&zone(Some(3), "", -1), None, &names()),
+            "load balancer"
+        );
+        assert_eq!(
+            origin_label(&zone(Some(4), "", -1), None, &names()),
+            "edge script"
+        );
+        assert_eq!(
+            origin_label(&zone(Some(6), "", -1), None, &names()),
+            "push zone"
+        );
+    }
+
+    #[test]
+    fn origin_url_less_zone_with_storage_id_gets_name() {
+        let pz = zone(Some(0), "", 1520401);
+        assert_eq!(storage_origin_id(&pz), Some(1520401));
+        assert_eq!(origin_label(&pz, None, &names()), "storage: my-storage");
+        assert_eq!(
+            storage_origin_id(&zone(Some(0), "https://o", 1520401)),
+            None
+        );
+    }
+
+    #[test]
+    fn origin_without_type_falls_back_to_url_then_dash() {
+        assert_eq!(
+            origin_label(&zone(None, "https://o.example", -1), None, &names()),
+            "https://o.example"
+        );
+        assert_eq!(origin_label(&zone(None, "", -1), None, &names()), "-");
     }
 }
