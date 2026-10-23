@@ -847,8 +847,9 @@ pub struct ShieldZoneRequest {
     pub waf_response_body_limit_action: Option<WafPayloadLimitAction>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub d_do_s_shield_sensitivity: Option<DdosShieldSensitivity>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub d_do_s_execution_mode: Option<DdosExecutionMode>,
+    // `dDoSExecutionMode` was removed from the request schema in the
+    // 2026-10-23 spec, and a live update on a Basic-plan zone left the value
+    // unchanged (iter-87). It stays on `ShieldZoneResponse` only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub d_do_s_challenge_window: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]

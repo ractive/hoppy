@@ -274,10 +274,20 @@ pub enum VolumeInstanceStatus {
 }
 
 /// Container registry type.
+///
+/// Serialization stays PascalCase (`DockerHub`), exactly what hoppy has always
+/// sent; the 2026-10-23 spec documents camelCase (`dockerHub`). Responses are
+/// accepted in either casing. Whether the API also *accepts* camelCase on
+/// requests is unverified (iter-87 could not exercise `registry add` safely),
+/// so the request side was deliberately left alone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RegistryType {
+    #[serde(alias = "dockerHub")]
     DockerHub,
+    #[serde(alias = "gitHub")]
     GitHub,
+    #[serde(alias = "bunnyRegistry")]
+    BunnyRegistry,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
     #[serde(other)]
@@ -287,10 +297,15 @@ pub enum RegistryType {
 /// Result status after saving a container registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SavedContainerRegistryStatus {
+    #[serde(alias = "saved")]
     Saved,
+    #[serde(alias = "secretsValidationFailed")]
     SecretsValidationFailed,
+    #[serde(alias = "unknownErrorOccured")]
     UnknownErrorOccured,
+    #[serde(alias = "notFound")]
     NotFound,
+    #[serde(alias = "invalidInput")]
     InvalidInput,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
@@ -301,8 +316,11 @@ pub enum SavedContainerRegistryStatus {
 /// Result status after removing a container registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RemoveContainerRegistryStatus {
+    #[serde(alias = "notFound")]
     NotFound,
+    #[serde(alias = "inUse")]
     InUse,
+    #[serde(alias = "removed")]
     Removed,
     /// A value this client does not model yet (forward-compat; the raw
     /// string is not preserved).
@@ -1871,5 +1889,26 @@ mod tests {
     fn volume_instance_status_maintenance_deserializes() {
         let got: VolumeInstanceStatus = serde_json::from_str("\"maintenance\"").unwrap();
         assert_eq!(got, VolumeInstanceStatus::Maintenance);
+    }
+
+    /// Pins the registry-type casing: PascalCase on requests (unchanged,
+    /// unverified against the live API for camelCase), either casing on reads.
+    #[test]
+    fn registry_type_casing_is_pinned() {
+        assert_eq!(
+            serde_json::to_string(&RegistryType::DockerHub).unwrap(),
+            "\"DockerHub\""
+        );
+        for (raw, want) in [
+            ("DockerHub", RegistryType::DockerHub),
+            ("dockerHub", RegistryType::DockerHub),
+            ("gitHub", RegistryType::GitHub),
+            ("bunnyRegistry", RegistryType::BunnyRegistry),
+        ] {
+            let got: RegistryType = serde_json::from_str(&format!("\"{raw}\"")).unwrap();
+            assert_eq!(got, want, "{raw}");
+        }
+        let saved: SavedContainerRegistryStatus = serde_json::from_str("\"saved\"").unwrap();
+        assert_eq!(saved, SavedContainerRegistryStatus::Saved);
     }
 }

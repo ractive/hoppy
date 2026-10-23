@@ -14,14 +14,13 @@ use bunny_net_api::shield::types::{
     BotCategorizationGroup, BotCategoryAction, BotDetectionConfigurationState,
     BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
     BrowserFingerprintConfiguration, CreateCustomAccessList, CreateCustomWafRule,
-    CreateRateLimitRule, CustomAccessList, CustomWafRule, DdosExecutionMode, DdosShieldSensitivity,
-    EventLog, IpAddressConfiguration, RateLimitActionType, RateLimitBlockDuration,
-    RateLimitCounterKey, RateLimitRule, RateLimitRuleConfiguration, RateLimitTimeframe,
-    RequestIntegrityConfiguration, ReviewActionType, ShieldZonePullZoneMapping, ShieldZoneRequest,
-    ShieldZoneResponse, TriggeredRuleItem, UpdateAccessListConfiguration,
-    UpdateApiGuardianEndpointRequest, UpdateApiGuardianRequest, UpdateBotDetection,
-    UpdateCustomAccessList, UpdateCustomWafRule, UpdateRateLimitRule,
-    UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
+    CreateRateLimitRule, CustomAccessList, CustomWafRule, DdosShieldSensitivity, EventLog,
+    IpAddressConfiguration, RateLimitActionType, RateLimitBlockDuration, RateLimitCounterKey,
+    RateLimitRule, RateLimitRuleConfiguration, RateLimitTimeframe, RequestIntegrityConfiguration,
+    ReviewActionType, ShieldZonePullZoneMapping, ShieldZoneRequest, ShieldZoneResponse,
+    TriggeredRuleItem, UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest,
+    UpdateApiGuardianRequest, UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule,
+    UpdateRateLimitRule, UpdateReviewTriggeredRuleRequest, UpdateShieldZoneRequest,
     UpdateUploadScanningConfigurationRequest, UploadOpenApiSpecificationRequest,
     UploadScanningConfigurationState, UploadScanningScannerMode, WafChainedRuleCondition,
     WafExecutionMode, WafProfileMinimal, WafRuleActionType, WafRuleConfiguration,
@@ -757,17 +756,22 @@ async fn handle_zone(
             waf_disabled_rules,
             waf_log_only_rules,
         } => {
+            if ddos_execution_mode.is_some() {
+                eprintln!(
+                    "warning: --ddos-execution-mode is deprecated and ignored: the Shield API \
+                     no longer accepts it on update"
+                );
+            }
             if waf_enabled.is_none()
                 && waf_execution_mode.is_none()
                 && ddos_sensitivity.is_none()
-                && ddos_execution_mode.is_none()
                 && ddos_challenge_window.is_none()
                 && learning_mode.is_none()
                 && waf_disabled_rules.is_empty()
                 && waf_log_only_rules.is_empty()
             {
                 bail!(
-                    "at least one update flag is required (--waf-enabled, --waf-execution-mode, --ddos-sensitivity, --ddos-execution-mode, --ddos-challenge-window, --learning-mode, --waf-disabled-rule, --waf-log-only-rule)"
+                    "at least one update flag is required (--waf-enabled, --waf-execution-mode, --ddos-sensitivity, --ddos-challenge-window, --learning-mode, --waf-disabled-rule, --waf-log-only-rule)"
                 );
             }
 
@@ -783,10 +787,6 @@ async fn handle_zone(
             if let Some(v) = ddos_sensitivity {
                 zone_req.d_do_s_shield_sensitivity =
                     Some(u8_to_enum::<DdosShieldSensitivity>(*v, "ddos-sensitivity")?);
-            }
-            if let Some(v) = ddos_execution_mode {
-                zone_req.d_do_s_execution_mode =
-                    Some(u8_to_enum::<DdosExecutionMode>(*v, "ddos-execution-mode")?);
             }
             if let Some(v) = ddos_challenge_window {
                 zone_req.d_do_s_challenge_window = Some(*v);

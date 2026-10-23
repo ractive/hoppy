@@ -386,3 +386,92 @@ async fn container_volume_list_accepts_maintenance_and_unknown_status() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Pull-zone execution phase (task 5)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn pull_zone_update_pre_cache_phase_sends_2() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/pullzone/1001"))
+        .and(header("AccessKey", "test-api-key"))
+        .and(body_string_contains("\"EdgeScriptExecutionPhase\":2"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/pullzone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "pull-zone",
+            "update",
+            "--id",
+            "1001",
+            "--edge-script-execution-phase",
+            "pre-cache",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Deprecated --ddos-execution-mode (task 5)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn shield_zone_update_ddos_execution_mode_is_warned_and_not_sent() {
+    use wiremock::matchers::body_string_contains;
+    let server = MockServer::start().await;
+    // Matches only when the sensitivity is sent; a second, stricter mock
+    // catches the deprecated field leaking into the body.
+    Mock::given(method("PATCH"))
+        .and(path("/shield/shield-zone"))
+        .and(body_string_contains("dDoSExecutionMode"))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/shield/shield-zone"))
+        .and(body_string_contains("\"dDoSShieldSensitivity\":5"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("shield/shield_zone_get.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "json",
+            "shield",
+            "zone",
+            "update",
+            "--shield-zone-id",
+            "55001",
+            "--ddos-sensitivity",
+            "5",
+            "--ddos-execution-mode",
+            "1",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("deprecated"));
+}

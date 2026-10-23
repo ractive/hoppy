@@ -436,17 +436,22 @@ impl From<ShieldDDosProtectionTypeArg> for ShieldDDosProtectionType {
 /// Execution phase for an attached edge script (`EdgeScriptExecutionPhase`).
 #[derive(Copy, Clone, ValueEnum)]
 pub enum EdgeScriptExecutionPhaseArg {
-    /// Run the script while the request is processed (value 0).
-    OnRequest,
-    /// Run the script while the response is processed (value 1).
-    OnResponse,
+    /// Default: the script is the origin and runs on cache misses (value 0).
+    #[value(alias = "on-request")]
+    Cache,
+    /// Spec phase `LoadBalancer` (value 1).
+    #[value(alias = "on-response")]
+    LoadBalancer,
+    /// Run the script before the cache lookup, on every request (value 2).
+    PreCache,
 }
 
 impl From<EdgeScriptExecutionPhaseArg> for EdgeScriptExecutionPhase {
     fn from(a: EdgeScriptExecutionPhaseArg) -> Self {
         match a {
-            EdgeScriptExecutionPhaseArg::OnRequest => Self::OnRequest,
-            EdgeScriptExecutionPhaseArg::OnResponse => Self::OnResponse,
+            EdgeScriptExecutionPhaseArg::Cache => Self::Cache,
+            EdgeScriptExecutionPhaseArg::LoadBalancer => Self::LoadBalancer,
+            EdgeScriptExecutionPhaseArg::PreCache => Self::PreCache,
         }
     }
 }
@@ -1730,7 +1735,7 @@ pub enum PullZoneAction {
         /// Attach a middleware script by ID (from `hoppy script list`). Use -1 to detach.
         #[arg(long, value_name = "ID", help_heading = "Scripting")]
         middleware_script_id: Option<i64>,
-        /// Lifecycle phase the edge script runs in: on-request, on-response.
+        /// Phase the edge script runs in: cache (default, on cache miss), load-balancer, pre-cache (before the cache lookup, every request). The old names on-request/on-response still work (= cache/load-balancer).
         #[arg(long, value_name = "PHASE", help_heading = "Scripting")]
         edge_script_execution_phase: Option<EdgeScriptExecutionPhaseArg>,
 
@@ -3674,8 +3679,8 @@ pub enum ShieldZoneAction {
         /// DDoS shield sensitivity (0 = Off, 1 = Low, 2 = Medium, 3 = High, 4 = Challenge, 5 = ChallengeInteractive)
         #[arg(long)]
         ddos_sensitivity: Option<u8>,
-        /// DDoS execution mode (0 = Disabled, 1 = Enabled)
-        #[arg(long)]
+        /// Deprecated and ignored: the Shield API no longer accepts it
+        #[arg(long, hide = true)]
         ddos_execution_mode: Option<u8>,
         /// DDoS challenge window duration in seconds
         #[arg(long)]

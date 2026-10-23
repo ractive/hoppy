@@ -549,23 +549,30 @@ impl std::str::FromStr for ShieldDDosProtectionType {
 forward_compat_repr_enum! {
     /// Execution phase an attached Edge Script runs in.
     ///
-    /// Spec: `EdgeScriptExecutionPhase` — the point in the request lifecycle where
-    /// the script bound via `EdgeScriptId` executes. Serialised as the integer
-    /// discriminant on the wire.
+    /// Spec: `ExecutionPhase` (`0 = Cache`, `1 = LoadBalancer`, `2 = PreCache`).
+    /// Per the bunny.net scripting docs, scripts normally run after the cache
+    /// lookup (only on a cache miss); `PreCache` runs the script before the
+    /// cache lookup on every request. The docs do not describe `LoadBalancer`.
+    /// Serialised as the integer discriminant on the wire.
+    ///
+    /// Before iter-87 these were named `OnRequest` (0) / `OnResponse` (1).
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum EdgeScriptExecutionPhase: u8 {
-        /// Run the script while the request is being processed (default).
-        OnRequest = 0,
-        /// Run the script while the response is being processed.
-        OnResponse = 1,
+        /// Default: the script is the origin and runs on cache misses.
+        Cache = 0,
+        /// Spec phase `LoadBalancer`.
+        LoadBalancer = 1,
+        /// Run the script before the cache lookup, on every request.
+        PreCache = 2,
     }
 }
 
 impl std::fmt::Display for EdgeScriptExecutionPhase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            Self::OnRequest => "on-request",
-            Self::OnResponse => "on-response",
+            Self::Cache => "cache",
+            Self::LoadBalancer => "load-balancer",
+            Self::PreCache => "pre-cache",
             Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
@@ -577,10 +584,14 @@ impl std::str::FromStr for EdgeScriptExecutionPhase {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "on-request" | "OnRequest" => Ok(Self::OnRequest),
-            "on-response" | "OnResponse" => Ok(Self::OnResponse),
+            "cache" | "Cache" => Ok(Self::Cache),
+            "load-balancer" | "LoadBalancer" => Ok(Self::LoadBalancer),
+            "pre-cache" | "PreCache" => Ok(Self::PreCache),
+            // Pre-iter-87 names, kept so existing scripts keep the same wire value.
+            "on-request" | "OnRequest" => Ok(Self::Cache),
+            "on-response" | "OnResponse" => Ok(Self::LoadBalancer),
             _ => Err(format!(
-                "unknown edge-script execution phase: {s:?}; expected one of: on-request, on-response"
+                "unknown edge-script execution phase: {s:?}; expected one of: cache, load-balancer, pre-cache"
             )),
         }
     }
@@ -4751,18 +4762,44 @@ pub struct PullZoneCount {
 }
 
 /// A storage region returned by `GET /storagezone/regions`.
+///
+/// Shape per the 2026-10-23 core spec (`StorageRegionModel`), confirmed live
+/// in iter-87. The pre-iter-87 `Id` / `Url` fields no longer exist; use
+/// `code` and `endpoint`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct StorageRegion {
-    /// Region code (e.g. `DE`, `NY`, `SG`).
+    /// Region code (e.g. `DE`, `NY`, `SG`); the value `--region` takes.
     #[serde(default)]
-    pub id: Option<String>,
+    pub code: Option<String>,
     /// Human-readable region name.
     #[serde(default)]
     pub name: Option<String>,
-    /// Storage endpoint URL for the region.
+    /// Continent code (e.g. `EU`, `SA`).
     #[serde(default)]
-    pub url: Option<String>,
+    pub continent: Option<String>,
+    #[serde(default)]
+    pub latitude: Option<f64>,
+    #[serde(default)]
+    pub longitude: Option<f64>,
+    /// Storage price per gigabyte in USD.
+    #[serde(default)]
+    pub price_per_gigabyte: Option<f64>,
+    /// Pricing tier of the region.
+    #[serde(default)]
+    pub tier: Option<i32>,
+    /// Whether the region can be used as a main region.
+    #[serde(default)]
+    pub is_main_region_supported: Option<bool>,
+    /// Whether the S3-compatible API is available in the region.
+    #[serde(default, rename = "IsS3Supported")]
+    pub is_s3_supported: Option<bool>,
+    /// Storage API hostname (e.g. `storage.bunnycdn.com`).
+    #[serde(default)]
+    pub endpoint: Option<String>,
+    /// S3-compatible endpoint hostname, `null` where S3 is unsupported.
+    #[serde(default, rename = "S3Endpoint")]
+    pub s3_endpoint: Option<String>,
 }
 
 /// Egress statistics returned by `GET /storagezone/{id}/statistics/egress`.
@@ -5023,12 +5060,16 @@ mod tests {
     #[test]
     fn iter74_repr_enums_serialize_as_integers() {
         assert_eq!(
-            serde_json::to_value(EdgeScriptExecutionPhase::OnRequest).unwrap(),
+            serde_json::to_value(EdgeScriptExecutionPhase::Cache).unwrap(),
             serde_json::json!(0)
         );
         assert_eq!(
-            serde_json::to_value(EdgeScriptExecutionPhase::OnResponse).unwrap(),
+            serde_json::to_value(EdgeScriptExecutionPhase::LoadBalancer).unwrap(),
             serde_json::json!(1)
+        );
+        assert_eq!(
+            serde_json::to_value(EdgeScriptExecutionPhase::PreCache).unwrap(),
+            serde_json::json!(2)
         );
         assert_eq!(
             serde_json::to_value(PreloadingScreenTheme::Dark).unwrap(),
@@ -5046,11 +5087,15 @@ mod tests {
     fn iter74_enum_from_str_round_trips() {
         assert_eq!(
             "on-request".parse::<EdgeScriptExecutionPhase>().unwrap(),
-            EdgeScriptExecutionPhase::OnRequest
+            EdgeScriptExecutionPhase::Cache
         );
         assert_eq!(
             "OnResponse".parse::<EdgeScriptExecutionPhase>().unwrap(),
-            EdgeScriptExecutionPhase::OnResponse
+            EdgeScriptExecutionPhase::LoadBalancer
+        );
+        assert_eq!(
+            "pre-cache".parse::<EdgeScriptExecutionPhase>().unwrap(),
+            EdgeScriptExecutionPhase::PreCache
         );
         assert_eq!(
             "light".parse::<PreloadingScreenTheme>().unwrap(),

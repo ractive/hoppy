@@ -1924,13 +1924,13 @@ fn update_pull_zone_script_wiring_fields_serialise_with_correct_keys() {
     let body = UpdatePullZone::new()
         .edge_script_id(42)
         .middleware_script_id(99)
-        .edge_script_execution_phase(EdgeScriptExecutionPhase::OnResponse);
+        .edge_script_execution_phase(EdgeScriptExecutionPhase::LoadBalancer);
 
     let json: serde_json::Value = serde_json::to_value(&body).unwrap();
 
     assert_eq!(json["EdgeScriptId"], serde_json::json!(42));
     assert_eq!(json["MiddlewareScriptId"], serde_json::json!(99));
-    // OnResponse = 1 on the wire.
+    // LoadBalancer = 1 on the wire.
     assert_eq!(json["EdgeScriptExecutionPhase"], serde_json::json!(1));
 }
 
@@ -1969,10 +1969,10 @@ async fn get_pull_zone_deserialises_iter74_body_fields() {
         .await
         .unwrap();
 
-    // Fixture values: EdgeScriptExecutionPhase=0 (OnRequest), PreloadingScreenTheme=0 (Dark).
+    // Fixture values: EdgeScriptExecutionPhase=0 (Cache), PreloadingScreenTheme=0 (Dark).
     assert_eq!(
         zone.edge_script_execution_phase,
-        Some(EdgeScriptExecutionPhase::OnRequest)
+        Some(EdgeScriptExecutionPhase::Cache)
     );
     assert_eq!(
         zone.preloading_screen_theme,
