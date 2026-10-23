@@ -2,13 +2,14 @@
 title: ContainerEndpoint lacks the now-required id field
 type: backlog
 date: 2026-10-23
-status: planned
+status: superseded
 priority: medium
 origin: openapi-drift-2026-10-23
 tags:
   - containers
   - endpoints
   - api-drift
+resolved-in: "PR #104 (iter-86)"
 ---
 
 # Magic Containers `ContainerEndpoint.id`
@@ -24,3 +25,10 @@ need an extra `endpoint list` call to address an endpoint.
 - [ ] Show the id in `container app get` endpoint output
 
 See [[research/openapi-drift-2026-10-23]].
+
+## Resolution
+
+Superseded by PR #104 ([[iterations/iteration-86-dogfood-oct-fixes]]), which
+models `ContainerEndpoint.id`. It is required there, following the current
+spec, rather than the `Option` proposed above. PR #104 also shows the
+endpoint ids in `container get`.
