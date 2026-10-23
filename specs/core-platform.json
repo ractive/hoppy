@@ -148,7 +148,7 @@
         },
         "responses": {
           "201": {
-            "description": "The DNS Zone was successfuly added"
+            "description": "The DNS Zone was successfully added"
           },
           "400": {
             "description": "Failed adding the DNS Zone. Model validation failed",
@@ -187,6 +187,19 @@
               "format": "int64"
             },
             "x-position": 1
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "default": 0,
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DnsViewType"
+                }
+              ]
+            },
+            "x-position": 2
           }
         ],
         "responses": {
@@ -286,7 +299,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The DNS Zone was successfuly deleted."
+            "description": "The DNS Zone was successfully deleted."
           },
           "404": {
             "description": "The DNS Zone with the requested ID does not exist."
@@ -303,6 +316,16 @@
           },
           "401": {
             "description": "The request authorization failed"
+          },
+          "409": {
+            "description": "The DNS Zone is being modified by another request. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
           },
           "500": {
             "description": "Internal Server Error"
@@ -420,7 +443,7 @@
         },
         "responses": {
           "201": {
-            "description": "The DNS record was successfuly added.",
+            "description": "The DNS record was successfully added.",
             "content": {
               "application/json": {
                 "schema": {
@@ -491,6 +514,33 @@
               "minimum": 5.0
             },
             "x-position": 3
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "The type of DNS Record",
+            "schema": {
+              "oneOf": [
+                {
+                  "nullable": true,
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DnsRecordTypes2"
+                    }
+                  ]
+                }
+              ]
+            },
+            "x-position": 4
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            },
+            "x-position": 5
           }
         ],
         "responses": {
@@ -571,7 +621,7 @@
         },
         "responses": {
           "204": {
-            "description": "The DNS record was successfuly updated."
+            "description": "The DNS record was successfully updated."
           },
           "404": {
             "description": "The DNS Zone or DNS Record with the requested ID does not exist."
@@ -626,7 +676,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The DNS record was successfuly deleted."
+            "description": "The DNS record was successfully deleted."
           },
           "404": {
             "description": "The DNS Zone or DNS Record with the requested ID does not exist."
@@ -643,6 +693,16 @@
           },
           "401": {
             "description": "The request authorization failed"
+          },
+          "409": {
+            "description": "The DNS Zone is being modified by another request. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
           },
           "500": {
             "description": "Internal Server Error"
@@ -672,7 +732,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The import operation has finished successfuly.",
+            "description": "The import operation has finished successfully.",
             "content": {
               "application/json": {
                 "schema": {
@@ -862,7 +922,7 @@
         },
         "responses": {
           "201": {
-            "description": "The Pull Zone was successfuly added"
+            "description": "The Pull Zone was successfully added"
           },
           "400": {
             "description": "Failed adding Pull Zone",
@@ -996,7 +1056,7 @@
         },
         "responses": {
           "200": {
-            "description": "The Pull Zone was successfuly updated",
+            "description": "The Pull Zone was successfully updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -1094,7 +1154,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The Edge Rule was successfuly deleted"
+            "description": "The Edge Rule was successfully deleted"
           },
           "404": {
             "description": "The Pull Zone or Edge Rule with the requested ID does not exist"
@@ -1143,7 +1203,7 @@
         },
         "responses": {
           "201": {
-            "description": "The Edge Rule was successfuly added"
+            "description": "The Edge Rule was successfully added"
           },
           "404": {
             "description": "The Pull Zone with the requested ID does not exist"
@@ -1203,7 +1263,7 @@
         },
         "responses": {
           "204": {
-            "description": "The Edge Rule was successfuly updated"
+            "description": "The Edge Rule was successfully updated"
           },
           "404": {
             "description": "The Pull Zone or Edge Rule with the requested ID does not exist."
@@ -1317,7 +1377,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The certificate was successfuly loaded"
+            "description": "The certificate was successfully loaded"
           },
           "400": {
             "description": "Failed configuring the certificate",
@@ -1387,6 +1447,16 @@
           },
           "500": {
             "description": "Internal Server Error"
+          },
+          "429": {
+            "description": "Too many certificate requests for this hostname; retry after the Retry-After interval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
           }
         }
       }
@@ -1432,6 +1502,131 @@
           },
           "500": {
             "description": "Internal Server Error"
+          },
+          "429": {
+            "description": "Too many certificate requests for this hostname; retry after the Retry-After interval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pullzone/requestExternalHttpCertificate": {
+      "post": {
+        "tags": [
+          "Pull Zone"
+        ],
+        "summary": "Request External HTTP Certificate",
+        "operationId": "PullZonePublic_RequestExternalHttpCertificate",
+        "requestBody": {
+          "x-name": "req",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalHttpCertificateRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "The HTTP-01 challenge file details for verification",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The hostname was not found in the account"
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "429": {
+            "description": "Too many certificate requests for this hostname; retry after the Retry-After interval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pullzone/completeExternalHttpCertificate": {
+      "post": {
+        "tags": [
+          "Pull Zone"
+        ],
+        "summary": "Complete External HTTP Certificate",
+        "operationId": "PullZonePublic_CompleteExternalHttpCertificate",
+        "requestBody": {
+          "x-name": "req",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalHttpCertificateRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "The certificate was successfully loaded"
+          },
+          "400": {
+            "description": "The verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The hostname was not found in the account"
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          },
+          "429": {
+            "description": "Too many certificate requests for this hostname; retry after the Retry-After interval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
           }
         }
       }
@@ -1474,7 +1669,7 @@
         },
         "responses": {
           "204": {
-            "description": "The cache was successfuly purged"
+            "description": "The cache was successfully purged"
           },
           "404": {
             "description": "The Pull Zone with the requested ID does not exist"
@@ -1566,7 +1761,7 @@
         },
         "responses": {
           "204": {
-            "description": "The certificate was successfuly added"
+            "description": "The certificate was successfully added"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -1625,7 +1820,7 @@
         },
         "responses": {
           "204": {
-            "description": "The certificate was successfuly removed"
+            "description": "The certificate was successfully removed"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -1880,7 +2075,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -1890,7 +2086,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -1931,7 +2128,7 @@
         },
         "responses": {
           "204": {
-            "description": "The allowed referer was successfuly added"
+            "description": "The allowed referer was successfully added"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -1990,7 +2187,7 @@
         },
         "responses": {
           "204": {
-            "description": "The allowed referer was successfuly removed"
+            "description": "The allowed referer was successfully removed"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -2049,7 +2246,7 @@
         },
         "responses": {
           "204": {
-            "description": "The blocked referer was successfuly added"
+            "description": "The blocked referer was successfully added"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -2108,7 +2305,7 @@
         },
         "responses": {
           "204": {
-            "description": "The blocked referer was successfuly removed"
+            "description": "The blocked referer was successfully removed"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -2167,7 +2364,7 @@
         },
         "responses": {
           "204": {
-            "description": "The blocked IP was successfuly added"
+            "description": "The blocked IP was successfully added"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -2226,7 +2423,7 @@
         },
         "responses": {
           "204": {
-            "description": "The blocked IP was successfuly removed"
+            "description": "The blocked IP was successfully removed"
           },
           "404": {
             "description": "The Pull Zone with the requested ID was not found"
@@ -2319,6 +2516,33 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/RegionModel"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/storagezone/regions": {
+      "get": {
+        "tags": [
+          "Storage Zone"
+        ],
+        "summary": "Get Storage Zone Regions",
+        "operationId": "StorageZonePublic_GetStorageZoneRegions",
+        "responses": {
+          "200": {
+            "description": "Available storage regions and tiers with list prices in USD per GB per month",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StorageRegionModel"
                   }
                 }
               }
@@ -2573,7 +2797,7 @@
         },
         "responses": {
           "204": {
-            "description": "The storage zone was successfuly updated"
+            "description": "The storage zone was successfully updated"
           },
           "400": {
             "description": "Failed configuring the Storage Zone. Model validation failed",
@@ -2663,7 +2887,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The password has been successfuly changed"
+            "description": "The password has been successfully changed"
           },
           "401": {
             "description": "The request authorization failed"
@@ -2699,7 +2923,7 @@
         ],
         "responses": {
           "204": {
-            "description": "The read-only password has been successfuly changed."
+            "description": "The read-only password has been successfully changed."
           },
           "401": {
             "description": "The request authorization failed"
@@ -2778,7 +3002,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -2788,7 +3013,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -2859,7 +3085,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -2869,7 +3096,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -2930,7 +3158,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -2940,7 +3169,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3013,7 +3243,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3023,7 +3254,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3074,7 +3306,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3084,7 +3317,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3130,7 +3364,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3140,7 +3375,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3188,7 +3424,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3198,7 +3435,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3275,7 +3513,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3285,7 +3524,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3360,7 +3600,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3370,7 +3611,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3493,7 +3735,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3503,7 +3746,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3574,7 +3818,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3584,7 +3829,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3632,7 +3878,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3642,7 +3889,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3690,7 +3938,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3700,7 +3949,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3777,7 +4027,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3787,7 +4038,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -3841,7 +4093,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3851,7 +4104,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ],
@@ -3898,7 +4152,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3908,7 +4163,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ],
@@ -3963,7 +4219,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -3973,7 +4230,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ],
@@ -4020,7 +4278,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -4030,7 +4289,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ],
@@ -4108,7 +4368,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -4118,7 +4379,8 @@
               "SubuserAPIStream",
               "SubuserStream",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -4323,14 +4585,16 @@
             "AccessKey": [
               "User",
               "UserApi",
-              "Subuser"
+              "Subuser",
+              "ScopedApiKey"
             ]
           },
           {
             "bearer": [
               "User",
               "UserApi",
-              "Subuser"
+              "Subuser",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -4439,58 +4703,6 @@
               "UserApi",
               "SubuserAPIStatistics",
               "SubuserStatistics",
-              "SubuserManage",
-              "SubuserAPIManage"
-            ]
-          }
-        ]
-      }
-    },
-    "/storagezone/regions": {
-      "get": {
-        "tags": [
-          "Storage Zone"
-        ],
-        "summary": "Get Storage Zone Regions",
-        "operationId": "GetStoragezoneRegionsEndpoint_GetStorageZoneRegions",
-        "responses": {
-          "200": {
-            "description": "A list of available storage zone regions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StorageRegionModel"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The request authorization failed"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        },
-        "security": [
-          {
-            "AccessKey": [
-              "User",
-              "UserApi",
-              "SubuserAPIStorage",
-              "SubuserStorage",
-              "SubuserManage",
-              "SubuserAPIManage"
-            ]
-          },
-          {
-            "bearer": [
-              "User",
-              "UserApi",
-              "SubuserAPIStorage",
-              "SubuserStorage",
               "SubuserManage",
               "SubuserAPIManage"
             ]
@@ -4676,7 +4888,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -4686,7 +4899,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -4770,7 +4984,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -4780,7 +4995,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -4864,7 +5080,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -4874,7 +5091,8 @@
               "SubuserAPIPullZones",
               "SubuserPullZones",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5059,7 +5277,8 @@
               "SubuserAPIStatistics",
               "SubuserStatistics",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5069,7 +5288,8 @@
               "SubuserAPIStatistics",
               "SubuserStatistics",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5154,6 +5374,1498 @@
         ]
       }
     },
+    "/v1/pricing/{source}/{resourceId}": {
+      "get": {
+        "tags": [
+          "Pricing"
+        ],
+        "summary": "Get active price for a resource and optionally cost estimate if usage amount provided",
+        "operationId": "GetPriceEstimationEndpoint_GetPriceEstimation",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "path",
+            "required": true,
+            "description": "The billing source to estimate pricing for",
+            "schema": {
+              "$ref": "#/components/schemas/PricingEstimationSource"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the resource (pull zone, storage zone, video library, or edge script)",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 2
+          },
+          {
+            "name": "units",
+            "in": "query",
+            "description": "Optional number of units to calculate estimated total cost",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "nullable": true
+            },
+            "x-position": 3
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The price estimation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceEstimationModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid pricing source or units",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The authenticated account does not have billing access"
+          },
+          "404": {
+            "description": "The resource was not found or is not accessible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIBilling",
+              "SubuserBilling",
+              "ScopedApiKey"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIBilling",
+              "SubuserBilling",
+              "ScopedApiKey"
+            ]
+          }
+        ],
+        "x-hidden": true
+      }
+    },
+    "/loadbalancer/{loadBalancerId}/origingroup/{originGroupId}/origin": {
+      "post": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Add a new origin to an origin group",
+        "operationId": "LoadBalancerOriginEndpoint_AddOrigin",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "originGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 2
+          }
+        ],
+        "requestBody": {
+          "x-name": "model",
+          "description": "The model for the new origin",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadBalancerOriginCreateModel"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 3
+        },
+        "responses": {
+          "200": {
+            "description": "The newly created origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerOriginModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile or origin group was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/{loadBalancerId}/origingroup/{originGroupId}/origin/{originId}": {
+      "delete": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Delete an origin from an origin group",
+        "operationId": "LoadBalancerOriginEndpoint_DeleteOrigin",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "originGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 2
+          },
+          {
+            "name": "originId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 3
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The origin was deleted"
+          },
+          "404": {
+            "description": "The Load Balancer, origin group, or origin was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Update an existing origin",
+        "operationId": "LoadBalancerOriginEndpoint_UpdateOrigin",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "originGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 2
+          },
+          {
+            "name": "originId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 3
+          }
+        ],
+        "requestBody": {
+          "x-name": "model",
+          "description": "The model for the origin update",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadBalancerOriginCreateModel"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 4
+        },
+        "responses": {
+          "200": {
+            "description": "The updated origin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerOriginModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer, origin group, or origin was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/{loadBalancerId}/origingroup": {
+      "post": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Add a new origin group to a Load Balancer profile",
+        "operationId": "LoadBalancerOriginGroupEndpoint_AddOriginGroup",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          }
+        ],
+        "requestBody": {
+          "x-name": "model",
+          "description": "The model for the new origin group",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OriginGroupCreateModel"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 2
+        },
+        "responses": {
+          "200": {
+            "description": "The newly created origin group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerOriginGroupModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/{loadBalancerId}/origingroup/{id}": {
+      "delete": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Delete an origin group from a Load Balancer profile",
+        "operationId": "LoadBalancerOriginGroupEndpoint_DeleteOriginGroup",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The origin group was deleted"
+          },
+          "404": {
+            "description": "The Load Balancer profile or origin group was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Update an origin group in a Load Balancer profile",
+        "operationId": "LoadBalancerOriginGroupEndpoint_UpdateOriginGroup",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 2
+          }
+        ],
+        "requestBody": {
+          "x-name": "model",
+          "description": "The model for updating the origin group",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OriginGroupCreateModel"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 3
+        },
+        "responses": {
+          "200": {
+            "description": "The updated origin group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerOriginGroupModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile or origin group was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer": {
+      "post": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Create a new Load Balancer profile",
+        "operationId": "LoadBalancerProfileEndpoint_CreateLoadBalancerProfile",
+        "requestBody": {
+          "x-name": "model",
+          "description": "The model for the new Load Balancer profile",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadBalancerSettingsModel"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "The newly created Load Balancer profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerProfileModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Get the list of Load Balancer profiles",
+        "operationId": "LoadBalancerProfileEndpoint_GetLoadBalancers",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            },
+            "x-position": 1
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of Load Balancer profiles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LoadBalancerProfileModel"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/{loadBalancerId}": {
+      "get": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Get a Load Balancer profile",
+        "operationId": "LoadBalancerProfileEndpoint_GetLoadBalancer",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Load Balancer profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerProfileModel"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Delete a Load Balancer profile",
+        "operationId": "LoadBalancerProfileEndpoint_DeleteLoadBalancerProfile",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The Load Balancer profile was deleted"
+          },
+          "400": {
+            "description": "The Load Balancer profile is in use by one or more pull zones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Update a Load Balancer profile",
+        "operationId": "LoadBalancerProfileEndpoint_UpdateLoadBalancerProfile",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          }
+        ],
+        "requestBody": {
+          "x-name": "model",
+          "description": "The model for updating the Load Balancer profile",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoadBalancerSettingsModel"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 2
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Load Balancer profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerProfileModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/{loadBalancerId}/statistics": {
+      "get": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Get Load Balancer statistics",
+        "operationId": "LoadBalancerStatisticsEndpoint_GetLoadBalancerStatistics",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "(Optional) The start date of the statistics. If no value is passed, the last 24 hours will be returned. Rounded to full-day boundaries unless hourly=true and exactRange=true.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "x-position": 2
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "(Optional) The end date of the statistics. Rounded to full-day boundaries unless hourly=true and exactRange=true.",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "x-position": 3
+          },
+          {
+            "name": "hourly",
+            "in": "query",
+            "description": "(Optional) If true, the statistics will be returned in hourly grouping. Hourly statistics are available for the last 30 days only.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "x-position": 4
+          },
+          {
+            "name": "exactRange",
+            "in": "query",
+            "description": "(Optional) If true and hourly=true, the exact hour components of from and to will be preserved instead of rounding to full-day boundaries.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "x-position": 5
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Load Balancer statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerStatisticsModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "429": {
+            "description": "Too many statistics requests, try again later",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/{loadBalancerId}/pullzones": {
+      "get": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Get the pull zones attached to a Load Balancer",
+        "operationId": "LoadBalancerStatisticsEndpoint_GetAttachedPullZones",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "x-position": 2
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "x-position": 3
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The attached pull zones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LoadBalancerAttachedZoneModel"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/statistics": {
+      "get": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Get statistics roll-ups for all Load Balancers on the account",
+        "operationId": "LoadBalancerStatisticsEndpoint_GetLoadBalancerAccountStatistics",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "x-position": 1
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per-Load-Balancer roll-ups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LoadBalancerAccountSummaryModel"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
+    "/loadbalancer/{loadBalancerId}/usage": {
+      "get": {
+        "tags": [
+          "Load Balancer"
+        ],
+        "summary": "Get current-period request usage and pricing for a Load Balancer",
+        "operationId": "LoadBalancerUsageEndpoint_GetLoadBalancerUsage",
+        "parameters": [
+          {
+            "name": "loadBalancerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "description": "Year of the usage month (UTC). Defaults to the current year; supply together with month.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            },
+            "x-position": 2
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "Month of the usage month, 1-12 (UTC). Defaults to the current month; supply together with year.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            },
+            "x-position": 3
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current usage and pricing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadBalancerUsageModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The requested month is invalid, incomplete, or in the future",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Load Balancer profile was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorData"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The request authorization failed"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "AccessKey": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          },
+          {
+            "bearer": [
+              "User",
+              "UserApi",
+              "SubuserAPIPullZones",
+              "SubuserPullZones",
+              "SubuserManage",
+              "SubuserAPIManage"
+            ]
+          }
+        ]
+      }
+    },
     "/dnszone/{id}/statistics": {
       "get": {
         "tags": [
@@ -5226,7 +6938,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5236,7 +6949,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5292,7 +7006,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5302,7 +7017,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5356,7 +7072,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5366,7 +7083,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5420,7 +7138,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5430,7 +7149,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5482,7 +7202,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5492,7 +7213,8 @@
               "SubuserAPIDns",
               "SubuserDns",
               "SubuserManage",
-              "SubuserAPIManage"
+              "SubuserAPIManage",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5530,7 +7252,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5538,7 +7261,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5574,7 +7298,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5582,7 +7307,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5644,7 +7370,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5652,7 +7379,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5735,7 +7463,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5743,7 +7472,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -5848,7 +7578,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           },
           {
@@ -5856,7 +7587,8 @@
               "User",
               "UserApi",
               "SubuserAPIBilling",
-              "SubuserBilling"
+              "SubuserBilling",
+              "ScopedApiKey"
             ]
           }
         ]
@@ -6706,6 +8438,46 @@
           }
         }
       },
+      "DnsRecordTypes2": {
+        "type": "integer",
+        "description": "0 = A\n1 = AAAA\n2 = CNAME\n3 = TXT\n4 = MX\n5 = Redirect\n6 = Flatten\n7 = PullZone\n8 = SRV\n9 = CAA\n10 = PTR\n11 = Script\n12 = NS\n13 = SVCB\n14 = HTTPS\n15 = TLSA",
+        "x-enumNames": [
+          "A",
+          "AAAA",
+          "CNAME",
+          "TXT",
+          "MX",
+          "Redirect",
+          "Flatten",
+          "PullZone",
+          "SRV",
+          "CAA",
+          "PTR",
+          "Script",
+          "NS",
+          "SVCB",
+          "HTTPS",
+          "TLSA"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
       "PullZoneModel": {
         "type": "object",
         "additionalProperties": false,
@@ -6817,6 +8589,14 @@
             "type": "boolean",
             "description": "Determines if the delivery from the Africa region is enabled for this pull zone"
           },
+          "IpFamilyPolicy": {
+            "description": "Address-family policy: 0=IPv4Only, 1=DualStack, 2=DualStackPreferIPv6, 3=IPv6Only.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IpFamilyPolicy"
+              }
+            ]
+          },
           "ZoneSecurityEnabled": {
             "type": "boolean",
             "description": "True if the URL secure token authentication security is enabled"
@@ -6859,7 +8639,7 @@
             "nullable": true
           },
           "Type": {
-            "description": "The type of the pull zone. Premium = 0, Volume = 1",
+            "description": "The type of the pull zone",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/PullZoneType"
@@ -7051,6 +8831,14 @@
             "type": "boolean",
             "description": "Determines if the TLS 1.1 is enabled on the Pull Zone"
           },
+          "TlsSecurityLevel": {
+            "description": "The minimum TLS security level enforced on the Pull Zone",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TlsSecurityLevelType"
+              }
+            ]
+          },
           "VerifyOriginSSL": {
             "type": "boolean",
             "description": "Determines if the Pull Zone should verify the origin SSL certificate"
@@ -7150,6 +8938,10 @@
             "type": "boolean",
             "description": "Determines if the optimizer origin tunnel system is enabled for this zone"
           },
+          "OptimizerTunnelActiveProbingEnabled": {
+            "type": "boolean",
+            "description": "Determines if the optimizer tunnel system active probing should be enabled for this zone"
+          },
           "OptimizerDesktopMaxWidth": {
             "type": "integer",
             "description": "Determines the maximum automatic image size for desktop clients",
@@ -7185,6 +8977,18 @@
           "OptimizerPrerenderHtml": {
             "type": "boolean",
             "description": "Determines if the SEO HTML prerender is enabled"
+          },
+          "OptimizerHtmlToMarkdown": {
+            "description": "Determines if Markdown automatic generation for AI systems is enabled and which pipeline to use",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OptimizerHtmlToMarkdownType"
+              }
+            ]
+          },
+          "OptimizerLlmsTxt": {
+            "type": "boolean",
+            "description": "Determines if the llms.txt file should be served when requested"
           },
           "OptimizerEnableManipulationEngine": {
             "type": "boolean",
@@ -7495,6 +9299,12 @@
             "description": "A set of comma-separated header names used to identify clients",
             "nullable": true
           },
+          "LoadBalancerId": {
+            "type": "integer",
+            "description": "The ID of the Load Balancer profile used as the origin when OriginType is LoadBalancer",
+            "format": "int64",
+            "nullable": true
+          },
           "UserId": {
             "type": "string",
             "description": "User Id of the pull zone owner",
@@ -7606,14 +9416,32 @@
       },
       "ExecutionPhase": {
         "type": "integer",
-        "description": "0 = Cache\n1 = LoadBalancer",
+        "description": "0 = Cache\n1 = LoadBalancer\n2 = PreCache",
         "x-enumNames": [
           "Cache",
-          "LoadBalancer"
+          "LoadBalancer",
+          "PreCache"
         ],
         "enum": [
           0,
-          1
+          1,
+          2
+        ]
+      },
+      "IpFamilyPolicy": {
+        "type": "integer",
+        "description": "0 = IPv4Only\n1 = DualStack\n2 = DualStackPreferIPv6\n3 = IPv6Only",
+        "x-enumNames": [
+          "IPv4Only",
+          "DualStack",
+          "DualStackPreferIPv6",
+          "IPv6Only"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3
         ]
       },
       "PullZoneType": {
@@ -7638,7 +9466,7 @@
             "nullable": true
           },
           "ActionType": {
-            "description": "The action type of the edge rule. ForceSSL = 0, Redirect = 1, OriginUrl = 2, OverrideCacheTime = 3, BlockRequest = 4, SetResponseHeader = 5, SetRequestHeader = 6, ForceDownload = 7, DisableTokenAuthentication = 8, EnableTokenAuthentication = 9, OverrideCacheTimePublic = 10, IgnoreQueryString = 11, DisableOptimizer = 12, ForceCompression = 13, SetStatusCode = 14, BypassPermaCache = 15, OverrideBrowserCacheTime = 16",
+            "description": "The action type of the edge rule",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/EdgeRuleActionType"
@@ -7675,7 +9503,7 @@
             }
           },
           "TriggerMatchingType": {
-            "description": "The trigger matching type. MatchAny = 0, MatchAll = 1, MatchNone = 2",
+            "description": "The trigger matching type",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/TriggerMatchingTypes"
@@ -7704,7 +9532,7 @@
       },
       "EdgeRuleActionType": {
         "type": "integer",
-        "description": "0 = ForceSSL\n1 = Redirect\n2 = OriginUrl\n3 = OverrideCacheTime\n4 = BlockRequest\n5 = SetResponseHeader\n6 = SetRequestHeader\n7 = ForceDownload\n8 = DisableTokenAuthentication\n9 = EnableTokenAuthentication\n10 = OverrideCacheTimePublic\n11 = IgnoreQueryString\n12 = DisableOptimizer\n13 = ForceCompression\n14 = SetStatusCode\n15 = BypassPermaCache\n16 = OverrideBrowserCacheTime\n17 = OriginStorage\n18 = SetNetworkRateLimit\n19 = SetConnectionLimit\n20 = SetRequestsPerSecondLimit\n21 = RunEdgeScript\n22 = OriginMagicContainers\n23 = DisableWAF\n24 = RetryOrigin\n25 = OverrideBrowserCacheResponseHeader\n26 = RemoveBrowserCacheResponseHeader\n27 = DisableShieldChallenge\n28 = DisableShield\n29 = DisableShieldBotDetection\n30 = BypassAwsS3Authentication\n31 = DisableShieldAccessLists\n32 = DisableShieldRateLimiting\n33 = EnableRequestCoalescing\n34 = DisableRequestCoalescing",
+        "description": "0 = ForceSSL\n1 = Redirect\n2 = OriginUrl\n3 = OverrideCacheTime\n4 = BlockRequest\n5 = SetResponseHeader\n6 = SetRequestHeader\n7 = ForceDownload\n8 = DisableTokenAuthentication\n9 = EnableTokenAuthentication\n10 = OverrideCacheTimePublic\n11 = IgnoreQueryString\n12 = DisableOptimizer\n13 = ForceCompression\n14 = SetStatusCode\n15 = BypassPermaCache\n16 = OverrideBrowserCacheTime\n17 = OriginStorage\n18 = SetNetworkRateLimit\n19 = SetConnectionLimit\n20 = SetRequestsPerSecondLimit\n21 = RunEdgeScript\n22 = OriginMagicContainers\n23 = DisableWAF\n24 = RetryOrigin\n25 = OverrideBrowserCacheResponseHeader\n26 = RemoveBrowserCacheResponseHeader\n27 = DisableShieldChallenge\n28 = DisableShield\n29 = DisableShieldBotDetection\n30 = BypassAwsS3Authentication\n31 = DisableShieldAccessLists\n32 = DisableShieldRateLimiting\n33 = EnableRequestCoalescing\n34 = DisableRequestCoalescing\n35 = UseLoadBalancer\n36 = ForceLoadBalancerStickySessionMode\n37 = StripCookiesClientToOrigin",
         "x-enumNames": [
           "ForceSSL",
           "Redirect",
@@ -7740,7 +9568,10 @@
           "DisableShieldAccessLists",
           "DisableShieldRateLimiting",
           "EnableRequestCoalescing",
-          "DisableRequestCoalescing"
+          "DisableRequestCoalescing",
+          "UseLoadBalancer",
+          "ForceLoadBalancerStickySessionMode",
+          "StripCookiesClientToOrigin"
         ],
         "enum": [
           0,
@@ -7777,7 +9608,10 @@
           31,
           32,
           33,
-          34
+          34,
+          35,
+          36,
+          37
         ]
       },
       "Trigger": {
@@ -7785,7 +9619,7 @@
         "additionalProperties": false,
         "properties": {
           "Type": {
-            "description": "The type of the trigger. Url = 0, RequestHeader = 1, ResponseHeader = 2, UrlExtension = 3, CountryCode = 4, RemoteIP = 5, UrlQueryString = 6, RandomChance = 7",
+            "description": "The type of the trigger",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/TriggerTypes"
@@ -7801,7 +9635,7 @@
             }
           },
           "PatternMatchingType": {
-            "description": "The type of pattern matching. MatchAny = 0, MatchAll = 1, MatchNone = 2",
+            "description": "The type of pattern matching",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/PatternMatchingTypes"
@@ -7900,6 +9734,20 @@
           2
         ]
       },
+      "TlsSecurityLevelType": {
+        "type": "integer",
+        "description": "0 = Legacy\n1 = Compatible\n2 = ModernOnly",
+        "x-enumNames": [
+          "Legacy",
+          "Compatible",
+          "ModernOnly"
+        ],
+        "enum": [
+          0,
+          1,
+          2
+        ]
+      },
       "PullZoneLogForwarderProtocolType": {
         "type": "integer",
         "description": "0 = UDP\n1 = TCP\n2 = TCPEncrypted\n3 = DataDog",
@@ -7914,6 +9762,20 @@
           1,
           2,
           3
+        ]
+      },
+      "OptimizerHtmlToMarkdownType": {
+        "type": "integer",
+        "description": "0 = Off\n1 = Simple\n2 = Prerendered",
+        "x-enumNames": [
+          "Off",
+          "Simple",
+          "Prerendered"
+        ],
+        "enum": [
+          0,
+          1,
+          2
         ]
       },
       "OptimizerWatermarkPosition": {
@@ -8139,6 +10001,15 @@
             "description": "Determines if the delivery from the Africa region should be enabled for this pull zone",
             "nullable": true
           },
+          "IpFamilyPolicy": {
+            "description": "Address-family policy: 0=IPv4Only, 1=DualStack (default, best latency and compatibility), 2=DualStackPreferIPv6, 3=IPv6Only.",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IpFamilyPolicy"
+              }
+            ]
+          },
           "BlockRootPathAccess": {
             "type": "boolean",
             "description": "Determines if the zone should block requests to the root of the zone.",
@@ -8339,6 +10210,15 @@
             "description": "Determines if the TLS 1.1 should be enabled on this zone",
             "nullable": true
           },
+          "TlsSecurityLevel": {
+            "description": "The minimum TLS security level enforced on this zone",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TlsSecurityLevelType"
+              }
+            ]
+          },
           "CacheErrorResponses": {
             "type": "boolean",
             "description": "Determines if the cache error responses should be enabled on the zone",
@@ -8392,7 +10272,7 @@
           },
           "FollowRedirects": {
             "type": "boolean",
-            "description": "Determines if the zone should follow redirects return by the oprigin and cache the response",
+            "description": "Determines if the zone should follow redirects return by the origin and cache the response",
             "nullable": true
           },
           "ConnectionLimitPerIPCount": {
@@ -8460,6 +10340,11 @@
             "description": "Determines if the optimizer origin tunnel system should be enabled for this zone",
             "nullable": true
           },
+          "OptimizerTunnelActiveProbingEnabled": {
+            "type": "boolean",
+            "description": "Determines if the optimizer tunnel system active probing should be enabled for this zone",
+            "nullable": true
+          },
           "OptimizerDesktopMaxWidth": {
             "type": "integer",
             "description": "Determines the maximum automatic image size for desktop clients",
@@ -8500,6 +10385,20 @@
           "OptimizerPrerenderHtml": {
             "type": "boolean",
             "description": "Determines if the SEO HTML prerender should be enabled",
+            "nullable": true
+          },
+          "OptimizerHtmlToMarkdown": {
+            "description": "Determines if Markdown automatic generation for AI systems is enabled and which pipeline to use",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OptimizerHtmlToMarkdownType"
+              }
+            ]
+          },
+          "OptimizerLlmsTxt": {
+            "type": "boolean",
+            "description": "Determines if the llms.txt file should be served when requested",
             "nullable": true
           },
           "OptimizerEnableManipulationEngine": {
@@ -8582,7 +10481,7 @@
             "nullable": true
           },
           "Type": {
-            "description": "The type of the pull zone. Premium = 0, Volume = 1",
+            "description": "The type of the pull zone",
             "nullable": true,
             "oneOf": [
               {
@@ -8917,6 +10816,12 @@
             "type": "string",
             "description": "Vary Cache by Request Headers (comma delimited)",
             "nullable": true
+          },
+          "LoadBalancerId": {
+            "type": "integer",
+            "description": "If using a load balancer origin, the ID of the load balancer to use",
+            "format": "int64",
+            "nullable": true
           }
         }
       },
@@ -8957,6 +10862,19 @@
         }
       },
       "ExternalDnsCertificateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "Hostname"
+        ],
+        "properties": {
+          "Hostname": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ExternalHttpCertificateRequest": {
         "type": "object",
         "additionalProperties": false,
         "required": [
@@ -9044,6 +10962,15 @@
             "description": "Determines if the delivery from the Africa region should be enabled for this pull zone",
             "nullable": true
           },
+          "IpFamilyPolicy": {
+            "description": "Address-family policy: 0=IPv4Only, 1=DualStack (default, best latency and compatibility), 2=DualStackPreferIPv6, 3=IPv6Only.",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/IpFamilyPolicy"
+              }
+            ]
+          },
           "BlockRootPathAccess": {
             "type": "boolean",
             "description": "Determines if the zone should block requests to the root of the zone.",
@@ -9244,6 +11171,15 @@
             "description": "Determines if the TLS 1.1 should be enabled on this zone",
             "nullable": true
           },
+          "TlsSecurityLevel": {
+            "description": "The minimum TLS security level enforced on this zone",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TlsSecurityLevelType"
+              }
+            ]
+          },
           "CacheErrorResponses": {
             "type": "boolean",
             "description": "Determines if the cache error responses should be enabled on the zone",
@@ -9297,7 +11233,7 @@
           },
           "FollowRedirects": {
             "type": "boolean",
-            "description": "Determines if the zone should follow redirects return by the oprigin and cache the response",
+            "description": "Determines if the zone should follow redirects return by the origin and cache the response",
             "nullable": true
           },
           "ConnectionLimitPerIPCount": {
@@ -9365,6 +11301,11 @@
             "description": "Determines if the optimizer origin tunnel system should be enabled for this zone",
             "nullable": true
           },
+          "OptimizerTunnelActiveProbingEnabled": {
+            "type": "boolean",
+            "description": "Determines if the optimizer tunnel system active probing should be enabled for this zone",
+            "nullable": true
+          },
           "OptimizerDesktopMaxWidth": {
             "type": "integer",
             "description": "Determines the maximum automatic image size for desktop clients",
@@ -9405,6 +11346,20 @@
           "OptimizerPrerenderHtml": {
             "type": "boolean",
             "description": "Determines if the SEO HTML prerender should be enabled",
+            "nullable": true
+          },
+          "OptimizerHtmlToMarkdown": {
+            "description": "Determines if Markdown automatic generation for AI systems is enabled and which pipeline to use",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OptimizerHtmlToMarkdownType"
+              }
+            ]
+          },
+          "OptimizerLlmsTxt": {
+            "type": "boolean",
+            "description": "Determines if the llms.txt file should be served when requested",
             "nullable": true
           },
           "OptimizerEnableManipulationEngine": {
@@ -9487,7 +11442,7 @@
             "nullable": true
           },
           "Type": {
-            "description": "The type of the pull zone. Premium = 0, Volume = 1",
+            "description": "The type of the pull zone",
             "nullable": true,
             "oneOf": [
               {
@@ -9821,6 +11776,12 @@
           "CacheKeyHeaders": {
             "type": "string",
             "description": "Vary Cache by Request Headers (comma delimited)",
+            "nullable": true
+          },
+          "LoadBalancerId": {
+            "type": "integer",
+            "description": "If using a load balancer origin, the ID of the load balancer to use",
+            "format": "int64",
             "nullable": true
           },
           "Name": {
@@ -10037,6 +11998,65 @@
           }
         }
       },
+      "StorageRegionModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Code": {
+            "type": "string",
+            "description": "The storage region code",
+            "nullable": true
+          },
+          "Name": {
+            "type": "string",
+            "description": "The display name of the storage region",
+            "nullable": true
+          },
+          "Continent": {
+            "type": "string",
+            "description": "The continent code: EU (Europe), NA (North America), AS (Asia), OC (Oceania), SA (South America) or AF (Africa)",
+            "nullable": true
+          },
+          "Latitude": {
+            "type": "number",
+            "description": "The approximate latitude of the storage region in decimal degrees",
+            "format": "double"
+          },
+          "Longitude": {
+            "type": "number",
+            "description": "The approximate longitude of the storage region in decimal degrees",
+            "format": "double"
+          },
+          "PricePerGigabyte": {
+            "type": "number",
+            "description": "The standard storage price in USD per GB per month, before discounts",
+            "format": "decimal"
+          },
+          "Tier": {
+            "type": "integer",
+            "description": "The storage tier: 0 for Standard (HDD), 1 for Edge (SSD)",
+            "format": "int32"
+          },
+          "IsMainRegionSupported": {
+            "type": "boolean",
+            "description": "Whether the region can be selected as the main region for this storage tier"
+          },
+          "IsS3Supported": {
+            "type": "boolean",
+            "description": "Supports S3 replication; main-region use also requires IsMainRegionSupported"
+          },
+          "Endpoint": {
+            "type": "string",
+            "description": "The storage API endpoint, or null for SSD regions that cannot be selected as the main region",
+            "nullable": true
+          },
+          "S3Endpoint": {
+            "type": "string",
+            "description": "The S3 API endpoint, or null when S3 compatibility is not supported or the region cannot be selected as the main region",
+            "nullable": true
+          }
+        }
+      },
       "StorageZoneModel": {
         "type": "object",
         "additionalProperties": false,
@@ -10054,6 +12074,8 @@
           "Name": {
             "type": "string",
             "description": "The name of the storage zone",
+            "maxLength": 63,
+            "minLength": 4,
             "nullable": true
           },
           "Password": {
@@ -10118,6 +12140,11 @@
           "StorageHostname": {
             "type": "string",
             "description": "Determines the storage hostname for this zone",
+            "nullable": true
+          },
+          "S3Hostname": {
+            "type": "string",
+            "description": "Determines the S3 compatible hostname for this zone",
             "nullable": true
           },
           "ZoneTier": {
@@ -10187,7 +12214,8 @@
           "Name": {
             "type": "string",
             "description": "The name of the storage zone",
-            "minLength": 1
+            "maxLength": 63,
+            "minLength": 4
           },
           "Region": {
             "type": "string",
@@ -10265,6 +12293,17 @@
           "VideoCount": {
             "type": "integer",
             "description": "The number of videos in the video library",
+            "format": "int64"
+          },
+          "LiveStreamCount": {
+            "type": "integer",
+            "description": "The total number of live streams contained by the video library",
+            "format": "int64",
+            "nullable": true
+          },
+          "TotalCount": {
+            "type": "integer",
+            "description": "The total number of items contained by the video library",
             "format": "int64"
           },
           "TrafficUsage": {
@@ -10500,7 +12539,7 @@
             "description": "Determines if content tagging should be enabled for this library."
           },
           "PullZoneType": {
-            "description": "The type of the pull zone attached. Premium = 0, Volume = 1",
+            "description": "The type of the pull zone attached",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/PullZoneType"
@@ -10659,6 +12698,15 @@
           "EnableCompactControls": {
             "type": "boolean",
             "description": "Marks whether compact controls should be enabled for the player."
+          },
+          "GeoBlocking": {
+            "description": "Geo-blocking settings for the video library.",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VideoGeoBlocking"
+              }
+            ]
           }
         }
       },
@@ -10760,6 +12808,32 @@
           0,
           1
         ]
+      },
+      "VideoGeoBlocking": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Enabled": {
+            "type": "boolean",
+            "description": "Whether geo-blocking is enabled for the video library"
+          },
+          "AllowedCountries": {
+            "type": "array",
+            "description": "The list of countries allowed to access the video library, 2 letter ISO 3166-1 code",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "BlockedCountries": {
+            "type": "array",
+            "description": "The list of countries blocked from accessing the video library, 2 letter ISO 3166-1 code",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "VideoLibraryCreateModel": {
         "type": "object",
@@ -11268,6 +13342,15 @@
             "type": "boolean",
             "description": "(Optional) Marks whether compact controls should be enabled for the player.",
             "nullable": true
+          },
+          "GeoBlocking": {
+            "description": "(Optional) Geo-blocking settings for the video library.",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VideoGeoBlockingUpdateModel"
+              }
+            ]
           }
         }
       },
@@ -11304,6 +13387,33 @@
                 "$ref": "#/components/schemas/WidevineMinClientSecurityLevel"
               }
             ]
+          }
+        }
+      },
+      "VideoGeoBlockingUpdateModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Enabled": {
+            "type": "boolean",
+            "description": "(Optional) Whether geo-blocking is enabled for the video library",
+            "nullable": true
+          },
+          "AllowedCountries": {
+            "type": "array",
+            "description": "(Optional) The list of countries allowed to access the video library, 2 letter ISO 3166-1 code",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "BlockedCountries": {
+            "type": "array",
+            "description": "(Optional) The list of countries blocked from accessing the video library, 2 letter ISO 3166-1 code",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -11535,27 +13645,6 @@
             "type": "integer",
             "description": "Total download traffic across all protocols",
             "format": "int64"
-          }
-        }
-      },
-      "StorageRegionModel": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "Id": {
-            "type": "string",
-            "description": "The unique identifier for the storage region",
-            "nullable": true
-          },
-          "Name": {
-            "type": "string",
-            "description": "The name of the storage region",
-            "nullable": true
-          },
-          "Url": {
-            "type": "string",
-            "description": "The storage endpoint URL for this region",
-            "nullable": true
           }
         }
       },
@@ -11924,6 +14013,972 @@
             "maxLength": 36,
             "minLength": 8,
             "nullable": true
+          }
+        }
+      },
+      "PriceEstimationModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "PricingType": {
+            "$ref": "#/components/schemas/AppliedPricingType"
+          },
+          "PricePerUnit": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "UnitDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "EstimatedCost": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "Breakdown": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/PriceEstimationBreakdownLine"
+            }
+          }
+        }
+      },
+      "AppliedPricingType": {
+        "type": "integer",
+        "description": "0 = ListPrice\n1 = UserOverride\n2 = ResourceOverride",
+        "x-enumNames": [
+          "ListPrice",
+          "UserOverride",
+          "ResourceOverride"
+        ],
+        "enum": [
+          0,
+          1,
+          2
+        ]
+      },
+      "PriceEstimationBreakdownLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Description": {
+            "type": "string",
+            "nullable": true
+          },
+          "Units": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "PricePerUnit": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "Cost": {
+            "type": "number",
+            "format": "decimal"
+          }
+        }
+      },
+      "PricingEstimationSource": {
+        "type": "integer",
+        "description": "1101 = CDN_Standard_Tier_EU_Traffic\n1102 = CDN_Standard_Tier_NA_Traffic\n1103 = CDN_Standard_Tier_APAC_Traffic\n1104 = CDN_Standard_Tier_AF_Traffic\n1105 = CDN_Standard_Tier_SA_Traffic\n1106 = CDN_Standard_Tier_Uncategorized\n1201 = CDN_Standard_Tier_Stream_EU_Traffic\n1202 = CDN_Standard_Tier_Stream_NA_Traffic\n1203 = CDN_Standard_Tier_Stream_APAC_Traffic\n1204 = CDN_Standard_Tier_Stream_AF_Traffic\n1205 = CDN_Standard_Tier_Stream_SA_Traffic\n1206 = CDN_Standard_Tier_Stream_Uncategorized\n1301 = CDN_Volume_Tier_EU_Traffic\n1302 = CDN_Volume_Tier_NA_Traffic\n1303 = CDN_Volume_Tier_APAC_Traffic\n1304 = CDN_Volume_Tier_AF_Traffic\n1305 = CDN_Volume_Tier_SA_Traffic\n1306 = CDN_Volume_Tier_Uncategorized\n1401 = CDN_Volume_Tier_Stream_EU_Traffic\n1402 = CDN_Volume_Tier_Stream_NA_Traffic\n1403 = CDN_Volume_Tier_Stream_APAC_Traffic\n1404 = CDN_Volume_Tier_Stream_AF_Traffic\n1405 = CDN_Volume_Tier_Stream_SA_Traffic\n1406 = CDN_Volume_Tier_Stream_Uncategorized\n1501 = CDN_Standard_Tier_Storage_EU_Traffic\n1502 = CDN_Standard_Tier_Storage_NA_Traffic\n1503 = CDN_Standard_Tier_Storage_APAC_Traffic\n1504 = CDN_Standard_Tier_Storage_AF_Traffic\n1505 = CDN_Standard_Tier_Storage_SA_Traffic\n1506 = CDN_Standard_Tier_Storage_Uncategorized\n1511 = CDN_Volume_Tier_Storage_EU_Traffic\n1512 = CDN_Volume_Tier_Storage_NA_Traffic\n1513 = CDN_Volume_Tier_Storage_APAC_Traffic\n1514 = CDN_Volume_Tier_Storage_AF_Traffic\n1515 = CDN_Volume_Tier_Storage_SA_Traffic\n1516 = CDN_Volume_Tier_Storage_Uncategorized\n1630 = CDN_WebSockets_ConsumptionBased\n1701 = CDN_Standard_Tier_MagicContainers_EU_Traffic\n1702 = CDN_Standard_Tier_MagicContainers_NA_Traffic\n1703 = CDN_Standard_Tier_MagicContainers_APAC_Traffic\n1704 = CDN_Standard_Tier_MagicContainers_AF_Traffic\n1705 = CDN_Standard_Tier_MagicContainers_SA_Traffic\n1706 = CDN_Standard_Tier_MagicContainers_Uncategorized\n1711 = CDN_Volume_Tier_MagicContainers_EU_Traffic\n1712 = CDN_Volume_Tier_MagicContainers_NA_Traffic\n1713 = CDN_Volume_Tier_MagicContainers_APAC_Traffic\n1714 = CDN_Volume_Tier_MagicContainers_AF_Traffic\n1715 = CDN_Volume_Tier_MagicContainers_SA_Traffic\n1716 = CDN_Volume_Tier_MagicContainers_Uncategorized\n1801 = CDN_Standard_Tier_Scripting_EU_Traffic\n1802 = CDN_Standard_Tier_Scripting_NA_Traffic\n1803 = CDN_Standard_Tier_Scripting_APAC_Traffic\n1804 = CDN_Standard_Tier_Scripting_AF_Traffic\n1805 = CDN_Standard_Tier_Scripting_SA_Traffic\n1806 = CDN_Standard_Tier_Scripting_Uncategorized\n1811 = CDN_Volume_Tier_Scripting_EU_Traffic\n1812 = CDN_Volume_Tier_Scripting_NA_Traffic\n1813 = CDN_Volume_Tier_Scripting_APAC_Traffic\n1814 = CDN_Volume_Tier_Scripting_AF_Traffic\n1815 = CDN_Volume_Tier_Scripting_SA_Traffic\n1816 = CDN_Volume_Tier_Scripting_Uncategorized\n2100 = Storage_Standard_Tier\n2200 = Storage_SSD_Tier\n2300 = Storage_Standard_Tier_Stream\n2400 = Storage_SSD_Tier_Stream\n4100 = Transcribing\n4200 = PremiumEncoding\n4300 = DRM_Base\n4400 = DRM_LicenseIssued\n4501 = LiveEncoding_SD\n4502 = LiveEncoding_HD\n4503 = LiveEncoding_4K\n5200 = Scripting_CDN_Requests\n5300 = Scripting_CDN_CPU",
+        "x-enumNames": [
+          "CDN_Standard_Tier_EU_Traffic",
+          "CDN_Standard_Tier_NA_Traffic",
+          "CDN_Standard_Tier_APAC_Traffic",
+          "CDN_Standard_Tier_AF_Traffic",
+          "CDN_Standard_Tier_SA_Traffic",
+          "CDN_Standard_Tier_Uncategorized",
+          "CDN_Standard_Tier_Stream_EU_Traffic",
+          "CDN_Standard_Tier_Stream_NA_Traffic",
+          "CDN_Standard_Tier_Stream_APAC_Traffic",
+          "CDN_Standard_Tier_Stream_AF_Traffic",
+          "CDN_Standard_Tier_Stream_SA_Traffic",
+          "CDN_Standard_Tier_Stream_Uncategorized",
+          "CDN_Volume_Tier_EU_Traffic",
+          "CDN_Volume_Tier_NA_Traffic",
+          "CDN_Volume_Tier_APAC_Traffic",
+          "CDN_Volume_Tier_AF_Traffic",
+          "CDN_Volume_Tier_SA_Traffic",
+          "CDN_Volume_Tier_Uncategorized",
+          "CDN_Volume_Tier_Stream_EU_Traffic",
+          "CDN_Volume_Tier_Stream_NA_Traffic",
+          "CDN_Volume_Tier_Stream_APAC_Traffic",
+          "CDN_Volume_Tier_Stream_AF_Traffic",
+          "CDN_Volume_Tier_Stream_SA_Traffic",
+          "CDN_Volume_Tier_Stream_Uncategorized",
+          "CDN_Standard_Tier_Storage_EU_Traffic",
+          "CDN_Standard_Tier_Storage_NA_Traffic",
+          "CDN_Standard_Tier_Storage_APAC_Traffic",
+          "CDN_Standard_Tier_Storage_AF_Traffic",
+          "CDN_Standard_Tier_Storage_SA_Traffic",
+          "CDN_Standard_Tier_Storage_Uncategorized",
+          "CDN_Volume_Tier_Storage_EU_Traffic",
+          "CDN_Volume_Tier_Storage_NA_Traffic",
+          "CDN_Volume_Tier_Storage_APAC_Traffic",
+          "CDN_Volume_Tier_Storage_AF_Traffic",
+          "CDN_Volume_Tier_Storage_SA_Traffic",
+          "CDN_Volume_Tier_Storage_Uncategorized",
+          "CDN_WebSockets_ConsumptionBased",
+          "CDN_Standard_Tier_MagicContainers_EU_Traffic",
+          "CDN_Standard_Tier_MagicContainers_NA_Traffic",
+          "CDN_Standard_Tier_MagicContainers_APAC_Traffic",
+          "CDN_Standard_Tier_MagicContainers_AF_Traffic",
+          "CDN_Standard_Tier_MagicContainers_SA_Traffic",
+          "CDN_Standard_Tier_MagicContainers_Uncategorized",
+          "CDN_Volume_Tier_MagicContainers_EU_Traffic",
+          "CDN_Volume_Tier_MagicContainers_NA_Traffic",
+          "CDN_Volume_Tier_MagicContainers_APAC_Traffic",
+          "CDN_Volume_Tier_MagicContainers_AF_Traffic",
+          "CDN_Volume_Tier_MagicContainers_SA_Traffic",
+          "CDN_Volume_Tier_MagicContainers_Uncategorized",
+          "CDN_Standard_Tier_Scripting_EU_Traffic",
+          "CDN_Standard_Tier_Scripting_NA_Traffic",
+          "CDN_Standard_Tier_Scripting_APAC_Traffic",
+          "CDN_Standard_Tier_Scripting_AF_Traffic",
+          "CDN_Standard_Tier_Scripting_SA_Traffic",
+          "CDN_Standard_Tier_Scripting_Uncategorized",
+          "CDN_Volume_Tier_Scripting_EU_Traffic",
+          "CDN_Volume_Tier_Scripting_NA_Traffic",
+          "CDN_Volume_Tier_Scripting_APAC_Traffic",
+          "CDN_Volume_Tier_Scripting_AF_Traffic",
+          "CDN_Volume_Tier_Scripting_SA_Traffic",
+          "CDN_Volume_Tier_Scripting_Uncategorized",
+          "Storage_Standard_Tier",
+          "Storage_SSD_Tier",
+          "Storage_Standard_Tier_Stream",
+          "Storage_SSD_Tier_Stream",
+          "Transcribing",
+          "PremiumEncoding",
+          "DRM_Base",
+          "DRM_LicenseIssued",
+          "LiveEncoding_SD",
+          "LiveEncoding_HD",
+          "LiveEncoding_4K",
+          "Scripting_CDN_Requests",
+          "Scripting_CDN_CPU"
+        ],
+        "enum": [
+          1101,
+          1102,
+          1103,
+          1104,
+          1105,
+          1106,
+          1201,
+          1202,
+          1203,
+          1204,
+          1205,
+          1206,
+          1301,
+          1302,
+          1303,
+          1304,
+          1305,
+          1306,
+          1401,
+          1402,
+          1403,
+          1404,
+          1405,
+          1406,
+          1501,
+          1502,
+          1503,
+          1504,
+          1505,
+          1506,
+          1511,
+          1512,
+          1513,
+          1514,
+          1515,
+          1516,
+          1630,
+          1701,
+          1702,
+          1703,
+          1704,
+          1705,
+          1706,
+          1711,
+          1712,
+          1713,
+          1714,
+          1715,
+          1716,
+          1801,
+          1802,
+          1803,
+          1804,
+          1805,
+          1806,
+          1811,
+          1812,
+          1813,
+          1814,
+          1815,
+          1816,
+          2100,
+          2200,
+          2300,
+          2400,
+          4100,
+          4200,
+          4300,
+          4400,
+          4501,
+          4502,
+          4503,
+          5200,
+          5300
+        ]
+      },
+      "LoadBalancerOriginModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Id": {
+            "type": "integer",
+            "description": "The unique ID of the origin",
+            "format": "int64"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The name of the origin",
+            "nullable": true
+          },
+          "Weight": {
+            "type": "integer",
+            "description": "The weight of the origin used for weighted load balancing",
+            "format": "int32"
+          },
+          "Enabled": {
+            "type": "boolean",
+            "description": "Whether traffic should route to this origin"
+          },
+          "HealthStatus": {
+            "description": "Current health status of the origin",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HealthStatus"
+              }
+            ]
+          },
+          "OriginType": {
+            "description": "The type of origin to connect to. Magic Container origins must be CDN endpoints; Anycast endpoints are not supported, use a Standard origin for those",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OriginType"
+              }
+            ]
+          },
+          "EdgeScriptId": {
+            "type": "integer",
+            "description": "The ID of the Edge Script when using this origin type",
+            "format": "int64",
+            "nullable": true
+          },
+          "StorageZoneId": {
+            "type": "integer",
+            "description": "The ID of the Storage Zone when using this origin type",
+            "format": "int64",
+            "nullable": true
+          },
+          "StandardOrigin": {
+            "description": "Standard Origin settings - Required with Standard origin type",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StandardOriginModel"
+              }
+            ]
+          },
+          "MagicContainersOrigin": {
+            "description": "Magic Containers Origin settings - Required with Magic Containers origin type",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MagicContainersOriginModel"
+              }
+            ]
+          }
+        }
+      },
+      "HealthStatus": {
+        "type": "integer",
+        "description": "0 = Healthy\n1 = Degraded",
+        "x-enumNames": [
+          "Healthy",
+          "Degraded"
+        ],
+        "enum": [
+          0,
+          1
+        ]
+      },
+      "OriginType": {
+        "type": "integer",
+        "description": "0 = Standard\n1 = Storage\n2 = EdgeScript\n3 = MagicContainer",
+        "x-enumNames": [
+          "Standard",
+          "Storage",
+          "EdgeScript",
+          "MagicContainer"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "StandardOriginModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "OriginUrl": {
+            "type": "string",
+            "description": "The URL of the origin server",
+            "nullable": true
+          },
+          "HostHeader": {
+            "type": "string",
+            "description": "The host header to send to the origin server",
+            "nullable": true
+          },
+          "VerifySsl": {
+            "type": "boolean",
+            "description": "Whether to verify the SSL certificate of the origin server",
+            "nullable": true
+          }
+        }
+      },
+      "MagicContainersOriginModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "AppId": {
+            "type": "string",
+            "description": "The ID of the Magic Containers app",
+            "nullable": true
+          },
+          "EndPointId": {
+            "type": "string",
+            "description": "The ID of the Magic Containers CDN endpoint. Anycast endpoints are not supported, add those as a Standard origin using their IP address and port",
+            "nullable": true
+          }
+        }
+      },
+      "LoadBalancerOriginCreateModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "The name of the origin",
+            "nullable": true
+          },
+          "Weight": {
+            "type": "integer",
+            "description": "The weight of the origin used for weighted load balancing",
+            "format": "byte",
+            "nullable": true
+          },
+          "Enabled": {
+            "type": "boolean",
+            "description": "Whether traffic should route to this origin",
+            "nullable": true
+          },
+          "OriginType": {
+            "description": "The type of origin to connect to. Magic Container origins must be CDN endpoints; Anycast endpoints are not supported, use a Standard origin for those",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OriginType"
+              }
+            ]
+          },
+          "EdgeScriptId": {
+            "type": "integer",
+            "description": "The ID of the Edge Script to use as the origin - required when using the EdgeScript origin type",
+            "format": "int64",
+            "nullable": true
+          },
+          "StorageZoneId": {
+            "type": "integer",
+            "description": "The ID of the Storage Zone to use as the origin - required when using the Storage origin type",
+            "format": "int64",
+            "nullable": true
+          },
+          "StandardOrigin": {
+            "description": "Standard origin settings - required when using the Standard origin type",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StandardOriginModel"
+              }
+            ]
+          },
+          "MagicContainersOrigin": {
+            "description": "Magic Containers origin settings - required when using the Magic Containers origin type",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MagicContainersOriginModel"
+              }
+            ]
+          }
+        }
+      },
+      "LoadBalancerOriginGroupModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Id": {
+            "type": "integer",
+            "description": "The unique ID of the origin group",
+            "format": "int64"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The name of the origin group",
+            "nullable": true
+          },
+          "Enabled": {
+            "type": "boolean",
+            "description": "Set to true if the origin group is enabled"
+          },
+          "Latitude": {
+            "type": "number",
+            "description": "The latitude of the origin group location",
+            "format": "double"
+          },
+          "Longitude": {
+            "type": "number",
+            "description": "The longitude of the origin group location",
+            "format": "double"
+          },
+          "Weight": {
+            "type": "integer",
+            "description": "The weight of the origin group used for weighted load balancing",
+            "format": "byte"
+          },
+          "Priority": {
+            "type": "integer",
+            "description": "The priority of the origin group used for failover load balancing",
+            "format": "byte"
+          },
+          "OriginLoadBalancingMethod": {
+            "description": "The load balancing method used for selecting origins within the group",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OriginLoadBalancingMethod"
+              }
+            ]
+          },
+          "Origins": {
+            "type": "array",
+            "description": "The list of origins associated with the origin group",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerOriginModel"
+            }
+          },
+          "HealthCheckSettings": {
+            "description": "Health settings for the origin group",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HealthCheckSettings"
+              }
+            ]
+          }
+        }
+      },
+      "OriginLoadBalancingMethod": {
+        "type": "integer",
+        "description": "0 = RoundRobin\n1 = WeightedRandom\n2 = LeastConnections\n3 = Latency",
+        "x-enumNames": [
+          "RoundRobin",
+          "WeightedRandom",
+          "LeastConnections",
+          "Latency"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "HealthCheckSettings": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Enabled": {
+            "type": "boolean",
+            "description": "Whether health checking is enabled for this origin group",
+            "nullable": true
+          },
+          "Path": {
+            "type": "string",
+            "description": "The path used for health check requests",
+            "nullable": true
+          }
+        }
+      },
+      "OriginGroupCreateModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "The name of the origin group",
+            "nullable": true
+          },
+          "Enabled": {
+            "type": "boolean",
+            "description": "Set to true if the origin group is enabled",
+            "nullable": true
+          },
+          "HealthCheckSettings": {
+            "description": "Health check settings for monitoring origins in the group",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HealthCheckSettings"
+              }
+            ]
+          },
+          "OriginLoadBalancingMethod": {
+            "description": "The load balancing method used for selecting origins within the group",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OriginLoadBalancingMethod"
+              }
+            ]
+          },
+          "Latitude": {
+            "type": "number",
+            "description": "The latitude of the origin group location",
+            "format": "double",
+            "nullable": true
+          },
+          "Longitude": {
+            "type": "number",
+            "description": "The longitude of the origin group location",
+            "format": "double",
+            "nullable": true
+          },
+          "Weight": {
+            "type": "integer",
+            "description": "The weight of the origin group used for weighted load balancing",
+            "format": "byte",
+            "nullable": true
+          },
+          "Priority": {
+            "type": "integer",
+            "description": "The priority of the origin group used for failover load balancing",
+            "format": "byte",
+            "nullable": true
+          }
+        }
+      },
+      "LoadBalancerProfileModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "LoadBalancerId": {
+            "type": "integer",
+            "description": "The unique ID of the Load Balancer",
+            "format": "int64"
+          },
+          "Name": {
+            "type": "string",
+            "description": "The name of the Load Balancer profile",
+            "nullable": true
+          },
+          "OriginGroupLoadBalancingMethod": {
+            "description": "The load balancing method used for selecting origin groups",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OriginGroupLoadBalancingMethod"
+              }
+            ]
+          },
+          "StickySessionType": {
+            "description": "The sticky session type used for persisting client sessions",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LoadBalancerStickySessionType"
+              }
+            ]
+          },
+          "OriginGroups": {
+            "type": "array",
+            "description": "The list of origin groups associated with the Load Balancer profile",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerOriginGroupModel"
+            }
+          }
+        }
+      },
+      "OriginGroupLoadBalancingMethod": {
+        "type": "integer",
+        "description": "0 = WeightedRandom\n1 = RoundRobin\n2 = GeoLocation\n3 = LowestAverageLatency",
+        "x-enumNames": [
+          "WeightedRandom",
+          "RoundRobin",
+          "GeoLocation",
+          "LowestAverageLatency"
+        ],
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "LoadBalancerStickySessionType": {
+        "type": "integer",
+        "description": "0 = Off\n1 = Cookie",
+        "x-enumNames": [
+          "Off",
+          "Cookie"
+        ],
+        "enum": [
+          0,
+          1
+        ]
+      },
+      "LoadBalancerSettingsModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "The name of the Load Balancer profile",
+            "nullable": true
+          },
+          "StickySessionType": {
+            "description": "The sticky session type to use for persisting client to an origin",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LoadBalancerStickySessionType"
+              }
+            ]
+          },
+          "OriginGroupLoadBalancingMethod": {
+            "description": "The load balancing method used for selecting origin groups",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OriginGroupLoadBalancingMethod"
+              }
+            ]
+          }
+        }
+      },
+      "LoadBalancerStatisticsModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "Summary": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LoadBalancerStatisticsSummaryModel"
+              }
+            ]
+          },
+          "RequestsByOrigin": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerOriginRequestsSeriesModel"
+            }
+          },
+          "RequestsByOriginGroup": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerOriginGroupRequestsSeriesModel"
+            }
+          },
+          "TrafficByOrigin": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerOriginRequestsSeriesModel"
+            }
+          },
+          "OriginLatency": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerOriginLatencySeriesModel"
+            }
+          },
+          "OriginFailures": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerOriginFailuresSeriesModel"
+            }
+          }
+        }
+      },
+      "LoadBalancerStatisticsSummaryModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "TotalRequests": {
+            "type": "number",
+            "format": "double"
+          },
+          "TotalTraffic": {
+            "type": "number",
+            "format": "double"
+          },
+          "AverageOriginRttMs": {
+            "type": "number",
+            "format": "double"
+          },
+          "AllOriginsExhausted": {
+            "type": "number",
+            "format": "double"
+          },
+          "OriginErrorsServed": {
+            "type": "number",
+            "format": "double"
+          },
+          "HealthyResponsesServed": {
+            "type": "number",
+            "format": "double"
+          },
+          "FailoverCapped": {
+            "type": "number",
+            "format": "double"
+          },
+          "AverageRetryDepth": {
+            "type": "number",
+            "format": "double"
+          },
+          "StickySessionHits": {
+            "type": "number",
+            "format": "double"
+          },
+          "RequestsByMethod": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      },
+      "LoadBalancerOriginRequestsSeriesModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "OriginId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "OriginName": {
+            "type": "string",
+            "nullable": true
+          },
+          "Values": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      },
+      "LoadBalancerOriginGroupRequestsSeriesModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "OriginGroupId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "OriginGroupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "Values": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      },
+      "LoadBalancerOriginLatencySeriesModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "OriginId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "OriginName": {
+            "type": "string",
+            "nullable": true
+          },
+          "Percentile": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "Values": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      },
+      "LoadBalancerOriginFailuresSeriesModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "OriginId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "OriginName": {
+            "type": "string",
+            "nullable": true
+          },
+          "StatusCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "Values": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      },
+      "LoadBalancerAttachedZoneModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "PullZoneId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "Hostname": {
+            "type": "string",
+            "nullable": true
+          },
+          "TrafficServed": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "LoadBalancerAccountSummaryModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "LoadBalancerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "TotalRequests": {
+            "type": "number",
+            "format": "double"
+          },
+          "TotalTraffic": {
+            "type": "number",
+            "format": "double"
+          },
+          "AttachedPullZoneCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "LoadBalancerUsageModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "LoadBalancerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "PeriodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "PeriodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ResetsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "CurrentRequests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "IncludedRequests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "MonthlyFee": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "Tiers": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/LoadBalancerPricingTierModel"
+            }
+          }
+        }
+      },
+      "LoadBalancerPricingTierModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ThresholdFromMillions": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ThresholdToMillions": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "PricePerMillion": {
+            "type": "number",
+            "format": "decimal"
           }
         }
       },
@@ -12401,6 +15456,11 @@
             "description": "The total monthly charges for DB",
             "format": "decimal"
           },
+          "MonthlyChargesLoadBalancer": {
+            "type": "number",
+            "description": "The total monthly charges for Load Balancer",
+            "format": "decimal"
+          },
           "MonthlyDBWrites": {
             "description": "The monthly charges and usage for BunnyDB row writes",
             "nullable": true,
@@ -12430,6 +15490,47 @@
           },
           "MonthlyDBReplica": {
             "description": "The monthly charges and usage for BunnyDB replica storage",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UsageBreakdown"
+              }
+            ]
+          },
+          "MonthlyChargesAiGateway": {
+            "type": "number",
+            "description": "The total monthly charges for AI Gateway",
+            "format": "decimal"
+          },
+          "MonthlyAiGatewayInputTokens": {
+            "description": "The monthly charges and usage for AI Gateway input tokens",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UsageBreakdown"
+              }
+            ]
+          },
+          "MonthlyAiGatewayOutputTokens": {
+            "description": "The monthly charges and usage for AI Gateway output tokens",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UsageBreakdown"
+              }
+            ]
+          },
+          "MonthlyAiGatewayCachedTokens": {
+            "description": "The monthly charges and usage for AI Gateway cached tokens",
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UsageBreakdown"
+              }
+            ]
+          },
+          "MonthlyAiGatewayOtherCharges": {
+            "description": "The monthly AI Gateway charges that aren't for input, output or cached tokens, and the number of requests that had them",
             "nullable": true,
             "oneOf": [
               {
@@ -12606,7 +15707,7 @@
             "format": "date-time"
           },
           "Type": {
-            "description": "The type of the billing record. PayPal = 0, Crypto = 1, CreditCard = 2, MonthlyUsage = 3, Refund = 4, CouponCode = 5, BankTransfer = 6, AffiliateCredits = 7",
+            "description": "The type of the billing record",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/BillingRecordType"
@@ -12842,7 +15943,7 @@
           },
           "MinimumPayoutAmount": {
             "type": "number",
-            "description": "The minimum amount required to request affiliate credits external payout",
+            "description": "The smallest cash payout that can be requested",
             "format": "decimal"
           },
           "AffiliateClicksChart": {
@@ -12911,6 +16012,12 @@
     },
     {
       "name": "Pull Zone"
+    },
+    {
+      "name": "Pricing"
+    },
+    {
+      "name": "Load Balancer"
     },
     {
       "name": "DNS Zone"

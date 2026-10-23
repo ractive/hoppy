@@ -1,6 +1,6 @@
 //! Types for the bunny.net Database control-plane API.
 //!
-//! Captured from `specs/database.json` (API spec version 0.0.130, 2026-05-05).
+//! Captured from `specs/database.json` (API spec version 0.0.144, 2026-10-23).
 //! v1 and v2 are exposed as parallel types (`Database` vs `Database2`,
 //! `CreateDatabasePayload` vs `CreateDatabaseV2Payload`, etc.) within this
 //! single module — unifying them would silently lose fields one side or the

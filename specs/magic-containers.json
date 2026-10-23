@@ -2,7 +2,7 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Public API",
-    "description": "Public API endpoints for user consumption. Release version: v1.9.41.0",
+    "description": "Public API endpoints for user consumption. Release version: v1.10.16.0",
     "version": "1.0"
   },
   "servers": [
@@ -54,7 +54,7 @@
             }
           },
           "409": {
-            "description": "Application is suspended.",
+            "description": "Application is suspended or has no containers.",
             "content": {
               "application/json": {
                 "schema": {
@@ -920,6 +920,16 @@
               }
             }
           },
+          "409": {
+            "description": "Application is suspended or has no containers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Unexpected server error.",
             "content": {
@@ -1647,6 +1657,87 @@
         }
       }
     },
+    "/registries/tags/paged": {
+      "post": {
+        "tags": [
+          "ContainerRegistries"
+        ],
+        "summary": "List Container Image Tags Page",
+        "description": "Lists one page of the tags of a container image, in the order the registry returns them (newest first for Docker Hub images whose tags the registry can't list in time). The response cursor is the cursor of the next page; it is empty on the last page.",
+        "operationId": "ListContainerImageTagsPage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListContainerImageTagsPageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListContainerImageTagsPageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListContainerImageTagsPageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The page of container image tags was successfully retrieved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListContainerImageTagsPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is invalid, e.g. the limit is out of range.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable entity.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/registries/image-config": {
       "post": {
         "tags": [
@@ -1839,6 +1930,117 @@
           },
           "500": {
             "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/registries/images/find": {
+      "post": {
+        "tags": [
+          "ContainerRegistries"
+        ],
+        "summary": "Find Container Image",
+        "description": "Parses an image reference like \"ghcr.io/owner/app:v1\" or \"owner/app\" and checks whether the image tag exists in the selected registries of the user (only those of the reference's host when it has one). Returns every registry that has the image tag with its id, hostname, the image namespace, name, tag and digest.",
+        "operationId": "FindContainerImage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindContainerImageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindContainerImageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindContainerImageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The image tag exists in at least one of the user's registries; every such registry is listed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindContainerImageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is invalid, e.g. no registry is selected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "None of the selected registries is the user's or is for the image host, or the image tag was not found in any of them.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The image reference is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The image was found nowhere and a registry failed to answer (also 503 and other registry errors).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -4185,6 +4387,7 @@
       "ContainerEndpoint": {
         "required": [
           "displayName",
+          "id",
           "isSslEnabled",
           "portMappings",
           "publicHost",
@@ -4193,6 +4396,11 @@
         ],
         "type": "object",
         "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string",
+            "description": "Unique endpoint id. Use this value as `container_endpoint_id` when creating a pull zone that targets this endpoint."
+          },
           "displayName": {
             "minLength": 1,
             "type": "string"
@@ -4462,6 +4670,9 @@
             "type": "boolean",
             "nullable": true
           },
+          "isPlatformManaged": {
+            "type": "boolean"
+          },
           "lastUpdatedAt": {
             "type": "string",
             "format": "date-time",
@@ -4477,6 +4688,7 @@
         "type": "object",
         "properties": {
           "displayName": {
+            "maxLength": 50,
             "minLength": 1,
             "type": "string",
             "description": "Container registry display name"
@@ -5083,6 +5295,86 @@
         "additionalProperties": false,
         "description": "RFC 7807 Problem Details response model."
       },
+      "FindContainerImageRequest": {
+        "required": [
+          "image",
+          "registryIds"
+        ],
+        "type": "object",
+        "properties": {
+          "image": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string",
+            "description": "Image reference in the docker format: [registry/]namespace/name[:tag], e.g. \"ghcr.io/owner/app:v1\" or \"owner/app\".\nWithout a registry host all of the user's registries are searched.\nThe tag defaults to \"latest\"."
+          },
+          "registryIds": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The registries to search: ids of the user's registries, or \"dockerhub\" / \"github\". At least one is required;\nids that are not the user's registries are skipped. With a registry host in the image reference, only the\nselected registries of that host are searched."
+          }
+        },
+        "additionalProperties": false
+      },
+      "FindContainerImageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FoundContainerImage"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ListMeta"
+          },
+          "cursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Every registry of the user that has the image tag, in the order they were queried\n(the user's own private registries first, then public and platform ones)."
+      },
+      "FoundContainerImage": {
+        "required": [
+          "imageDigest",
+          "imageName",
+          "imageNamespace",
+          "imageTag",
+          "isPublic",
+          "registryHostname",
+          "registryId"
+        ],
+        "type": "object",
+        "properties": {
+          "imageNamespace": {
+            "type": "string"
+          },
+          "imageName": {
+            "type": "string"
+          },
+          "registryId": {
+            "type": "string"
+          },
+          "registryHostname": {
+            "type": "string"
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "imageTag": {
+            "type": "string"
+          },
+          "imageDigest": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "GetContainerConfigSuggestionsRequest": {
         "required": [
           "imageName",
@@ -5388,6 +5680,65 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ListContainerImageTagsPageRequest": {
+        "required": [
+          "imageName",
+          "imageNamespace",
+          "registryId"
+        ],
+        "type": "object",
+        "properties": {
+          "registryId": {
+            "minLength": 1,
+            "type": "string",
+            "description": "The registry identifier. Can be \"dockerhub\", \"github\", or a private registry ID."
+          },
+          "imageName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "imageNamespace": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "description": "The maximum number of tags in the page. Registries may return fewer.",
+            "format": "int32",
+            "default": 100
+          },
+          "cursor": {
+            "maxLength": 128,
+            "type": "string",
+            "description": "The cursor of the page to return, from the previous response; omit for the first page.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ListContainerImageTagsPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContainerImageTag"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ListMeta"
+          },
+          "cursor": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -5703,6 +6054,9 @@
               "type": "number",
               "format": "double"
             }
+          },
+          "limits": {
+            "$ref": "#/components/schemas/OverviewLimits"
           }
         },
         "additionalProperties": false,
@@ -5755,6 +6109,28 @@
         },
         "additionalProperties": false,
         "description": "Overview container model"
+      },
+      "OverviewLimits": {
+        "type": "object",
+        "properties": {
+          "cpuCores": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "ramBytes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "outboundBandwidthBytesPerSecond": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "What one instance of the application may use. The same for every instance, so it is stated once."
       },
       "OverviewPod": {
         "type": "object",
@@ -5828,10 +6204,50 @@
             "type": "integer",
             "format": "int64",
             "nullable": true
+          },
+          "cpuUsageCores": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "ramUsageBytes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "outboundBandwidthBytesPerSecond": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "volumes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverviewPodVolume"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false,
         "description": "Overview pod model"
+      },
+      "OverviewPodVolume": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "usageBytes": {
+            "type": "number",
+            "format": "double"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false,
+        "description": "One volume of an instance, with both halves of its meter in bytes."
       },
       "OverviewRegion": {
         "type": "object",
@@ -6133,7 +6549,8 @@
       "RegistryType": {
         "enum": [
           "dockerHub",
-          "gitHub"
+          "gitHub",
+          "bunnyRegistry"
         ],
         "type": "string"
       },
@@ -6488,6 +6905,16 @@
             "format": "int32",
             "nullable": true
           },
+          "maxCpuMilliCoresPerPod": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxMemoryBytesPerPod": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
           "maxNumberOfInstancesPerRegion": {
             "type": "integer",
             "format": "int32"
@@ -6657,7 +7084,8 @@
           "creating",
           "notScheduled",
           "scheduled",
-          "failed"
+          "failed",
+          "maintenance"
         ],
         "type": "string"
       },
