@@ -3,7 +3,13 @@ use bunny_net_api::core::types::{
     PreloadingScreenTheme, PullZoneLogForwarderProtocolType, PullZonePrivateKeyType,
     PullZoneTierType, ShieldDDosProtectionType, StickySessionType,
 };
-use bunny_net_api::shield::types::WafRuleOperatorType;
+use bunny_net_api::shield::types::{
+    AccessListAction, AccessListType, BotCategorizationAction, BotCategoryAction,
+    BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
+    DdosShieldSensitivity, RateLimitActionType, RateLimitCounterKey, ReviewActionType,
+    UploadScanningScannerMode, WafExecutionMode, WafRuleActionType, WafRuleOperatorType,
+    WafRuleSeverityType, WafRuleTransformationType,
+};
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
@@ -3505,9 +3511,10 @@ pub enum ShieldBotCategorizationAction {
         /// Bot ID (discover via `shield bot-categorization list`)
         #[arg(long)]
         bot_id: i64,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow, 3 = Ignore)
-        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=3))]
-        action: u8,
+        /// Action: a name or number (0 = None/clear, 1 = Block, 2 = Allow, 3 = Ignore).
+        /// Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action: BotCategorizationAction,
     },
     /// Set (or clear) the action for every bot in a category
     SetCategory {
@@ -3517,9 +3524,10 @@ pub enum ShieldBotCategorizationAction {
         /// Category (0 = None, 1 = SEO, 2 = AIScraper, 3 = AITool, 4 = Tool, 5 = Ads, 6 = Preview, 7 = Social, 255 = System)
         #[arg(long)]
         category: i32,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow; `Ignore` is bot-only)
-        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=2))]
-        action: u8,
+        /// Action: a name or number (0 = None/clear, 1 = Block, 2 = Allow; `Ignore` is
+        /// bot-only). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action: BotCategoryAction,
     },
 }
 
@@ -3673,12 +3681,13 @@ pub enum ShieldZoneAction {
         /// Enable or disable WAF
         #[arg(long)]
         waf_enabled: Option<bool>,
-        /// WAF execution mode (0 = Disabled, 1 = Enabled)
-        #[arg(long)]
-        waf_execution_mode: Option<u8>,
-        /// DDoS shield sensitivity (0 = Off, 1 = Low, 2 = Medium, 3 = High, 4 = Challenge, 5 = ChallengeInteractive)
-        #[arg(long)]
-        ddos_sensitivity: Option<u8>,
+        /// WAF execution mode: a name or number (0 = Log, 1 = Block). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        waf_execution_mode: Option<WafExecutionMode>,
+        /// DDoS shield sensitivity: a name or number (0 = Off, 1 = Low, 2 = Medium, 3 = High,
+        /// 4 = Challenge, 5 = ChallengeInteractive). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        ddos_sensitivity: Option<DdosShieldSensitivity>,
         /// Deprecated and ignored: the Shield API no longer accepts it
         #[arg(long, hide = true)]
         ddos_execution_mode: Option<u8>,
@@ -3732,24 +3741,24 @@ pub enum ShieldWafAction {
         /// Rule description
         #[arg(long)]
         description: Option<String>,
-        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
-        #[arg(long)]
-        action_type: u8,
+        /// Action type: a name or number (1 = Block, 2 = Log, 3 = Challenge, 4 = Allow, 5 = Bypass). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action_type: WafRuleActionType,
         /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
         /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
         /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
         /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
         #[arg(long, value_name = "NAME|N")]
         operator_type: WafRuleOperatorType,
-        /// Severity type (0 = Low, 1 = Medium, 2 = High)
-        #[arg(long)]
-        severity_type: u8,
+        /// Severity type: a name or number (0 = NOTICE, 1 = WARNING, 2 = CRITICAL). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        severity_type: WafRuleSeverityType,
         /// Value to match against
         #[arg(long)]
         value: Option<String>,
-        /// Transformation type applied before matching (repeatable; 1–21; see docs)
-        #[arg(long = "transformation-type", value_name = "N")]
-        transformation_types: Vec<u8>,
+        /// Transformation type applied before matching (repeatable): a name or number 1-21 (1 = CMDLINE, 2 = COMPRESSWHITESPACE, 3 = CSSDECODE, 4 = HEXENCODE, 5 = HTMLENTITYDECODE, 6 = JSDECODE, 7 = LENGTH, 8 = LOWERCASE, 9 = MD5, 10 = NORMALIZEPATH, 11 = NORMALISEPATH, 12 = NORMALIZEPATHWIN, 13 = NORMALISEPATHWIN, 14 = REMOVECOMMENTS, 15 = REMOVENULLS, 16 = REMOVEWHITESPACE, 17 = REPLACECOMMENTS, 18 = SHA1, 19 = URLDECODE, 20 = URLDECODEUNI, 21 = UTF8TOUNICODE). Names are case-insensitive.
+        #[arg(long = "transformation-type", value_name = "NAME|N")]
+        transformation_types: Vec<WafRuleTransformationType>,
         /// JSON file supplying the nested `ruleConfiguration` fields
         /// (`variableTypes`, `transformationTypes`, `chainedRuleConditions`).
         /// Merged onto the flag-derived config; flags win on conflict.
@@ -3771,25 +3780,25 @@ pub enum ShieldWafAction {
         /// Rule description
         #[arg(long)]
         description: Option<String>,
-        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
-        #[arg(long)]
-        action_type: Option<u8>,
+        /// Action type: a name or number (1 = Block, 2 = Log, 3 = Challenge, 4 = Allow, 5 = Bypass). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action_type: Option<WafRuleActionType>,
         /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
         /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
         /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
         /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
         #[arg(long, value_name = "NAME|N")]
         operator_type: Option<WafRuleOperatorType>,
-        /// Severity type (0 = Low, 1 = Medium, 2 = High)
-        #[arg(long)]
-        severity_type: Option<u8>,
+        /// Severity type: a name or number (0 = NOTICE, 1 = WARNING, 2 = CRITICAL). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        severity_type: Option<WafRuleSeverityType>,
         /// Value to match against
         #[arg(long)]
         value: Option<String>,
-        /// Transformation type applied before matching (repeatable; 1–21).
+        /// Transformation type applied before matching (repeatable): a name or number 1-21 (1 = CMDLINE, 2 = COMPRESSWHITESPACE, 3 = CSSDECODE, 4 = HEXENCODE, 5 = HTMLENTITYDECODE, 6 = JSDECODE, 7 = LENGTH, 8 = LOWERCASE, 9 = MD5, 10 = NORMALIZEPATH, 11 = NORMALISEPATH, 12 = NORMALIZEPATHWIN, 13 = NORMALISEPATHWIN, 14 = REMOVECOMMENTS, 15 = REMOVENULLS, 16 = REMOVEWHITESPACE, 17 = REPLACECOMMENTS, 18 = SHA1, 19 = URLDECODE, 20 = URLDECODEUNI, 21 = UTF8TOUNICODE). Names are case-insensitive.
         /// When supplied, replaces the current transformation list.
-        #[arg(long = "transformation-type", value_name = "N")]
-        transformation_types: Vec<u8>,
+        #[arg(long = "transformation-type", value_name = "NAME|N")]
+        transformation_types: Vec<WafRuleTransformationType>,
         /// JSON file supplying the nested `ruleConfiguration` fields
         /// (`variableTypes`, `transformationTypes`, `chainedRuleConditions`).
         #[arg(long, value_name = "FILE")]
@@ -3815,9 +3824,9 @@ pub enum ShieldWafAction {
         /// Rule ID to review
         #[arg(long)]
         rule_id: String,
-        /// Review action (0 = Pending, 1 = Approve, 2 = Reject)
-        #[arg(long)]
-        action: u8,
+        /// Review action: a name or number (0 = Ignore, 1 = LogOnly, 2 = DisableRule). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action: ReviewActionType,
     },
     /// Get an AI recommendation for a triggered WAF rule
     RecommendTriggeredRule {
@@ -3919,12 +3928,12 @@ pub enum ShieldUploadScanningAction {
         /// Enable or disable upload scanning
         #[arg(long)]
         enabled: Option<bool>,
-        /// Antivirus scanning mode (0 = Disabled, 1 = LogOnly, 2 = Block)
-        #[arg(long)]
-        antivirus_mode: Option<u8>,
-        /// CSAM scanning mode (0 = Disabled, 1 = LogOnly, 2 = Block)
-        #[arg(long)]
-        csam_mode: Option<u8>,
+        /// Antivirus scanning mode: a name or number (0 = Disabled, 1 = Log, 2 = Block). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        antivirus_mode: Option<UploadScanningScannerMode>,
+        /// CSAM scanning mode: a name or number (0 = Disabled, 1 = Log, 2 = Block). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        csam_mode: Option<UploadScanningScannerMode>,
     },
 }
 
@@ -3959,30 +3968,30 @@ pub enum ShieldRateLimitAction {
         /// Rule description
         #[arg(long)]
         description: Option<String>,
-        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
-        #[arg(long)]
-        action_type: u8,
+        /// Action type: a name or number (1 = RateLimit, 2 = Log, 3 = Challenge). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action_type: RateLimitActionType,
         /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
         /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
         /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
         /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
         #[arg(long, value_name = "NAME|N")]
         operator_type: WafRuleOperatorType,
-        /// Severity type (0 = Low, 1 = Medium, 2 = High)
-        #[arg(long)]
-        severity_type: u8,
+        /// Severity type: a name or number (0 = NOTICE, 1 = WARNING, 2 = CRITICAL). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        severity_type: WafRuleSeverityType,
         /// Value to match against
         #[arg(long)]
         value: Option<String>,
-        /// Transformation type applied before matching (repeatable; 1–21)
-        #[arg(long = "transformation-type", value_name = "N")]
-        transformation_types: Vec<u8>,
+        /// Transformation type applied before matching (repeatable): a name or number 1-21 (1 = CMDLINE, 2 = COMPRESSWHITESPACE, 3 = CSSDECODE, 4 = HEXENCODE, 5 = HTMLENTITYDECODE, 6 = JSDECODE, 7 = LENGTH, 8 = LOWERCASE, 9 = MD5, 10 = NORMALIZEPATH, 11 = NORMALISEPATH, 12 = NORMALIZEPATHWIN, 13 = NORMALISEPATHWIN, 14 = REMOVECOMMENTS, 15 = REMOVENULLS, 16 = REMOVEWHITESPACE, 17 = REPLACECOMMENTS, 18 = SHA1, 19 = URLDECODE, 20 = URLDECODEUNI, 21 = UTF8TOUNICODE). Names are case-insensitive.
+        #[arg(long = "transformation-type", value_name = "NAME|N")]
+        transformation_types: Vec<WafRuleTransformationType>,
         /// Number of requests before triggering the rule
         #[arg(long)]
         request_count: i32,
-        /// Counter key type (0 = Global, 1 = PerIp, 2 = PerCountry, 3 = PerAsn, 4 = PerHeader, 5 = PerCookie, 6 = PerQuery, 7 = PerFingerprint)
-        #[arg(long)]
-        counter_key_type: u8,
+        /// Counter key type: a name or number (0 = IP, 1 = Host, 2 = Country, 3 = City, 4 = ASN, 5 = Organization, 6 = JA4, 7 = IP_JA4). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        counter_key_type: RateLimitCounterKey,
         /// Counting timeframe in seconds (1, 10, 60, 300, 900, 3600)
         #[arg(long)]
         timeframe: u16,
@@ -4010,31 +4019,31 @@ pub enum ShieldRateLimitAction {
         /// Rule description
         #[arg(long)]
         description: Option<String>,
-        /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
-        #[arg(long)]
-        action_type: Option<u8>,
+        /// Action type: a name or number (1 = RateLimit, 2 = Log, 3 = Challenge). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action_type: Option<RateLimitActionType>,
         /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
         /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
         /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
         /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
         #[arg(long, value_name = "NAME|N")]
         operator_type: Option<WafRuleOperatorType>,
-        /// Severity type (0 = Low, 1 = Medium, 2 = High)
-        #[arg(long)]
-        severity_type: Option<u8>,
+        /// Severity type: a name or number (0 = NOTICE, 1 = WARNING, 2 = CRITICAL). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        severity_type: Option<WafRuleSeverityType>,
         /// Value to match against
         #[arg(long)]
         value: Option<String>,
-        /// Transformation type applied before matching (repeatable; 1–21).
+        /// Transformation type applied before matching (repeatable): a name or number 1-21 (1 = CMDLINE, 2 = COMPRESSWHITESPACE, 3 = CSSDECODE, 4 = HEXENCODE, 5 = HTMLENTITYDECODE, 6 = JSDECODE, 7 = LENGTH, 8 = LOWERCASE, 9 = MD5, 10 = NORMALIZEPATH, 11 = NORMALISEPATH, 12 = NORMALIZEPATHWIN, 13 = NORMALISEPATHWIN, 14 = REMOVECOMMENTS, 15 = REMOVENULLS, 16 = REMOVEWHITESPACE, 17 = REPLACECOMMENTS, 18 = SHA1, 19 = URLDECODE, 20 = URLDECODEUNI, 21 = UTF8TOUNICODE). Names are case-insensitive.
         /// When supplied, replaces the current transformation list.
-        #[arg(long = "transformation-type", value_name = "N")]
-        transformation_types: Vec<u8>,
+        #[arg(long = "transformation-type", value_name = "NAME|N")]
+        transformation_types: Vec<WafRuleTransformationType>,
         /// Number of requests before triggering the rule
         #[arg(long)]
         request_count: Option<i32>,
-        /// Counter key type (0–7; see `create`)
-        #[arg(long)]
-        counter_key_type: Option<u8>,
+        /// Counter key type: a name or number (0 = IP, 1 = Host, 2 = Country, 3 = City, 4 = ASN, 5 = Organization, 6 = JA4, 7 = IP_JA4). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        counter_key_type: Option<RateLimitCounterKey>,
         /// Counting timeframe in seconds (1, 10, 60, 300, 900, 3600)
         #[arg(long)]
         timeframe: Option<u16>,
@@ -4079,9 +4088,10 @@ pub enum ShieldAccessListAction {
         /// List name
         #[arg(long)]
         name: String,
-        /// List type (0 = Ip, 1 = Country, 2 = Asn, 3 = Hostname, 4 = UserAgent, 5 = Custom)
-        #[arg(long)]
-        r#type: u8,
+        /// List type: a name or number (0 = IP, 1 = CIDR, 2 = ASN, 3 = Country, 4 = Organization,
+        /// 5 = JA4). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        r#type: AccessListType,
         /// List content (newline-separated entries)
         #[arg(long)]
         content: String,
@@ -4121,9 +4131,10 @@ pub enum ShieldAccessListAction {
         /// Enable or disable the access list
         #[arg(long)]
         is_enabled: Option<bool>,
-        /// Action (0 = NoAction, 1 = Block, 2 = Allow, 3 = LogOnly, 4 = Challenge, 5 = ChallengeInterstitial)
-        #[arg(long)]
-        action: Option<u8>,
+        /// Action: a name or number (0 = None, 1 = Allow, 2 = Block, 3 = Challenge, 4 = Log,
+        /// 5 = Bypass). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action: Option<AccessListAction>,
     },
     /// Get the access list enum types and their values for a Shield Zone
     Enums {
@@ -4146,21 +4157,22 @@ pub enum ShieldBotDetectionAction {
         /// Shield zone ID
         #[arg(long = "id", alias = "shield-zone-id", value_name = "ID")]
         shield_zone_id: i64,
-        /// Execution mode (0 = Disabled, 1 = Enabled)
-        #[arg(long)]
-        execution_mode: Option<u8>,
-        /// Request integrity sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High)
-        #[arg(long)]
-        request_integrity_sensitivity: Option<u8>,
-        /// IP address reputation sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High)
-        #[arg(long)]
-        ip_address_sensitivity: Option<u8>,
-        /// Browser fingerprint sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High)
-        #[arg(long)]
-        fingerprint_sensitivity: Option<u8>,
-        /// Browser fingerprint aggression (0 = Disabled, 1 = VeryLow, 2 = Low, 3 = Medium, 4 = High)
-        #[arg(long)]
-        fingerprint_aggression: Option<u8>,
+        /// Execution mode: a name or number (0 = LogOnly, 1 = Challenge). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        execution_mode: Option<BotDetectionExecutionMode>,
+        /// Request integrity sensitivity: a name or number (0 = Off, 1 = Low, 2 = Medium, 3 = High). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        request_integrity_sensitivity: Option<BotDetectionSensitivity>,
+        /// IP address reputation sensitivity: a name or number (0 = Off, 1 = Low, 2 = Medium, 3 = High). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        ip_address_sensitivity: Option<BotDetectionSensitivity>,
+        /// Browser fingerprint sensitivity: a name or number (0 = Off, 1 = Low, 2 = Medium, 3 = High). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        fingerprint_sensitivity: Option<BotDetectionSensitivity>,
+        /// Browser fingerprint aggression: a name or number (0 = Unknown, 1 = Low, 2 = Medium,
+        /// 3 = High, 4 = Custom). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        fingerprint_aggression: Option<BrowserFingerprintAggression>,
         /// Enable complex browser fingerprinting
         #[arg(long)]
         fingerprint_complex_enabled: Option<bool>,
@@ -6054,6 +6066,249 @@ mod cli_parse_tests {
                 let needle = format!("{} = {spec_name}", op.to_repr());
                 assert!(help.contains(&needle), "{name}: help lacks `{needle}`");
             }
+        }
+    }
+
+    /// Every Shield enum flag's hand-written help must list each `N = Name`
+    /// pair of the enum's `NAMES` table (the spec labels), so help text cannot
+    /// drift from the library again (iter-90).
+    #[test]
+    fn shield_enum_flag_help_lists_every_spec_name() {
+        use bunny_net_api::shield::types::{
+            AccessListAction, AccessListType, BotCategorizationAction, BotCategoryAction,
+            BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
+            DdosShieldSensitivity, RateLimitActionType, RateLimitCounterKey, ReviewActionType,
+            UploadScanningScannerMode, WafExecutionMode, WafRuleActionType, WafRuleSeverityType,
+            WafRuleTransformationType,
+        };
+
+        fn pairs<T: Copy>(
+            names: &[(T, &'static str)],
+            repr: impl Fn(T) -> u8,
+        ) -> Vec<(u8, &'static str)> {
+            names.iter().map(|(v, n)| (repr(*v), *n)).collect()
+        }
+
+        // (command path, argument id, expected pairs)
+        type Row<'a> = (Vec<&'a str>, &'a str, Vec<(u8, &'a str)>);
+        let table: Vec<Row> = vec![
+            (
+                vec!["zone", "update"],
+                "waf_execution_mode",
+                pairs(WafExecutionMode::NAMES, WafExecutionMode::to_repr),
+            ),
+            (
+                vec!["zone", "update"],
+                "ddos_sensitivity",
+                pairs(DdosShieldSensitivity::NAMES, DdosShieldSensitivity::to_repr),
+            ),
+            (
+                vec!["waf", "add-rule"],
+                "action_type",
+                pairs(WafRuleActionType::NAMES, WafRuleActionType::to_repr),
+            ),
+            (
+                vec!["waf", "update-rule"],
+                "action_type",
+                pairs(WafRuleActionType::NAMES, WafRuleActionType::to_repr),
+            ),
+            (
+                vec!["waf", "add-rule"],
+                "severity_type",
+                pairs(WafRuleSeverityType::NAMES, WafRuleSeverityType::to_repr),
+            ),
+            (
+                vec!["waf", "update-rule"],
+                "severity_type",
+                pairs(WafRuleSeverityType::NAMES, WafRuleSeverityType::to_repr),
+            ),
+            (
+                vec!["waf", "add-rule"],
+                "transformation_types",
+                pairs(
+                    WafRuleTransformationType::NAMES,
+                    WafRuleTransformationType::to_repr,
+                ),
+            ),
+            (
+                vec!["waf", "update-rule"],
+                "transformation_types",
+                pairs(
+                    WafRuleTransformationType::NAMES,
+                    WafRuleTransformationType::to_repr,
+                ),
+            ),
+            (
+                vec!["waf", "review-triggered-rule"],
+                "action",
+                pairs(ReviewActionType::NAMES, ReviewActionType::to_repr),
+            ),
+            (
+                vec!["rate-limit", "create"],
+                "action_type",
+                pairs(RateLimitActionType::NAMES, RateLimitActionType::to_repr),
+            ),
+            (
+                vec!["rate-limit", "update"],
+                "action_type",
+                pairs(RateLimitActionType::NAMES, RateLimitActionType::to_repr),
+            ),
+            (
+                vec!["rate-limit", "create"],
+                "severity_type",
+                pairs(WafRuleSeverityType::NAMES, WafRuleSeverityType::to_repr),
+            ),
+            (
+                vec!["rate-limit", "update"],
+                "severity_type",
+                pairs(WafRuleSeverityType::NAMES, WafRuleSeverityType::to_repr),
+            ),
+            (
+                vec!["rate-limit", "create"],
+                "transformation_types",
+                pairs(
+                    WafRuleTransformationType::NAMES,
+                    WafRuleTransformationType::to_repr,
+                ),
+            ),
+            (
+                vec!["rate-limit", "update"],
+                "transformation_types",
+                pairs(
+                    WafRuleTransformationType::NAMES,
+                    WafRuleTransformationType::to_repr,
+                ),
+            ),
+            (
+                vec!["bot-categorization", "set-bot"],
+                "action",
+                pairs(
+                    BotCategorizationAction::NAMES,
+                    BotCategorizationAction::to_repr,
+                ),
+            ),
+            (
+                vec!["bot-categorization", "set-category"],
+                "action",
+                pairs(BotCategoryAction::NAMES, BotCategoryAction::to_repr),
+            ),
+            (
+                vec!["rate-limit", "create"],
+                "counter_key_type",
+                pairs(RateLimitCounterKey::NAMES, RateLimitCounterKey::to_repr),
+            ),
+            (
+                vec!["rate-limit", "update"],
+                "counter_key_type",
+                pairs(RateLimitCounterKey::NAMES, RateLimitCounterKey::to_repr),
+            ),
+            (
+                vec!["access-list", "create"],
+                "type",
+                pairs(AccessListType::NAMES, AccessListType::to_repr),
+            ),
+            (
+                vec!["access-list", "update-config"],
+                "action",
+                pairs(AccessListAction::NAMES, AccessListAction::to_repr),
+            ),
+            (
+                vec!["bot-detection", "update"],
+                "execution_mode",
+                pairs(
+                    BotDetectionExecutionMode::NAMES,
+                    BotDetectionExecutionMode::to_repr,
+                ),
+            ),
+            (
+                vec!["bot-detection", "update"],
+                "request_integrity_sensitivity",
+                pairs(
+                    BotDetectionSensitivity::NAMES,
+                    BotDetectionSensitivity::to_repr,
+                ),
+            ),
+            (
+                vec!["bot-detection", "update"],
+                "ip_address_sensitivity",
+                pairs(
+                    BotDetectionSensitivity::NAMES,
+                    BotDetectionSensitivity::to_repr,
+                ),
+            ),
+            (
+                vec!["bot-detection", "update"],
+                "fingerprint_sensitivity",
+                pairs(
+                    BotDetectionSensitivity::NAMES,
+                    BotDetectionSensitivity::to_repr,
+                ),
+            ),
+            (
+                vec!["bot-detection", "update"],
+                "fingerprint_aggression",
+                pairs(
+                    BrowserFingerprintAggression::NAMES,
+                    BrowserFingerprintAggression::to_repr,
+                ),
+            ),
+            (
+                vec!["upload-scanning", "update"],
+                "antivirus_mode",
+                pairs(
+                    UploadScanningScannerMode::NAMES,
+                    UploadScanningScannerMode::to_repr,
+                ),
+            ),
+            (
+                vec!["upload-scanning", "update"],
+                "csam_mode",
+                pairs(
+                    UploadScanningScannerMode::NAMES,
+                    UploadScanningScannerMode::to_repr,
+                ),
+            ),
+        ];
+
+        let cmd = Cli::command();
+        let shield = cmd.find_subcommand("shield").expect("shield");
+        for (path, arg_id, expected) in table {
+            let mut sub = shield;
+            for part in &path {
+                sub = sub.find_subcommand(part).expect(part);
+            }
+            let arg = sub
+                .get_arguments()
+                .find(|a| a.get_id() == arg_id)
+                .unwrap_or_else(|| panic!("{path:?}: no arg {arg_id}"));
+            let help = arg.get_help().expect("help").to_string();
+            let help = help.split_whitespace().collect::<Vec<_>>().join(" ");
+            for (n, name) in expected {
+                let needle = format!("{n} = {name}");
+                assert!(
+                    help.contains(&needle),
+                    "{path:?} --{arg_id}: help lacks `{needle}`: {help}"
+                );
+            }
+        }
+    }
+
+    /// Spec names and numbers both work on the command line; the labels of
+    /// the old (wrong) tables must not, because they would silently mean a
+    /// different number now.
+    #[test]
+    fn shield_enum_flags_accept_names_and_numbers_but_not_old_labels() {
+        let parse = |args: &[&str]| {
+            let mut full = vec!["hoppy", "shield", "access-list", "update-config"];
+            full.extend_from_slice(&["--shield-zone-id", "1", "--configuration-id", "2"]);
+            full.extend_from_slice(args);
+            Cli::try_parse_from(full)
+        };
+        assert!(parse(&["--action", "block"]).is_ok());
+        assert!(parse(&["--action", "Allow"]).is_ok());
+        assert!(parse(&["--action", "2"]).is_ok());
+        for old in ["noaction", "logonly", "challengeinterstitial", "6"] {
+            assert!(parse(&["--action", old]).is_err(), "{old}");
         }
     }
 }

@@ -311,7 +311,7 @@ async fn create_waf_rule_returns_created_rule() {
             action_type: WafRuleActionType::Block,
             variable_types: None,
             operator_type: WafRuleOperatorType::Contains,
-            severity_type: WafRuleSeverityType::Medium,
+            severity_type: WafRuleSeverityType::Warning,
             transformation_types: None,
             value: Some("BadBot/1.0".to_string()),
             is_negated: None,
@@ -466,14 +466,14 @@ async fn create_rate_limit_rule_returns_created_rule() {
         rule_name: Some("API Rate Limit".to_string()),
         rule_description: None,
         rule_configuration: RateLimitRuleConfiguration {
-            action_type: bunny_net_api::shield::types::RateLimitActionType::Block,
+            action_type: bunny_net_api::shield::types::RateLimitActionType::RateLimit,
             variable_types: None,
             operator_type: WafRuleOperatorType::Eq,
-            severity_type: WafRuleSeverityType::Low,
+            severity_type: WafRuleSeverityType::Notice,
             transformation_types: None,
             value: None,
             request_count: 100,
-            counter_key_type: RateLimitCounterKey::PerIp,
+            counter_key_type: RateLimitCounterKey::Host,
             timeframe: RateLimitTimeframe::Sec3600,
             block_time: RateLimitBlockDuration::Sec900,
             is_negated: None,
@@ -1336,7 +1336,7 @@ async fn get_upload_scanning_returns_config() {
     );
     assert_eq!(
         data.antivirus_scanning_mode,
-        Some(UploadScanningScannerMode::LogOnly)
+        Some(UploadScanningScannerMode::Log)
     );
 }
 
@@ -1502,7 +1502,7 @@ async fn review_triggered_waf_rule_returns_success() {
 
     let body = UpdateReviewTriggeredRuleRequest {
         rule_id: Some("941100".to_string()),
-        action: ReviewActionType::Approve,
+        action: ReviewActionType::DisableRule,
     };
     let result = test_client(&server.uri())
         .review_triggered_waf_rule(42, body)
@@ -1661,7 +1661,8 @@ async fn get_access_list_enums_returns_map() {
     assert!(result.contains_key("AccessListAction"));
     assert!(result.contains_key("AccessListType"));
     let action_map = &result["AccessListAction"];
-    assert_eq!(action_map.get("Block").map(String::as_str), Some("1"));
+    assert_eq!(action_map.get("2").map(String::as_str), Some("Block"));
+    assert_eq!(action_map.get("1").map(String::as_str), Some("Allow"));
 }
 
 #[tokio::test]
