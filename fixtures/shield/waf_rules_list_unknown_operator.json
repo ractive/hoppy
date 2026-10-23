@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "id": 7101,
+      "shieldZoneId": 55001,
+      "ruleName": "Future operator",
+      "ruleDescription": "Uses an operator value this client does not know yet",
+      "ruleConfiguration": {
+        "actionType": 1,
+        "operatorType": 99,
+        "severityType": 1,
+        "value": "x",
+        "isNegated": true
+      }
+    },
+    {
+      "id": 7102,
+      "shieldZoneId": 55001,
+      "ruleName": "Match IP",
+      "ruleConfiguration": {
+        "actionType": 1,
+        "operatorType": 13,
+        "severityType": 1,
+        "value": "10.0.0.0/8"
+      }
+    }
+  ],
+  "page": {
+    "totalCount": 2,
+    "totalPages": 1,
+    "currentPage": 1,
+    "pageSize": 20
+  }
+}

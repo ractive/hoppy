@@ -2341,3 +2341,65 @@ fn live_stream_video_processing_lifecycle() {
         );
     });
 }
+
+/// `resolutions cleanup --dry-run` prints the plan from the response `data`.
+#[tokio::test]
+async fn stream_video_resolutions_cleanup_dry_run_prints_plan() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/library/10001/videos/aaaabbbb-1111-2222-3333-ccccddddeeee/resolutions/cleanup",
+        ))
+        .and(wiremock::matchers::query_param("dryRun", "true"))
+        .and(header("AccessKey", "mock-stream-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("stream/video_resolutions_cleanup_plan.json"),
+            "application/json",
+        ))
+        .expect(2)
+        .mount(&server)
+        .await;
+
+    let run = |format: &str| {
+        support::hoppy_mock_cmd_full(
+            "test-api-key",
+            &server.uri(),
+            None,
+            Some(&server.uri()),
+            None,
+        )
+        .args([
+            "--yes",
+            "--format",
+            format,
+            "stream",
+            "video",
+            "resolutions",
+            "cleanup",
+            "--library-id",
+            "10001",
+            "--video-id",
+            "aaaabbbb-1111-2222-3333-ccccddddeeee",
+            "--resolutions",
+            "720p,480p",
+            "--dry-run",
+        ])
+        .output()
+        .unwrap()
+    };
+
+    let table = run("table");
+    assert!(table.status.success());
+    let stdout = String::from_utf8_lossy(&table.stdout);
+    assert!(stdout.contains("Plan (nothing changed)"), "got: {stdout}");
+    assert!(stdout.contains("720p, 480p"), "got: {stdout}");
+    assert!(stdout.contains("play_720p.mp4"), "got: {stdout}");
+    assert!(stdout.contains("1080p"), "got: {stdout}");
+
+    let json = run("json");
+    assert!(json.status.success());
+    let v: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+    assert_eq!(v["Success"], true);
+    assert_eq!(v["Data"]["resolutionsToDelete"][1], "480p");
+    assert_eq!(v["Data"]["availableResolutionsAfter"][0], "1080p");
+}

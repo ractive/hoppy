@@ -365,6 +365,30 @@ Related observation from the same session: the endpoint performs **no
 app-id validation** — it happily creates (and lists/deletes) forwarding
 configs for app ids that don't exist. Don't rely on it to catch typos.
 
+## Iter-87 live findings (2026-10-23)
+
+- **`GET /storagezone/regions` already returns the new shape** (`Code`,
+  `Endpoint`, `S3Endpoint`, `Continent`, `Tier`, `IsMainRegionSupported`,
+  `IsS3Supported`, `PricePerGigabyte`, ...). `Id` and `Url` are gone. The old
+  client silently showed empty ID and URL columns.
+- **`dDoSExecutionMode` on `PATCH /shield/shield-zone` is ignored** (Basic plan
+  zone, value 1, update to 0, re-read still 1). It is also gone from the
+  request schema. The spec's removal is real; hoppy no longer sends it. The
+  freshly created zone's POST response shows `dDoSExecutionMode: null`, while
+  a following GET shows `1`. Not verified on a higher plan.
+- **Edge script execution phase** is `0 = Cache`, `1 = LoadBalancer`,
+  `2 = PreCache`. Docs only describe "before cache" (PreCache: script runs on
+  every request, before the cache lookup; otherwise scripts run on cache
+  misses); `LoadBalancer` is undocumented. The old `on-request`/`on-response`
+  names were guesses.
+- **Container registry type casing is unverified.** The spec says
+  `dockerHub`/`gitHub`/`bunnyRegistry`; hoppy has always sent `DockerHub`/
+  `GitHub`. `registry list` returns no `type` field, and exercising `registry
+  add` needs a write, so the request side was left alone and responses accept
+  both casings.
+- **Shield zones cannot be deleted** (no API). Deleting the pull zone leaves an
+  orphaned shield zone; dogfooding leaves one behind per run.
+
 ## Related
 
 - [[api/bunny-api-client-patterns]] — how patterns handle these quirks

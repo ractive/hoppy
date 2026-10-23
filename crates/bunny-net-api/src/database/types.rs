@@ -1,6 +1,6 @@
 //! Types for the bunny.net Database control-plane API.
 //!
-//! Captured from `specs/database.json` (API spec version 0.0.130, 2026-05-05).
+//! Captured from `specs/database.json` (API spec version 0.0.144, 2026-10-23).
 //! v1 and v2 are exposed as parallel types (`Database` vs `Database2`,
 //! `CreateDatabasePayload` vs `CreateDatabaseV2Payload`, etc.) within this
 //! single module — unifying them would silently lose fields one side or the
@@ -24,6 +24,10 @@ use serde::{Deserialize, Serialize};
 pub enum Authorization {
     FullAccess,
     ReadOnly,
+    /// A scope this client does not model yet (forward-compat; the raw string
+    /// is not preserved, so never send this back).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 // ---------------------------------------------------------------------------
@@ -555,6 +559,15 @@ pub struct PingResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unknown_authorization_deserialises_but_refuses_to_serialise() {
+        assert_eq!(
+            serde_json::from_str::<Authorization>("\"superuser\"").unwrap(),
+            Authorization::Unknown
+        );
+        assert!(serde_json::to_string(&Authorization::Unknown).is_err());
+    }
 
     #[test]
     fn authorization_serialises_kebab() {

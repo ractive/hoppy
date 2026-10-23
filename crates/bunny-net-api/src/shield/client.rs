@@ -28,20 +28,21 @@ const PATH_SEGMENT: &AsciiSet = &CONTROLS
 
 use super::types::{
     AccessListsDetailsResponse, ApiGuardianEnumsResponse, BotCategorizationAction,
-    BotCategorizationListResponse, BotDetectionConfigurationResponse, CreateCustomAccessList,
-    CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest, CustomAccessList,
-    CustomAccessListResponse, CustomWafRule, GenericRequestResponse, GetApiGuardianMetricsResponse,
-    GetApiGuardianResponse, GetCustomWafRulesResponse, GetRateLimitRulesResponse,
-    GetShieldZonePullzoneMappingResponse, GetShieldZoneResponse, GetShieldZonesResponse,
-    GetTriggeredRulesResponse, GetWafEngineConfigResponse, GetWafEnumsResponse,
-    GetWafRulesSegmentedByPlanResponse, RateLimitRule, ShieldBotDetectionMetricsResponse,
-    ShieldDetailedMetricsResponse, ShieldMetricsResponse, ShieldRateLimitMetricsResponse,
-    ShieldRateLimitsMetricsResponse, ShieldUploadScanningMetricsResponse,
-    ShieldWafRuleMetricsResponse, ShieldZoneMonthlyOveragesResult, ShieldZoneResponse,
-    TriggeredRuleRecommendationResponse, UpdateAccessListConfiguration,
-    UpdateApiGuardianEndpointRequest, UpdateApiGuardianEndpointResponse, UpdateApiGuardianRequest,
-    UpdateApiGuardianResponse, UpdateBotCategorizationConfigurationRequest,
-    UpdateBotCategorizationConfigurationResponse, UpdateBotCategoryConfigurationResponse,
+    BotCategorizationListResponse, BotCategoryAction, BotDetectionConfigurationResponse,
+    CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule, CreateShieldZoneRequest,
+    CustomAccessList, CustomAccessListResponse, CustomWafRule, GenericRequestResponse,
+    GetApiGuardianMetricsResponse, GetApiGuardianResponse, GetCustomWafRulesResponse,
+    GetRateLimitRulesResponse, GetShieldZonePullzoneMappingResponse, GetShieldZoneResponse,
+    GetShieldZonesResponse, GetTriggeredRulesResponse, GetWafEngineConfigResponse,
+    GetWafEnumsResponse, GetWafRulesSegmentedByPlanResponse, RateLimitRule,
+    ShieldBotDetectionMetricsResponse, ShieldDetailedMetricsResponse, ShieldMetricsResponse,
+    ShieldRateLimitMetricsResponse, ShieldRateLimitsMetricsResponse,
+    ShieldUploadScanningMetricsResponse, ShieldWafRuleMetricsResponse,
+    ShieldZoneMonthlyOveragesResult, ShieldZoneResponse, TriggeredRuleRecommendationResponse,
+    UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest,
+    UpdateApiGuardianEndpointResponse, UpdateApiGuardianRequest, UpdateApiGuardianResponse,
+    UpdateBotCategorizationConfigurationRequest, UpdateBotCategorizationConfigurationResponse,
+    UpdateBotCategoryConfigurationRequest, UpdateBotCategoryConfigurationResponse,
     UpdateBotDetection, UpdateBotDetectionResponse, UpdateCustomAccessList, UpdateCustomWafRule,
     UpdateRateLimitRule, UpdateReviewTriggeredRuleRequest, UpdateReviewTriggeredRuleResponse,
     UpdateShieldZoneRequest, UpdateUploadScanningConfigurationRequest,
@@ -939,9 +940,9 @@ impl ShieldClient {
         &self,
         shield_zone_id: i64,
         category: i32,
-        action: BotCategorizationAction,
+        action: BotCategoryAction,
     ) -> Result<UpdateBotCategoryConfigurationResponse> {
-        let body = UpdateBotCategorizationConfigurationRequest { action };
+        let body = UpdateBotCategoryConfigurationRequest { action };
         let resp = self
             .execute(
                 self.auth(self.client.put(self.url(&format!(
@@ -1622,10 +1623,7 @@ mod tests {
         let cats = resp.categories.unwrap();
         assert_eq!(cats.len(), 2);
         assert_eq!(cats[0].category, 2);
-        assert_eq!(
-            cats[0].category_action,
-            super::BotCategorizationAction::Block
-        );
+        assert_eq!(cats[0].category_action, super::BotCategoryAction::Block);
         assert_eq!(cats[0].bots.as_ref().unwrap()[0].bot_id, 7);
         // The out-of-band System category (255) must round-trip.
         assert_eq!(cats[1].category, 255);
@@ -1670,7 +1668,7 @@ mod tests {
 
         let client = ShieldClient::with_base_url("test-key", server.uri());
         let resp = client
-            .set_bot_category_action(42, 2, super::BotCategorizationAction::Block)
+            .set_bot_category_action(42, 2, super::BotCategoryAction::Block)
             .await
             .unwrap();
         assert_eq!(resp.data.unwrap().category, 2);

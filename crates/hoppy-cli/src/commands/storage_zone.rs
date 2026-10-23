@@ -47,20 +47,23 @@ impl From<&StorageZone> for StorageZoneRow {
 /// Table row for `storage-zone regions`.
 #[derive(serde::Serialize, tabled::Tabled)]
 struct StorageRegionRow {
-    #[tabled(rename = "ID")]
-    id: String,
+    #[tabled(rename = "Code")]
+    code: String,
     #[tabled(rename = "Name")]
     name: String,
-    #[tabled(rename = "URL")]
-    url: String,
+    #[tabled(rename = "Endpoint")]
+    endpoint: String,
+    #[tabled(rename = "S3 Endpoint")]
+    s3_endpoint: String,
 }
 
 impl From<&StorageRegion> for StorageRegionRow {
     fn from(r: &StorageRegion) -> Self {
         Self {
-            id: r.id.clone().unwrap_or_default(),
+            code: r.code.clone().unwrap_or_default(),
             name: r.name.clone().unwrap_or_default(),
-            url: r.url.clone().unwrap_or_default(),
+            endpoint: r.endpoint.clone().unwrap_or_default(),
+            s3_endpoint: r.s3_endpoint.clone().unwrap_or_else(|| "-".to_owned()),
         }
     }
 }

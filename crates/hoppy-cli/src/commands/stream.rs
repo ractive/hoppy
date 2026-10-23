@@ -14,9 +14,9 @@ use bunny_net_api::core::CoreClient;
 use bunny_net_api::core::types::{CreateVideoLibrary, UpdateVideoLibrary, VideoLibrary};
 use bunny_net_api::stream::types::{Chapter, Collection, MetaTag, Moment, Video};
 use bunny_net_api::stream::{
-    CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, SmartGenerateSettings,
-    StreamCleanupResolutions, StreamClient, TranscribeSettings, TusUploader, UpdateCollection,
-    UpdateVideo, VideoUploadOptions,
+    CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, ResolutionsCleanupModel,
+    SmartGenerateSettings, StreamCleanupResolutions, StreamClient, TranscribeSettings, TusUploader,
+    UpdateCollection, UpdateVideo, VideoUploadOptions,
 };
 use std::io::{self, BufRead, Write};
 use tokio_util::io::ReaderStream;
@@ -1544,10 +1544,65 @@ async fn handle_resolutions(
                     "{prefix}Cleanup for {video_id}: {}",
                     status.message.as_deref().unwrap_or("done")
                 );
+                if let Some(plan) = &status.data {
+                    print!("{}", render_cleanup_plan(plan, dry_run));
+                }
             }
         }
     }
     Ok(())
+}
+
+fn join_or_dash(items: Option<&Vec<String>>) -> String {
+    match items {
+        Some(v) if !v.is_empty() => v.join(", "),
+        _ => "-".to_owned(),
+    }
+}
+
+/// Human-readable cleanup plan (the main `--dry-run` output).
+fn render_cleanup_plan(plan: &ResolutionsCleanupModel, dry_run: bool) -> String {
+    let mut out = String::new();
+    let heading = if dry_run {
+        "Plan (nothing changed)"
+    } else {
+        "Result"
+    };
+    out.push_str(&format!("{heading}:\n"));
+    out.push_str(&format!(
+        "  Resolutions to delete:    {}\n",
+        join_or_dash(plan.resolutions_to_delete.as_ref())
+    ));
+    out.push_str(&format!(
+        "    from HLS playlist:      {}\n",
+        join_or_dash(plan.resolutions_to_delete_from_playlist.as_ref())
+    ));
+    out.push_str(&format!(
+        "    from storage:           {}\n",
+        join_or_dash(plan.resolutions_to_delete_from_storage.as_ref())
+    ));
+    out.push_str(&format!(
+        "    from MP4 fallback:      {}\n",
+        join_or_dash(plan.resolutions_to_delete_from_mp4.as_ref())
+    ));
+    out.push_str(&format!(
+        "  Storage objects:          {}\n",
+        join_or_dash(plan.storage_objects_to_delete.as_ref())
+    ));
+    out.push_str(&format!(
+        "  Resolutions afterwards:   {}\n",
+        join_or_dash(plan.available_resolutions_after.as_ref())
+    ));
+    if !dry_run {
+        out.push_str(&format!(
+            "  Updated available list:   {}\n  Rewrote HLS playlist:     {}\n  Deleted storage objects:  {}\n  Deleted original:         {}\n",
+            plan.updated_available_resolutions,
+            plan.modified_playlist,
+            plan.deleted_storage_objects,
+            plan.deleted_original
+        ));
+    }
+    out
 }
 
 async fn handle_caption(
