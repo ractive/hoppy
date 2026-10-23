@@ -39,6 +39,22 @@ unchanged; only labels (variants, `Display`, help, CLI input) change.
 - Tests pin each enum to a hand-written table and to `x-enum-varnames` read
   from `specs/shield.json`, so a spec refresh that moves a label fails.
 
+## Fixture changes
+
+- `fixtures/shield/access_lists_get.json` and `access_list_get.json` were
+  **hand-edited** (type 1 to 3, action 1 to 2) so the lists still read as
+  "Blocked Countries" with a Block action under the new tables. They are hand
+  written test contracts, not recorded responses.
+- `fixtures/shield/access_list_enums.json` was **reshaped from the live check**
+  (number to name, as the API returns it; the old fixture had name to number
+  with the old labels).
+- Review follow-ups: JSON list rows (`access-list list`, `shield zone list`,
+  `waf list-rules`) carry numeric `*_id` fields next to the labels;
+  `BotCategorizationAction` / `BotCategoryAction` moved onto
+  `repr_enum_names!` (CLI takes names); macro unit tests; e2e for
+  `waf update-rule`, `review-triggered-rule`, `rate-limit update`,
+  `upload-scanning update`, `bot-categorization`.
+
 ## Tasks
 
 - [x] Branch `iter-90/shield-enum-labels` from `origin/main`; merge `main` after #108

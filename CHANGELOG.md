@@ -73,18 +73,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `BotDetectionSensitivity` (`--*-sensitivity`) | 0 Disabled to Off, 1-3 Low/Medium/High unchanged |
   | `BrowserFingerprintAggression` (`--fingerprint-aggression`) | 0 Disabled to Unknown, 1 VeryLow to Low, 2 Low to Medium, 3 Medium to High, 4 High to Custom |
   | `RateLimitCounterKey` (`rate-limit --counter-key-type`) | 0 Global to IP, 1 PerIp to Host, 2 PerCountry to Country, 3 PerAsn to City, 4 PerHeader to ASN, 5 PerCookie to Organization, 6 PerQuery to JA4, 7 PerFingerprint to IP_JA4 |
-  | `WafRuleTransformationType` (`--transformation-type`) | spec names 1 CMDLINE ... 21 UTF8TOUNICODE (old: 1 Lowercase, 2 Uppercase, ...); see `--help` |
+  | `WafRuleTransformationType` (`--transformation-type`) | the whole table changed; numbers to re-pick by intent (old label: old number to new number): Lowercase 1 to **8**, UrlDecode 3 to **19**, UrlDecodeUni 4 to **20**, JsDecode 9 to **6**, CssDecode 10 to **3**, CompressWhitespace 20 to **2**, NormalisePath 14 to **11**, NormalisePathWin 15 to **13**, RemoveComments 16 to **14**, RemoveNulls 17 to **15**, RemoveWhitespace 18 to **16**, ReplaceComments 19 to **17**, HtmlEntityDecode 5 unchanged. No spec equivalent any more: Uppercase, Base64Decode, Base64DecodeExt, Base64Encode, Trim, TrimLeft, TrimRight, None. New in the spec: CMDLINE 1, HEXENCODE 4, LENGTH 7, MD5 9, NORMALIZEPATH 10, NORMALIZEPATHWIN 12, SHA1 18, UTF8TOUNICODE 21. Old numbers 1, 2, 3, 4, 6-13, 15-21 now mean something else, so a stored `--transformation-type 1` is CMDLINE, not Lowercase |
   | `ReviewActionType` (`waf review-triggered-rule --action`) | 0 Pending to Ignore, 1 Approve to LogOnly, 2 Reject to DisableRule |
   | `WafPayloadLimitAction` | 0 Allow to Block, 1 Block to Log, 2 Ignore |
   | `UploadScanningScannerMode` (`upload-scanning update --*-mode`) | 0 Disabled, 1 LogOnly to Log, 2 Block |
 
-  Library: variants renamed accordingly (`AccessListType::Cidr`,
-  `WafRuleSeverityType::Critical`, `BrowserFingerprintAggression::Unspecified`
-  for spec `Unknown`, `RateLimitActionType::RateLimit`,
-  `UploadScanningScannerMode::Log`, ...); every renamed enum gains `NAMES`,
-  `name()`, `describe_all()`, `Display` and `FromStr`. Table and `--format`
-  output show the new labels. Remaining non-Shield label mismatches (pull-zone
-  watermark position, preloading theme, ...) are tracked in
+  **JSON output labels changed meaning.** The list commands print string
+  labels in `--format json` (`access-list list`: `"action": "Block"`,
+  `"list_type": "Country"`; `shield zone list`: `"plan_type"`,
+  `"ddos_sensitivity"`; `waf list-rules`: `"action_type"`). Those strings now
+  come from the spec tables, so for the same wire value they are different
+  words: a script matching `.action == "Block"` on `access-list list` used to
+  select wire 1 and now selects wire 2, and `"Country"` used to be wire 1 and
+  is now wire 3. These rows now also carry the wire number next to each label,
+  for scripts to match on instead: `access-list list` (`action_id`,
+  `list_type_id`), `shield zone list` (`plan_type_id`,
+  `ddos_sensitivity_id`), `waf list-rules` (`action_type_id`). Commands that
+  print the raw API object (`access-list get`, `waf get-rule`,
+  `shield zone get`, `bot-detection get`, `upload-scanning get`) already emit
+  numbers and are unaffected. `bot-categorization set-bot` / `set-category
+  --action` also take names now (`none`, `block`, `allow`, `ignore`; numbers
+  0-3 / 0-2 as before).
+
+  **Library (`bunny-net-api`) variant renames** (this needs a minor version
+  bump; the crate is pre-1.0 so it is a 0.x minor):
+
+  - `AccessListAction`: `NoAction` to `None`, `Block` to `Allow` (wire 1),
+    `Allow` to `Block` (wire 2), `LogOnly` to `Challenge` (3), `Challenge` to
+    `Log` (4), `ChallengeInterstitial` to `Bypass` (5).
+  - `AccessListType`: `Ip` stays, `Country` (1) to `Cidr`, `Asn` stays,
+    `Hostname` (3) to `Country`, `UserAgent` (4) to `Organization`, `Custom`
+    (5) to `Ja4`.
+  - `WafRuleActionType`: `LogOnly` to `Log`, `ChallengeInterstitial` (4) to
+    `Allow`, `Allow` (5) to `Bypass`.
+  - `RateLimitActionType`: `Block` to `RateLimit`, `LogOnly` to `Log`.
+  - `WafRuleSeverityType`: `Low` / `Medium` / `High` to `Notice` / `Warning` /
+    `Critical`.
+  - `ShieldPlanType`: `Standard` (1) to `Advanced`, `Advanced` (2) to
+    `Business`.
+  - `WafExecutionMode`, `DdosExecutionMode`: `Disabled` / `Enabled` to `Log` /
+    `Block`.
+  - `BotDetectionExecutionMode`: `Disabled` / `Enabled` to `LogOnly` /
+    `Challenge`.
+  - `BotDetectionSensitivity`: `Disabled` to `Off`.
+  - `BrowserFingerprintAggression`: `Disabled` to `Unspecified` (spec
+    `Unknown`), `VeryLow` removed, `Low` (2) to `Medium`, `Medium` (3) to
+    `High`, `High` (4) to `Custom`, and `Low` is now wire 1.
+  - `RateLimitCounterKey`: `Global`, `PerIp`, `PerCountry`, `PerAsn`,
+    `PerHeader`, `PerCookie`, `PerQuery`, `PerFingerprint` to `Ip`, `Host`,
+    `Country`, `City`, `Asn`, `Organization`, `Ja4`, `IpJa4` (wire 0 to 7).
+  - `WafRuleTransformationType`: now `CmdLine`, `CompressWhitespace`,
+    `CssDecode`, `HexEncode`, `HtmlEntityDecode`, `JsDecode`, `Length`,
+    `Lowercase`, `Md5`, `NormalizePath`, `NormalisePath`, `NormalizePathWin`,
+    `NormalisePathWin`, `RemoveComments`, `RemoveNulls`, `RemoveWhitespace`,
+    `ReplaceComments`, `Sha1`, `UrlDecode`, `UrlDecodeUni`, `Utf8ToUnicode`
+    (wire 1 to 21 in that order); `Uppercase`, `Base64Decode`,
+    `Base64DecodeExt`, `Base64Encode`, `Trim`, `TrimLeft`, `TrimRight` and
+    `None` are gone.
+  - `ReviewActionType`: `Pending` / `Approve` / `Reject` to `Ignore` /
+    `LogOnly` / `DisableRule`.
+  - `WafPayloadLimitAction`: `Allow` (0) to `Block`, `Block` (1) to `Log`,
+    `Ignore` stays.
+  - `UploadScanningScannerMode`: `LogOnly` to `Log`.
+  - Every enum above gains `NAMES`, `name()`, `describe_all()`, `Display` and
+    `FromStr` (spec name, case-insensitive, or declared number);
+    `BotCategorizationAction` and `BotCategoryAction` gain them too.
+    `WafRuleOperatorType` now gets them from the same macro.
+  - Because wire numbers did not move but meanings did, compiled code that
+    matched on the old variants keeps compiling in many cases (same variant
+    name, different number) and silently changes behaviour; review every use.
+
+  Remaining non-Shield label mismatches (pull-zone watermark position,
+  preloading theme, ...) are tracked in
   `hoppy-knowledgebase/backlog/core-enum-labels-disagree-with-spec.md`.
 
 ### Added

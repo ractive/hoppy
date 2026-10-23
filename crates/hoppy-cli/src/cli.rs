@@ -4,10 +4,11 @@ use bunny_net_api::core::types::{
     PullZoneTierType, ShieldDDosProtectionType, StickySessionType,
 };
 use bunny_net_api::shield::types::{
-    AccessListAction, AccessListType, BotDetectionExecutionMode, BotDetectionSensitivity,
-    BrowserFingerprintAggression, DdosShieldSensitivity, RateLimitActionType, RateLimitCounterKey,
-    ReviewActionType, UploadScanningScannerMode, WafExecutionMode, WafRuleActionType,
-    WafRuleOperatorType, WafRuleSeverityType, WafRuleTransformationType,
+    AccessListAction, AccessListType, BotCategorizationAction, BotCategoryAction,
+    BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
+    DdosShieldSensitivity, RateLimitActionType, RateLimitCounterKey, ReviewActionType,
+    UploadScanningScannerMode, WafExecutionMode, WafRuleActionType, WafRuleOperatorType,
+    WafRuleSeverityType, WafRuleTransformationType,
 };
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
@@ -3510,9 +3511,10 @@ pub enum ShieldBotCategorizationAction {
         /// Bot ID (discover via `shield bot-categorization list`)
         #[arg(long)]
         bot_id: i64,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow, 3 = Ignore)
-        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=3))]
-        action: u8,
+        /// Action: a name or number (0 = None/clear, 1 = Block, 2 = Allow, 3 = Ignore).
+        /// Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action: BotCategorizationAction,
     },
     /// Set (or clear) the action for every bot in a category
     SetCategory {
@@ -3522,9 +3524,10 @@ pub enum ShieldBotCategorizationAction {
         /// Category (0 = None, 1 = SEO, 2 = AIScraper, 3 = AITool, 4 = Tool, 5 = Ads, 6 = Preview, 7 = Social, 255 = System)
         #[arg(long)]
         category: i32,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow; `Ignore` is bot-only)
-        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=2))]
-        action: u8,
+        /// Action: a name or number (0 = None/clear, 1 = Block, 2 = Allow; `Ignore` is
+        /// bot-only). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        action: BotCategoryAction,
     },
 }
 
@@ -6072,10 +6075,11 @@ mod cli_parse_tests {
     #[test]
     fn shield_enum_flag_help_lists_every_spec_name() {
         use bunny_net_api::shield::types::{
-            AccessListAction, AccessListType, BotDetectionExecutionMode, BotDetectionSensitivity,
-            BrowserFingerprintAggression, DdosShieldSensitivity, RateLimitActionType,
-            RateLimitCounterKey, ReviewActionType, UploadScanningScannerMode, WafExecutionMode,
-            WafRuleActionType, WafRuleSeverityType, WafRuleTransformationType,
+            AccessListAction, AccessListType, BotCategorizationAction, BotCategoryAction,
+            BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
+            DdosShieldSensitivity, RateLimitActionType, RateLimitCounterKey, ReviewActionType,
+            UploadScanningScannerMode, WafExecutionMode, WafRuleActionType, WafRuleSeverityType,
+            WafRuleTransformationType,
         };
 
         fn pairs<T: Copy>(
@@ -6174,6 +6178,19 @@ mod cli_parse_tests {
                     WafRuleTransformationType::NAMES,
                     WafRuleTransformationType::to_repr,
                 ),
+            ),
+            (
+                vec!["bot-categorization", "set-bot"],
+                "action",
+                pairs(
+                    BotCategorizationAction::NAMES,
+                    BotCategorizationAction::to_repr,
+                ),
+            ),
+            (
+                vec!["bot-categorization", "set-category"],
+                "action",
+                pairs(BotCategoryAction::NAMES, BotCategoryAction::to_repr),
             ),
             (
                 vec!["rate-limit", "create"],

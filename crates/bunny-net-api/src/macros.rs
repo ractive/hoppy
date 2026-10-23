@@ -197,6 +197,62 @@ mod tests {
         }
     }
 
+    repr_enum_names!(Color: u8, "color", [
+        Red => "Red",
+        Green => "GREEN",
+        Blue => "Blue",
+    ]);
+
+    #[test]
+    fn names_from_str_accepts_names_case_insensitively_and_numbers() {
+        for spelling in ["Red", "red", "RED", "rEd", "0", " red ", " 0 "] {
+            assert_eq!(
+                spelling.parse::<Color>().unwrap(),
+                Color::Red,
+                "{spelling:?}"
+            );
+        }
+        assert_eq!("green".parse::<Color>().unwrap(), Color::Green);
+        assert_eq!("GREEN".parse::<Color>().unwrap(), Color::Green);
+        assert_eq!("7".parse::<Color>().unwrap(), Color::Blue);
+    }
+
+    #[test]
+    fn names_from_str_rejects_everything_else() {
+        // "+1" parses as the number 1 in Rust, which is declared.
+        assert_eq!("+1".parse::<Color>().unwrap(), Color::Green);
+        for bad in [
+            "",
+            " ",
+            "2",
+            "256",
+            "-1",
+            "300",
+            "99999999999",
+            "Unknown",
+            "unknown",
+            "Unknown(3)",
+            "Re d",
+            "0x1",
+            "1.0",
+        ] {
+            let err = bad.parse::<Color>().unwrap_err();
+            assert!(err.contains("invalid color"), "{bad:?}: {err}");
+            assert!(err.contains("0=Red, 1=GREEN, 7=Blue"), "{bad:?}: {err}");
+        }
+    }
+
+    #[test]
+    fn names_display_and_tables() {
+        assert_eq!(Color::Green.to_string(), "GREEN");
+        assert_eq!(Color::Unknown(42).to_string(), "Unknown(42)");
+        assert_eq!(Color::Unknown(1).to_string(), "Unknown(1)");
+        assert_eq!(Color::Red.name(), Some("Red"));
+        assert_eq!(Color::Unknown(9).name(), None);
+        assert_eq!(Color::NAMES.len(), Color::KNOWN.len());
+        assert_eq!(Color::describe_all(), "0=Red, 1=GREEN, 7=Blue");
+    }
+
     #[derive(Debug, serde::Deserialize, serde::Serialize)]
     struct Holder {
         color: Color,

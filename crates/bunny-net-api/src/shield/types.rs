@@ -2109,6 +2109,13 @@ forward_compat_repr_enum! {
     }
 }
 
+repr_enum_names!(BotCategorizationAction: u8, "bot action", [
+    None => "None",
+    Block => "Block",
+    Allow => "Allow",
+    Ignore => "Ignore",
+]);
+
 forward_compat_repr_enum! {
     /// Action applied to an entire bot category.
     ///
@@ -2120,6 +2127,12 @@ forward_compat_repr_enum! {
         Allow = 2,
     }
 }
+
+repr_enum_names!(BotCategoryAction: u8, "category action", [
+    None => "None",
+    Block => "Block",
+    Allow => "Allow",
+]);
 
 /// Bot category grouping. The API models this as an integer; `System` uses the
 /// out-of-band value `255`. We keep the raw integer so unknown categories from
@@ -2696,6 +2709,19 @@ mod tests {
             ],
             RateLimitCounterKey::NAMES,
         );
+        check_enum::<BotCategorizationAction>(
+            "BotCategorizationAction",
+            &[(0, "None"), (1, "Block"), (2, "Allow"), (3, "Ignore")],
+            BotCategorizationAction::NAMES,
+        );
+        check_enum::<BotCategoryAction>(
+            "BotCategoryAction",
+            &[(0, "None"), (1, "Block"), (2, "Allow")],
+            BotCategoryAction::NAMES,
+        );
+        // Category-wide actions have no Ignore.
+        assert!("ignore".parse::<BotCategoryAction>().is_err());
+        assert!("3".parse::<BotCategoryAction>().is_err());
         for old in ["pending", "approve", "reject"] {
             assert!(old.parse::<ReviewActionType>().is_err(), "{old}");
         }
