@@ -289,3 +289,88 @@ async fn list_json_keeps_raw_origin_fields() {
     assert_eq!(json["Items"][0]["OriginType"], 2);
     assert_eq!(json["Items"][2]["OriginType"], 5);
 }
+
+async fn mount_storage_page(server: &MockServer, page: &str, id: i64, name: &str, more: bool) {
+    let mut list: serde_json::Value =
+        serde_json::from_str(&support::fixture("core/storagezone_list_paginated.json")).unwrap();
+    list["Items"] = serde_json::json!([{ "Id": id, "Name": name, "UserId": "u" }]);
+    list["HasMoreItems"] = serde_json::json!(more);
+    Mock::given(method("GET"))
+        .and(path("/storagezone"))
+        .and(wiremock::matchers::query_param("page", page))
+        .respond_with(json_response(list.to_string()))
+        .expect(1)
+        .mount(server)
+        .await;
+}
+
+#[tokio::test]
+async fn list_table_reads_storage_names_across_pages() {
+    let server = MockServer::start().await;
+    mount_ordinary_list(&server).await;
+    get(
+        &server,
+        "/apps",
+        r#"{"items":[],"meta":{"totalItems":0},"cursor":null}"#.to_owned(),
+    )
+    .await;
+    mount_storage_page(&server, "1", 3002, "first-page-store", true).await;
+    mount_storage_page(&server, "2", 3001, "second-page-store", false).await;
+
+    let output = cmd(&server)
+        .args(["--format", "table", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("storage: first-page-store"), "{stdout}");
+    assert!(stdout.contains("storage: second-page-store"), "{stdout}");
+}
+
+#[tokio::test]
+async fn list_json_does_not_look_up_storage_zones() {
+    let server = MockServer::start().await;
+    mount_ordinary_list(&server).await;
+    mount_container_side(&server).await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone"))
+        .respond_with(json_response(storage_list_for_origin_labels()))
+        .expect(0)
+        .mount(&server)
+        .await;
+    let output = cmd(&server)
+        .args(["--format", "json", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+}
+
+#[tokio::test]
+async fn list_without_storage_origins_does_not_look_up_storage_zones() {
+    let server = MockServer::start().await;
+    let mut page: serde_json::Value =
+        serde_json::from_str(&support::fixture("core/pullzone_list_paginated.json")).unwrap();
+    for item in page["Items"].as_array_mut().unwrap() {
+        item["OriginType"] = serde_json::json!(0);
+        item["StorageZoneId"] = serde_json::json!(-1);
+    }
+    get(&server, "/pullzone", page.to_string()).await;
+    get(
+        &server,
+        "/apps",
+        r#"{"items":[],"meta":{"totalItems":0},"cursor":null}"#.to_owned(),
+    )
+    .await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone"))
+        .respond_with(json_response(storage_list_for_origin_labels()))
+        .expect(0)
+        .mount(&server)
+        .await;
+    let output = cmd(&server)
+        .args(["--format", "table", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("https://origin.example.com"));
+}

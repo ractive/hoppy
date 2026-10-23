@@ -1112,7 +1112,7 @@ pub enum PullZoneAction {
   hoppy pull-zone create --name my-zone --storage-zone-id 1234
 
   # After creation, attach a custom hostname and load a free Let's Encrypt cert
-  hoppy pull-zone hostname add --id <pz-id> --hostname cdn.example.com
+  hoppy pull-zone hostname add <pz-id> --hostname cdn.example.com
   hoppy pull-zone hostname load-free-cert --hostname cdn.example.com")]
     Create {
         /// Pull Zone name. Becomes the hostname `<name>.b-cdn.net` and must be globally unique across bunny.net. Lowercase letters, digits, and hyphens only.
@@ -1136,11 +1136,11 @@ pub enum PullZoneAction {
     /// Update a pull zone
     #[command(after_help = "EXAMPLES:
   # Enable Optimizer with WebP, CSS/JS minify, and image quality 80
-  hoppy pull-zone update --id <id> --optimizer-enabled true --optimizer-webp true \\
+  hoppy pull-zone update <id> --optimizer-enabled true --optimizer-webp true \\
     --optimizer-minify-css true --optimizer-minify-js true --optimizer-image-quality 80
 
   # After enabling, read Optimizer usage stats
-  hoppy pull-zone statistics --id <id> --type optimizer")]
+  hoppy pull-zone statistics <id> --type optimizer")]
     Update {
         /// Pull zone ID (positional or `--id`)
         #[command(flatten)]

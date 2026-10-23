@@ -62,6 +62,20 @@ struct PullZoneAppRow {
 /// Storage zone names keyed by id, used to label storage-backed origins.
 type StorageNames = HashMap<i64, String>;
 
+/// Upper bound on storage-zone list pages fetched for name lookup.
+const MAX_STORAGE_PAGES: u32 = 100;
+
+/// The storage zone id behind a pull zone's origin, if it has one: a storage
+/// origin type, or a URL-less zone that still carries a storage zone id.
+fn storage_origin_id(pz: &PullZone) -> Option<i64> {
+    let id = pz.storage_zone_id.filter(|id| *id > 0)?;
+    match pz.origin_type {
+        Some(OriginType::StorageZone) => Some(id),
+        Some(OriginType::OriginUrl) | None if pz.origin_url.is_empty() => Some(id),
+        _ => None,
+    }
+}
+
 /// Human-readable origin for the list table.
 ///
 /// The raw `OriginUrl` is blank for storage-backed zones and a placeholder
@@ -83,12 +97,13 @@ fn origin_label(pz: &PullZone, app: Option<&str>, storage: &StorageNames) -> Str
         Some(OriginType::PushZone) => "push zone".to_owned(),
         Some(OriginType::Script) => "edge script".to_owned(),
         Some(OriginType::LoadBalancer) => "load balancer".to_owned(),
-        Some(OriginType::OriginUrl) | None => match pz.storage_zone_id {
+        Some(OriginType::Unknown(n)) => format!("origin type {n}"),
+        Some(OriginType::OriginUrl) | None => match storage_origin_id(pz) {
             _ if !pz.origin_url.is_empty() => pz.origin_url.clone(),
-            Some(id) if id > 0 => storage
+            Some(id) => storage
                 .get(&id)
                 .map_or_else(|| format!("storage zone {id}"), |n| format!("storage: {n}")),
-            _ => "-".to_owned(),
+            None => "-".to_owned(),
         },
     }
 }
@@ -129,27 +144,22 @@ impl PullZoneAppRow {
 /// zone actually has a storage origin. Any failure yields an empty map so the
 /// label falls back to `storage zone <id>`.
 async fn storage_names_for(client: &CoreClient, zones: &[ListedZone]) -> StorageNames {
-    let needs = zones.iter().any(|l| {
-        matches!(l.zone.origin_type, Some(OriginType::StorageZone))
-            && l.zone.storage_zone_id.is_some_and(|id| id > 0)
-    });
+    let needs = zones.iter().any(|l| storage_origin_id(&l.zone).is_some());
     let mut names = StorageNames::new();
     if !needs {
         return names;
     }
-    let mut page: u32 = 1;
-    loop {
+    for page in 1..=MAX_STORAGE_PAGES {
         match client
             .list_storage_zones(Some(page), Some(1000), None, None)
             .await
         {
             Ok(result) => {
-                let more = result.has_more_items;
+                let more = result.has_more_items && !result.items.is_empty();
                 names.extend(result.items.into_iter().map(|z| (z.id, z.name)));
                 if !more {
                     break;
                 }
-                page += 1;
             }
             Err(e) => {
                 eprintln!("warning: could not look up storage zone names: {e:#}");
@@ -1687,6 +1697,17 @@ mod tests {
         assert_eq!(
             origin_label(&zone(Some(6), "", -1), None, &names()),
             "push zone"
+        );
+    }
+
+    #[test]
+    fn origin_url_less_zone_with_storage_id_gets_name() {
+        let pz = zone(Some(0), "", 1520401);
+        assert_eq!(storage_origin_id(&pz), Some(1520401));
+        assert_eq!(origin_label(&pz, None, &names()), "storage: my-storage");
+        assert_eq!(
+            storage_origin_id(&zone(Some(0), "https://o", 1520401)),
+            None
         );
     }
 
