@@ -10,9 +10,9 @@ use crate::recording::{capture_request, maybe_record_response};
 
 use super::types::{
     Collection, CreateCollection, CreateVideo, EncoderOutputCodec, FetchVideo, PaginatedList,
-    SmartGenerateSettings, StatusEnvelope, StatusMessage, TranscribeSettings, UpdateCollection,
-    UpdateVideo, Video, VideoHeatmap, VideoOEmbed, VideoPlayData, VideoResolutionsInfo,
-    VideoStatistics, VideoStorageSize, VideoUploadOptions,
+    ResolutionsCleanupStatus, SmartGenerateSettings, StatusEnvelope, StatusMessage,
+    TranscribeSettings, UpdateCollection, UpdateVideo, Video, VideoHeatmap, VideoOEmbed,
+    VideoPlayData, VideoResolutionsInfo, VideoStatistics, VideoStorageSize, VideoUploadOptions,
 };
 
 const BASE_URL: &str = "https://video.bunnycdn.com";
@@ -581,7 +581,7 @@ impl StreamClient {
         library_id: i64,
         video_id: &str,
         opts: &StreamCleanupResolutions<'_>,
-    ) -> Result<StatusMessage> {
+    ) -> Result<ResolutionsCleanupStatus> {
         let vid = Self::encode(video_id);
         let url = format!(
             "{}/library/{library_id}/videos/{vid}/resolutions/cleanup",

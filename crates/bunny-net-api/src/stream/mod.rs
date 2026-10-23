@@ -34,7 +34,8 @@ pub use tus::{DEFAULT_CHUNK_SIZE, TusUploadResult, TusUploader};
 pub use types::{
     Caption, Chapter, CodecRenditionSize, Collection, CreateCollection, CreateVideo,
     EncoderOutputCodec, FetchVideo, MetaTag, Moment, PaginatedList, ResolutionReference,
-    SmartGenerateSettings, StatusEnvelope, StatusMessage, StorageObject, TranscribeSettings,
-    UpdateCollection, UpdateVideo, Video, VideoHeatmap, VideoOEmbed, VideoPlayData,
-    VideoResolutionsInfo, VideoStatistics, VideoStatus, VideoStorageSize, VideoUploadOptions,
+    ResolutionsCleanupModel, ResolutionsCleanupStatus, SmartGenerateSettings, StatusEnvelope,
+    StatusMessage, StorageObject, TranscribeSettings, UpdateCollection, UpdateVideo, Video,
+    VideoHeatmap, VideoOEmbed, VideoPlayData, VideoResolutionsInfo, VideoStatistics, VideoStatus,
+    VideoStorageSize, VideoUploadOptions,
 };

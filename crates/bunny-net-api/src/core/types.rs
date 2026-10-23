@@ -99,6 +99,9 @@ forward_compat_repr_enum! {
         DisableShieldRateLimiting = 32,
         EnableRequestCoalescing = 33,
         DisableRequestCoalescing = 34,
+        UseLoadBalancer = 35,
+        ForceLoadBalancerStickySessionMode = 36,
+        StripCookiesClientToOrigin = 37,
     }
 }
 
@@ -140,6 +143,9 @@ impl std::fmt::Display for EdgeRuleActionType {
             Self::DisableShieldRateLimiting => "disable-shield-rate-limiting",
             Self::EnableRequestCoalescing => "enable-request-coalescing",
             Self::DisableRequestCoalescing => "disable-request-coalescing",
+            Self::UseLoadBalancer => "use-load-balancer",
+            Self::ForceLoadBalancerStickySessionMode => "force-load-balancer-sticky-session-mode",
+            Self::StripCookiesClientToOrigin => "strip-cookies-client-to-origin",
             Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
@@ -188,6 +194,11 @@ impl std::str::FromStr for EdgeRuleActionType {
             "disable-shield-rate-limiting" => Ok(Self::DisableShieldRateLimiting),
             "enable-request-coalescing" => Ok(Self::EnableRequestCoalescing),
             "disable-request-coalescing" => Ok(Self::DisableRequestCoalescing),
+            "use-load-balancer" => Ok(Self::UseLoadBalancer),
+            "force-load-balancer-sticky-session-mode" => {
+                Ok(Self::ForceLoadBalancerStickySessionMode)
+            }
+            "strip-cookies-client-to-origin" => Ok(Self::StripCookiesClientToOrigin),
             _ => Err(format!("unknown edge rule action type: {s}")),
         }
     }
@@ -5119,5 +5130,24 @@ mod tests {
     fn private_key_type_use_ec_key_flag() {
         assert!(PullZonePrivateKeyType::Ec.use_ec_key());
         assert!(!PullZonePrivateKeyType::Rsa.use_ec_key());
+    }
+
+    /// iter-87: edge-rule actions 35-37 have names, and any other future value
+    /// round-trips instead of failing or blanking.
+    #[test]
+    fn edge_rule_actions_35_to_37_and_unknown_round_trip() {
+        for (name, n) in [
+            ("use-load-balancer", 35),
+            ("force-load-balancer-sticky-session-mode", 36),
+            ("strip-cookies-client-to-origin", 37),
+        ] {
+            let a: EdgeRuleActionType = name.parse().unwrap();
+            assert_eq!(a.to_repr(), n);
+            assert_eq!(a.to_string(), name);
+            assert_eq!(serde_json::to_value(a).unwrap(), serde_json::json!(n));
+        }
+        let future: EdgeRuleActionType = serde_json::from_str("99").unwrap();
+        assert_eq!(future.to_string(), "Unknown(99)");
+        assert_eq!(serde_json::to_string(&future).unwrap(), "99");
     }
 }

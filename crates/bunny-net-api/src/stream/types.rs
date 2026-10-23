@@ -749,6 +749,55 @@ pub struct VideoStorageSize {
     pub calculated_at: Option<String>,
 }
 
+/// The plan (and outcome) of a resolutions cleanup, from
+/// `POST …/resolutions/cleanup` (`ResolutionsCleanupModel`).
+///
+/// With `dryRun=true` the `*_to_delete` lists are the plan and the boolean
+/// outcome flags are `false`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolutionsCleanupModel {
+    #[serde(default)]
+    pub video_id: Option<String>,
+    #[serde(default)]
+    pub video_library_id: i64,
+    #[serde(default)]
+    pub resolutions_to_delete: Option<Vec<String>>,
+    #[serde(default)]
+    pub resolutions_to_delete_from_playlist: Option<Vec<String>>,
+    #[serde(default)]
+    pub resolutions_to_delete_from_storage: Option<Vec<String>>,
+    #[serde(default)]
+    pub resolutions_to_delete_from_mp4: Option<Vec<String>>,
+    #[serde(default)]
+    pub storage_objects_to_delete: Option<Vec<String>>,
+    #[serde(default)]
+    pub available_resolutions_after: Option<Vec<String>>,
+    #[serde(default)]
+    pub updated_available_resolutions: bool,
+    #[serde(default)]
+    pub modified_playlist: bool,
+    #[serde(default)]
+    pub deleted_storage_objects: bool,
+    #[serde(default)]
+    pub deleted_original: bool,
+}
+
+/// Response of the resolutions cleanup: the usual status fields (PascalCase,
+/// as [`StatusMessage`]) plus the cleanup plan in `Data`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ResolutionsCleanupStatus {
+    #[serde(default, alias = "success")]
+    pub success: bool,
+    #[serde(default, alias = "message")]
+    pub message: Option<String>,
+    #[serde(default, alias = "statusCode")]
+    pub status_code: i32,
+    #[serde(default, alias = "data")]
+    pub data: Option<ResolutionsCleanupModel>,
+}
+
 /// Generic envelope used by responses that wrap a `data` payload alongside
 /// the standard [`StatusMessage`] fields (e.g. resolutions and storage info).
 #[derive(Debug, Clone, Serialize, Deserialize)]

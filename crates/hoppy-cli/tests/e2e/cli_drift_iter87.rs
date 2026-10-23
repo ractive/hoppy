@@ -475,3 +475,44 @@ async fn shield_zone_update_ddos_execution_mode_is_warned_and_not_sent() {
     );
     assert!(String::from_utf8_lossy(&output.stderr).contains("deprecated"));
 }
+
+// ---------------------------------------------------------------------------
+// Edge-rule actions 35-37 (task 6)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn edge_rule_list_shows_actions_35_to_37_by_name_and_unknown_raw() {
+    let server = MockServer::start().await;
+    mount_get(
+        &server,
+        "/pullzone/1001",
+        "core/pullzone_get_edgerules_new_actions.json",
+    )
+    .await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args([
+            "--format",
+            "table",
+            "pull-zone",
+            "edge-rule",
+            "list",
+            "--id",
+            "1001",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for needle in [
+        "use-load-balancer",
+        "force-load-balancer-sticky-session-mode",
+        "strip-cookies-client-to-origin",
+        "Unknown(99)",
+    ] {
+        assert!(stdout.contains(needle), "missing {needle}: {stdout}");
+    }
+}

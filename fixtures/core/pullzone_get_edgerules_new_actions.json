@@ -1,0 +1,98 @@
+{
+  "Id": 1001,
+  "Name": "test-zone-edge-new",
+  "EdgeRules": [
+    {
+      "Guid": "00000000-0000-0000-0000-000000000030",
+      "ActionType": 35,
+      "ActionParameter1": "",
+      "ActionParameter2": "",
+      "ActionParameter3": null,
+      "Triggers": [
+        {
+          "Type": 0,
+          "PatternMatches": [
+            "*"
+          ],
+          "PatternMatchingType": 0,
+          "Parameter1": ""
+        }
+      ],
+      "ExtraActions": [],
+      "TriggerMatchingType": 0,
+      "Description": "action 35",
+      "Enabled": true,
+      "OrderIndex": 0,
+      "ReadOnly": false
+    },
+    {
+      "Guid": "00000000-0000-0000-0000-000000000031",
+      "ActionType": 36,
+      "ActionParameter1": "",
+      "ActionParameter2": "",
+      "ActionParameter3": null,
+      "Triggers": [
+        {
+          "Type": 0,
+          "PatternMatches": [
+            "*"
+          ],
+          "PatternMatchingType": 0,
+          "Parameter1": ""
+        }
+      ],
+      "ExtraActions": [],
+      "TriggerMatchingType": 0,
+      "Description": "action 36",
+      "Enabled": true,
+      "OrderIndex": 1,
+      "ReadOnly": false
+    },
+    {
+      "Guid": "00000000-0000-0000-0000-000000000032",
+      "ActionType": 37,
+      "ActionParameter1": "",
+      "ActionParameter2": "",
+      "ActionParameter3": null,
+      "Triggers": [
+        {
+          "Type": 0,
+          "PatternMatches": [
+            "*"
+          ],
+          "PatternMatchingType": 0,
+          "Parameter1": ""
+        }
+      ],
+      "ExtraActions": [],
+      "TriggerMatchingType": 0,
+      "Description": "action 37",
+      "Enabled": true,
+      "OrderIndex": 2,
+      "ReadOnly": false
+    },
+    {
+      "Guid": "00000000-0000-0000-0000-000000000033",
+      "ActionType": 99,
+      "ActionParameter1": "",
+      "ActionParameter2": "",
+      "ActionParameter3": null,
+      "Triggers": [
+        {
+          "Type": 0,
+          "PatternMatches": [
+            "*"
+          ],
+          "PatternMatchingType": 0,
+          "Parameter1": ""
+        }
+      ],
+      "ExtraActions": [],
+      "TriggerMatchingType": 0,
+      "Description": "action 99",
+      "Enabled": true,
+      "OrderIndex": 3,
+      "ReadOnly": false
+    }
+  ]
+}
