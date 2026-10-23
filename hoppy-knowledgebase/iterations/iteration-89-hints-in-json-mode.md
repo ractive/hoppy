@@ -49,5 +49,4 @@ stripped by filters).
 
 ## Deferred
 
-- `--reveal` tips (apikey/billing) still table-gated although JSON output is
-  redacted too — candidate follow-up, low impact.
+- None; the `--reveal` tips were hoisted in review.
