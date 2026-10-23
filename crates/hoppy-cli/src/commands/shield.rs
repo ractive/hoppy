@@ -918,10 +918,12 @@ async fn handle_waf(
                     .as_ref()
                     .and_then(|o| o.variable_types.clone())
                     .or_else(|| Some(Default::default())),
-                operator_type: u8_to_enum::<WafRuleOperatorType>(*operator_type, "operator-type")?,
+                operator_type: *operator_type,
                 severity_type: u8_to_enum::<WafRuleSeverityType>(*severity_type, "severity-type")?,
                 transformation_types: Some(transformation_types),
                 value: value.clone(),
+                is_negated: None,
+                is_regex_variable: None,
                 chained_rule_conditions: overrides.and_then(|o| o.chained_rule_conditions),
             };
             let body = CreateCustomWafRule {
@@ -974,17 +976,22 @@ async fn handle_waf(
             let mut config = current.rule_configuration.unwrap_or(WafRuleConfiguration {
                 action_type: WafRuleActionType::Block,
                 variable_types: Some(Default::default()),
+                // Only reached for a rule without a stored configuration.
+                // `Eq` (wire 5) is what the old default meant to say; the old
+                // `WafRuleOperatorType::Eq` actually sent 0 = BEGINSWITH.
                 operator_type: WafRuleOperatorType::Eq,
                 severity_type: WafRuleSeverityType::Low,
                 transformation_types: Some(vec![]),
                 value: None,
+                is_negated: None,
+                is_regex_variable: None,
                 chained_rule_conditions: None,
             });
             if let Some(v) = action_type {
                 config.action_type = u8_to_enum::<WafRuleActionType>(*v, "action-type")?;
             }
             if let Some(v) = operator_type {
-                config.operator_type = u8_to_enum::<WafRuleOperatorType>(*v, "operator-type")?;
+                config.operator_type = *v;
             }
             if let Some(v) = severity_type {
                 config.severity_type = u8_to_enum::<WafRuleSeverityType>(*v, "severity-type")?;
@@ -1241,7 +1248,7 @@ async fn handle_rate_limit(
                     .as_ref()
                     .and_then(|o| o.variable_types.clone())
                     .or_else(|| Some(Default::default())),
-                operator_type: u8_to_enum(*operator_type, "operator-type")?,
+                operator_type: *operator_type,
                 severity_type: u8_to_enum(*severity_type, "severity-type")?,
                 transformation_types: Some(transformation_types),
                 value: value.clone(),
@@ -1252,6 +1259,8 @@ async fn handle_rate_limit(
                 )?,
                 timeframe: u16_to_enum(*timeframe, "timeframe")?,
                 block_time: u16_to_enum(*block_time, "block-time")?,
+                is_negated: None,
+                is_regex_variable: None,
                 chained_rule_conditions: overrides.and_then(|o| o.chained_rule_conditions),
             };
             let body = CreateRateLimitRule {
@@ -1321,6 +1330,8 @@ async fn handle_rate_limit(
                     severity_type: WafRuleSeverityType::Low,
                     transformation_types: Some(vec![]),
                     value: None,
+                    is_negated: None,
+                    is_regex_variable: None,
                     request_count: 0,
                     counter_key_type: RateLimitCounterKey::PerIp,
                     timeframe: RateLimitTimeframe::Sec60,
@@ -1331,7 +1342,7 @@ async fn handle_rate_limit(
                 config.action_type = u8_to_enum(*v, "action-type")?;
             }
             if let Some(v) = operator_type {
-                config.operator_type = u8_to_enum(*v, "operator-type")?;
+                config.operator_type = *v;
             }
             if let Some(v) = severity_type {
                 config.severity_type = u8_to_enum(*v, "severity-type")?;

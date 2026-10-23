@@ -3,6 +3,7 @@ use bunny_net_api::core::types::{
     PreloadingScreenTheme, PullZoneLogForwarderProtocolType, PullZonePrivateKeyType,
     PullZoneTierType, ShieldDDosProtectionType, StickySessionType,
 };
+use bunny_net_api::shield::types::WafRuleOperatorType;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
@@ -3729,9 +3730,12 @@ pub enum ShieldWafAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
         #[arg(long)]
         action_type: u8,
-        /// Operator type (0 = Eq, 1 = NotEq, 2 = Contains, 3 = NotContains, 4 = Begins, 5 = Ends, 6 = Regex, 7 = NotRegex, 8 = Lt, 9 = Gt, 12 = Pm, 14 = PmFromFile, 15 = IpMatch, 17 = GeoLookup, 18 = ValidateUrlEncoding)
-        #[arg(long)]
-        operator_type: u8,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: WafRuleOperatorType,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: u8,
@@ -3765,9 +3769,12 @@ pub enum ShieldWafAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
         #[arg(long)]
         action_type: Option<u8>,
-        /// Operator type (0–18; same values as `add-rule`)
-        #[arg(long)]
-        operator_type: Option<u8>,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: Option<WafRuleOperatorType>,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: Option<u8>,
@@ -3950,9 +3957,12 @@ pub enum ShieldRateLimitAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
         #[arg(long)]
         action_type: u8,
-        /// Operator type (0–18; same values as WAF rules)
-        #[arg(long)]
-        operator_type: u8,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: WafRuleOperatorType,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: u8,
@@ -3998,9 +4008,12 @@ pub enum ShieldRateLimitAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
         #[arg(long)]
         action_type: Option<u8>,
-        /// Operator type (0–18; same values as WAF rules)
-        #[arg(long)]
-        operator_type: Option<u8>,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: Option<WafRuleOperatorType>,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: Option<u8>,
@@ -6002,5 +6015,40 @@ mod cli_parse_tests {
             "test-app-id",
         ]);
         assert!(result.is_ok(), "CLI parse failed: {:?}", result.err());
+    }
+
+    /// The hand-written `--operator-type` help text must list every spec
+    /// operator exactly as `WafRuleOperatorType::NAMES` does.
+    #[test]
+    fn operator_type_help_lists_every_spec_operator() {
+        use bunny_net_api::shield::types::WafRuleOperatorType;
+
+        let cmd = Cli::command();
+        let waf = cmd
+            .find_subcommand("shield")
+            .and_then(|c| c.find_subcommand("waf"))
+            .expect("shield waf");
+        let rate = cmd
+            .find_subcommand("shield")
+            .and_then(|c| c.find_subcommand("rate-limit"))
+            .expect("shield rate-limit");
+        for (parent, name) in [
+            (waf, "add-rule"),
+            (waf, "update-rule"),
+            (rate, "create"),
+            (rate, "update"),
+        ] {
+            let sub = parent.find_subcommand(name).expect(name);
+            let arg = sub
+                .get_arguments()
+                .find(|a| a.get_id() == "operator_type")
+                .expect("operator_type arg");
+            let help = arg.get_help().expect("help").to_string();
+            let help = help.split_whitespace().collect::<Vec<_>>().join(" ");
+            for (op, spec_name) in WafRuleOperatorType::NAMES {
+                let needle = format!("{} = {spec_name}", op.to_repr());
+                assert!(help.contains(&needle), "{name}: help lacks `{needle}`");
+            }
+        }
     }
 }

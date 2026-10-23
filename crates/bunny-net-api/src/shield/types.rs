@@ -317,26 +317,106 @@ impl std::fmt::Display for WafRuleActionType {
 forward_compat_repr_enum! {
     /// Operator used to match a WAF rule variable against a value.
     ///
-    /// Values from the spec: 0 = Eq, 1 = NotEq, 2 = Contains, 3 = NotContains,
-    /// 4 = Begins, 5 = Ends, 6 = Regex, 7 = NotRegex, 8 = Lt, 9 = Gt,
-    /// 12 = Pm, 14 = PmFromFile, 15 = IpMatch, 17 = GeoLookup, 18 = ValidateUrlEncoding.
+    /// Names and numbers follow the shield spec (`WafRuleOperatorType`):
+    /// 0 = BEGINSWITH, 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD,
+    /// 4 = STRMATCH, 5 = EQ, 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN,
+    /// 13 = IPMATCH, 14 = RX, 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS.
+    ///
+    /// Before iter-87 these variants carried wrong labels (`0 = Eq`,
+    /// `6 = Regex`, `15 = IpMatch`, ...). The wire numbers never changed, only
+    /// the names.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum WafRuleOperatorType: u8 {
-        Eq = 0,
-        NotEq = 1,
+        BeginsWith = 0,
+        EndsWith = 1,
         Contains = 2,
-        NotContains = 3,
-        Begins = 4,
-        Ends = 5,
-        Regex = 6,
-        NotRegex = 7,
-        Lt = 8,
-        Gt = 9,
-        Pm = 12,
-        PmFromFile = 14,
-        IpMatch = 15,
-        GeoLookup = 17,
-        ValidateUrlEncoding = 18,
+        ContainsWord = 3,
+        StrMatch = 4,
+        Eq = 5,
+        Ge = 6,
+        Gt = 7,
+        Le = 8,
+        Lt = 9,
+        Within = 12,
+        IpMatch = 13,
+        Rx = 14,
+        StrEq = 15,
+        DetectSqli = 17,
+        DetectXss = 18,
+    }
+}
+
+impl WafRuleOperatorType {
+    /// Spec name for every declared operator. Single source of truth for
+    /// [`Display`](std::fmt::Display), [`FromStr`](std::str::FromStr) and the
+    /// CLI help text.
+    pub const NAMES: &'static [(WafRuleOperatorType, &'static str)] = &[
+        (Self::BeginsWith, "BEGINSWITH"),
+        (Self::EndsWith, "ENDSWITH"),
+        (Self::Contains, "CONTAINS"),
+        (Self::ContainsWord, "CONTAINSWORD"),
+        (Self::StrMatch, "STRMATCH"),
+        (Self::Eq, "EQ"),
+        (Self::Ge, "GE"),
+        (Self::Gt, "GT"),
+        (Self::Le, "LE"),
+        (Self::Lt, "LT"),
+        (Self::Within, "WITHIN"),
+        (Self::IpMatch, "IPMATCH"),
+        (Self::Rx, "RX"),
+        (Self::StrEq, "STREQ"),
+        (Self::DetectSqli, "DETECTSQLI"),
+        (Self::DetectXss, "DETECTXSS"),
+    ];
+
+    /// The spec name (`"IPMATCH"`), or `None` for [`Self::Unknown`].
+    #[must_use]
+    pub fn name(self) -> Option<&'static str> {
+        Self::NAMES
+            .iter()
+            .find_map(|(op, name)| (*op == self).then_some(*name))
+    }
+
+    /// `"0=BEGINSWITH, 1=ENDSWITH, ..."`, for help and error text.
+    #[must_use]
+    pub fn describe_all() -> String {
+        Self::NAMES
+            .iter()
+            .map(|(op, name)| format!("{}={name}", op.to_repr()))
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+}
+
+impl std::fmt::Display for WafRuleOperatorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.name() {
+            Some(name) => f.write_str(name),
+            None => write!(f, "Unknown({})", self.to_repr()),
+        }
+    }
+}
+
+/// Parses a spec name (case-insensitive, for example `beginswith` or `rx`) or
+/// a declared wire number (`13`). Old pre-iter-87 labels are not accepted.
+impl std::str::FromStr for WafRuleOperatorType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let t = s.trim();
+        let found = if let Ok(n) = t.parse::<u8>() {
+            Self::try_from_repr(n)
+        } else {
+            Self::NAMES
+                .iter()
+                .find_map(|(op, name)| name.eq_ignore_ascii_case(t).then_some(*op))
+        };
+        found.ok_or_else(|| {
+            format!(
+                "invalid operator '{s}': expected a name or number ({})",
+                Self::describe_all()
+            )
+        })
     }
 }
 
@@ -809,6 +889,13 @@ pub struct WafChainedRuleCondition {
     pub operator_type: WafRuleOperatorType,
     #[serde(default)]
     pub value: Option<String>,
+    /// Negate the match (`isNegated`). Echoed back on updates so an
+    /// existing negated rule keeps its meaning.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_negated: Option<bool>,
+    /// Treat the variable selectors as regular expressions (`isRegexVariable`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_regex_variable: Option<bool>,
 }
 
 /// Configuration payload shared by create and update WAF rule requests.
@@ -824,6 +911,13 @@ pub struct WafRuleConfiguration {
     pub transformation_types: Option<Vec<WafRuleTransformationType>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    /// Negate the match (`isNegated`). Echoed back on updates so an
+    /// existing negated rule keeps its meaning.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_negated: Option<bool>,
+    /// Treat the variable selectors as regular expressions (`isRegexVariable`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_regex_variable: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chained_rule_conditions: Option<Vec<WafChainedRuleCondition>>,
 }
@@ -905,6 +999,13 @@ pub struct RateLimitRuleConfiguration {
     pub counter_key_type: RateLimitCounterKey,
     pub timeframe: RateLimitTimeframe,
     pub block_time: RateLimitBlockDuration,
+    /// Negate the match (`isNegated`). Echoed back on updates so an
+    /// existing negated rule keeps its meaning.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_negated: Option<bool>,
+    /// Treat the variable selectors as regular expressions (`isRegexVariable`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_regex_variable: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chained_rule_conditions: Option<Vec<WafChainedRuleCondition>>,
 }
@@ -2324,6 +2425,8 @@ mod tests {
                 severity_type: WafRuleSeverityType::High,
                 transformation_types: None,
                 value: Some("SELECT".to_string()),
+                is_negated: None,
+                is_regex_variable: None,
                 chained_rule_conditions: None,
             },
         };
@@ -2336,20 +2439,66 @@ mod tests {
         assert!(!json.contains("ruleDescription"));
     }
 
+    /// Pins every operator name and number to the shield spec
+    /// (`specs/shield.json`, `WafRuleOperatorType`).
+    const OPERATOR_SPEC: &[(&str, u8)] = &[
+        ("BEGINSWITH", 0),
+        ("ENDSWITH", 1),
+        ("CONTAINS", 2),
+        ("CONTAINSWORD", 3),
+        ("STRMATCH", 4),
+        ("EQ", 5),
+        ("GE", 6),
+        ("GT", 7),
+        ("LE", 8),
+        ("LT", 9),
+        ("WITHIN", 12),
+        ("IPMATCH", 13),
+        ("RX", 14),
+        ("STREQ", 15),
+        ("DETECTSQLI", 17),
+        ("DETECTXSS", 18),
+    ];
+
     #[test]
-    fn waf_rule_operator_type_values() {
-        assert_eq!(
-            serde_json::to_string(&WafRuleOperatorType::IpMatch).unwrap(),
-            "15"
-        );
-        assert_eq!(
-            serde_json::to_string(&WafRuleOperatorType::GeoLookup).unwrap(),
-            "17"
-        );
-        assert_eq!(
-            serde_json::to_string(&WafRuleOperatorType::Pm).unwrap(),
-            "12"
-        );
+    fn waf_rule_operator_names_and_numbers_match_spec() {
+        assert_eq!(WafRuleOperatorType::NAMES.len(), OPERATOR_SPEC.len());
+        for (name, n) in OPERATOR_SPEC {
+            let from_name: WafRuleOperatorType = name.parse().unwrap();
+            let from_lower: WafRuleOperatorType = name.to_lowercase().parse().unwrap();
+            let from_number: WafRuleOperatorType = n.to_string().parse().unwrap();
+            assert_eq!(from_name, from_lower, "{name}");
+            assert_eq!(from_name, from_number, "{name}");
+            assert_eq!(from_name.to_repr(), *n, "{name}");
+            assert_eq!(from_name.to_string(), *name);
+            assert_eq!(serde_json::to_string(&from_name).unwrap(), n.to_string());
+            let back: WafRuleOperatorType = serde_json::from_str(&n.to_string()).unwrap();
+            assert_eq!(back, from_name);
+        }
+    }
+
+    #[test]
+    fn waf_rule_operator_rejects_old_labels_and_unknown_numbers() {
+        for bad in [
+            "notEq",
+            "regex",
+            "begins",
+            "pm",
+            "geolookup",
+            "99",
+            "10",
+            "",
+        ] {
+            assert!(bad.parse::<WafRuleOperatorType>().is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn waf_rule_operator_unknown_value_round_trips() {
+        let op: WafRuleOperatorType = serde_json::from_str("99").unwrap();
+        assert_eq!(op, WafRuleOperatorType::Unknown(99));
+        assert_eq!(op.to_string(), "Unknown(99)");
+        assert_eq!(serde_json::to_string(&op).unwrap(), "99");
     }
 
     #[test]

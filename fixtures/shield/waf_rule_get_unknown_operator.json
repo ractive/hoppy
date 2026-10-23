@@ -1,0 +1,12 @@
+{
+  "id": 7101,
+  "shieldZoneId": 55001,
+  "ruleName": "Future operator",
+  "ruleConfiguration": {
+    "actionType": 1,
+    "operatorType": 99,
+    "severityType": 1,
+    "value": "x",
+    "isNegated": true
+  }
+}
