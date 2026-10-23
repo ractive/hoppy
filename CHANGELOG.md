@@ -49,14 +49,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hidden aliases for the same wire values 0 / 1.
 - `shield zone update --ddos-execution-mode` is deprecated and ignored (hidden,
   prints a warning): the API no longer accepts it.
-- Known remaining Shield label mismatches (names only, wire numbers are
-  unchanged): `AccessListAction` 1/2 (Allow/Block) appear swapped versus the
-  spec, so an access-list action chosen by its label can apply the opposite
-  policy; `AccessListType`, `WafRuleActionType`, `RatelimitRuleActionType`,
-  `WafRuleSeverityType`, `ShieldPlanType`, `BotDetectionExecutionMode`,
-  `BotDetectionSensitivity`, `BrowserFingerprintAggression` and
-  `DDoSExecutionMode` also differ. Tracked in
-  `hoppy-knowledgebase/backlog/shield-enum-labels-disagree-with-spec.md`.
+- **Shield enum labels now follow the spec (wire numbers unchanged).** The old
+  labels were wrong for the numbers they named. The worst case: access-list
+  action `1` is **Allow** and `2` is **Block** (hoppy had them swapped, so a
+  policy picked by label was inverted). The API's own
+  `shield access-list enums` agrees with the spec. The flags below now take a
+  spec name (case-insensitive) or a number; old labels are **not** accepted as
+  aliases, because most would now mean a different number. Check any script
+  that passes a number chosen from the old help text, and any code matching on
+  the old variant names. Migration (number: old label to new label):
+
+  | Enum / flag | Migration |
+  |---|---|
+  | `AccessListAction` (`access-list update-config --action`) | 0 NoAction to None, 1 Block to **Allow**, 2 Allow to **Block**, 3 LogOnly to Challenge, 4 Challenge to Log, 5 ChallengeInterstitial to Bypass |
+  | `AccessListType` (`access-list create --type`) | 0 Ip to IP, 1 Country to **CIDR**, 2 Asn to ASN, 3 Hostname to **Country**, 4 UserAgent to Organization, 5 Custom to JA4 |
+  | `WafRuleActionType` (`waf add-rule/update-rule --action-type`) | 1 Block, 2 LogOnly to Log, 3 Challenge, 4 ChallengeInterstitial to **Allow**, 5 Allow to **Bypass** |
+  | `RateLimitActionType` (`rate-limit create/update --action-type`) | 1 Block to RateLimit, 2 LogOnly to Log, 3 Challenge |
+  | `WafRuleSeverityType` (`--severity-type`) | 0 Low to NOTICE, 1 Medium to WARNING, 2 High to CRITICAL |
+  | `ShieldPlanType` | 0 Basic, 1 Standard to **Advanced**, 2 Advanced to **Business**, 3 Enterprise |
+  | `WafExecutionMode` (`zone update --waf-execution-mode`) | 0 Disabled to Log, 1 Enabled to Block |
+  | `DdosExecutionMode` | 0 Disabled to Log, 1 Enabled to Block |
+  | `BotDetectionExecutionMode` (`bot-detection update --execution-mode`) | 0 Disabled to LogOnly, 1 Enabled to Challenge |
+  | `BotDetectionSensitivity` (`--*-sensitivity`) | 0 Disabled to Off, 1-3 Low/Medium/High unchanged |
+  | `BrowserFingerprintAggression` (`--fingerprint-aggression`) | 0 Disabled to Unknown, 1 VeryLow to Low, 2 Low to Medium, 3 Medium to High, 4 High to Custom |
+  | `RateLimitCounterKey` (`rate-limit --counter-key-type`) | 0 Global to IP, 1 PerIp to Host, 2 PerCountry to Country, 3 PerAsn to City, 4 PerHeader to ASN, 5 PerCookie to Organization, 6 PerQuery to JA4, 7 PerFingerprint to IP_JA4 |
+  | `WafRuleTransformationType` (`--transformation-type`) | spec names 1 CMDLINE ... 21 UTF8TOUNICODE (old: 1 Lowercase, 2 Uppercase, ...); see `--help` |
+  | `ReviewActionType` (`waf review-triggered-rule --action`) | 0 Pending to Ignore, 1 Approve to LogOnly, 2 Reject to DisableRule |
+  | `WafPayloadLimitAction` | 0 Allow to Block, 1 Block to Log, 2 Ignore |
+  | `UploadScanningScannerMode` (`upload-scanning update --*-mode`) | 0 Disabled, 1 LogOnly to Log, 2 Block |
+
+  Library: variants renamed accordingly (`AccessListType::Cidr`,
+  `WafRuleSeverityType::Critical`, `BrowserFingerprintAggression::Unspecified`
+  for spec `Unknown`, `RateLimitActionType::RateLimit`,
+  `UploadScanningScannerMode::Log`, ...); every renamed enum gains `NAMES`,
+  `name()`, `describe_all()`, `Display` and `FromStr`. Table and `--format`
+  output show the new labels. Remaining non-Shield label mismatches (pull-zone
+  watermark position, preloading theme, ...) are tracked in
+  `hoppy-knowledgebase/backlog/core-enum-labels-disagree-with-spec.md`.
 
 ### Added
 

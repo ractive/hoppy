@@ -2,13 +2,14 @@
 title: Several Shield enum labels in hoppy disagree with the spec
 type: backlog
 date: 2026-10-23
-status: planned
+status: completed
 priority: high
 origin: iter-87
 tags:
   - shield
   - api-drift
   - dx
+resolved-in: iter-90
 ---
 
 # Shield enum labels disagree with the spec
@@ -44,8 +45,12 @@ swapped versus the spec. A user who picks an action by its label gets the
 opposite policy (an intended Block becomes Allow and vice versa). Verify
 against the live API first and fix this enum before the other label work.
 
-- [ ] Re-derive every Shield enum from `x-enum-varnames` with a spec-table test like `waf_rule_operator_names_and_numbers_match_spec`
-- [ ] Rewrite the matching `--*-type` / `--action` help texts; keep numbers unchanged
-- [ ] Decide per enum whether to also accept names on the CLI (as `--operator-type` does)
-- [ ] CHANGELOG breaking note (library variant renames; table labels change)
-- [ ] Consider a generic spec-vs-code enum check in the `/api-drift-sweep` skill so this cannot hide again
+- [x] Re-derive every Shield enum from `x-enum-varnames` with a spec-table test like `waf_rule_operator_names_and_numbers_match_spec`
+- [x] Rewrite the matching `--*-type` / `--action` help texts; keep numbers unchanged
+- [x] Decide per enum whether to also accept names on the CLI (as `--operator-type` does)
+- [x] CHANGELOG breaking note (library variant renames; table labels change)
+- [x] Consider a generic spec-vs-code enum check in the `/api-drift-sweep` skill so this cannot hide again
+
+## Resolution (iter-90, 2026-10-23)
+
+Fixed in [[iterations/iteration-90-shield-enum-labels]]: all Shield enums relabelled to the spec (plus `BotDetectionSensitivity`, counter key, transformation, payload-limit, review-action and scanner-mode enums found later), names accepted on the CLI, spec-sync tests added. Live check: [[research/shield-enum-labels-live-check-2026-10-23]]. The generic spec-vs-code check is now a unit test for Shield (`specs/shield.json` read in `shield/types.rs` tests); extending it to other specs is tracked in [[backlog/core-enum-labels-disagree-with-spec]] (the `/api-drift-sweep` skill item stays open there).
