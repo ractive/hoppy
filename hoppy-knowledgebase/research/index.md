@@ -1,6 +1,7 @@
 # Index
 
 <!-- okf:index:begin -->
+
 ## Subdirectories
 
 * [api-coverage-2026-07](api-coverage-2026-07/index.md)
@@ -15,6 +16,7 @@
 * [Iteration 0.5 — Hand-Written Experiment Results](hand-written-experiment-results.md)
 * [Modern Rust CLI Best Practices with Clap](rust-cli-best-practices.md)
 * [OpenAPI Code Generation for Rust - Evaluation](openapi-codegen-rust.md)
+* [OpenAPI spec drift since the July 2026 snapshot (2026-10-23)](openapi-drift-2026-10-23.md)
 * [Release Engineering Research for hoppy v0.1.0](release-engineering-research.md)
 * [Rust Code Review Skill Research](rust-code-review-skill-research.md)
 * [Syslog tunnel options for hoppy container logs](syslog-tunnel-options.md)
