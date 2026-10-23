@@ -219,3 +219,73 @@ async fn count_without_container_zones_keeps_api_count() {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(json["Count"], 7);
 }
+
+/// Storage zone list whose first zone carries the id of the first pull zone's
+/// storage origin (3002); the pull zone with storage id 3001 is left unknown.
+fn storage_list_for_origin_labels() -> String {
+    let mut list: serde_json::Value =
+        serde_json::from_str(&support::fixture("core/storagezone_list_paginated.json")).unwrap();
+    list["Items"][0]["Id"] = serde_json::json!(3002);
+    list["Items"][0]["Name"] = serde_json::json!("origin-store");
+    list.to_string()
+}
+
+#[tokio::test]
+async fn list_table_labels_origins_by_type() {
+    let server = MockServer::start().await;
+    mount_ordinary_list(&server).await;
+    mount_container_side(&server).await;
+    get(&server, "/storagezone", storage_list_for_origin_labels()).await;
+
+    let output = cmd(&server)
+        .args(["--format", "table", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("storage: origin-store"), "{stdout}");
+    assert!(stdout.contains("storage zone 3001"), "{stdout}");
+    assert!(stdout.contains("container app my-app"), "{stdout}");
+    assert!(!stdout.contains("https://bunny.net"), "{stdout}");
+}
+
+#[tokio::test]
+async fn list_table_origin_falls_back_when_storage_lookup_fails() {
+    let server = MockServer::start().await;
+    mount_ordinary_list(&server).await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone"))
+        .respond_with(ResponseTemplate::new(500))
+        .mount(&server)
+        .await;
+    get(
+        &server,
+        "/apps",
+        r#"{"items":[],"meta":{"totalItems":0},"cursor":null}"#.to_owned(),
+    )
+    .await;
+
+    let output = cmd(&server)
+        .args(["--format", "table", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("storage zone 3002"), "{stdout}");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("storage zone names"));
+}
+
+#[tokio::test]
+async fn list_json_keeps_raw_origin_fields() {
+    let server = MockServer::start().await;
+    mount_ordinary_list(&server).await;
+    mount_container_side(&server).await;
+    let output = cmd(&server)
+        .args(["--format", "json", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["Items"][0]["OriginUrl"], "https://origin.example.com");
+    assert_eq!(json["Items"][0]["OriginType"], 2);
+    assert_eq!(json["Items"][2]["OriginType"], 5);
+}

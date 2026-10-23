@@ -1186,7 +1186,7 @@ async fn dns_zone_issue_cert_500_appends_delegation_hint() {
         "expected delegation hint in stderr, got: {stderr}"
     );
     assert!(
-        stderr.contains("hoppy dns zone get --id 50001"),
+        stderr.contains("hoppy dns zone get 50001"),
         "expected command suggestion in stderr, got: {stderr}"
     );
 }

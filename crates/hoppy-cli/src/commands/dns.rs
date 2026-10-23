@@ -524,7 +524,8 @@ fn annotate_issue_cert_error(err: anyhow::Error, zone_id: i64) -> anyhow::Error 
         && api_err.error_key.is_empty()
     {
         return err.context(format!(
-            "hint: the zone must be delegated to bunny.net nameservers before a certificate can be issued. Set NS records to the values from `hoppy dns zone get --id {zone_id}`."
+            "hint: the zone must be delegated to bunny.net nameservers before a certificate can be issued. Set NS records to the values from `{}`.",
+            crate::hint_cmds::dns_zone_get(zone_id)
         ));
     }
     err
@@ -656,7 +657,7 @@ async fn handle_scan(
                 };
                 output::print_single(&row, format);
                 let next_cmd = match (id, domain) {
-                    (Some(zone_id), _) => format!("hoppy dns zone scan results --id {zone_id}"),
+                    (Some(zone_id), _) => crate::hint_cmds::dns_zone_scan_results(*zone_id),
                     (None, Some(d)) => format!("hoppy dns zone scan results --domain {d}"),
                     (None, None) => unreachable!(),
                 };
@@ -1060,6 +1061,7 @@ async fn handle_record(
 
 fn print_dns_zone(zone: &DnsZone, format: OutputFormat) {
     let redact_cfg = crate::redact::RedactConfig::default();
-    let cmd = format!("dns zone get --id {}", zone.id);
-    output::print_single_vertical_with_cmd(zone, format, &redact_cfg, Some(&cmd));
+    let cmd = crate::hint_cmds::dns_zone_get(zone.id);
+    let cmd = crate::hint_cmds::without_binary(&cmd);
+    output::print_single_vertical_with_cmd(zone, format, &redact_cfg, Some(cmd));
 }

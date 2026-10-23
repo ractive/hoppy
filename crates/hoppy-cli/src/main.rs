@@ -2,6 +2,7 @@ mod auth;
 mod cli;
 mod commands;
 mod date;
+mod hint_cmds;
 mod output;
 mod progress;
 mod redact;

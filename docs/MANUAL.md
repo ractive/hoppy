@@ -27,11 +27,11 @@ For a one-line tree of every subcommand, see
 ## CDN Pull Zones
 
 ```bash
-hoppy pull-zone list
+hoppy pull-zone list                # Origin column: URL, "storage: <name>", "container app <name>", ...
 hoppy pull-zone get 123456          # or: --id 123456
 hoppy pull-zone create --name my-zone --origin-url https://origin.example.com
-hoppy pull-zone update --id 123456 --origin-url https://new-origin.example.com
-hoppy pull-zone delete --id 123456 --yes
+hoppy pull-zone update 123456 --origin-url https://new-origin.example.com
+hoppy pull-zone delete 123456 --yes
 hoppy pull-zone purge --id 123456
 hoppy pull-zone purge --id 123456 --cache-tag static-assets
 
@@ -253,7 +253,7 @@ via a continuation token surfaced in a stderr hint (or the JSON
 | `--yes` / `-y` | Skip confirmation prompts |
 | `--reveal` | Print raw secrets (tokens, passwords, env values) instead of redacting them |
 | `--reveal-env KEY` | Reveal a specific env-var by name (repeatable) |
-| `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`) |
+| `--no-hints` | Suppress drill-down hint lines on stderr (implied by `--format json`). Hints use the positional id form (`hoppy pull-zone get 123456`) wherever the command accepts it |
 
 ### JSON output shapes
 
