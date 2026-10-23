@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::{BTreeMap, HashMap};
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 
-/// WAF execution mode for a Shield Zone.
-///
-/// Values from the spec: 0 = Disabled, 1 = Enabled.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum WafExecutionMode {
-    Disabled = 0,
-    Enabled = 1,
+forward_compat_repr_enum! {
+    /// WAF execution mode for a Shield Zone.
+    ///
+    /// Values from the spec: 0 = Disabled, 1 = Enabled.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum WafExecutionMode: u8 {
+        Disabled = 0,
+        Enabled = 1,
+    }
 }
 
 impl std::fmt::Display for WafExecutionMode {
@@ -21,19 +21,21 @@ impl std::fmt::Display for WafExecutionMode {
         match self {
             WafExecutionMode::Disabled => write!(f, "Disabled"),
             WafExecutionMode::Enabled => write!(f, "Enabled"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Action taken when WAF payload size limit is exceeded.
-///
-/// Values from the spec: 0 = Allow, 1 = Block, 2 = Ignore.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum WafPayloadLimitAction {
-    Allow = 0,
-    Block = 1,
-    Ignore = 2,
+forward_compat_repr_enum! {
+    /// Action taken when WAF payload size limit is exceeded.
+    ///
+    /// Values from the spec: 0 = Allow, 1 = Block, 2 = Ignore.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum WafPayloadLimitAction: u8 {
+        Allow = 0,
+        Block = 1,
+        Ignore = 2,
+    }
 }
 
 impl std::fmt::Display for WafPayloadLimitAction {
@@ -42,20 +44,22 @@ impl std::fmt::Display for WafPayloadLimitAction {
             WafPayloadLimitAction::Allow => write!(f, "Allow"),
             WafPayloadLimitAction::Block => write!(f, "Block"),
             WafPayloadLimitAction::Ignore => write!(f, "Ignore"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Shield plan tier.
-///
-/// Values from the spec: 0 = Basic, 1 = Standard, 2 = Advanced, 3 = Enterprise.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum ShieldPlanType {
-    Basic = 0,
-    Standard = 1,
-    Advanced = 2,
-    Enterprise = 3,
+forward_compat_repr_enum! {
+    /// Shield plan tier.
+    ///
+    /// Values from the spec: 0 = Basic, 1 = Standard, 2 = Advanced, 3 = Enterprise.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ShieldPlanType: u8 {
+        Basic = 0,
+        Standard = 1,
+        Advanced = 2,
+        Enterprise = 3,
+    }
 }
 
 impl std::fmt::Display for ShieldPlanType {
@@ -65,31 +69,34 @@ impl std::fmt::Display for ShieldPlanType {
             ShieldPlanType::Standard => write!(f, "Standard"),
             ShieldPlanType::Advanced => write!(f, "Advanced"),
             ShieldPlanType::Enterprise => write!(f, "Enterprise"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// DDoS protection execution mode.
-///
-/// Values from the spec: 0 = Disabled, 1 = Enabled.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DdosExecutionMode {
-    Disabled = 0,
-    Enabled = 1,
+forward_compat_repr_enum! {
+    /// DDoS protection execution mode.
+    ///
+    /// Values from the spec: 0 = Disabled, 1 = Enabled.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DdosExecutionMode: u8 {
+        Disabled = 0,
+        Enabled = 1,
+    }
 }
 
-/// DDoS shield detection sensitivity level.
-///
-/// Values from the spec: 0 = Disabled, 1 = Low, 2 = Medium, 3 = High, 4 = VeryHigh.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DdosShieldSensitivity {
-    Disabled = 0,
-    Low = 1,
-    Medium = 2,
-    High = 3,
-    VeryHigh = 4,
+forward_compat_repr_enum! {
+    /// DDoS shield detection sensitivity level.
+    ///
+    /// Values from the spec: 0 = Disabled, 1 = Low, 2 = Medium, 3 = High, 4 = VeryHigh.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DdosShieldSensitivity: u8 {
+        Disabled = 0,
+        Low = 1,
+        Medium = 2,
+        High = 3,
+        VeryHigh = 4,
+    }
 }
 
 impl std::fmt::Display for DdosShieldSensitivity {
@@ -100,23 +107,25 @@ impl std::fmt::Display for DdosShieldSensitivity {
             DdosShieldSensitivity::Medium => write!(f, "Medium"),
             DdosShieldSensitivity::High => write!(f, "High"),
             DdosShieldSensitivity::VeryHigh => write!(f, "VeryHigh"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Action to take when an access list entry matches a request.
-///
-/// Values from the spec: 0 = NoAction, 1 = Block, 2 = Allow, 3 = LogOnly,
-/// 4 = Challenge, 5 = ChallengeInterstitial.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum AccessListAction {
-    NoAction = 0,
-    Block = 1,
-    Allow = 2,
-    LogOnly = 3,
-    Challenge = 4,
-    ChallengeInterstitial = 5,
+forward_compat_repr_enum! {
+    /// Action to take when an access list entry matches a request.
+    ///
+    /// Values from the spec: 0 = NoAction, 1 = Block, 2 = Allow, 3 = LogOnly,
+    /// 4 = Challenge, 5 = ChallengeInterstitial.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum AccessListAction: u8 {
+        NoAction = 0,
+        Block = 1,
+        Allow = 2,
+        LogOnly = 3,
+        Challenge = 4,
+        ChallengeInterstitial = 5,
+    }
 }
 
 impl std::fmt::Display for AccessListAction {
@@ -128,22 +137,24 @@ impl std::fmt::Display for AccessListAction {
             AccessListAction::LogOnly => write!(f, "LogOnly"),
             AccessListAction::Challenge => write!(f, "Challenge"),
             AccessListAction::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Type of access list (IP, Country, ASN, etc.).
-///
-/// Values from the spec: 0 = Ip, 1 = Country, 2 = Asn, 3 = Hostname, 4 = UserAgent, 5 = Custom.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum AccessListType {
-    Ip = 0,
-    Country = 1,
-    Asn = 2,
-    Hostname = 3,
-    UserAgent = 4,
-    Custom = 5,
+forward_compat_repr_enum! {
+    /// Type of access list (IP, Country, ASN, etc.).
+    ///
+    /// Values from the spec: 0 = Ip, 1 = Country, 2 = Asn, 3 = Hostname, 4 = UserAgent, 5 = Custom.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum AccessListType: u8 {
+        Ip = 0,
+        Country = 1,
+        Asn = 2,
+        Hostname = 3,
+        UserAgent = 4,
+        Custom = 5,
+    }
 }
 
 impl std::fmt::Display for AccessListType {
@@ -155,19 +166,21 @@ impl std::fmt::Display for AccessListType {
             AccessListType::Hostname => write!(f, "Hostname"),
             AccessListType::UserAgent => write!(f, "UserAgent"),
             AccessListType::Custom => write!(f, "Custom"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Action taken when a rate limit rule is breached.
-///
-/// Values from the spec: 1 = Block, 2 = LogOnly, 3 = Challenge.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum RateLimitActionType {
-    Block = 1,
-    LogOnly = 2,
-    Challenge = 3,
+forward_compat_repr_enum! {
+    /// Action taken when a rate limit rule is breached.
+    ///
+    /// Values from the spec: 1 = Block, 2 = LogOnly, 3 = Challenge.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum RateLimitActionType: u8 {
+        Block = 1,
+        LogOnly = 2,
+        Challenge = 3,
+    }
 }
 
 impl std::fmt::Display for RateLimitActionType {
@@ -176,22 +189,24 @@ impl std::fmt::Display for RateLimitActionType {
             RateLimitActionType::Block => write!(f, "Block"),
             RateLimitActionType::LogOnly => write!(f, "LogOnly"),
             RateLimitActionType::Challenge => write!(f, "Challenge"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Time window (in seconds) for rate limit counting.
-///
-/// Values from the spec: 1, 10, 60, 300, 900, 3600.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u16)]
-pub enum RateLimitTimeframe {
-    Sec1 = 1,
-    Sec10 = 10,
-    Sec60 = 60,
-    Sec300 = 300,
-    Sec900 = 900,
-    Sec3600 = 3600,
+forward_compat_repr_enum! {
+    /// Time window (in seconds) for rate limit counting.
+    ///
+    /// Values from the spec: 1, 10, 60, 300, 900, 3600.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum RateLimitTimeframe: u16 {
+        Sec1 = 1,
+        Sec10 = 10,
+        Sec60 = 60,
+        Sec300 = 300,
+        Sec900 = 900,
+        Sec3600 = 3600,
+    }
 }
 
 impl std::fmt::Display for RateLimitTimeframe {
@@ -203,22 +218,24 @@ impl std::fmt::Display for RateLimitTimeframe {
             RateLimitTimeframe::Sec300 => write!(f, "5m"),
             RateLimitTimeframe::Sec900 => write!(f, "15m"),
             RateLimitTimeframe::Sec3600 => write!(f, "1h"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Duration (in seconds) to block after a rate limit breach.
-///
-/// Values from the spec: 30, 60, 300, 900, 1800, 3600.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u16)]
-pub enum RateLimitBlockDuration {
-    Sec30 = 30,
-    Sec60 = 60,
-    Sec300 = 300,
-    Sec900 = 900,
-    Sec1800 = 1800,
-    Sec3600 = 3600,
+forward_compat_repr_enum! {
+    /// Duration (in seconds) to block after a rate limit breach.
+    ///
+    /// Values from the spec: 30, 60, 300, 900, 1800, 3600.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum RateLimitBlockDuration: u16 {
+        Sec30 = 30,
+        Sec60 = 60,
+        Sec300 = 300,
+        Sec900 = 900,
+        Sec1800 = 1800,
+        Sec3600 = 3600,
+    }
 }
 
 impl std::fmt::Display for RateLimitBlockDuration {
@@ -230,25 +247,27 @@ impl std::fmt::Display for RateLimitBlockDuration {
             RateLimitBlockDuration::Sec900 => write!(f, "15m"),
             RateLimitBlockDuration::Sec1800 => write!(f, "30m"),
             RateLimitBlockDuration::Sec3600 => write!(f, "1h"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// What key to count requests by for rate limiting.
-///
-/// Values from the spec: 0 = Global, 1 = PerIp, 2 = PerCountry, 3 = PerAsn,
-/// 4 = PerHeader, 5 = PerCookie, 6 = PerQuery, 7 = PerFingerprint.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum RateLimitCounterKey {
-    Global = 0,
-    PerIp = 1,
-    PerCountry = 2,
-    PerAsn = 3,
-    PerHeader = 4,
-    PerCookie = 5,
-    PerQuery = 6,
-    PerFingerprint = 7,
+forward_compat_repr_enum! {
+    /// What key to count requests by for rate limiting.
+    ///
+    /// Values from the spec: 0 = Global, 1 = PerIp, 2 = PerCountry, 3 = PerAsn,
+    /// 4 = PerHeader, 5 = PerCookie, 6 = PerQuery, 7 = PerFingerprint.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum RateLimitCounterKey: u8 {
+        Global = 0,
+        PerIp = 1,
+        PerCountry = 2,
+        PerAsn = 3,
+        PerHeader = 4,
+        PerCookie = 5,
+        PerQuery = 6,
+        PerFingerprint = 7,
+    }
 }
 
 impl std::fmt::Display for RateLimitCounterKey {
@@ -262,22 +281,24 @@ impl std::fmt::Display for RateLimitCounterKey {
             RateLimitCounterKey::PerCookie => write!(f, "PerCookie"),
             RateLimitCounterKey::PerQuery => write!(f, "PerQuery"),
             RateLimitCounterKey::PerFingerprint => write!(f, "PerFingerprint"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Action taken by a custom WAF rule.
-///
-/// Values from the spec: 1 = Block, 2 = LogOnly, 3 = Challenge,
-/// 4 = ChallengeInterstitial, 5 = Allow.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum WafRuleActionType {
-    Block = 1,
-    LogOnly = 2,
-    Challenge = 3,
-    ChallengeInterstitial = 4,
-    Allow = 5,
+forward_compat_repr_enum! {
+    /// Action taken by a custom WAF rule.
+    ///
+    /// Values from the spec: 1 = Block, 2 = LogOnly, 3 = Challenge,
+    /// 4 = ChallengeInterstitial, 5 = Allow.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum WafRuleActionType: u8 {
+        Block = 1,
+        LogOnly = 2,
+        Challenge = 3,
+        ChallengeInterstitial = 4,
+        Allow = 5,
+    }
 }
 
 impl std::fmt::Display for WafRuleActionType {
@@ -288,83 +309,88 @@ impl std::fmt::Display for WafRuleActionType {
             WafRuleActionType::Challenge => write!(f, "Challenge"),
             WafRuleActionType::ChallengeInterstitial => write!(f, "ChallengeInterstitial"),
             WafRuleActionType::Allow => write!(f, "Allow"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Operator used to match a WAF rule variable against a value.
-///
-/// Values from the spec: 0 = Eq, 1 = NotEq, 2 = Contains, 3 = NotContains,
-/// 4 = Begins, 5 = Ends, 6 = Regex, 7 = NotRegex, 8 = Lt, 9 = Gt,
-/// 12 = Pm, 14 = PmFromFile, 15 = IpMatch, 17 = GeoLookup, 18 = ValidateUrlEncoding.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum WafRuleOperatorType {
-    Eq = 0,
-    NotEq = 1,
-    Contains = 2,
-    NotContains = 3,
-    Begins = 4,
-    Ends = 5,
-    Regex = 6,
-    NotRegex = 7,
-    Lt = 8,
-    Gt = 9,
-    Pm = 12,
-    PmFromFile = 14,
-    IpMatch = 15,
-    GeoLookup = 17,
-    ValidateUrlEncoding = 18,
+forward_compat_repr_enum! {
+    /// Operator used to match a WAF rule variable against a value.
+    ///
+    /// Values from the spec: 0 = Eq, 1 = NotEq, 2 = Contains, 3 = NotContains,
+    /// 4 = Begins, 5 = Ends, 6 = Regex, 7 = NotRegex, 8 = Lt, 9 = Gt,
+    /// 12 = Pm, 14 = PmFromFile, 15 = IpMatch, 17 = GeoLookup, 18 = ValidateUrlEncoding.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum WafRuleOperatorType: u8 {
+        Eq = 0,
+        NotEq = 1,
+        Contains = 2,
+        NotContains = 3,
+        Begins = 4,
+        Ends = 5,
+        Regex = 6,
+        NotRegex = 7,
+        Lt = 8,
+        Gt = 9,
+        Pm = 12,
+        PmFromFile = 14,
+        IpMatch = 15,
+        GeoLookup = 17,
+        ValidateUrlEncoding = 18,
+    }
 }
 
-/// Severity level of a custom WAF rule.
-///
-/// Values from the spec: 0 = Low, 1 = Medium, 2 = High.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum WafRuleSeverityType {
-    Low = 0,
-    Medium = 1,
-    High = 2,
+forward_compat_repr_enum! {
+    /// Severity level of a custom WAF rule.
+    ///
+    /// Values from the spec: 0 = Low, 1 = Medium, 2 = High.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum WafRuleSeverityType: u8 {
+        Low = 0,
+        Medium = 1,
+        High = 2,
+    }
 }
 
-/// Transformation applied to the variable value before matching.
-///
-/// Values from the spec: 1–21.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum WafRuleTransformationType {
-    Lowercase = 1,
-    Uppercase = 2,
-    UrlDecode = 3,
-    UrlDecodeUni = 4,
-    HtmlEntityDecode = 5,
-    Base64Decode = 6,
-    Base64DecodeExt = 7,
-    Base64Encode = 8,
-    JsDecode = 9,
-    CssDecode = 10,
-    Trim = 11,
-    TrimLeft = 12,
-    TrimRight = 13,
-    NormalisePath = 14,
-    NormalisePathWin = 15,
-    RemoveComments = 16,
-    RemoveNulls = 17,
-    RemoveWhitespace = 18,
-    ReplaceComments = 19,
-    CompressWhitespace = 20,
-    None = 21,
+forward_compat_repr_enum! {
+    /// Transformation applied to the variable value before matching.
+    ///
+    /// Values from the spec: 1–21.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum WafRuleTransformationType: u8 {
+        Lowercase = 1,
+        Uppercase = 2,
+        UrlDecode = 3,
+        UrlDecodeUni = 4,
+        HtmlEntityDecode = 5,
+        Base64Decode = 6,
+        Base64DecodeExt = 7,
+        Base64Encode = 8,
+        JsDecode = 9,
+        CssDecode = 10,
+        Trim = 11,
+        TrimLeft = 12,
+        TrimRight = 13,
+        NormalisePath = 14,
+        NormalisePathWin = 15,
+        RemoveComments = 16,
+        RemoveNulls = 17,
+        RemoveWhitespace = 18,
+        ReplaceComments = 19,
+        CompressWhitespace = 20,
+        None = 21,
+    }
 }
 
-/// Bot detection execution mode.
-///
-/// Values from the spec: 0 = Disabled, 1 = Enabled.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum BotDetectionExecutionMode {
-    Disabled = 0,
-    Enabled = 1,
+forward_compat_repr_enum! {
+    /// Bot detection execution mode.
+    ///
+    /// Values from the spec: 0 = Disabled, 1 = Enabled.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum BotDetectionExecutionMode: u8 {
+        Disabled = 0,
+        Enabled = 1,
+    }
 }
 
 impl std::fmt::Display for BotDetectionExecutionMode {
@@ -372,20 +398,22 @@ impl std::fmt::Display for BotDetectionExecutionMode {
         match self {
             BotDetectionExecutionMode::Disabled => write!(f, "Disabled"),
             BotDetectionExecutionMode::Enabled => write!(f, "Enabled"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Sensitivity level for bot detection signals.
-///
-/// Values from the spec: 0 = Disabled, 1 = Low, 2 = Medium, 3 = High.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum BotDetectionSensitivity {
-    Disabled = 0,
-    Low = 1,
-    Medium = 2,
-    High = 3,
+forward_compat_repr_enum! {
+    /// Sensitivity level for bot detection signals.
+    ///
+    /// Values from the spec: 0 = Disabled, 1 = Low, 2 = Medium, 3 = High.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum BotDetectionSensitivity: u8 {
+        Disabled = 0,
+        Low = 1,
+        Medium = 2,
+        High = 3,
+    }
 }
 
 impl std::fmt::Display for BotDetectionSensitivity {
@@ -395,21 +423,23 @@ impl std::fmt::Display for BotDetectionSensitivity {
             BotDetectionSensitivity::Low => write!(f, "Low"),
             BotDetectionSensitivity::Medium => write!(f, "Medium"),
             BotDetectionSensitivity::High => write!(f, "High"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Aggressiveness of browser fingerprint challenge injection.
-///
-/// Values from the spec: 0 = Disabled, 1 = VeryLow, 2 = Low, 3 = Medium, 4 = High.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum BrowserFingerprintAggression {
-    Disabled = 0,
-    VeryLow = 1,
-    Low = 2,
-    Medium = 3,
-    High = 4,
+forward_compat_repr_enum! {
+    /// Aggressiveness of browser fingerprint challenge injection.
+    ///
+    /// Values from the spec: 0 = Disabled, 1 = VeryLow, 2 = Low, 3 = Medium, 4 = High.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum BrowserFingerprintAggression: u8 {
+        Disabled = 0,
+        VeryLow = 1,
+        Low = 2,
+        Medium = 3,
+        High = 4,
+    }
 }
 
 impl std::fmt::Display for BrowserFingerprintAggression {
@@ -420,6 +450,7 @@ impl std::fmt::Display for BrowserFingerprintAggression {
             BrowserFingerprintAggression::Low => write!(f, "Low"),
             BrowserFingerprintAggression::Medium => write!(f, "Medium"),
             BrowserFingerprintAggression::High => write!(f, "High"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
@@ -1557,17 +1588,18 @@ pub struct UpdateApiGuardianEndpointResponse {
 // Upload Scanning types
 // ---------------------------------------------------------------------------
 
-/// Scanner mode for upload scanning (antivirus/CSAM).
-///
-/// Values from the spec: 0 = Disabled, 1 = LogOnly, 2 = Block.
-/// The spec provides only integer values 0/1/2 without explicit names;
-/// these names reflect Bunny's actual semantics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum UploadScanningScannerMode {
-    Disabled = 0,
-    LogOnly = 1,
-    Block = 2,
+forward_compat_repr_enum! {
+    /// Scanner mode for upload scanning (antivirus/CSAM).
+    ///
+    /// Values from the spec: 0 = Disabled, 1 = LogOnly, 2 = Block.
+    /// The spec provides only integer values 0/1/2 without explicit names;
+    /// these names reflect Bunny's actual semantics.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum UploadScanningScannerMode: u8 {
+        Disabled = 0,
+        LogOnly = 1,
+        Block = 2,
+    }
 }
 
 impl std::fmt::Display for UploadScanningScannerMode {
@@ -1576,6 +1608,7 @@ impl std::fmt::Display for UploadScanningScannerMode {
             UploadScanningScannerMode::Disabled => write!(f, "Disabled"),
             UploadScanningScannerMode::LogOnly => write!(f, "LogOnly"),
             UploadScanningScannerMode::Block => write!(f, "Block"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
@@ -1687,16 +1720,17 @@ pub struct WafLoggingResponse {
 // WAF Triggered Rules types
 // ---------------------------------------------------------------------------
 
-/// Action type for reviewing a triggered WAF rule.
-///
-/// Values from the spec: 0 = Pending, 1 = Approve, 2 = Reject.
-/// The spec provides only integer values 0/1/2 without explicit names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum ReviewActionType {
-    Pending = 0,
-    Approve = 1,
-    Reject = 2,
+forward_compat_repr_enum! {
+    /// Action type for reviewing a triggered WAF rule.
+    ///
+    /// Values from the spec: 0 = Pending, 1 = Approve, 2 = Reject.
+    /// The spec provides only integer values 0/1/2 without explicit names.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ReviewActionType: u8 {
+        Pending = 0,
+        Approve = 1,
+        Reject = 2,
+    }
 }
 
 impl std::fmt::Display for ReviewActionType {
@@ -1705,6 +1739,7 @@ impl std::fmt::Display for ReviewActionType {
             ReviewActionType::Pending => write!(f, "Pending"),
             ReviewActionType::Approve => write!(f, "Approve"),
             ReviewActionType::Reject => write!(f, "Reject"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
@@ -2023,15 +2058,16 @@ pub struct UploadScanningMetricsData {
 // Bot categorization (iter-72)
 // ---------------------------------------------------------------------------
 
-/// Action applied to a categorised bot (or an entire bot category).
-///
-/// `0 = None` (clear any override), `1 = Block`, `2 = Allow`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum BotCategorizationAction {
-    None = 0,
-    Block = 1,
-    Allow = 2,
+forward_compat_repr_enum! {
+    /// Action applied to a categorised bot (or an entire bot category).
+    ///
+    /// `0 = None` (clear any override), `1 = Block`, `2 = Allow`.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum BotCategorizationAction: u8 {
+        None = 0,
+        Block = 1,
+        Allow = 2,
+    }
 }
 
 /// Bot category grouping. The API models this as an integer; `System` uses the

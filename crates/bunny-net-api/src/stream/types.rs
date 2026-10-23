@@ -1,29 +1,29 @@
 use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 
-/// Processing status of a video in the bunny.net Stream pipeline.
-///
-/// Integer values match the bunny.net API wire format:
-/// `0=Created, 1=Uploaded, 2=Processing, 3=Transcoding, 4=Finished,
-///  5=Error, 6=UploadFailed, 7=JitSegmenting, 8=JitPlaylistsCreated`
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum VideoStatus {
-    Created = 0,
-    Uploaded = 1,
-    Processing = 2,
-    Transcoding = 3,
-    Finished = 4,
-    Error = 5,
-    UploadFailed = 6,
-    JitSegmenting = 7,
-    JitPlaylistsCreated = 8,
+forward_compat_repr_enum! {
+    /// Processing status of a video in the bunny.net Stream pipeline.
+    ///
+    /// Integer values match the bunny.net API wire format:
+    /// `0=Created, 1=Uploaded, 2=Processing, 3=Transcoding, 4=Finished,
+    ///  5=Error, 6=UploadFailed, 7=JitSegmenting, 8=JitPlaylistsCreated`
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum VideoStatus: u8 {
+        Created = 0,
+        Uploaded = 1,
+        Processing = 2,
+        Transcoding = 3,
+        Finished = 4,
+        Error = 5,
+        UploadFailed = 6,
+        JitSegmenting = 7,
+        JitPlaylistsCreated = 8,
+    }
 }
 
 impl std::fmt::Display for VideoStatus {
@@ -38,6 +38,7 @@ impl std::fmt::Display for VideoStatus {
             VideoStatus::UploadFailed => write!(f, "UploadFailed"),
             VideoStatus::JitSegmenting => write!(f, "JitSegmenting"),
             VideoStatus::JitPlaylistsCreated => write!(f, "JitPlaylistsCreated"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }
@@ -426,21 +427,22 @@ impl FetchVideo {
 // Video processing — request bodies and response types
 // ---------------------------------------------------------------------------
 
-/// Output codec used by `PUT /library/{id}/videos/{videoId}/outputs/{outputCodecId}`.
-///
-/// Wire format is the integer value (`0..=3`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum EncoderOutputCodec {
-    X264 = 0,
-    Vp9 = 1,
-    Hevc = 2,
-    Av1 = 3,
+forward_compat_repr_enum! {
+    /// Output codec used by `PUT /library/{id}/videos/{videoId}/outputs/{outputCodecId}`.
+    ///
+    /// Wire format is the integer value (`0..=3`).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum EncoderOutputCodec: u8 {
+        X264 = 0,
+        Vp9 = 1,
+        Hevc = 2,
+        Av1 = 3,
+    }
 }
 
 impl EncoderOutputCodec {
     pub fn as_int(self) -> u8 {
-        self as u8
+        self.to_repr()
     }
 
     /// Parse from the user-friendly name (case-insensitive) or the integer value.
@@ -462,6 +464,7 @@ impl std::fmt::Display for EncoderOutputCodec {
             Self::Vp9 => write!(f, "vp9"),
             Self::Hevc => write!(f, "hevc"),
             Self::Av1 => write!(f, "av1"),
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         }
     }
 }

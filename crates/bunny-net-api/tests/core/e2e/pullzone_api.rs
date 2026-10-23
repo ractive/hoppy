@@ -140,7 +140,7 @@ async fn get_pull_zone_with_magic_container_origin_does_not_panic() {
     // Pull Zones; before iter-19 this panicked at deserialize time. The value
     // is now recognised as `OriginType::MagicContainerEndpoint`. The
     // fallback-to-None behaviour for *unknown* repr integers is exercised by
-    // `get_pull_zone_with_unknown_origin_type_falls_back_to_none`.
+    // `get_pull_zone_with_unknown_origin_type_preserves_value`.
     let server = MockServer::start().await;
 
     Mock::given(method("GET"))
@@ -165,7 +165,7 @@ async fn get_pull_zone_with_magic_container_origin_does_not_panic() {
 }
 
 #[tokio::test]
-async fn get_pull_zone_with_unknown_origin_type_falls_back_to_none() {
+async fn get_pull_zone_with_unknown_origin_type_preserves_value() {
     // Future-proofing: an unrecognised OriginType integer must not panic.
     let server = MockServer::start().await;
 
@@ -191,7 +191,7 @@ async fn get_pull_zone_with_unknown_origin_type_falls_back_to_none() {
         .unwrap();
 
     assert_eq!(zone.id, 9999);
-    assert_eq!(zone.origin_type, None);
+    assert_eq!(zone.origin_type, Some(OriginType::Unknown(99)));
 }
 
 #[tokio::test]

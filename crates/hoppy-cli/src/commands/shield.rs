@@ -8,6 +8,7 @@ use crate::cli::{
 use crate::date;
 use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
 use anyhow::{Context, Result, bail};
+use bunny_net_api::core::serde_helpers::KnownRepr;
 use bunny_net_api::shield::types::{
     AccessListAction, AccessListDetails, AccessListType, BotCategorizationAction,
     BotCategorizationGroup, BotDetectionConfigurationState, BotDetectionExecutionMode,
@@ -542,14 +543,16 @@ impl From<&bunny_net_api::shield::types::ConfigVariableValueMinimal> for WafEngi
 // Enum conversion helpers (integer -> serde_repr enum via serde_json)
 // ---------------------------------------------------------------------------
 
-fn u8_to_enum<T: serde::de::DeserializeOwned>(n: u8, type_name: &str) -> Result<T> {
-    serde_json::from_value(serde_json::json!(n))
-        .map_err(|_| anyhow::anyhow!("invalid value {n} for {type_name}"))
+/// Validate a user-supplied number against the *declared* variants.
+///
+/// Response enums deserialize unknown wire values into `Unknown(n)`, so serde
+/// can no longer be used to reject bad input.
+fn u8_to_enum<T: KnownRepr<Repr = u8>>(n: u8, type_name: &str) -> Result<T> {
+    T::try_from_known(n).ok_or_else(|| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
-fn u16_to_enum<T: serde::de::DeserializeOwned>(n: u16, type_name: &str) -> Result<T> {
-    serde_json::from_value(serde_json::json!(n))
-        .map_err(|_| anyhow::anyhow!("invalid value {n} for {type_name}"))
+fn u16_to_enum<T: KnownRepr<Repr = u16>>(n: u16, type_name: &str) -> Result<T> {
+    T::try_from_known(n).ok_or_else(|| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
 /// Convert a repeatable list of `--transformation-type N` values into the
@@ -586,6 +589,19 @@ fn load_config_json(path: Option<&std::path::Path>) -> Result<Option<RuleConfigJ
         .with_context(|| format!("reading --config-json file {}", path.display()))?;
     let cfg: RuleConfigJson = serde_json::from_str(&raw)
         .with_context(|| format!("parsing --config-json file {}", path.display()))?;
+    // Response enums are lenient (`Unknown(n)`); user input must stay strict.
+    if let Some(bad) = cfg
+        .transformation_types
+        .iter()
+        .flatten()
+        .find(|t| !t.is_known())
+    {
+        bail!(
+            "invalid transformationTypes value {} in {}",
+            bad.to_repr(),
+            path.display()
+        );
+    }
     Ok(Some(cfg))
 }
 
@@ -2472,11 +2488,12 @@ fn bot_category_name(category: i32) -> String {
     }
 }
 
-fn bot_action_name(action: BotCategorizationAction) -> &'static str {
+fn bot_action_name(action: BotCategorizationAction) -> String {
     match action {
-        BotCategorizationAction::None => "None",
-        BotCategorizationAction::Block => "Block",
-        BotCategorizationAction::Allow => "Allow",
+        BotCategorizationAction::None => "None".to_owned(),
+        BotCategorizationAction::Block => "Block".to_owned(),
+        BotCategorizationAction::Allow => "Allow".to_owned(),
+        BotCategorizationAction::Unknown(n) => format!("Unknown({n})"),
     }
 }
 
