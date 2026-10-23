@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "message": "Dry run: nothing was changed",
+  "statusCode": 200,
+  "data": {
+    "videoId": "aaaabbbb-1111-2222-3333-ccccddddeeee",
+    "videoLibraryId": 10001,
+    "resolutionsToDelete": ["720p", "480p"],
+    "resolutionsToDeleteFromPlaylist": ["720p", "480p"],
+    "resolutionsToDeleteFromStorage": ["720p", "480p"],
+    "resolutionsToDeleteFromMp4": [],
+    "storageObjectsToDelete": [
+      "aaaabbbb-1111-2222-3333-ccccddddeeee/play_720p.mp4",
+      "aaaabbbb-1111-2222-3333-ccccddddeeee/720p/video.m3u8"
+    ],
+    "availableResolutionsAfter": ["1080p"],
+    "updatedAvailableResolutions": false,
+    "modifiedPlaylist": false,
+    "deletedStorageObjects": false,
+    "deletedOriginal": false
+  }
+}

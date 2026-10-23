@@ -716,7 +716,36 @@ async fn storage_zone_regions_json() {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid json");
     let regions = json.as_array().expect("array of regions");
     assert_eq!(regions.len(), 3);
-    assert_eq!(regions[0]["Id"], "DE");
+    assert_eq!(regions[0]["Code"], "BR");
+    assert_eq!(regions[1]["Endpoint"], "storage.bunnycdn.com");
+    assert_eq!(regions[1]["S3Endpoint"], "de-s3.storage.bunnycdn.com");
+    assert_eq!(regions[1]["IsS3Supported"], true);
+}
+
+#[tokio::test]
+async fn storage_zone_regions_table_shows_code_endpoint_and_s3_endpoint() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/storagezone/regions"))
+        .and(header("AccessKey", "test-api-key"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            support::fixture("core/storagezone_regions.json"),
+            "application/json",
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "storage-zone", "regions"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for needle in ["Code", "S3 Endpoint", "BR", "de-s3.storage.bunnycdn.com"] {
+        assert!(stdout.contains(needle), "missing {needle}: {stdout}");
+    }
 }
 
 #[tokio::test]

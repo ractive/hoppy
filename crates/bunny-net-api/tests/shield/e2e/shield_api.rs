@@ -314,6 +314,8 @@ async fn create_waf_rule_returns_created_rule() {
             severity_type: WafRuleSeverityType::Medium,
             transformation_types: None,
             value: Some("BadBot/1.0".to_string()),
+            is_negated: None,
+            is_regex_variable: None,
             chained_rule_conditions: None,
         },
     };
@@ -439,7 +441,7 @@ async fn create_rate_limit_rule_returns_created_rule() {
             "ruleName": "API Rate Limit",
             "ruleConfiguration": {
                 "actionType": 1,
-                "operatorType": 0,
+                "operatorType": 5,
                 "severityType": 0,
                 "requestCount": 100,
                 "counterKeyType": 1,
@@ -474,6 +476,8 @@ async fn create_rate_limit_rule_returns_created_rule() {
             counter_key_type: RateLimitCounterKey::PerIp,
             timeframe: RateLimitTimeframe::Sec3600,
             block_time: RateLimitBlockDuration::Sec900,
+            is_negated: None,
+            is_regex_variable: None,
             chained_rule_conditions: None,
         },
     };

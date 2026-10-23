@@ -1,21 +1,19 @@
 use std::collections::BTreeMap;
 
-use super::serde_helpers::{
-    deserialize_repr_option, deserialize_string_lossy_option, null_to_empty_vec,
-};
+use super::serde_helpers::{deserialize_string_lossy_option, null_to_empty_vec};
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 
-/// The billing / performance tier of a Pull Zone.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum PullZoneType {
-    Premium = 0,
-    Volume = 1,
+forward_compat_repr_enum! {
+    /// The billing / performance tier of a Pull Zone.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum PullZoneType: u8 {
+        Premium = 0,
+        Volume = 1,
+    }
 }
 
 impl std::fmt::Display for PullZoneType {
@@ -23,26 +21,28 @@ impl std::fmt::Display for PullZoneType {
         match self {
             PullZoneType::Premium => write!(f, "Premium"),
             PullZoneType::Volume => write!(f, "Volume"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Where the Pull Zone fetches its origin content from.
-///
-/// Note: bunny.net adds new origin types over time (e.g. `MagicContainerEndpoint = 5`
-/// for auto-managed Pull Zones backing Magic Container CDN endpoints). The CLI
-/// uses [`super::serde_helpers::deserialize_repr_option`] to map any unrecognised
-/// future value to `None` instead of panicking — see `decision-log.md`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum OriginType {
-    OriginUrl = 0,
-    DnsAccelerate = 1,
-    StorageZone = 2,
-    LoadBalancer = 3,
-    Script = 4,
-    MagicContainerEndpoint = 5,
-    PushZone = 6,
+forward_compat_repr_enum! {
+    /// Where the Pull Zone fetches its origin content from.
+    ///
+    /// Note: bunny.net adds new origin types over time (e.g. `MagicContainerEndpoint = 5`
+    /// for auto-managed Pull Zones backing Magic Container CDN endpoints). The CLI
+    /// maps any unrecognised future value to `OriginType::Unknown(n)` instead of
+    /// failing the response — see `decision-log.md`.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum OriginType: u8 {
+        OriginUrl = 0,
+        DnsAccelerate = 1,
+        StorageZone = 2,
+        LoadBalancer = 3,
+        Script = 4,
+        MagicContainerEndpoint = 5,
+        PushZone = 6,
+    }
 }
 
 impl std::fmt::Display for OriginType {
@@ -55,49 +55,54 @@ impl std::fmt::Display for OriginType {
             OriginType::Script => write!(f, "Script"),
             OriginType::MagicContainerEndpoint => write!(f, "MagicContainerEndpoint"),
             OriginType::PushZone => write!(f, "PushZone"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// The action to perform when an edge rule's triggers match.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum EdgeRuleActionType {
-    ForceSSL = 0,
-    Redirect = 1,
-    OriginUrl = 2,
-    OverrideCacheTime = 3,
-    BlockRequest = 4,
-    SetResponseHeader = 5,
-    SetRequestHeader = 6,
-    ForceDownload = 7,
-    DisableTokenAuthentication = 8,
-    EnableTokenAuthentication = 9,
-    OverrideCacheTimePublic = 10,
-    IgnoreQueryString = 11,
-    DisableOptimizer = 12,
-    ForceCompression = 13,
-    SetStatusCode = 14,
-    BypassPermaCache = 15,
-    OverrideBrowserCacheTime = 16,
-    OriginStorage = 17,
-    SetNetworkRateLimit = 18,
-    SetConnectionLimit = 19,
-    SetRequestsPerSecondLimit = 20,
-    RunEdgeScript = 21,
-    OriginMagicContainers = 22,
-    DisableWAF = 23,
-    RetryOrigin = 24,
-    OverrideBrowserCacheResponseHeader = 25,
-    RemoveBrowserCacheResponseHeader = 26,
-    DisableShieldChallenge = 27,
-    DisableShield = 28,
-    DisableShieldBotDetection = 29,
-    BypassAwsS3Authentication = 30,
-    DisableShieldAccessLists = 31,
-    DisableShieldRateLimiting = 32,
-    EnableRequestCoalescing = 33,
-    DisableRequestCoalescing = 34,
+forward_compat_repr_enum! {
+    /// The action to perform when an edge rule's triggers match.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum EdgeRuleActionType: u8 {
+        ForceSSL = 0,
+        Redirect = 1,
+        OriginUrl = 2,
+        OverrideCacheTime = 3,
+        BlockRequest = 4,
+        SetResponseHeader = 5,
+        SetRequestHeader = 6,
+        ForceDownload = 7,
+        DisableTokenAuthentication = 8,
+        EnableTokenAuthentication = 9,
+        OverrideCacheTimePublic = 10,
+        IgnoreQueryString = 11,
+        DisableOptimizer = 12,
+        ForceCompression = 13,
+        SetStatusCode = 14,
+        BypassPermaCache = 15,
+        OverrideBrowserCacheTime = 16,
+        OriginStorage = 17,
+        SetNetworkRateLimit = 18,
+        SetConnectionLimit = 19,
+        SetRequestsPerSecondLimit = 20,
+        RunEdgeScript = 21,
+        OriginMagicContainers = 22,
+        DisableWAF = 23,
+        RetryOrigin = 24,
+        OverrideBrowserCacheResponseHeader = 25,
+        RemoveBrowserCacheResponseHeader = 26,
+        DisableShieldChallenge = 27,
+        DisableShield = 28,
+        DisableShieldBotDetection = 29,
+        BypassAwsS3Authentication = 30,
+        DisableShieldAccessLists = 31,
+        DisableShieldRateLimiting = 32,
+        EnableRequestCoalescing = 33,
+        DisableRequestCoalescing = 34,
+        UseLoadBalancer = 35,
+        ForceLoadBalancerStickySessionMode = 36,
+        StripCookiesClientToOrigin = 37,
+    }
 }
 
 impl std::fmt::Display for EdgeRuleActionType {
@@ -138,6 +143,10 @@ impl std::fmt::Display for EdgeRuleActionType {
             Self::DisableShieldRateLimiting => "disable-shield-rate-limiting",
             Self::EnableRequestCoalescing => "enable-request-coalescing",
             Self::DisableRequestCoalescing => "disable-request-coalescing",
+            Self::UseLoadBalancer => "use-load-balancer",
+            Self::ForceLoadBalancerStickySessionMode => "force-load-balancer-sticky-session-mode",
+            Self::StripCookiesClientToOrigin => "strip-cookies-client-to-origin",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -185,29 +194,35 @@ impl std::str::FromStr for EdgeRuleActionType {
             "disable-shield-rate-limiting" => Ok(Self::DisableShieldRateLimiting),
             "enable-request-coalescing" => Ok(Self::EnableRequestCoalescing),
             "disable-request-coalescing" => Ok(Self::DisableRequestCoalescing),
+            "use-load-balancer" => Ok(Self::UseLoadBalancer),
+            "force-load-balancer-sticky-session-mode" => {
+                Ok(Self::ForceLoadBalancerStickySessionMode)
+            }
+            "strip-cookies-client-to-origin" => Ok(Self::StripCookiesClientToOrigin),
             _ => Err(format!("unknown edge rule action type: {s}")),
         }
     }
 }
 
-/// The type of condition that triggers an edge rule.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum TriggerType {
-    Url = 0,
-    RequestHeader = 1,
-    ResponseHeader = 2,
-    UrlExtension = 3,
-    CountryCode = 4,
-    RemoteIP = 5,
-    UrlQueryString = 6,
-    RandomChance = 7,
-    StatusCode = 8,
-    RequestMethod = 9,
-    CookieValue = 10,
-    CountryStateCode = 11,
-    OriginRetryAttemptCount = 12,
-    OriginConnectionError = 13,
+forward_compat_repr_enum! {
+    /// The type of condition that triggers an edge rule.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum TriggerType: u8 {
+        Url = 0,
+        RequestHeader = 1,
+        ResponseHeader = 2,
+        UrlExtension = 3,
+        CountryCode = 4,
+        RemoteIP = 5,
+        UrlQueryString = 6,
+        RandomChance = 7,
+        StatusCode = 8,
+        RequestMethod = 9,
+        CookieValue = 10,
+        CountryStateCode = 11,
+        OriginRetryAttemptCount = 12,
+        OriginConnectionError = 13,
+    }
 }
 
 impl std::fmt::Display for TriggerType {
@@ -227,6 +242,7 @@ impl std::fmt::Display for TriggerType {
             Self::CountryStateCode => "country-state-code",
             Self::OriginRetryAttemptCount => "origin-retry-attempt-count",
             Self::OriginConnectionError => "origin-connection-error",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -256,13 +272,14 @@ impl std::str::FromStr for TriggerType {
     }
 }
 
-/// How multiple triggers or patterns are combined (AND / OR / NOT).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum MatchingType {
-    MatchAny = 0,
-    MatchAll = 1,
-    MatchNone = 2,
+forward_compat_repr_enum! {
+    /// How multiple triggers or patterns are combined (AND / OR / NOT).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum MatchingType: u8 {
+        MatchAny = 0,
+        MatchAll = 1,
+        MatchNone = 2,
+    }
 }
 
 impl std::fmt::Display for MatchingType {
@@ -271,6 +288,7 @@ impl std::fmt::Display for MatchingType {
             Self::MatchAny => write!(f, "match-any"),
             Self::MatchAll => write!(f, "match-all"),
             Self::MatchNone => write!(f, "match-none"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -288,20 +306,20 @@ impl std::str::FromStr for MatchingType {
     }
 }
 
-/// Where a watermark image is placed on optimised images.
-///
-/// Bunny.net may add new positions in future API versions. The
-/// `optimizer_watermark_position` field on [`PullZone`] is deserialised via
-/// [`super::serde_helpers::deserialize_repr_option`] so unknown values become
-/// `None` instead of failing the whole response.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum OptimizerWatermarkPosition {
-    TopLeft = 0,
-    TopRight = 1,
-    BottomLeft = 2,
-    BottomRight = 3,
-    Center = 4,
+forward_compat_repr_enum! {
+    /// Where a watermark image is placed on optimised images.
+    ///
+    /// Bunny.net may add new positions in future API versions. The
+    /// `optimizer_watermark_position` field on [`PullZone`] keeps unknown values
+    /// as `Unknown(n)` instead of failing the whole response.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum OptimizerWatermarkPosition: u8 {
+        TopLeft = 0,
+        TopRight = 1,
+        BottomLeft = 2,
+        BottomRight = 3,
+        Center = 4,
+    }
 }
 
 impl std::fmt::Display for OptimizerWatermarkPosition {
@@ -312,6 +330,7 @@ impl std::fmt::Display for OptimizerWatermarkPosition {
             Self::BottomLeft => "bottom-left",
             Self::BottomRight => "bottom-right",
             Self::Center => "center",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -335,18 +354,19 @@ impl std::str::FromStr for OptimizerWatermarkPosition {
     }
 }
 
-/// How the last octet of a logged IP address is anonymised when IP anonymisation
-/// is enabled on a Pull Zone.
-///
-/// Spec: `LogAnonymizationType` — `0 = OneDigit`, `1 = Drop`. Serialised as the
-/// integer discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum LogAnonymizationType {
-    /// Replace the last octet with a single digit (e.g. `192.168.0.1` → `192.168.0.0`).
-    OneDigit = 0,
-    /// Drop the last octet entirely (e.g. `192.168.0.1` → `192.168.0`).
-    Drop = 1,
+forward_compat_repr_enum! {
+    /// How the last octet of a logged IP address is anonymised when IP anonymisation
+    /// is enabled on a Pull Zone.
+    ///
+    /// Spec: `LogAnonymizationType` — `0 = OneDigit`, `1 = Drop`. Serialised as the
+    /// integer discriminant on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum LogAnonymizationType: u8 {
+        /// Replace the last octet with a single digit (e.g. `192.168.0.1` → `192.168.0.0`).
+        OneDigit = 0,
+        /// Drop the last octet entirely (e.g. `192.168.0.1` → `192.168.0`).
+        Drop = 1,
+    }
 }
 
 impl std::fmt::Display for LogAnonymizationType {
@@ -354,6 +374,7 @@ impl std::fmt::Display for LogAnonymizationType {
         let s = match self {
             Self::OneDigit => "one-digit",
             Self::Drop => "drop",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -374,18 +395,19 @@ impl std::str::FromStr for LogAnonymizationType {
     }
 }
 
-/// Perma-Cache mode for a Pull Zone — controls whether content is permanently
-/// retained in a linked storage zone.
-///
-/// Spec: `PermaCacheType` — `0 = Automatic`, `1 = Manual`. Serialised as the
-/// integer discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum PermaCacheType {
-    /// Perma-Cache automatically retains content in the linked storage zone.
-    Automatic = 0,
-    /// Perma-Cache only stores content explicitly pushed via the API.
-    Manual = 1,
+forward_compat_repr_enum! {
+    /// Perma-Cache mode for a Pull Zone — controls whether content is permanently
+    /// retained in a linked storage zone.
+    ///
+    /// Spec: `PermaCacheType` — `0 = Automatic`, `1 = Manual`. Serialised as the
+    /// integer discriminant on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum PermaCacheType: u8 {
+        /// Perma-Cache automatically retains content in the linked storage zone.
+        Automatic = 0,
+        /// Perma-Cache only stores content explicitly pushed via the API.
+        Manual = 1,
+    }
 }
 
 impl std::fmt::Display for PermaCacheType {
@@ -393,6 +415,7 @@ impl std::fmt::Display for PermaCacheType {
         let s = match self {
             Self::Automatic => "automatic",
             Self::Manual => "manual",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -412,17 +435,18 @@ impl std::str::FromStr for PermaCacheType {
     }
 }
 
-/// Sticky session affinity mode for a Pull Zone.
-///
-/// Spec: `StickySessionType` — `0 = None`, `1 = Cookie`. Serialised as the
-/// integer discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum StickySessionType {
-    /// No sticky sessions — requests are load-balanced freely.
-    None = 0,
-    /// Sticky sessions via a cookie — a client is pinned to the same edge node.
-    Cookie = 1,
+forward_compat_repr_enum! {
+    /// Sticky session affinity mode for a Pull Zone.
+    ///
+    /// Spec: `StickySessionType` — `0 = None`, `1 = Cookie`. Serialised as the
+    /// integer discriminant on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum StickySessionType: u8 {
+        /// No sticky sessions — requests are load-balanced freely.
+        None = 0,
+        /// Sticky sessions via a cookie — a client is pinned to the same edge node.
+        Cookie = 1,
+    }
 }
 
 impl std::fmt::Display for StickySessionType {
@@ -430,6 +454,7 @@ impl std::fmt::Display for StickySessionType {
         let s = match self {
             Self::None => "none",
             Self::Cookie => "cookie",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -449,18 +474,19 @@ impl std::str::FromStr for StickySessionType {
     }
 }
 
-/// Pull Zone tier / billing type (`Type` in the bunny.net spec, distinct from
-/// the existing `PullZoneType` which maps the `ZoneType` field).
-///
-/// Spec: `0 = Standard`, `1 = Volume`. Serialised as the integer discriminant
-/// on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum PullZoneTierType {
-    /// Standard tier — single optimised global network (default).
-    Standard = 0,
-    /// Volume tier — cheaper, optimised for high-traffic static assets.
-    Volume = 1,
+forward_compat_repr_enum! {
+    /// Pull Zone tier / billing type (`Type` in the bunny.net spec, distinct from
+    /// the existing `PullZoneType` which maps the `ZoneType` field).
+    ///
+    /// Spec: `0 = Standard`, `1 = Volume`. Serialised as the integer discriminant
+    /// on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum PullZoneTierType: u8 {
+        /// Standard tier — single optimised global network (default).
+        Standard = 0,
+        /// Volume tier — cheaper, optimised for high-traffic static assets.
+        Volume = 1,
+    }
 }
 
 impl std::fmt::Display for PullZoneTierType {
@@ -468,6 +494,7 @@ impl std::fmt::Display for PullZoneTierType {
         let s = match self {
             Self::Standard => "standard",
             Self::Volume => "volume",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -487,19 +514,20 @@ impl std::str::FromStr for PullZoneTierType {
     }
 }
 
-/// Shield DDoS protection mode for a Pull Zone.
-///
-/// Spec: `ShieldDDosProtectionType` — `0 = DetectOnly`, `1 = ActiveStandard`,
-/// `2 = ActiveAggressive`. Serialised as the integer discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum ShieldDDosProtectionType {
-    /// Monitor and log suspected DDoS traffic but do not block it.
-    DetectOnly = 0,
-    /// Actively block DDoS traffic using standard mitigation.
-    ActiveStandard = 1,
-    /// Actively block DDoS traffic using aggressive mitigation.
-    ActiveAggressive = 2,
+forward_compat_repr_enum! {
+    /// Shield DDoS protection mode for a Pull Zone.
+    ///
+    /// Spec: `ShieldDDosProtectionType` — `0 = DetectOnly`, `1 = ActiveStandard`,
+    /// `2 = ActiveAggressive`. Serialised as the integer discriminant on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ShieldDDosProtectionType: u8 {
+        /// Monitor and log suspected DDoS traffic but do not block it.
+        DetectOnly = 0,
+        /// Actively block DDoS traffic using standard mitigation.
+        ActiveStandard = 1,
+        /// Actively block DDoS traffic using aggressive mitigation.
+        ActiveAggressive = 2,
+    }
 }
 
 impl std::fmt::Display for ShieldDDosProtectionType {
@@ -508,6 +536,7 @@ impl std::fmt::Display for ShieldDDosProtectionType {
             Self::DetectOnly => "detect-only",
             Self::ActiveStandard => "active-standard",
             Self::ActiveAggressive => "active-aggressive",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -528,25 +557,34 @@ impl std::str::FromStr for ShieldDDosProtectionType {
     }
 }
 
-/// Execution phase an attached Edge Script runs in.
-///
-/// Spec: `EdgeScriptExecutionPhase` — the point in the request lifecycle where
-/// the script bound via `EdgeScriptId` executes. Serialised as the integer
-/// discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum EdgeScriptExecutionPhase {
-    /// Run the script while the request is being processed (default).
-    OnRequest = 0,
-    /// Run the script while the response is being processed.
-    OnResponse = 1,
+forward_compat_repr_enum! {
+    /// Execution phase an attached Edge Script runs in.
+    ///
+    /// Spec: `ExecutionPhase` (`0 = Cache`, `1 = LoadBalancer`, `2 = PreCache`).
+    /// Per the bunny.net scripting docs, scripts normally run after the cache
+    /// lookup (only on a cache miss); `PreCache` runs the script before the
+    /// cache lookup on every request. The docs do not describe `LoadBalancer`.
+    /// Serialised as the integer discriminant on the wire.
+    ///
+    /// Before iter-87 these were named `OnRequest` (0) / `OnResponse` (1).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum EdgeScriptExecutionPhase: u8 {
+        /// Default: the script is the origin and runs on cache misses.
+        Cache = 0,
+        /// Spec phase `LoadBalancer`.
+        LoadBalancer = 1,
+        /// Run the script before the cache lookup, on every request.
+        PreCache = 2,
+    }
 }
 
 impl std::fmt::Display for EdgeScriptExecutionPhase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            Self::OnRequest => "on-request",
-            Self::OnResponse => "on-response",
+            Self::Cache => "cache",
+            Self::LoadBalancer => "load-balancer",
+            Self::PreCache => "pre-cache",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -557,26 +595,31 @@ impl std::str::FromStr for EdgeScriptExecutionPhase {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "on-request" | "OnRequest" => Ok(Self::OnRequest),
-            "on-response" | "OnResponse" => Ok(Self::OnResponse),
+            "cache" | "Cache" => Ok(Self::Cache),
+            "load-balancer" | "LoadBalancer" => Ok(Self::LoadBalancer),
+            "pre-cache" | "PreCache" => Ok(Self::PreCache),
+            // Pre-iter-87 names, kept so existing scripts keep the same wire value.
+            "on-request" | "OnRequest" => Ok(Self::Cache),
+            "on-response" | "OnResponse" => Ok(Self::LoadBalancer),
             _ => Err(format!(
-                "unknown edge-script execution phase: {s:?}; expected one of: on-request, on-response"
+                "unknown edge-script execution phase: {s:?}; expected one of: cache, load-balancer, pre-cache"
             )),
         }
     }
 }
 
-/// Colour theme of the Pull Zone preloading (loading) screen.
-///
-/// Spec: `PreloadingScreenTheme` — `0 = Dark`, `1 = Light`. Serialised as the
-/// integer discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum PreloadingScreenTheme {
-    /// Dark preloading screen (default).
-    Dark = 0,
-    /// Light preloading screen.
-    Light = 1,
+forward_compat_repr_enum! {
+    /// Colour theme of the Pull Zone preloading (loading) screen.
+    ///
+    /// Spec: `PreloadingScreenTheme` — `0 = Dark`, `1 = Light`. Serialised as the
+    /// integer discriminant on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum PreloadingScreenTheme: u8 {
+        /// Dark preloading screen (default).
+        Dark = 0,
+        /// Light preloading screen.
+        Light = 1,
+    }
 }
 
 impl std::fmt::Display for PreloadingScreenTheme {
@@ -584,6 +627,7 @@ impl std::fmt::Display for PreloadingScreenTheme {
         let s = match self {
             Self::Dark => "dark",
             Self::Light => "light",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -608,7 +652,7 @@ impl std::str::FromStr for PreloadingScreenTheme {
 /// Backs `POST /pullzone/{id}/updatePrivateKeyType`. Bunny.net toggles between
 /// an RSA (2048-bit) key and an EC (elliptic-curve) key; the wire body uses a
 /// boolean `UseEcKey`, so this enum is a friendly CLI value rather than a
-/// `Serialize_repr` type.
+/// wire-integer type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PullZonePrivateKeyType {
     /// RSA 2048-bit private key (`UseEcKey = false`).
@@ -649,19 +693,19 @@ impl std::str::FromStr for PullZonePrivateKeyType {
     }
 }
 
-/// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
-///
-/// Bunny.net may add new protocols in future API versions. The
-/// `log_forwarding_protocol` field on [`PullZone`] is deserialised via
-/// [`super::serde_helpers::deserialize_repr_option`] so unknown values become
-/// `None` instead of failing the whole response.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum PullZoneLogForwarderProtocolType {
-    Udp = 0,
-    Tcp = 1,
-    TcpEncrypted = 2,
-    DataDog = 3,
+forward_compat_repr_enum! {
+    /// Transport protocol used by CDN log forwarding to a remote syslog endpoint.
+    ///
+    /// Bunny.net may add new protocols in future API versions. The
+    /// `log_forwarding_protocol` field on [`PullZone`] keeps unknown values as
+    /// `Unknown(n)` instead of failing the whole response.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum PullZoneLogForwarderProtocolType: u8 {
+        Udp = 0,
+        Tcp = 1,
+        TcpEncrypted = 2,
+        DataDog = 3,
+    }
 }
 
 impl std::fmt::Display for PullZoneLogForwarderProtocolType {
@@ -671,6 +715,7 @@ impl std::fmt::Display for PullZoneLogForwarderProtocolType {
             Self::Tcp => "tcp",
             Self::TcpEncrypted => "tcp-encrypted",
             Self::DataDog => "datadog",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -702,11 +747,11 @@ impl std::str::FromStr for PullZoneLogForwarderProtocolType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EdgeRuleTrigger {
-    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
+    #[serde(rename = "Type", default)]
     pub trigger_type: Option<TriggerType>,
     #[serde(default)]
     pub pattern_matches: Vec<String>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub pattern_matching_type: Option<MatchingType>,
     #[serde(default)]
     pub parameter1: Option<String>,
@@ -716,7 +761,7 @@ pub struct EdgeRuleTrigger {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EdgeRuleExtraAction {
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub action_type: Option<EdgeRuleActionType>,
     #[serde(default)]
     pub action_parameter1: Option<String>,
@@ -732,7 +777,7 @@ pub struct EdgeRuleExtraAction {
 pub struct EdgeRule {
     #[serde(default)]
     pub guid: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub action_type: Option<EdgeRuleActionType>,
     #[serde(default)]
     pub action_parameter1: Option<String>,
@@ -744,7 +789,7 @@ pub struct EdgeRule {
     pub triggers: Vec<EdgeRuleTrigger>,
     #[serde(default)]
     pub extra_actions: Vec<EdgeRuleExtraAction>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub trigger_matching_type: Option<MatchingType>,
     #[serde(default)]
     pub description: Option<String>,
@@ -784,7 +829,7 @@ pub struct PullZone {
     // Origin
     #[serde(default)]
     pub origin_url: String,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub origin_type: Option<OriginType>,
     #[serde(default)]
     pub storage_zone_id: Option<i64>,
@@ -803,7 +848,7 @@ pub struct PullZone {
     pub cname_domain: String,
     #[serde(default)]
     pub hostnames: Vec<HostnameInfo>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub zone_type: Option<PullZoneType>,
 
     // Status
@@ -883,7 +928,7 @@ pub struct PullZone {
     pub optimizer_watermark_enabled: Option<bool>,
     #[serde(default)]
     pub optimizer_watermark_url: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub optimizer_watermark_position: Option<OptimizerWatermarkPosition>,
     #[serde(default)]
     pub optimizer_watermark_offset: Option<f64>,
@@ -920,7 +965,7 @@ pub struct PullZone {
     pub log_forwarding_port: Option<i32>,
     #[serde(default)]
     pub log_forwarding_token: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub log_forwarding_protocol: Option<PullZoneLogForwarderProtocolType>,
     #[serde(default)]
     pub logging_save_to_storage: Option<bool>,
@@ -970,7 +1015,7 @@ pub struct PullZone {
     pub aws_signing_region_name: Option<String>,
     #[serde(rename = "LoggingIPAnonymizationEnabled", default)]
     pub logging_ip_anonymization_enabled: bool,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub log_anonymization_type: Option<LogAnonymizationType>,
 
     // Vary headers (iter-45)
@@ -1020,7 +1065,7 @@ pub struct PullZone {
     pub cache_error_responses: bool,
     #[serde(default)]
     pub perma_cache_storage_zone_id: Option<i64>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub perma_cache_type: Option<PermaCacheType>,
 
     // Origin host + DNS (iter-46)
@@ -1074,7 +1119,7 @@ pub struct PullZone {
     pub request_coalescing_timeout: Option<i32>,
     #[serde(default)]
     pub routing_filters: Vec<String>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub sticky_session_type: Option<StickySessionType>,
     #[serde(default)]
     pub sticky_session_cookie_name: Option<String>,
@@ -1082,7 +1127,7 @@ pub struct PullZone {
     pub sticky_session_client_headers: Vec<String>,
     /// Pull Zone tier type. The wire key is `Type` — renamed here to avoid
     /// collision with the Rust keyword and the existing `zone_type` field.
-    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
+    #[serde(rename = "Type", default)]
     pub pull_zone_tier_type: Option<PullZoneTierType>,
 
     // Firewall / blocking (iter-47)
@@ -1102,11 +1147,7 @@ pub struct PullZone {
     // Shield DDoS + rate limiting (iter-47)
     #[serde(rename = "ShieldDDosProtectionEnabled", default)]
     pub shield_ddos_protection_enabled: bool,
-    #[serde(
-        rename = "ShieldDDosProtectionType",
-        default,
-        deserialize_with = "deserialize_repr_option"
-    )]
+    #[serde(rename = "ShieldDDosProtectionType", default)]
     pub shield_ddos_protection_type: Option<ShieldDDosProtectionType>,
     #[serde(default)]
     pub burst_size: Option<i32>,
@@ -1154,7 +1195,7 @@ pub struct PullZone {
     pub preloading_screen_logo_url: Option<String>,
     #[serde(default)]
     pub preloading_screen_show_on_first_visit: bool,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub preloading_screen_theme: Option<PreloadingScreenTheme>,
     #[serde(default)]
     pub preloading_screen_code_enabled: bool,
@@ -1166,7 +1207,7 @@ pub struct PullZone {
     pub edge_script_id: Option<i64>,
     #[serde(default)]
     pub middleware_script_id: Option<i64>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub edge_script_execution_phase: Option<EdgeScriptExecutionPhase>,
 
     // Magic Containers origin (iter-74)
@@ -1338,7 +1379,7 @@ pub struct UpdatePullZone {
     pub log_forwarding_port: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_forwarding_token: Option<String>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_forwarding_protocol: Option<PullZoneLogForwarderProtocolType>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1390,7 +1431,7 @@ pub struct UpdatePullZone {
     pub optimizer_watermark_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optimizer_watermark_url: Option<String>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub optimizer_watermark_position: Option<OptimizerWatermarkPosition>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1448,7 +1489,7 @@ pub struct UpdatePullZone {
         skip_serializing_if = "Option::is_none"
     )]
     pub logging_ip_anonymization_enabled: Option<bool>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_anonymization_type: Option<LogAnonymizationType>,
 
@@ -1499,7 +1540,7 @@ pub struct UpdatePullZone {
     pub cache_error_responses: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub perma_cache_storage_zone_id: Option<i64>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub perma_cache_type: Option<PermaCacheType>,
 
@@ -1566,7 +1607,7 @@ pub struct UpdatePullZone {
     pub request_coalescing_timeout: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub routing_filters: Option<Vec<String>>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sticky_session_type: Option<StickySessionType>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1575,7 +1616,7 @@ pub struct UpdatePullZone {
     pub sticky_session_client_headers: Option<Vec<String>>,
     /// Pull Zone tier type. The wire key is `Type` — renamed to avoid
     /// collision with the Rust keyword and the existing `zone_type` field.
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(rename = "Type", skip_serializing_if = "Option::is_none")]
     pub pull_zone_tier_type: Option<PullZoneTierType>,
 
@@ -1605,7 +1646,7 @@ pub struct UpdatePullZone {
         skip_serializing_if = "Option::is_none"
     )]
     pub shield_ddos_protection_enabled: Option<bool>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(
         rename = "ShieldDDosProtectionType",
         skip_serializing_if = "Option::is_none"
@@ -1658,7 +1699,7 @@ pub struct UpdatePullZone {
     pub preloading_screen_logo_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preloading_screen_show_on_first_visit: Option<bool>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preloading_screen_theme: Option<PreloadingScreenTheme>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1671,7 +1712,7 @@ pub struct UpdatePullZone {
     pub edge_script_id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub middleware_script_id: Option<i64>,
-    /// Serialises as an integer via `Serialize_repr`.
+    /// Serialises as an integer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub edge_script_execution_phase: Option<EdgeScriptExecutionPhase>,
 
@@ -2836,26 +2877,27 @@ impl PurgeCache {
 // DNS Zone types
 // ---------------------------------------------------------------------------
 
-/// DNS record type values used by the bunny.net API.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DnsRecordType {
-    A = 0,
-    AAAA = 1,
-    CNAME = 2,
-    TXT = 3,
-    MX = 4,
-    Redirect = 5,
-    Flatten = 6,
-    PullZone = 7,
-    SRV = 8,
-    CAA = 9,
-    PTR = 10,
-    Script = 11,
-    NS = 12,
-    SVCB = 13,
-    HTTPS = 14,
-    TLSA = 15,
+forward_compat_repr_enum! {
+    /// DNS record type values used by the bunny.net API.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DnsRecordType: u8 {
+        A = 0,
+        AAAA = 1,
+        CNAME = 2,
+        TXT = 3,
+        MX = 4,
+        Redirect = 5,
+        Flatten = 6,
+        PullZone = 7,
+        SRV = 8,
+        CAA = 9,
+        PTR = 10,
+        Script = 11,
+        NS = 12,
+        SVCB = 13,
+        HTTPS = 14,
+        TLSA = 15,
+    }
 }
 
 impl std::fmt::Display for DnsRecordType {
@@ -2877,6 +2919,7 @@ impl std::fmt::Display for DnsRecordType {
             DnsRecordType::SVCB => write!(f, "SVCB"),
             DnsRecordType::HTTPS => write!(f, "HTTPS"),
             DnsRecordType::TLSA => write!(f, "TLSA"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
@@ -2906,19 +2949,20 @@ impl std::str::FromStr for DnsRecordType {
     }
 }
 
-/// Smart-routing mode for a DNS record.
-///
-/// Spec: `DnsSmartRoutingType` — `0 = None`, `1 = Latency`, `2 = Geolocation`.
-/// Serialised as the integer discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DnsSmartRoutingType {
-    /// No smart routing — the record resolves the same everywhere.
-    None = 0,
-    /// Route to the lowest-latency target.
-    Latency = 1,
-    /// Route based on the resolver's geolocation.
-    Geolocation = 2,
+forward_compat_repr_enum! {
+    /// Smart-routing mode for a DNS record.
+    ///
+    /// Spec: `DnsSmartRoutingType` — `0 = None`, `1 = Latency`, `2 = Geolocation`.
+    /// Serialised as the integer discriminant on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DnsSmartRoutingType: u8 {
+        /// No smart routing — the record resolves the same everywhere.
+        None = 0,
+        /// Route to the lowest-latency target.
+        Latency = 1,
+        /// Route based on the resolver's geolocation.
+        Geolocation = 2,
+    }
 }
 
 impl std::fmt::Display for DnsSmartRoutingType {
@@ -2927,6 +2971,7 @@ impl std::fmt::Display for DnsSmartRoutingType {
             Self::None => "none",
             Self::Latency => "latency",
             Self::Geolocation => "geolocation",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -2948,21 +2993,22 @@ impl std::str::FromStr for DnsSmartRoutingType {
     }
 }
 
-/// Monitoring mode for a DNS record's target.
-///
-/// Spec: `DnsMonitoringType` — `0 = None`, `1 = Ping`, `2 = Http`, `3 = Monitor`.
-/// Serialised as the integer discriminant on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DnsMonitoringType {
-    /// No health monitoring.
-    None = 0,
-    /// ICMP ping health check.
-    Ping = 1,
-    /// HTTP(S) health check.
-    Http = 2,
-    /// Full monitor health check.
-    Monitor = 3,
+forward_compat_repr_enum! {
+    /// Monitoring mode for a DNS record's target.
+    ///
+    /// Spec: `DnsMonitoringType` — `0 = None`, `1 = Ping`, `2 = Http`, `3 = Monitor`.
+    /// Serialised as the integer discriminant on the wire.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DnsMonitoringType: u8 {
+        /// No health monitoring.
+        None = 0,
+        /// ICMP ping health check.
+        Ping = 1,
+        /// HTTP(S) health check.
+        Http = 2,
+        /// Full monitor health check.
+        Monitor = 3,
+    }
 }
 
 impl std::fmt::Display for DnsMonitoringType {
@@ -2972,6 +3018,7 @@ impl std::fmt::Display for DnsMonitoringType {
             Self::Ping => "ping",
             Self::Http => "http",
             Self::Monitor => "monitor",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -2994,26 +3041,29 @@ impl std::str::FromStr for DnsMonitoringType {
     }
 }
 
-/// Current monitoring status of a DNS record's target (read-only).
-///
-/// Spec: `DnsMonitoringStatus` — `0 = Unknown`, `1 = Online`, `2 = Offline`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DnsMonitoringStatus {
-    /// Status not yet determined.
-    Unknown = 0,
-    /// The target is healthy.
-    Online = 1,
-    /// The target is failing its health check.
-    Offline = 2,
+forward_compat_repr_enum! {
+    /// Current monitoring status of a DNS record's target (read-only).
+    ///
+    /// Spec: `DnsMonitoringStatus` — `0 = Unknown`, `1 = Online`, `2 = Offline`.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DnsMonitoringStatus: u8 {
+        /// Status not yet determined (spec name `Unknown`; renamed because
+        /// `Unknown(n)` is the forward-compat catch-all).
+        Undetermined = 0,
+        /// The target is healthy.
+        Online = 1,
+        /// The target is failing its health check.
+        Offline = 2,
+    }
 }
 
 impl std::fmt::Display for DnsMonitoringStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            Self::Unknown => "Unknown",
+            Self::Undetermined => "Unknown",
             Self::Online => "Online",
             Self::Offline => "Offline",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -3028,7 +3078,7 @@ impl std::fmt::Display for DnsMonitoringStatus {
 #[serde(rename_all = "PascalCase")]
 pub struct DnsRecord {
     pub id: i64,
-    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
+    #[serde(rename = "Type", default)]
     pub record_type: Option<DnsRecordType>,
     #[serde(default)]
     pub ttl: i32,
@@ -3063,13 +3113,13 @@ pub struct DnsRecord {
     #[serde(default)]
     pub script_id: i64,
     /// Smart-routing mode configured on the record.
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub smart_routing_type: Option<DnsSmartRoutingType>,
     /// Health-monitoring mode configured on the record.
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub monitor_type: Option<DnsMonitoringType>,
     /// Current health-monitoring status (read-only).
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub monitor_status: Option<DnsMonitoringStatus>,
     /// Latitude used by geolocation smart routing.
     #[serde(default)]
@@ -3156,14 +3206,15 @@ pub struct DnsSecDsRecord {
     pub ds_configured: bool,
 }
 
-/// Status of a DNS record scan job.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DnsScanJobStatus {
-    Pending = 0,
-    InProgress = 1,
-    Completed = 2,
-    Failed = 3,
+forward_compat_repr_enum! {
+    /// Status of a DNS record scan job.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DnsScanJobStatus: u8 {
+        Pending = 0,
+        InProgress = 1,
+        Completed = 2,
+        Failed = 3,
+    }
 }
 
 impl std::fmt::Display for DnsScanJobStatus {
@@ -3173,31 +3224,33 @@ impl std::fmt::Display for DnsScanJobStatus {
             Self::InProgress => write!(f, "InProgress"),
             Self::Completed => write!(f, "Completed"),
             Self::Failed => write!(f, "Failed"),
+            Self::Unknown(n) => write!(f, "Unknown({n})"),
         }
     }
 }
 
-/// Discovered DNS record type returned by the record scan endpoint.
-///
-/// The integer values use a different numbering scheme than [`DnsRecordType`]
-/// (e.g. the scan API uses A=0 where the zone API uses A=1), so we keep a
-/// dedicated enum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum DnsDiscoveredRecordType {
-    A = 0,
-    AAAA = 1,
-    CNAME = 2,
-    TXT = 3,
-    MX = 4,
-    SRV = 8,
-    CAA = 9,
-    PTR = 10,
-    NS = 12,
-    SVCB = 13,
-    HTTPS = 14,
-    TLSA = 15,
-    SOA = 16,
+forward_compat_repr_enum! {
+    /// Discovered DNS record type returned by the record scan endpoint.
+    ///
+    /// The integer values use a different numbering scheme than [`DnsRecordType`]
+    /// (e.g. the scan API uses A=0 where the zone API uses A=1), so we keep a
+    /// dedicated enum.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum DnsDiscoveredRecordType: u8 {
+        A = 0,
+        AAAA = 1,
+        CNAME = 2,
+        TXT = 3,
+        MX = 4,
+        SRV = 8,
+        CAA = 9,
+        PTR = 10,
+        NS = 12,
+        SVCB = 13,
+        HTTPS = 14,
+        TLSA = 15,
+        SOA = 16,
+    }
 }
 
 impl std::fmt::Display for DnsDiscoveredRecordType {
@@ -3216,6 +3269,7 @@ impl std::fmt::Display for DnsDiscoveredRecordType {
             Self::HTTPS => "HTTPS",
             Self::TLSA => "TLSA",
             Self::SOA => "SOA",
+            Self::Unknown(n) => return write!(f, "Unknown({n})"),
         };
         f.write_str(s)
     }
@@ -3227,7 +3281,7 @@ impl std::fmt::Display for DnsDiscoveredRecordType {
 pub struct DnsDiscoveredRecord {
     #[serde(default)]
     pub name: Option<String>,
-    #[serde(rename = "Type", default, deserialize_with = "deserialize_repr_option")]
+    #[serde(rename = "Type", default)]
     pub record_type: Option<DnsDiscoveredRecordType>,
     #[serde(default)]
     pub ttl: Option<i32>,
@@ -3249,7 +3303,7 @@ pub struct DnsDiscoveredRecord {
 pub struct DnsRecordScanTrigger {
     #[serde(default)]
     pub job_id: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub status: Option<DnsScanJobStatus>,
 }
 
@@ -3265,7 +3319,7 @@ pub struct DnsRecordScanResult {
     pub domain: Option<String>,
     #[serde(default)]
     pub account_id: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_repr_option")]
+    #[serde(default)]
     pub status: Option<DnsScanJobStatus>,
     #[serde(default)]
     pub created_at: Option<String>,
@@ -4719,18 +4773,44 @@ pub struct PullZoneCount {
 }
 
 /// A storage region returned by `GET /storagezone/regions`.
+///
+/// Shape per the 2026-10-23 core spec (`StorageRegionModel`), confirmed live
+/// in iter-87. The pre-iter-87 `Id` / `Url` fields no longer exist; use
+/// `code` and `endpoint`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct StorageRegion {
-    /// Region code (e.g. `DE`, `NY`, `SG`).
+    /// Region code (e.g. `DE`, `NY`, `SG`); the value `--region` takes.
     #[serde(default)]
-    pub id: Option<String>,
+    pub code: Option<String>,
     /// Human-readable region name.
     #[serde(default)]
     pub name: Option<String>,
-    /// Storage endpoint URL for the region.
+    /// Continent code (e.g. `EU`, `SA`).
     #[serde(default)]
-    pub url: Option<String>,
+    pub continent: Option<String>,
+    #[serde(default)]
+    pub latitude: Option<f64>,
+    #[serde(default)]
+    pub longitude: Option<f64>,
+    /// Storage price per gigabyte in USD.
+    #[serde(default)]
+    pub price_per_gigabyte: Option<f64>,
+    /// Pricing tier of the region.
+    #[serde(default)]
+    pub tier: Option<i32>,
+    /// Whether the region can be used as a main region.
+    #[serde(default)]
+    pub is_main_region_supported: Option<bool>,
+    /// Whether the S3-compatible API is available in the region.
+    #[serde(default, rename = "IsS3Supported")]
+    pub is_s3_supported: Option<bool>,
+    /// Storage API hostname (e.g. `storage.bunnycdn.com`).
+    #[serde(default)]
+    pub endpoint: Option<String>,
+    /// S3-compatible endpoint hostname, `null` where S3 is unsupported.
+    #[serde(default, rename = "S3Endpoint")]
+    pub s3_endpoint: Option<String>,
 }
 
 /// Egress statistics returned by `GET /storagezone/{id}/statistics/egress`.
@@ -4991,12 +5071,16 @@ mod tests {
     #[test]
     fn iter74_repr_enums_serialize_as_integers() {
         assert_eq!(
-            serde_json::to_value(EdgeScriptExecutionPhase::OnRequest).unwrap(),
+            serde_json::to_value(EdgeScriptExecutionPhase::Cache).unwrap(),
             serde_json::json!(0)
         );
         assert_eq!(
-            serde_json::to_value(EdgeScriptExecutionPhase::OnResponse).unwrap(),
+            serde_json::to_value(EdgeScriptExecutionPhase::LoadBalancer).unwrap(),
             serde_json::json!(1)
+        );
+        assert_eq!(
+            serde_json::to_value(EdgeScriptExecutionPhase::PreCache).unwrap(),
+            serde_json::json!(2)
         );
         assert_eq!(
             serde_json::to_value(PreloadingScreenTheme::Dark).unwrap(),
@@ -5014,11 +5098,15 @@ mod tests {
     fn iter74_enum_from_str_round_trips() {
         assert_eq!(
             "on-request".parse::<EdgeScriptExecutionPhase>().unwrap(),
-            EdgeScriptExecutionPhase::OnRequest
+            EdgeScriptExecutionPhase::Cache
         );
         assert_eq!(
             "OnResponse".parse::<EdgeScriptExecutionPhase>().unwrap(),
-            EdgeScriptExecutionPhase::OnResponse
+            EdgeScriptExecutionPhase::LoadBalancer
+        );
+        assert_eq!(
+            "pre-cache".parse::<EdgeScriptExecutionPhase>().unwrap(),
+            EdgeScriptExecutionPhase::PreCache
         );
         assert_eq!(
             "light".parse::<PreloadingScreenTheme>().unwrap(),
@@ -5042,5 +5130,24 @@ mod tests {
     fn private_key_type_use_ec_key_flag() {
         assert!(PullZonePrivateKeyType::Ec.use_ec_key());
         assert!(!PullZonePrivateKeyType::Rsa.use_ec_key());
+    }
+
+    /// iter-87: edge-rule actions 35-37 have names, and any other future value
+    /// round-trips instead of failing or blanking.
+    #[test]
+    fn edge_rule_actions_35_to_37_and_unknown_round_trip() {
+        for (name, n) in [
+            ("use-load-balancer", 35),
+            ("force-load-balancer-sticky-session-mode", 36),
+            ("strip-cookies-client-to-origin", 37),
+        ] {
+            let a: EdgeRuleActionType = name.parse().unwrap();
+            assert_eq!(a.to_repr(), n);
+            assert_eq!(a.to_string(), name);
+            assert_eq!(serde_json::to_value(a).unwrap(), serde_json::json!(n));
+        }
+        let future: EdgeRuleActionType = serde_json::from_str("99").unwrap();
+        assert_eq!(future.to_string(), "Unknown(99)");
+        assert_eq!(serde_json::to_string(&future).unwrap(), "99");
     }
 }

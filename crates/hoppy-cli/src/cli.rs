@@ -3,6 +3,7 @@ use bunny_net_api::core::types::{
     PreloadingScreenTheme, PullZoneLogForwarderProtocolType, PullZonePrivateKeyType,
     PullZoneTierType, ShieldDDosProtectionType, StickySessionType,
 };
+use bunny_net_api::shield::types::WafRuleOperatorType;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
@@ -435,17 +436,22 @@ impl From<ShieldDDosProtectionTypeArg> for ShieldDDosProtectionType {
 /// Execution phase for an attached edge script (`EdgeScriptExecutionPhase`).
 #[derive(Copy, Clone, ValueEnum)]
 pub enum EdgeScriptExecutionPhaseArg {
-    /// Run the script while the request is processed (value 0).
-    OnRequest,
-    /// Run the script while the response is processed (value 1).
-    OnResponse,
+    /// Default: the script is the origin and runs on cache misses (value 0).
+    #[value(alias = "on-request")]
+    Cache,
+    /// Spec phase `LoadBalancer` (value 1).
+    #[value(alias = "on-response")]
+    LoadBalancer,
+    /// Run the script before the cache lookup, on every request (value 2).
+    PreCache,
 }
 
 impl From<EdgeScriptExecutionPhaseArg> for EdgeScriptExecutionPhase {
     fn from(a: EdgeScriptExecutionPhaseArg) -> Self {
         match a {
-            EdgeScriptExecutionPhaseArg::OnRequest => Self::OnRequest,
-            EdgeScriptExecutionPhaseArg::OnResponse => Self::OnResponse,
+            EdgeScriptExecutionPhaseArg::Cache => Self::Cache,
+            EdgeScriptExecutionPhaseArg::LoadBalancer => Self::LoadBalancer,
+            EdgeScriptExecutionPhaseArg::PreCache => Self::PreCache,
         }
     }
 }
@@ -1729,7 +1735,7 @@ pub enum PullZoneAction {
         /// Attach a middleware script by ID (from `hoppy script list`). Use -1 to detach.
         #[arg(long, value_name = "ID", help_heading = "Scripting")]
         middleware_script_id: Option<i64>,
-        /// Lifecycle phase the edge script runs in: on-request, on-response.
+        /// Phase the edge script runs in: cache (default, on cache miss), load-balancer, pre-cache (before the cache lookup, every request). The old names on-request/on-response still work (= cache/load-balancer).
         #[arg(long, value_name = "PHASE", help_heading = "Scripting")]
         edge_script_execution_phase: Option<EdgeScriptExecutionPhaseArg>,
 
@@ -3499,8 +3505,8 @@ pub enum ShieldBotCategorizationAction {
         /// Bot ID (discover via `shield bot-categorization list`)
         #[arg(long)]
         bot_id: i64,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow)
-        #[arg(long)]
+        /// Action (0 = None/clear, 1 = Block, 2 = Allow, 3 = Ignore)
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=3))]
         action: u8,
     },
     /// Set (or clear) the action for every bot in a category
@@ -3511,8 +3517,8 @@ pub enum ShieldBotCategorizationAction {
         /// Category (0 = None, 1 = SEO, 2 = AIScraper, 3 = AITool, 4 = Tool, 5 = Ads, 6 = Preview, 7 = Social, 255 = System)
         #[arg(long)]
         category: i32,
-        /// Action (0 = None/clear, 1 = Block, 2 = Allow)
-        #[arg(long)]
+        /// Action (0 = None/clear, 1 = Block, 2 = Allow; `Ignore` is bot-only)
+        #[arg(long, value_parser = clap::value_parser!(u8).range(0..=2))]
         action: u8,
     },
 }
@@ -3670,11 +3676,11 @@ pub enum ShieldZoneAction {
         /// WAF execution mode (0 = Disabled, 1 = Enabled)
         #[arg(long)]
         waf_execution_mode: Option<u8>,
-        /// DDoS shield sensitivity (0 = Disabled, 1 = Low, 2 = Medium, 3 = High, 4 = VeryHigh)
+        /// DDoS shield sensitivity (0 = Off, 1 = Low, 2 = Medium, 3 = High, 4 = Challenge, 5 = ChallengeInteractive)
         #[arg(long)]
         ddos_sensitivity: Option<u8>,
-        /// DDoS execution mode (0 = Disabled, 1 = Enabled)
-        #[arg(long)]
+        /// Deprecated and ignored: the Shield API no longer accepts it
+        #[arg(long, hide = true)]
         ddos_execution_mode: Option<u8>,
         /// DDoS challenge window duration in seconds
         #[arg(long)]
@@ -3729,9 +3735,12 @@ pub enum ShieldWafAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
         #[arg(long)]
         action_type: u8,
-        /// Operator type (0 = Eq, 1 = NotEq, 2 = Contains, 3 = NotContains, 4 = Begins, 5 = Ends, 6 = Regex, 7 = NotRegex, 8 = Lt, 9 = Gt, 12 = Pm, 14 = PmFromFile, 15 = IpMatch, 17 = GeoLookup, 18 = ValidateUrlEncoding)
-        #[arg(long)]
-        operator_type: u8,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: WafRuleOperatorType,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: u8,
@@ -3765,9 +3774,12 @@ pub enum ShieldWafAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge, 4 = ChallengeInterstitial, 5 = Allow)
         #[arg(long)]
         action_type: Option<u8>,
-        /// Operator type (0–18; same values as `add-rule`)
-        #[arg(long)]
-        operator_type: Option<u8>,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: Option<WafRuleOperatorType>,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: Option<u8>,
@@ -3950,9 +3962,12 @@ pub enum ShieldRateLimitAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
         #[arg(long)]
         action_type: u8,
-        /// Operator type (0–18; same values as WAF rules)
-        #[arg(long)]
-        operator_type: u8,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: WafRuleOperatorType,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: u8,
@@ -3998,9 +4013,12 @@ pub enum ShieldRateLimitAction {
         /// Action type (1 = Block, 2 = LogOnly, 3 = Challenge)
         #[arg(long)]
         action_type: Option<u8>,
-        /// Operator type (0–18; same values as WAF rules)
-        #[arg(long)]
-        operator_type: Option<u8>,
+        /// Operator type: a name or number from the shield spec (0 = BEGINSWITH,
+        /// 1 = ENDSWITH, 2 = CONTAINS, 3 = CONTAINSWORD, 4 = STRMATCH, 5 = EQ,
+        /// 6 = GE, 7 = GT, 8 = LE, 9 = LT, 12 = WITHIN, 13 = IPMATCH, 14 = RX,
+        /// 15 = STREQ, 17 = DETECTSQLI, 18 = DETECTXSS). Names are case-insensitive.
+        #[arg(long, value_name = "NAME|N")]
+        operator_type: Option<WafRuleOperatorType>,
         /// Severity type (0 = Low, 1 = Medium, 2 = High)
         #[arg(long)]
         severity_type: Option<u8>,
@@ -6002,5 +6020,40 @@ mod cli_parse_tests {
             "test-app-id",
         ]);
         assert!(result.is_ok(), "CLI parse failed: {:?}", result.err());
+    }
+
+    /// The hand-written `--operator-type` help text must list every spec
+    /// operator exactly as `WafRuleOperatorType::NAMES` does.
+    #[test]
+    fn operator_type_help_lists_every_spec_operator() {
+        use bunny_net_api::shield::types::WafRuleOperatorType;
+
+        let cmd = Cli::command();
+        let waf = cmd
+            .find_subcommand("shield")
+            .and_then(|c| c.find_subcommand("waf"))
+            .expect("shield waf");
+        let rate = cmd
+            .find_subcommand("shield")
+            .and_then(|c| c.find_subcommand("rate-limit"))
+            .expect("shield rate-limit");
+        for (parent, name) in [
+            (waf, "add-rule"),
+            (waf, "update-rule"),
+            (rate, "create"),
+            (rate, "update"),
+        ] {
+            let sub = parent.find_subcommand(name).expect(name);
+            let arg = sub
+                .get_arguments()
+                .find(|a| a.get_id() == "operator_type")
+                .expect("operator_type arg");
+            let help = arg.get_help().expect("help").to_string();
+            let help = help.split_whitespace().collect::<Vec<_>>().join(" ");
+            for (op, spec_name) in WafRuleOperatorType::NAMES {
+                let needle = format!("{} = {spec_name}", op.to_repr());
+                assert!(help.contains(&needle), "{name}: help lacks `{needle}`");
+            }
+        }
     }
 }

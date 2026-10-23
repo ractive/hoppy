@@ -30,11 +30,12 @@ fn client(debug: bool, dry_run: bool, record: Option<&str>, reveal: bool) -> Res
 // ScriptType display helper
 // ---------------------------------------------------------------------------
 
-fn script_type_str(t: ScriptType) -> &'static str {
+fn script_type_str(t: ScriptType) -> String {
     match t {
-        ScriptType::Dns => "Dns",
-        ScriptType::Cdn => "Cdn",
-        ScriptType::Middleware => "Middleware",
+        ScriptType::Dns => "Dns".to_owned(),
+        ScriptType::Cdn => "Cdn".to_owned(),
+        ScriptType::Middleware => "Middleware".to_owned(),
+        ScriptType::Unknown(n) => format!("Unknown({n})"),
     }
 }
 
@@ -69,7 +70,7 @@ impl From<&EdgeScript> for ScriptRow {
         Self {
             id: s.id,
             name: s.name.as_deref().unwrap_or("-").to_owned(),
-            script_type: script_type_str(s.script_type).to_owned(),
+            script_type: script_type_str(s.script_type),
             last_modified: s.last_modified.clone(),
             default_hostname: s.default_hostname.as_deref().unwrap_or("-").to_owned(),
         }
@@ -103,7 +104,7 @@ impl From<&EdgeScript> for ScriptDetail {
         Self {
             id: s.id,
             name: s.name.as_deref().unwrap_or("-").to_owned(),
-            script_type: script_type_str(s.script_type).to_owned(),
+            script_type: script_type_str(s.script_type),
             last_modified: s.last_modified.clone(),
             default_hostname: s.default_hostname.as_deref().unwrap_or("-").to_owned(),
             system_hostname: s.system_hostname.as_deref().unwrap_or("-").to_owned(),
@@ -163,13 +164,14 @@ struct ReleaseRow {
 impl From<&EdgeScriptRelease> for ReleaseRow {
     fn from(r: &EdgeScriptRelease) -> Self {
         let status = match r.status {
-            bunny_net_api::compute::ReleaseStatus::Live => "Live",
-            bunny_net_api::compute::ReleaseStatus::Archived => "Archived",
+            bunny_net_api::compute::ReleaseStatus::Live => "Live".to_owned(),
+            bunny_net_api::compute::ReleaseStatus::Archived => "Archived".to_owned(),
+            bunny_net_api::compute::ReleaseStatus::Unknown(n) => format!("Unknown({n})"),
         };
         Self {
             id: r.id,
             uuid: r.uuid.as_deref().unwrap_or("-").to_owned(),
-            status: status.to_owned(),
+            status,
             note: r.note.as_deref().unwrap_or("-").to_owned(),
             date_published: r.date_published.clone(),
         }

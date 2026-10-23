@@ -1,22 +1,23 @@
 use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::BTreeMap;
 
-/// Script type: DNS, CDN, or Middleware.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum ScriptType {
-    Dns = 0,
-    Cdn = 1,
-    Middleware = 2,
+forward_compat_repr_enum! {
+    /// Script type: DNS, CDN, or Middleware.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ScriptType: u8 {
+        Dns = 0,
+        Cdn = 1,
+        Middleware = 2,
+    }
 }
 
-/// Release lifecycle status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize_repr, Deserialize_repr)]
-#[repr(u8)]
-pub enum ReleaseStatus {
-    Archived = 0,
-    Live = 1,
+forward_compat_repr_enum! {
+    /// Release lifecycle status.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ReleaseStatus: u8 {
+        Archived = 0,
+        Live = 1,
+    }
 }
 
 /// A pull zone linked to an edge script.

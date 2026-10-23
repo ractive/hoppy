@@ -42,6 +42,7 @@ pub use types::{
     BotCategorizationListResponse,
     // Bot categorization types (iter-72)
     BotCategory,
+    BotCategoryAction,
     BotCategoryDetails,
     BotDetectionConfigurationResponse,
     BotDetectionConfigurationState,
@@ -129,6 +130,7 @@ pub use types::{
     UpdateApiGuardianResponse,
     UpdateBotCategorizationConfigurationRequest,
     UpdateBotCategorizationConfigurationResponse,
+    UpdateBotCategoryConfigurationRequest,
     UpdateBotCategoryConfigurationResponse,
     UpdateBotDetection,
     UpdateBotDetectionResponse,

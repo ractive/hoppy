@@ -1,17 +1,41 @@
 [
   {
-    "Id": "DE",
-    "Name": "Falkenstein",
-    "Url": "storage.bunnycdn.com"
+    "Code": "BR",
+    "Name": "Sao Paulo",
+    "Continent": "SA",
+    "Latitude": -23.550394,
+    "Longitude": -46.633947,
+    "PricePerGigabyte": 0.01,
+    "Tier": 0,
+    "IsMainRegionSupported": true,
+    "IsS3Supported": false,
+    "Endpoint": "br.storage.bunnycdn.com",
+    "S3Endpoint": null
   },
   {
-    "Id": "NY",
+    "Code": "DE",
+    "Name": "Frankfurt",
+    "Continent": "EU",
+    "Latitude": 50.110556,
+    "Longitude": 8.682222,
+    "PricePerGigabyte": 0.01,
+    "Tier": 0,
+    "IsMainRegionSupported": true,
+    "IsS3Supported": true,
+    "Endpoint": "storage.bunnycdn.com",
+    "S3Endpoint": "de-s3.storage.bunnycdn.com"
+  },
+  {
+    "Code": "NY",
     "Name": "New York",
-    "Url": "ny.storage.bunnycdn.com"
-  },
-  {
-    "Id": "SG",
-    "Name": "Singapore",
-    "Url": "sg.storage.bunnycdn.com"
+    "Continent": "NA",
+    "Latitude": 40.712776,
+    "Longitude": -74.005974,
+    "PricePerGigabyte": 0.01,
+    "Tier": 0,
+    "IsMainRegionSupported": true,
+    "IsS3Supported": false,
+    "Endpoint": "ny.storage.bunnycdn.com",
+    "S3Endpoint": null
   }
 ]

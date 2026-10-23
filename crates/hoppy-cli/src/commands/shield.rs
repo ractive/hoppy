@@ -8,14 +8,15 @@ use crate::cli::{
 use crate::date;
 use crate::output::{self, PaginatedListJson, TABLE_CELL_MAX, truncate_for_table};
 use anyhow::{Context, Result, bail};
+use bunny_net_api::core::serde_helpers::KnownRepr;
 use bunny_net_api::shield::types::{
     AccessListAction, AccessListDetails, AccessListType, BotCategorizationAction,
-    BotCategorizationGroup, BotDetectionConfigurationState, BotDetectionExecutionMode,
-    BotDetectionSensitivity, BrowserFingerprintAggression, BrowserFingerprintConfiguration,
-    CreateCustomAccessList, CreateCustomWafRule, CreateRateLimitRule, CustomAccessList,
-    CustomWafRule, DdosExecutionMode, DdosShieldSensitivity, EventLog, IpAddressConfiguration,
-    RateLimitActionType, RateLimitBlockDuration, RateLimitCounterKey, RateLimitRule,
-    RateLimitRuleConfiguration, RateLimitTimeframe, RequestIntegrityConfiguration,
+    BotCategorizationGroup, BotCategoryAction, BotDetectionConfigurationState,
+    BotDetectionExecutionMode, BotDetectionSensitivity, BrowserFingerprintAggression,
+    BrowserFingerprintConfiguration, CreateCustomAccessList, CreateCustomWafRule,
+    CreateRateLimitRule, CustomAccessList, CustomWafRule, DdosShieldSensitivity, EventLog,
+    IpAddressConfiguration, RateLimitActionType, RateLimitBlockDuration, RateLimitCounterKey,
+    RateLimitRule, RateLimitRuleConfiguration, RateLimitTimeframe, RequestIntegrityConfiguration,
     ReviewActionType, ShieldZonePullZoneMapping, ShieldZoneRequest, ShieldZoneResponse,
     TriggeredRuleItem, UpdateAccessListConfiguration, UpdateApiGuardianEndpointRequest,
     UpdateApiGuardianRequest, UpdateBotDetection, UpdateCustomAccessList, UpdateCustomWafRule,
@@ -539,17 +540,19 @@ impl From<&bunny_net_api::shield::types::ConfigVariableValueMinimal> for WafEngi
 }
 
 // ---------------------------------------------------------------------------
-// Enum conversion helpers (integer -> serde_repr enum via serde_json)
+// Enum conversion helpers (user-supplied integer -> declared enum variant)
 // ---------------------------------------------------------------------------
 
-fn u8_to_enum<T: serde::de::DeserializeOwned>(n: u8, type_name: &str) -> Result<T> {
-    serde_json::from_value(serde_json::json!(n))
-        .map_err(|_| anyhow::anyhow!("invalid value {n} for {type_name}"))
+/// Validate a user-supplied number against the *declared* variants.
+///
+/// Response enums deserialize unknown wire values into `Unknown(n)`, so serde
+/// can no longer be used to reject bad input.
+fn u8_to_enum<T: KnownRepr<Repr = u8>>(n: u8, type_name: &str) -> Result<T> {
+    T::try_from_known(n).ok_or_else(|| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
-fn u16_to_enum<T: serde::de::DeserializeOwned>(n: u16, type_name: &str) -> Result<T> {
-    serde_json::from_value(serde_json::json!(n))
-        .map_err(|_| anyhow::anyhow!("invalid value {n} for {type_name}"))
+fn u16_to_enum<T: KnownRepr<Repr = u16>>(n: u16, type_name: &str) -> Result<T> {
+    T::try_from_known(n).ok_or_else(|| anyhow::anyhow!("invalid value {n} for {type_name}"))
 }
 
 /// Convert a repeatable list of `--transformation-type N` values into the
@@ -586,6 +589,32 @@ fn load_config_json(path: Option<&std::path::Path>) -> Result<Option<RuleConfigJ
         .with_context(|| format!("reading --config-json file {}", path.display()))?;
     let cfg: RuleConfigJson = serde_json::from_str(&raw)
         .with_context(|| format!("parsing --config-json file {}", path.display()))?;
+    // Response enums are lenient (`Unknown(n)`); user input must stay strict.
+    if let Some(bad) = cfg
+        .transformation_types
+        .iter()
+        .flatten()
+        .find(|t| !t.is_known())
+    {
+        bail!(
+            "invalid transformationTypes value {} in {}",
+            bad.to_repr(),
+            path.display()
+        );
+    }
+    if let Some(bad) = cfg
+        .chained_rule_conditions
+        .iter()
+        .flatten()
+        .map(|c| c.operator_type)
+        .find(|o| !o.is_known())
+    {
+        bail!(
+            "invalid chainedRuleConditions operatorType value {} in {}",
+            bad.to_repr(),
+            path.display()
+        );
+    }
     Ok(Some(cfg))
 }
 
@@ -741,17 +770,22 @@ async fn handle_zone(
             waf_disabled_rules,
             waf_log_only_rules,
         } => {
+            if ddos_execution_mode.is_some() {
+                eprintln!(
+                    "warning: --ddos-execution-mode is deprecated and ignored: the Shield API \
+                     no longer accepts it on update"
+                );
+            }
             if waf_enabled.is_none()
                 && waf_execution_mode.is_none()
                 && ddos_sensitivity.is_none()
-                && ddos_execution_mode.is_none()
                 && ddos_challenge_window.is_none()
                 && learning_mode.is_none()
                 && waf_disabled_rules.is_empty()
                 && waf_log_only_rules.is_empty()
             {
                 bail!(
-                    "at least one update flag is required (--waf-enabled, --waf-execution-mode, --ddos-sensitivity, --ddos-execution-mode, --ddos-challenge-window, --learning-mode, --waf-disabled-rule, --waf-log-only-rule)"
+                    "at least one update flag is required (--waf-enabled, --waf-execution-mode, --ddos-sensitivity, --ddos-challenge-window, --learning-mode, --waf-disabled-rule, --waf-log-only-rule)"
                 );
             }
 
@@ -767,10 +801,6 @@ async fn handle_zone(
             if let Some(v) = ddos_sensitivity {
                 zone_req.d_do_s_shield_sensitivity =
                     Some(u8_to_enum::<DdosShieldSensitivity>(*v, "ddos-sensitivity")?);
-            }
-            if let Some(v) = ddos_execution_mode {
-                zone_req.d_do_s_execution_mode =
-                    Some(u8_to_enum::<DdosExecutionMode>(*v, "ddos-execution-mode")?);
             }
             if let Some(v) = ddos_challenge_window {
                 zone_req.d_do_s_challenge_window = Some(*v);
@@ -903,10 +933,12 @@ async fn handle_waf(
                     .as_ref()
                     .and_then(|o| o.variable_types.clone())
                     .or_else(|| Some(Default::default())),
-                operator_type: u8_to_enum::<WafRuleOperatorType>(*operator_type, "operator-type")?,
+                operator_type: *operator_type,
                 severity_type: u8_to_enum::<WafRuleSeverityType>(*severity_type, "severity-type")?,
                 transformation_types: Some(transformation_types),
                 value: value.clone(),
+                is_negated: None,
+                is_regex_variable: None,
                 chained_rule_conditions: overrides.and_then(|o| o.chained_rule_conditions),
             };
             let body = CreateCustomWafRule {
@@ -959,17 +991,22 @@ async fn handle_waf(
             let mut config = current.rule_configuration.unwrap_or(WafRuleConfiguration {
                 action_type: WafRuleActionType::Block,
                 variable_types: Some(Default::default()),
+                // Only reached for a rule without a stored configuration.
+                // `Eq` (wire 5) is what the old default meant to say; the old
+                // `WafRuleOperatorType::Eq` actually sent 0 = BEGINSWITH.
                 operator_type: WafRuleOperatorType::Eq,
                 severity_type: WafRuleSeverityType::Low,
                 transformation_types: Some(vec![]),
                 value: None,
+                is_negated: None,
+                is_regex_variable: None,
                 chained_rule_conditions: None,
             });
             if let Some(v) = action_type {
                 config.action_type = u8_to_enum::<WafRuleActionType>(*v, "action-type")?;
             }
             if let Some(v) = operator_type {
-                config.operator_type = u8_to_enum::<WafRuleOperatorType>(*v, "operator-type")?;
+                config.operator_type = *v;
             }
             if let Some(v) = severity_type {
                 config.severity_type = u8_to_enum::<WafRuleSeverityType>(*v, "severity-type")?;
@@ -1226,7 +1263,7 @@ async fn handle_rate_limit(
                     .as_ref()
                     .and_then(|o| o.variable_types.clone())
                     .or_else(|| Some(Default::default())),
-                operator_type: u8_to_enum(*operator_type, "operator-type")?,
+                operator_type: *operator_type,
                 severity_type: u8_to_enum(*severity_type, "severity-type")?,
                 transformation_types: Some(transformation_types),
                 value: value.clone(),
@@ -1237,6 +1274,8 @@ async fn handle_rate_limit(
                 )?,
                 timeframe: u16_to_enum(*timeframe, "timeframe")?,
                 block_time: u16_to_enum(*block_time, "block-time")?,
+                is_negated: None,
+                is_regex_variable: None,
                 chained_rule_conditions: overrides.and_then(|o| o.chained_rule_conditions),
             };
             let body = CreateRateLimitRule {
@@ -1306,6 +1345,8 @@ async fn handle_rate_limit(
                     severity_type: WafRuleSeverityType::Low,
                     transformation_types: Some(vec![]),
                     value: None,
+                    is_negated: None,
+                    is_regex_variable: None,
                     request_count: 0,
                     counter_key_type: RateLimitCounterKey::PerIp,
                     timeframe: RateLimitTimeframe::Sec60,
@@ -1316,7 +1357,7 @@ async fn handle_rate_limit(
                 config.action_type = u8_to_enum(*v, "action-type")?;
             }
             if let Some(v) = operator_type {
-                config.operator_type = u8_to_enum(*v, "operator-type")?;
+                config.operator_type = *v;
             }
             if let Some(v) = severity_type {
                 config.severity_type = u8_to_enum(*v, "severity-type")?;
@@ -2473,11 +2514,22 @@ fn bot_category_name(category: i32) -> String {
     }
 }
 
-fn bot_action_name(action: BotCategorizationAction) -> &'static str {
+fn bot_action_name(action: BotCategorizationAction) -> String {
     match action {
-        BotCategorizationAction::None => "None",
-        BotCategorizationAction::Block => "Block",
-        BotCategorizationAction::Allow => "Allow",
+        BotCategorizationAction::None => "None".to_owned(),
+        BotCategorizationAction::Block => "Block".to_owned(),
+        BotCategorizationAction::Allow => "Allow".to_owned(),
+        BotCategorizationAction::Ignore => "Ignore".to_owned(),
+        BotCategorizationAction::Unknown(n) => format!("Unknown({n})"),
+    }
+}
+
+fn bot_category_action_name(action: BotCategoryAction) -> String {
+    match action {
+        BotCategoryAction::None => "None".to_owned(),
+        BotCategoryAction::Block => "Block".to_owned(),
+        BotCategoryAction::Allow => "Allow".to_owned(),
+        BotCategoryAction::Unknown(n) => format!("Unknown({n})"),
     }
 }
 
@@ -2485,7 +2537,7 @@ fn flatten_bot_categorizations(groups: &[BotCategorizationGroup]) -> Vec<BotCate
     let mut rows = Vec::new();
     for group in groups {
         let category = bot_category_name(group.category);
-        let category_action = bot_action_name(group.category_action).to_string();
+        let category_action = bot_category_action_name(group.category_action);
         match &group.bots {
             Some(bots) if !bots.is_empty() => {
                 for bot in bots {
@@ -2573,7 +2625,7 @@ async fn handle_bot_categorization(
             category,
             action,
         } => {
-            let action_enum = u8_to_enum::<BotCategorizationAction>(*action, "action")?;
+            let action_enum = u8_to_enum::<BotCategoryAction>(*action, "action")?;
             let result = client
                 .set_bot_category_action(*shield_zone_id, *category, action_enum)
                 .await?;
@@ -2590,7 +2642,7 @@ async fn handle_bot_categorization(
                     &format!(
                         "Set category {} action to {} for Shield Zone {shield_zone_id}",
                         bot_category_name(*category),
-                        bot_action_name(action_enum)
+                        bot_category_action_name(action_enum)
                     ),
                 );
             }

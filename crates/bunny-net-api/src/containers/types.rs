@@ -101,12 +101,15 @@ pub struct ValidationError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ApplicationStatus {
-    Unknown,
     Active,
     Progressing,
     Inactive,
     Failing,
     Suspended,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved). Also matches the API's own `unknown`.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Application runtime type.
@@ -115,6 +118,10 @@ pub enum ApplicationStatus {
 pub enum RuntimeType {
     Shared,
     Reserved,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 /// Endpoint type.
@@ -125,6 +132,10 @@ pub enum EndpointType {
     CDN,
     Anycast,
     PublicIp,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 /// Region provisioning type.
@@ -133,6 +144,10 @@ pub enum EndpointType {
 pub enum RegionProvisioningType {
     Static,
     Dynamic,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Container image pull policy.
@@ -141,6 +156,10 @@ pub enum RegionProvisioningType {
 pub enum ImagePullPolicy {
     Always,
     IfNotPresent,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 /// Network protocol.
@@ -157,12 +176,20 @@ pub enum Protocol {
     Udp,
     #[serde(alias = "sctp", alias = "SCTP")]
     Sctp,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 /// Anycast IP protocol version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnycastIpProtocolVersion {
     IPv4,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 /// Overview status grade.
@@ -172,17 +199,24 @@ pub enum Grade {
     CouldBeBetter,
     NotBad,
     DoingGreat,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Deployment status for a region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DeploymentStatus {
-    Unknown,
     Active,
     Progressing,
     Inactive,
     Failing,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved). Also matches the API's own `unknown`.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Pod lifecycle status.
@@ -193,6 +227,10 @@ pub enum PodStatus {
     Scheduled,
     Ready,
     Deleting,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Container status within a pod.
@@ -202,6 +240,10 @@ pub enum ContainerStatus {
     NotStarted,
     Started,
     Ready,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Statistics granularity.
@@ -216,40 +258,74 @@ pub enum Granularity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum VolumeInstanceStatus {
-    Unknown,
     Attached,
     Detached,
     Extending,
     Deleting,
     Creating,
+    Maintenance,
     NotScheduled,
     Scheduled,
     Failed,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved). Also matches the API's own `unknown`.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Container registry type.
+///
+/// Serialization stays PascalCase (`DockerHub`), exactly what hoppy has always
+/// sent; the 2026-10-23 spec documents camelCase (`dockerHub`). Responses are
+/// accepted in either casing. Whether the API also *accepts* camelCase on
+/// requests is unverified (iter-87 could not exercise `registry add` safely),
+/// so the request side was deliberately left alone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RegistryType {
+    #[serde(alias = "dockerHub")]
     DockerHub,
+    #[serde(alias = "gitHub")]
     GitHub,
+    #[serde(alias = "bunnyRegistry")]
+    BunnyRegistry,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 /// Result status after saving a container registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SavedContainerRegistryStatus {
+    #[serde(alias = "saved")]
     Saved,
+    #[serde(alias = "secretsValidationFailed")]
     SecretsValidationFailed,
+    #[serde(alias = "unknownErrorOccured")]
     UnknownErrorOccured,
+    #[serde(alias = "notFound")]
     NotFound,
+    #[serde(alias = "invalidInput")]
     InvalidInput,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Result status after removing a container registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RemoveContainerRegistryStatus {
+    #[serde(alias = "notFound")]
     NotFound,
+    #[serde(alias = "inUse")]
     InUse,
+    #[serde(alias = "removed")]
     Removed,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other)]
+    Unknown,
 }
 
 /// Log forwarding transport type.
@@ -257,6 +333,10 @@ pub enum RemoveContainerRegistryStatus {
 pub enum LogForwardingType {
     SyslogUdp,
     SyslogTcp,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 /// Syslog message format.
@@ -264,6 +344,10 @@ pub enum LogForwardingType {
 pub enum SyslogFormat {
     SyslogRfc3164,
     SyslogRfc5424,
+    /// A value this client does not model yet (forward-compat; the raw
+    /// string is not preserved).
+    #[serde(other, skip_serializing)]
+    Unknown,
 }
 
 // ---------------------------------------------------------------------------
@@ -1532,6 +1616,52 @@ pub struct ListLogForwardingResponse {
 
 #[cfg(test)]
 mod tests {
+
+    /// Request-capable string enums: unknown strings parse to `Unknown`, but
+    /// `Unknown` must never serialise (it would emit a bogus value).
+    #[test]
+    fn unknown_string_enum_deserialises_but_refuses_to_serialise() {
+        assert_eq!(
+            serde_json::from_str::<RuntimeType>("\"definitely-not-a-value\"").unwrap(),
+            RuntimeType::Unknown
+        );
+        assert!(serde_json::to_string(&RuntimeType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<EndpointType>("\"definitely-not-a-value\"").unwrap(),
+            EndpointType::Unknown
+        );
+        assert!(serde_json::to_string(&EndpointType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<ImagePullPolicy>("\"definitely-not-a-value\"").unwrap(),
+            ImagePullPolicy::Unknown
+        );
+        assert!(serde_json::to_string(&ImagePullPolicy::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<Protocol>("\"definitely-not-a-value\"").unwrap(),
+            Protocol::Unknown
+        );
+        assert!(serde_json::to_string(&Protocol::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<AnycastIpProtocolVersion>("\"definitely-not-a-value\"").unwrap(),
+            AnycastIpProtocolVersion::Unknown
+        );
+        assert!(serde_json::to_string(&AnycastIpProtocolVersion::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<RegistryType>("\"definitely-not-a-value\"").unwrap(),
+            RegistryType::Unknown
+        );
+        assert!(serde_json::to_string(&RegistryType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<LogForwardingType>("\"definitely-not-a-value\"").unwrap(),
+            LogForwardingType::Unknown
+        );
+        assert!(serde_json::to_string(&LogForwardingType::Unknown).is_err());
+        assert_eq!(
+            serde_json::from_str::<SyslogFormat>("\"definitely-not-a-value\"").unwrap(),
+            SyslogFormat::Unknown
+        );
+        assert!(serde_json::to_string(&SyslogFormat::Unknown).is_err());
+    }
     #[test]
     fn container_endpoint_keeps_id() {
         let ep: ContainerEndpoint = serde_json::from_value(serde_json::json!({
@@ -1772,5 +1902,59 @@ mod tests {
             SyslogFormat::SyslogRfc5424
         );
         assert!("json".parse::<SyslogFormat>().is_err());
+    }
+
+    /// Every string-coded response enum must map an unrecognised value to
+    /// `Unknown` instead of failing the whole response (iter-87 decision).
+    #[test]
+    fn string_enums_tolerate_unknown_values() {
+        fn unknown<T: serde::de::DeserializeOwned + std::fmt::Debug + PartialEq>(expected: T) {
+            let got: T = serde_json::from_str("\"someFutureValue\"").unwrap();
+            assert_eq!(got, expected);
+        }
+        unknown(ApplicationStatus::Unknown);
+        unknown(RuntimeType::Unknown);
+        unknown(EndpointType::Unknown);
+        unknown(RegionProvisioningType::Unknown);
+        unknown(ImagePullPolicy::Unknown);
+        unknown(Protocol::Unknown);
+        unknown(AnycastIpProtocolVersion::Unknown);
+        unknown(Grade::Unknown);
+        unknown(DeploymentStatus::Unknown);
+        unknown(PodStatus::Unknown);
+        unknown(ContainerStatus::Unknown);
+        unknown(VolumeInstanceStatus::Unknown);
+        unknown(RegistryType::Unknown);
+        unknown(SavedContainerRegistryStatus::Unknown);
+        unknown(RemoveContainerRegistryStatus::Unknown);
+        unknown(LogForwardingType::Unknown);
+        unknown(SyslogFormat::Unknown);
+    }
+
+    #[test]
+    fn volume_instance_status_maintenance_deserializes() {
+        let got: VolumeInstanceStatus = serde_json::from_str("\"maintenance\"").unwrap();
+        assert_eq!(got, VolumeInstanceStatus::Maintenance);
+    }
+
+    /// Pins the registry-type casing: PascalCase on requests (unchanged,
+    /// unverified against the live API for camelCase), either casing on reads.
+    #[test]
+    fn registry_type_casing_is_pinned() {
+        assert_eq!(
+            serde_json::to_string(&RegistryType::DockerHub).unwrap(),
+            "\"DockerHub\""
+        );
+        for (raw, want) in [
+            ("DockerHub", RegistryType::DockerHub),
+            ("dockerHub", RegistryType::DockerHub),
+            ("gitHub", RegistryType::GitHub),
+            ("bunnyRegistry", RegistryType::BunnyRegistry),
+        ] {
+            let got: RegistryType = serde_json::from_str(&format!("\"{raw}\"")).unwrap();
+            assert_eq!(got, want, "{raw}");
+        }
+        let saved: SavedContainerRegistryStatus = serde_json::from_str("\"saved\"").unwrap();
+        assert_eq!(saved, SavedContainerRegistryStatus::Saved);
     }
 }

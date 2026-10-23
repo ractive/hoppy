@@ -1,0 +1,38 @@
+{
+  "summary": {
+    "totalPods": 1,
+    "totalContainers": 1,
+    "totalStorage": 10
+  },
+  "items": [
+    {
+      "name": "data",
+      "id": "vol-1",
+      "size": 10,
+      "totalUsage": 1,
+      "totalInstancesCount": 2,
+      "attachedInstancesCount": 1,
+      "containersCount": 1,
+      "volumeInstances": [
+        {
+          "id": "vi-1",
+          "attachedPods": ["pod-1"],
+          "attachedContainers": ["c-1"],
+          "region": "DE",
+          "status": "maintenance",
+          "size": 10,
+          "usage": 1
+        },
+        {
+          "id": "vi-2",
+          "region": "NY",
+          "status": "someFutureStatus",
+          "size": 10,
+          "usage": 0
+        }
+      ]
+    }
+  ],
+  "meta": { "totalItems": 1 },
+  "cursor": null
+}

@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **WAF operator labels were wrong and are now fixed.** Wire numbers are
+  unchanged, only the names. `--operator-type` (`shield waf add-rule` /
+  `update-rule`, `shield rate-limit create` / `update`) now takes the shield
+  spec names (case-insensitive) or numbers: `0 BEGINSWITH, 1 ENDSWITH,
+  2 CONTAINS, 3 CONTAINSWORD, 4 STRMATCH, 5 EQ, 6 GE, 7 GT, 8 LE, 9 LT,
+  12 WITHIN, 13 IPMATCH, 14 RX, 15 STREQ, 17 DETECTSQLI, 18 DETECTXSS`.
+  **Migration:** if you chose an operator by the old help text, re-check the
+  number: old `0 = Eq` was really BEGINSWITH, old `6 = Regex` was GE, old
+  `14 = PmFromFile` is RX, old `15 = IpMatch` is STREQ (IPMATCH is `13`), and
+  `17`/`18` are DETECTSQLI/DETECTXSS. Old names are not accepted as aliases
+  (`eq` now means `5`). When `shield waf update-rule` has to invent a
+  configuration for a rule that has none, it now defaults to EQ (5) instead
+  of 0.
+- `bunny-net-api` library: `WafRuleOperatorType` variants renamed to the spec
+  names (`BeginsWith`, `EndsWith`, `Contains`, `ContainsWord`, `StrMatch`,
+  `Eq`, `Ge`, `Gt`, `Le`, `Lt`, `Within`, `IpMatch`, `Rx`, `StrEq`,
+  `DetectSqli`, `DetectXss`); `DdosShieldSensitivity::Disabled` / `VeryHigh`
+  became `Off` / `Challenge`; `BotCategorizationGroup.category_action` and
+  `BotCategoryDetails.action` use the new `BotCategoryAction` (no `Ignore`);
+  `set_bot_category_action` takes `BotCategoryAction`;
+  `EdgeScriptExecutionPhase::OnRequest` / `OnResponse` became `Cache` /
+  `LoadBalancer` (+ `PreCache`); `StorageRegion` has `code` / `endpoint` /
+  `s3_endpoint` / ... instead of `id` / `url`; `DnsMonitoringStatus::Unknown`
+  is now `Undetermined`; `ShieldZoneRequest.d_do_s_execution_mode` is gone;
+  `cleanup_video_resolutions` returns `ResolutionsCleanupStatus`;
+  `WafRuleConfiguration`, `RateLimitRuleConfiguration` and
+  `WafChainedRuleCondition` gained `is_negated` / `is_regex_variable`.
+- Every integer enum in `bunny-net-api` is now open: it has an `Unknown(n)`
+  variant (so exhaustive `match`es need an extra arm), and
+  `core::serde_helpers::deserialize_repr_option` was removed. Unknown values
+  now round-trip instead of becoming `None`.
+- `hoppy shield zone` table: DDoS sensitivity `Disabled` / `VeryHigh` are now
+  shown as `Off` / `Challenge`. `storage-zone regions` columns are now Code,
+  Name, Endpoint, S3 Endpoint (JSON keys `Id` / `Url` no longer exist).
+  `stream video resolutions cleanup --format json` gains a `Data` key.
+- `pull-zone update --edge-script-execution-phase` accepts `cache`,
+  `load-balancer`, `pre-cache`; `on-request` / `on-response` still work as
+  hidden aliases for the same wire values 0 / 1.
+- `shield zone update --ddos-execution-mode` is deprecated and ignored (hidden,
+  prints a warning): the API no longer accepts it.
+- Known remaining Shield label mismatches (names only, wire numbers are
+  unchanged): `AccessListAction` 1/2 (Allow/Block) appear swapped versus the
+  spec, so an access-list action chosen by its label can apply the opposite
+  policy; `AccessListType`, `WafRuleActionType`, `RatelimitRuleActionType`,
+  `WafRuleSeverityType`, `ShieldPlanType`, `BotDetectionExecutionMode`,
+  `BotDetectionSensitivity`, `BrowserFingerprintAggression` and
+  `DDoSExecutionMode` also differ. Tracked in
+  `hoppy-knowledgebase/backlog/shield-enum-labels-disagree-with-spec.md`.
+
+### Added
+
+- Open enums: an unrecognised value from the API no longer fails a whole list
+  or get response. It is shown as `Unknown(n)` and sent back unchanged by
+  read-modify-write commands (`waf update-rule`, `rate-limit update`).
+- `--ddos-sensitivity 5` (ChallengeInteractive), `bot-categorization set-bot
+  --action 3` (Ignore), volume status `maintenance`, registry type
+  `bunnyRegistry` (read), edge-rule actions 35-37 (`use-load-balancer`,
+  `force-load-balancer-sticky-session-mode`, `strip-cookies-client-to-origin`).
+- `stream video resolutions cleanup` prints the cleanup plan (resolutions,
+  storage objects, playlist changes), which is the main `--dry-run` output.
+- WAF `isNegated` / `isRegexVariable` are read and written back by
+  `update-rule` instead of being dropped.
+- `specs/` refreshed to the 2026-10-23 bunny.net OpenAPI documents, plus a
+  `partner-portal.json` snapshot (no client yet).
+
 ### Changed
 
 - The macOS release binaries are signed with a Developer ID certificate

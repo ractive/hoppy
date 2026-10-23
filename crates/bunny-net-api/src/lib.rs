@@ -17,6 +17,9 @@
 //! | `storage` | Edge storage file operations |
 //! | `stream` | Video streaming |
 
+#[macro_use]
+mod macros;
+
 #[cfg(feature = "recording")]
 pub mod recording;
 
