@@ -279,10 +279,11 @@ pub async fn handle_apikey(
                         .map(|k| ApiKeyRow::from_key(k, reveal))
                         .collect();
                     output::print_data(&rows, format);
-                    if !reveal {
-                        output::hints::tip("re-run with --reveal to show full key values");
-                    }
                 }
+            }
+            // JSON output is redacted too, so this applies to every format.
+            if !reveal {
+                output::hints::tip("re-run with --reveal to show full key values");
             }
         }
     }
@@ -337,9 +338,10 @@ pub async fn handle_billing(
                     .map(|r| BillingRecordRow::from_record(r, reveal))
                     .collect();
                 output::print_data(&rows, format);
-                if !reveal {
-                    output::hints::tip("re-run with --reveal to show the raw payer value");
-                }
+            }
+            // JSON output is redacted too, so this applies to every format.
+            if !reveal {
+                output::hints::tip("re-run with --reveal to show the raw payer value");
             }
         }
         BillingAction::PaymentRequests => {
@@ -350,6 +352,8 @@ pub async fn handle_billing(
                 let rows: Vec<PaymentRequestRow> =
                     requests.iter().map(PaymentRequestRow::from).collect();
                 output::print_data(&rows, format);
+            }
+            if !requests.is_empty() {
                 output::hints::tip(&format!(
                     "download an invoice: {}",
                     crate::hint_cmds::billing_payment_request_pdf("<ID>")
@@ -450,6 +454,8 @@ pub async fn handle_country(
             } else {
                 let rows: Vec<CountryRow> = countries.iter().map(CountryRow::from).collect();
                 output::print_data(&rows, format);
+            }
+            if !countries.is_empty() {
                 output::hints::tip(&format!(
                     "use an ISO code with: {}",
                     crate::hint_cmds::pull_zone_update_blocked_countries("<id>")
@@ -493,12 +499,12 @@ pub async fn handle_search(
             })
             .collect();
         output::print_data(&rows, format);
-        if results.total > results.from + results.size {
-            output::hints::tip(&format!(
-                "more results available — re-run with --from {}",
-                results.from + results.size
-            ));
-        }
+    }
+    if results.total > results.from + results.size {
+        output::hints::tip(&format!(
+            "more results available — re-run with --from {}",
+            results.from + results.size
+        ));
     }
     Ok(())
 }
@@ -550,13 +556,13 @@ pub async fn handle_user(
                     .map(AuditLogRow::from)
                     .collect();
                 output::print_data(&rows, format);
-                if log.has_more_data
-                    && let Some(token) = &log.continuation_token
-                {
-                    output::hints::tip(&format!(
-                        "more entries — re-run with --continuation-token {token}"
-                    ));
-                }
+            }
+            if log.has_more_data
+                && let Some(token) = &log.continuation_token
+            {
+                output::hints::tip(&format!(
+                    "more entries — re-run with --continuation-token {token}"
+                ));
             }
         }
     }

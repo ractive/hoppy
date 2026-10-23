@@ -29,7 +29,7 @@ Available on every command (`global = true` in clap), not repeated per-subcomman
 | `-y`, `--yes` | Skip confirmation prompts |
 | `--dry-run` (iter-82) | Preview mutating (POST/PUT/PATCH/DELETE) requests — method, URL, redacted body — without sending them. Read-only (GET/HEAD) requests still execute. Implies `--yes`. A blocked composite command previews only the first mutating request, not any follow-ups. One documented exception: `stream video resolutions cleanup` drives its own server-side `?dryRun=true` preview instead of being blocked client-side. |
 | `--reveal` / `--reveal-env <KEY>` | Show secret field values instead of redacting them |
-| `--no-hints` | Suppress drill-down hints on stderr |
+| `--no-hints` | Suppress drill-down hints (stderr-only; printed in every format, JSON included) |
 | `--record <DIR>` | Record API responses as fixtures |
 | `--no-redact` | Disable PII redaction in `--record` fixtures |
 

@@ -55,8 +55,9 @@ depends on the command's category. The contract is:
 
 - `--no-hints` is a finer-grained flag that only suppresses hints
   without changing payload behaviour.
-- `--format json` implies `--no-hints` (machine output stays clean)
-  but does **not** change the `--quiet` payload contract.
+- Hints go to stderr only and are emitted in every format, `--format json`
+  included (iter-89; stdout stays pure). `--no-hints` / `--quiet` opt out;
+  `--format json` does **not** change the `--quiet` payload contract.
 - The `quiet` boolean is plumbed into command handlers that need to
   branch on it (currently `auth::handle` and `database::handle` for
   the predicate commands above; `storage::handle` and `stream::handle`
