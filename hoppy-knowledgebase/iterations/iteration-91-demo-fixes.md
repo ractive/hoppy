@@ -3,7 +3,7 @@ title: Iter-91 - statistics float crash, missing container zone, search coverage
 type: iteration
 date: 2026-10-27
 tags: [iteration, statistics, pull-zone, search, containers]
-status: in-progress
+status: completed
 branch: iter-91/demo-fixes
 ---
 
