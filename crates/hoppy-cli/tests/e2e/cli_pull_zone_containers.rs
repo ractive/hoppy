@@ -375,3 +375,80 @@ async fn list_without_storage_origins_does_not_look_up_storage_zones() {
     assert!(output.status.success());
     assert!(String::from_utf8_lossy(&output.stdout).contains("https://origin.example.com"));
 }
+
+/// A second zone on the same endpoint (not named by any endpoint `pullZoneId`)
+/// is found through the global search and verified by `MagicContainersAppId`.
+#[tokio::test]
+async fn list_includes_second_zone_of_same_app_found_via_search() {
+    const SECOND_ID: i64 = 6442623;
+    let server = MockServer::start().await;
+    mount_ordinary_list(&server).await;
+    // The app's id must match the zone fixture's MagicContainersAppId.
+    get(
+        &server,
+        "/apps",
+        r#"{"items":[{"id":"abc123","name":"study2go","status":"active"}],"meta":{"totalItems":1},"cursor":null}"#
+            .to_owned(),
+    )
+    .await;
+    get(
+        &server,
+        "/apps/abc123/endpoints",
+        format!(
+            r#"{{"items":[{{"id":"abc123-ep","displayName":"cdn","publicHost":"x.b-cdn.net","type":"cdn","isSslEnabled":true,"pullZoneId":"{MC_ZONE_ID}","portMappings":[]}}],"meta":{{"totalItems":1}},"cursor":null}}"#
+        ),
+    )
+    .await;
+    get(
+        &server,
+        &format!("/pullzone/{MC_ZONE_ID}"),
+        support::fixture("core/pullzone_get_magic_container.json"),
+    )
+    .await;
+    let mut second: serde_json::Value =
+        serde_json::from_str(&support::fixture("core/pullzone_get_magic_container.json")).unwrap();
+    second["Id"] = SECOND_ID.into();
+    second["Name"] = "study2go".into();
+    get(
+        &server,
+        &format!("/pullzone/{SECOND_ID}"),
+        second.to_string(),
+    )
+    .await;
+    // A look-alike zone of another app must be rejected.
+    let mut other: serde_json::Value = second.clone();
+    other["Id"] = 1.into();
+    other["Name"] = "study2go-plain".into();
+    other["MagicContainersAppId"] = serde_json::Value::Null;
+    get(&server, "/pullzone/1", other.to_string()).await;
+    get(
+        &server,
+        "/search",
+        format!(
+            r#"{{"Query":"study2go","Total":3,"From":0,"Size":100,"SearchResults":[{{"Type":"cdn","Id":{SECOND_ID},"Name":"study2go"}},{{"Type":"cdn","Id":{MC_ZONE_ID},"Name":"magic-container-auto-pz"}},{{"Type":"cdn","Id":1,"Name":"study2go-plain"}}]}}"#
+        ),
+    )
+    .await;
+
+    let output = cmd(&server)
+        .args(["--format", "json", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let items = json["Items"].as_array().unwrap();
+    let ids: Vec<i64> = items.iter().map(|i| i["Id"].as_i64().unwrap()).collect();
+    assert_eq!(items.len(), 4, "{ids:?}");
+    assert_eq!(ids.iter().filter(|i| **i == MC_ZONE_ID).count(), 1);
+    assert_eq!(ids.iter().filter(|i| **i == SECOND_ID).count(), 1);
+    assert!(!ids.contains(&1));
+    let second_item = items.iter().find(|i| i["Id"] == SECOND_ID).unwrap();
+    assert_eq!(second_item["ContainerApp"]["Name"], "study2go");
+
+    let output = cmd(&server)
+        .args(["--format", "table", "pull-zone", "list"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("6442623"), "{stdout}");
+}

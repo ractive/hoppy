@@ -46,6 +46,7 @@ pub fn hoppy_cmd() -> Command {
     cmd.env_remove("BUNNY_STORAGE_URL");
     cmd.env_remove("BUNNY_STREAM_URL");
     cmd.env_remove("BUNNY_CONTAINERS_URL");
+    cmd.env_remove("BUNNY_DATABASE_URL");
     cmd.env_remove("BUNNY_STORAGE_KEY");
     cmd.env_remove("BUNNY_STREAM_KEY");
     cmd.env_remove("BUNNY_LOGGING_URL");
@@ -62,6 +63,8 @@ pub fn hoppy_mock_cmd(api_key: &str, core_url: &str) -> Command {
     // containers API at the same mock server so tests never reach the network;
     // an unmocked `/apps` answers 404, which hoppy reports as a warning.
     cmd.env("BUNNY_CONTAINERS_URL", core_url);
+    // `search` also looks up databases; keep that off the network as well.
+    cmd.env("BUNNY_DATABASE_URL", core_url);
     cmd
 }
 

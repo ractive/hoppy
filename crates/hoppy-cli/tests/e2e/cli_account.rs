@@ -594,6 +594,154 @@ async fn search_forwards_query_and_renders_results() {
     assert!(stdout.contains("example-cdn"));
 }
 
+async fn get_json(server: &MockServer, url_path: &str, body: &str) {
+    Mock::given(method("GET"))
+        .and(path(url_path))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(body.to_owned(), "application/json"))
+        .mount(server)
+        .await;
+}
+
+/// Mocks for a container app "study2go" (endpoint zone 10, second zone 11) and a
+/// database "study2go-db"; `/search` returns zone 11 and a DNS zone.
+async fn mount_search_world(server: &MockServer) {
+    get_json(
+        server,
+        "/search",
+        r#"{"Query":"study2go","Total":2,"From":0,"Size":20,"SearchResults":[
+            {"Type":"dns","Id":5,"Name":"study2go.ch"},
+            {"Type":"cdn","Id":11,"Name":"study2go"}]}"#,
+    )
+    .await;
+    get_json(
+        server,
+        "/apps",
+        r#"{"items":[{"id":"app1","name":"Study2Go","status":"active"},{"id":"app2","name":"other","status":"active"}],"meta":{"totalItems":2},"cursor":null}"#,
+    )
+    .await;
+    get_json(
+        server,
+        "/apps/app1/endpoints",
+        r#"{"items":[{"id":"e","displayName":"cdn","publicHost":"x.b-cdn.net","type":"cdn","isSslEnabled":true,"pullZoneId":"10","portMappings":[]}],"meta":{"totalItems":1},"cursor":null}"#,
+    )
+    .await;
+    let mut zone: serde_json::Value =
+        serde_json::from_str(&support::fixture("core/pullzone_get_magic_container.json")).unwrap();
+    zone["MagicContainersAppId"] = "app1".into();
+    zone["Id"] = 10.into();
+    zone["Name"] = "mc-endpoint-zone".into();
+    get_json(server, "/pullzone/10", &zone.to_string()).await;
+    zone["Id"] = 11.into();
+    zone["Name"] = "study2go".into();
+    get_json(server, "/pullzone/11", &zone.to_string()).await;
+    get_json(
+        server,
+        "/v1/databases",
+        r#"{"databases":[{"name":"study2go-db","id":"db_1","url":"libsql://x","block_reads":false,"block_writes":false,"allow_attach":false,"group_id":"g","group_name":"EU","is_schema":false,"schema":null,"version":"1","size_max":"1","current_size":"1"},
+            {"name":"unrelated","id":"db_2","url":"libsql://y","block_reads":false,"block_writes":false,"allow_attach":false,"group_id":"g","group_name":"EU","is_schema":false,"schema":null,"version":"1","size_max":"1","current_size":"1"}]}"#,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn search_adds_containers_databases_and_app_zones() {
+    let server = MockServer::start().await;
+    mount_search_world(&server).await;
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "search", "study2go"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    // The /search envelope is unchanged.
+    assert_eq!(json["Total"], 2);
+    assert_eq!(json["SearchResults"].as_array().unwrap().len(), 2);
+    // Extras: container, zone 10 (zone 11 is already a server hit), db.
+    let extra: Vec<(String, String)> = json["ExtraResults"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["Type"].as_str().unwrap().to_owned(),
+                e["Id"].to_string().trim_matches('"').to_owned(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        extra,
+        vec![
+            ("container".to_owned(), "app1".to_owned()),
+            ("cdn".to_owned(), "10".to_owned()),
+            ("db".to_owned(), "db_1".to_owned()),
+        ]
+    );
+
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "table", "search", "study2go"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for needle in ["dns", "container", "db_1", "mc-endpoint-zone"] {
+        assert!(stdout.contains(needle), "missing {needle}: {stdout}");
+    }
+    assert!(!stdout.contains("unrelated"), "{stdout}");
+}
+
+#[tokio::test]
+async fn search_server_only_makes_a_single_request() {
+    let server = MockServer::start().await;
+    get_json(
+        &server,
+        "/search",
+        r#"{"Query":"study2go","Total":1,"From":0,"Size":20,"SearchResults":[{"Type":"dns","Id":5,"Name":"study2go.ch"}]}"#,
+    )
+    .await;
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "search", "--server-only", "study2go"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(json.get("ExtraResults").is_none());
+    let received = server.received_requests().await.unwrap();
+    assert_eq!(received.len(), 1, "{received:?}");
+}
+
+#[tokio::test]
+async fn search_client_side_failures_warn_without_failing() {
+    let server = MockServer::start().await;
+    get_json(
+        &server,
+        "/search",
+        r#"{"Query":"x","Total":1,"From":0,"Size":20,"SearchResults":[{"Type":"dns","Id":5,"Name":"x.ch"}]}"#,
+    )
+    .await;
+    // /apps and /v1/databases are unmocked (404).
+    let output = support::hoppy_mock_cmd("test-api-key", &server.uri())
+        .args(["--format", "json", "search", "x"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("warning: could not search container apps"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("warning: could not search databases"),
+        "{stderr}"
+    );
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["SearchResults"].as_array().unwrap().len(), 1);
+    assert!(json.get("ExtraResults").is_none());
+}
+
 // ---------------------------------------------------------------------------
 // user audit log
 // ---------------------------------------------------------------------------

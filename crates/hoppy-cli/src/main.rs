@@ -297,9 +297,15 @@ async fn run(cli: Cli) {
             )
             .await
         }
-        Commands::Search { query, from, size } => {
+        Commands::Search {
+            query,
+            server_only,
+            from,
+            size,
+        } => {
             commands::account::handle_search(
                 query,
+                *server_only,
                 *from,
                 *size,
                 cli.format,

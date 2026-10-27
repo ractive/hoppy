@@ -81,6 +81,16 @@ async fn account_statistics_table() {
         RE_CACHE_HIT_RATE.is_match(&stdout),
         "expected a percentage Cache Hit Rate in table output"
     );
+    // CacheHitRate is already a percentage (8.77..), not a 0..1 ratio.
+    assert!(
+        stdout.contains("8.77%"),
+        "expected Cache Hit Rate shown as-is: {stdout}"
+    );
+    // Fractional average (101.9..) is rounded to whole milliseconds.
+    assert!(
+        stdout.contains("102 ms"),
+        "expected rounded Avg Origin Response Time: {stdout}"
+    );
 }
 
 // ---------------------------------------------------------------------------

@@ -7,6 +7,14 @@
 //! `GET /apps` -> `GET /apps/{id}/endpoints` (each endpoint carries its
 //! `pullZoneId`) -> `GET /pullzone/{id}`.
 //!
+//! An endpoint names only one pull zone, but an app can own more (e.g. a
+//! second zone that carries the production hostnames). No API links an app to
+//! those, so they are found through the global search, which indexes zone names
+//! and hostnames: each app contributes a few search terms (its name, its custom
+//! display address), the `cdn` hits are fetched, and a hit is kept only if its
+//! `MagicContainersAppId` names one of the apps. See
+//! `research/pull-zone-list-magic-containers-2026-10-23.md`.
+//!
 //! The merge/dedupe logic is pure and unit-tested; the I/O is bounded by
 //! [`CONCURRENCY`].
 
@@ -15,7 +23,7 @@ use crate::commands::container::parse_pull_zone_id;
 use anyhow::{Context, Result};
 use bunny_net_api::containers::{AppListItem, ContainersClient, EndpointListItem};
 use bunny_net_api::core::CoreClient;
-use bunny_net_api::core::types::PullZone;
+use bunny_net_api::core::types::{PullZone, SearchResults};
 use futures_util::{StreamExt, TryStreamExt, stream};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -24,6 +32,14 @@ use std::collections::{HashMap, HashSet};
 const CONCURRENCY: usize = 8;
 /// Page size when walking `GET /apps`.
 const APP_PAGE_SIZE: i32 = 100;
+/// In-flight `GET /search` requests. The search endpoint rate-limits (HTTP 429)
+/// far sooner than the others, so the searches run one at a time and a 429 is
+/// retried with a short back-off.
+const SEARCH_CONCURRENCY: usize = 1;
+/// Attempts per search (first try plus retries on HTTP 429).
+const SEARCH_ATTEMPTS: u64 = 4;
+/// Page size for the per-app global searches.
+const SEARCH_PAGE_SIZE: i32 = 100;
 
 /// The container app that owns a pull zone.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -60,7 +76,7 @@ pub struct ZoneRef {
 
 /// Extract the distinct pull zone ids referenced by the endpoints of each app.
 /// The first app to reference an id wins; ids of `0`/empty are ignored.
-pub fn zone_refs(apps: &[(AppListItem, Vec<EndpointListItem>)]) -> Vec<ZoneRef> {
+pub fn zone_refs<'a>(apps: impl IntoIterator<Item = &'a AppWithEndpoints>) -> Vec<ZoneRef> {
     let mut seen = HashSet::new();
     let mut out = Vec::new();
     for (app, endpoints) in apps {
@@ -127,9 +143,18 @@ pub fn merge(ordinary: Vec<PullZone>, found: Discovered, search: Option<&str>) -
     out
 }
 
-/// Walk `GET /apps` and `GET /apps/{id}/endpoints` and return the referenced
-/// pull zone ids. Uses at most [`CONCURRENCY`] concurrent endpoint requests.
-pub async fn discover_refs(containers: &ContainersClient) -> Result<Vec<ZoneRef>> {
+/// A container app together with its endpoints.
+pub type AppWithEndpoints = (AppListItem, Vec<EndpointListItem>);
+
+/// Walk `GET /apps` and `GET /apps/{id}/endpoints`. Uses at most
+/// [`CONCURRENCY`] concurrent endpoint requests.
+pub async fn walk_apps(containers: &ContainersClient) -> Result<Vec<AppWithEndpoints>> {
+    let apps = list_apps(containers).await?;
+    with_endpoints(containers, apps).await
+}
+
+/// Walk the cursor-paged `GET /apps`.
+pub async fn list_apps(containers: &ContainersClient) -> Result<Vec<AppListItem>> {
     let mut apps: Vec<AppListItem> = Vec::new();
     let mut cursor: Option<String> = None;
     loop {
@@ -145,8 +170,15 @@ pub async fn discover_refs(containers: &ContainersClient) -> Result<Vec<ZoneRef>
             _ => break,
         }
     }
+    Ok(apps)
+}
 
-    let with_endpoints: Vec<(AppListItem, Vec<EndpointListItem>)> = stream::iter(apps)
+/// Attach the endpoints of each app (at most [`CONCURRENCY`] requests in flight).
+pub async fn with_endpoints(
+    containers: &ContainersClient,
+    apps: Vec<AppListItem>,
+) -> Result<Vec<AppWithEndpoints>> {
+    stream::iter(apps)
         .map(|app| async move {
             let endpoints = containers
                 .list_endpoints(&app.id)
@@ -156,8 +188,27 @@ pub async fn discover_refs(containers: &ContainersClient) -> Result<Vec<ZoneRef>
         })
         .buffered(CONCURRENCY)
         .try_collect()
-        .await?;
-    Ok(zone_refs(&with_endpoints))
+        .await
+}
+
+/// Search terms that can surface the pull zones of `app` in the global search:
+/// its name and, when it is not a plain `*.b-cdn.net` host, its display
+/// address. Lower-cased, de-duplicated, empty terms dropped.
+pub fn search_terms(app: &AppListItem) -> Vec<String> {
+    let mut terms: Vec<String> = Vec::new();
+    let mut push = |s: &str| {
+        let s = s.trim().to_lowercase();
+        if !s.is_empty() && !terms.contains(&s) {
+            terms.push(s);
+        }
+    };
+    push(&app.name);
+    if let Some(d) = &app.display_endpoint
+        && !d.address.to_lowercase().ends_with(".b-cdn.net")
+    {
+        push(&d.address);
+    }
+    terms
 }
 
 /// Fetch the referenced zones (skipping ids in `skip`). Zones that cannot be
@@ -187,6 +238,133 @@ pub async fn fetch_zones(core: &CoreClient, refs: Vec<ZoneRef>, skip: &HashSet<i
     Discovered { zones, known_apps }
 }
 
+/// `GET /search` with a linear back-off retry on HTTP 429.
+async fn search_with_retry(core: &CoreClient, term: &str) -> Result<SearchResults> {
+    let mut attempt = 1;
+    loop {
+        match core.search(term, None, Some(SEARCH_PAGE_SIZE)).await {
+            Err(e) if attempt < SEARCH_ATTEMPTS && format!("{e:#}").contains("HTTP 429") => {
+                tokio::time::sleep(std::time::Duration::from_millis(1000 * attempt)).await;
+                attempt += 1;
+            }
+            other => return other,
+        }
+    }
+}
+
+/// Pull zone ids of type `cdn` returned by the global search for the terms of
+/// `apps`. A failing search is reported on stderr and skipped.
+async fn search_candidates(core: &CoreClient, apps: &[&AppListItem]) -> Vec<i64> {
+    let mut terms: Vec<String> = Vec::new();
+    for app in apps {
+        for term in search_terms(app) {
+            if !terms.contains(&term) {
+                terms.push(term);
+            }
+        }
+    }
+    let hits: Vec<Vec<i64>> = stream::iter(terms)
+        .map(|term| async move {
+            match search_with_retry(core, &term).await {
+                Ok(res) => res
+                    .search_results
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|r| {
+                        r.result_type
+                            .as_deref()
+                            .is_some_and(|t| t.eq_ignore_ascii_case("cdn"))
+                    })
+                    .map(|r| r.id)
+                    .collect(),
+                Err(e) => {
+                    eprintln!("warning: could not search for pull zones of '{term}': {e:#}");
+                    Vec::new()
+                }
+            }
+        })
+        .buffered(SEARCH_CONCURRENCY)
+        .collect()
+        .await;
+    let mut seen = HashSet::new();
+    hits.into_iter()
+        .flatten()
+        .filter(|id| seen.insert(*id))
+        .collect()
+}
+
+/// Fetch search candidates and keep those that belong to one of `apps` (by
+/// `MagicContainersAppId`).
+async fn fetch_verified(
+    core: &CoreClient,
+    ids: Vec<i64>,
+    apps: &HashMap<&str, AppRef>,
+) -> Vec<(PullZone, AppRef)> {
+    stream::iter(ids)
+        .map(|id| async move {
+            match core.get_pull_zone(id).await {
+                Ok(zone) => {
+                    let app = zone
+                        .magic_containers_app_id
+                        .as_deref()
+                        .and_then(|a| apps.get(a))?
+                        .clone();
+                    Some((zone, app))
+                }
+                Err(e) => {
+                    eprintln!("warning: could not fetch pull zone {id}: {e:#}");
+                    None
+                }
+            }
+        })
+        .buffered(CONCURRENCY)
+        .filter_map(|x| async move { x })
+        .collect()
+        .await
+}
+
+/// Discover the pull zones of the given apps (`only`: app ids, `None` = all).
+/// Zones named by an endpoint are taken directly; further zones are found via
+/// the global search and verified against `MagicContainersAppId`. Ids in
+/// `skip` (already listed) are not fetched again.
+pub async fn zones_for_apps(
+    core: &CoreClient,
+    walk: &[AppWithEndpoints],
+    only: Option<&HashSet<String>>,
+    skip: &HashSet<i64>,
+) -> Discovered {
+    let selected: Vec<&AppWithEndpoints> = walk
+        .iter()
+        .filter(|(a, _)| only.is_none_or(|o| o.contains(&a.id)))
+        .collect();
+    let refs = zone_refs(selected.iter().copied());
+    let by_id: HashMap<&str, AppRef> = selected
+        .iter()
+        .map(|(a, _)| {
+            (
+                a.id.as_str(),
+                AppRef {
+                    id: a.id.clone(),
+                    name: a.name.clone(),
+                },
+            )
+        })
+        .collect();
+    let apps: Vec<&AppListItem> = selected.iter().map(|(a, _)| a).collect();
+
+    let ref_ids: HashSet<i64> = refs.iter().map(|r| r.pull_zone_id).collect();
+    let mut found = fetch_zones(core, refs, skip).await;
+    let candidates: Vec<i64> = search_candidates(core, &apps)
+        .await
+        .into_iter()
+        .filter(|id| !ref_ids.contains(id) && !skip.contains(id))
+        .collect();
+    found
+        .zones
+        .extend(fetch_verified(core, candidates, &by_id).await);
+    found
+}
+
 /// Best-effort discovery of the container-owned pull zones. Failures (no
 /// access to the containers API, network errors) are reported on stderr and
 /// yield no zones, so `pull-zone list` keeps working.
@@ -195,9 +373,9 @@ pub async fn discover_zones(
     opts: &auth::ClientOpts<'_>,
     skip: &HashSet<i64>,
 ) -> Discovered {
-    let refs = match auth::containers_client_with_reveal(opts) {
-        Ok(containers) => match discover_refs(&containers).await {
-            Ok(refs) => refs,
+    let walk = match auth::containers_client_with_reveal(opts) {
+        Ok(containers) => match walk_apps(&containers).await {
+            Ok(walk) => walk,
             Err(e) => {
                 eprintln!(
                     "warning: could not look up Magic Containers pull zones ({e:#}); \
@@ -211,7 +389,7 @@ pub async fn discover_zones(
             return Discovered::default();
         }
     };
-    fetch_zones(core, refs, skip).await
+    zones_for_apps(core, &walk, None, skip).await
 }
 
 #[cfg(test)]
@@ -282,6 +460,27 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn search_terms_use_name_and_custom_address_once() {
+        let mut a = app("a1", "Study2Go");
+        assert_eq!(search_terms(&a), vec!["study2go"]);
+        a.display_endpoint = serde_json::from_value(serde_json::json!({
+            "id": "e", "address": "mc-x.b-cdn.net", "type": "cdn"
+        }))
+        .expect("DisplayEndpoint deserialises");
+        assert_eq!(search_terms(&a), vec!["study2go"]);
+        a.display_endpoint = serde_json::from_value(serde_json::json!({
+            "id": "e", "address": "Study2Go", "type": "cdn"
+        }))
+        .expect("DisplayEndpoint deserialises");
+        assert_eq!(search_terms(&a), vec!["study2go"]);
+        a.display_endpoint = serde_json::from_value(serde_json::json!({
+            "id": "e", "address": "www.study2go.ch", "type": "cdn"
+        }))
+        .expect("DisplayEndpoint deserialises");
+        assert_eq!(search_terms(&a), vec!["study2go", "www.study2go.ch"]);
     }
 
     #[test]

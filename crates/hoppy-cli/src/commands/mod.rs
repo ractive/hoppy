@@ -8,6 +8,7 @@ pub mod pull_zone;
 pub mod pull_zone_containers;
 pub mod purge;
 pub mod script;
+pub mod search_extra;
 pub mod shield;
 pub mod statistics;
 pub mod storage;

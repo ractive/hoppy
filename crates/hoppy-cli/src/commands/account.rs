@@ -6,6 +6,7 @@ use crate::auth;
 use crate::cli::{
     ApikeyAction, BillingAction, CountryAction, OutputFormat, RegionAction, UserAction,
 };
+use crate::commands::search_extra::{ExtraResult, extra_results};
 use crate::output;
 use crate::redact::placeholder;
 use anyhow::{Context, Result};
@@ -196,7 +197,7 @@ struct SearchResultRow {
     #[tabled(rename = "Type")]
     result_type: String,
     #[tabled(rename = "ID")]
-    id: i64,
+    id: String,
     #[tabled(rename = "Name")]
     name: String,
 }
@@ -469,6 +470,7 @@ pub async fn handle_country(
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_search(
     query: &str,
+    server_only: bool,
     from: Option<i32>,
     size: Option<i32>,
     format: OutputFormat,
@@ -477,26 +479,39 @@ pub async fn handle_search(
     reveal: bool,
     record: Option<&str>,
 ) -> Result<()> {
-    let client = auth::core_client(&auth::ClientOpts {
+    let opts = auth::ClientOpts {
         debug,
         dry_run,
         record,
         reveal_secrets: reveal,
-    })?;
+    };
+    let client = auth::core_client(&opts)?;
     let results: SearchResults = client.search(query, from, size).await?;
-    if let OutputFormat::Json = format {
-        print_json(&results)?;
+    let server_hits = results.search_results.as_deref().unwrap_or_default();
+    // Extras are not paginated: only add them on the first page.
+    let extra = if server_only || from.is_some_and(|f| f > 0) {
+        Vec::new()
     } else {
-        let rows: Vec<SearchResultRow> = results
-            .search_results
-            .as_deref()
-            .unwrap_or_default()
+        extra_results(&client, &opts, query, server_hits).await
+    };
+    if let OutputFormat::Json = format {
+        print_json(&SearchOutput {
+            results: &results,
+            extra: &extra,
+        })?;
+    } else {
+        let rows: Vec<SearchResultRow> = server_hits
             .iter()
             .map(|item| SearchResultRow {
                 result_type: item.result_type.clone().unwrap_or_default(),
-                id: item.id,
+                id: item.id.to_string(),
                 name: item.name.clone().unwrap_or_default(),
             })
+            .chain(extra.iter().map(|e| SearchResultRow {
+                result_type: e.r#type.clone(),
+                id: e.id.to_string(),
+                name: e.name.clone(),
+            }))
             .collect();
         output::print_data(&rows, format);
     }
@@ -507,6 +522,16 @@ pub async fn handle_search(
         ));
     }
     Ok(())
+}
+
+/// JSON envelope of `search`: the unchanged `/search` response plus an
+/// `ExtraResults` array (omitted when empty) for the client-side matches.
+#[derive(serde::Serialize)]
+struct SearchOutput<'a> {
+    #[serde(flatten)]
+    results: &'a SearchResults,
+    #[serde(rename = "ExtraResults", skip_serializing_if = "<[_]>::is_empty")]
+    extra: &'a [ExtraResult],
 }
 
 #[allow(clippy::too_many_arguments)]

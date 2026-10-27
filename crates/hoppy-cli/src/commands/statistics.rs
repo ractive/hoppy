@@ -82,7 +82,7 @@ pub async fn handle(
             },
             AccountStatsRow {
                 metric: "Avg Origin Response Time".to_string(),
-                value: format!("{} ms", stats.average_origin_response_time),
+                value: format!("{:.0} ms", stats.average_origin_response_time),
             },
             AccountStatsRow {
                 metric: "Total Requests Served".to_string(),
@@ -90,7 +90,7 @@ pub async fn handle(
             },
             AccountStatsRow {
                 metric: "Cache Hit Rate".to_string(),
-                value: format!("{:.2}%", stats.cache_hit_rate * 100.0),
+                value: format!("{:.2}%", stats.cache_hit_rate),
             },
         ];
         crate::output::print_data(&rows, format);
