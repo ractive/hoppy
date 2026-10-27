@@ -23,7 +23,7 @@ use crate::commands::container::parse_pull_zone_id;
 use anyhow::{Context, Result};
 use bunny_net_api::containers::{AppListItem, ContainersClient, EndpointListItem};
 use bunny_net_api::core::CoreClient;
-use bunny_net_api::core::types::{PullZone, SearchResults};
+use bunny_net_api::core::types::{ApiError, PullZone, SearchResults};
 use futures_util::{StreamExt, TryStreamExt, stream};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -32,10 +32,9 @@ use std::collections::{HashMap, HashSet};
 const CONCURRENCY: usize = 8;
 /// Page size when walking `GET /apps`.
 const APP_PAGE_SIZE: i32 = 100;
-/// In-flight `GET /search` requests. The search endpoint rate-limits (HTTP 429)
-/// far sooner than the others, so the searches run one at a time and a 429 is
-/// retried with a short back-off.
-const SEARCH_CONCURRENCY: usize = 1;
+// `GET /search` rate-limits (HTTP 429) far sooner than the other endpoints, so
+// the searches run strictly one at a time and a 429 is retried with a short
+// back-off.
 /// Attempts per search (first try plus retries on HTTP 429).
 const SEARCH_ATTEMPTS: u64 = 4;
 /// Page size for the per-app global searches.
@@ -238,13 +237,44 @@ pub async fn fetch_zones(core: &CoreClient, refs: Vec<ZoneRef>, skip: &HashSet<i
     Discovered { zones, known_apps }
 }
 
+/// Environment variable overriding the base back-off (milliseconds) between
+/// retries of a rate-limited search. Exists so e2e tests do not sleep for
+/// seconds; not meant for users.
+const SEARCH_BACKOFF_ENV: &str = "HOPPY_SEARCH_BACKOFF_MS";
+/// Default base back-off between retries of a rate-limited search.
+const SEARCH_BACKOFF_MS: u64 = 1000;
+
+fn search_backoff_ms() -> u64 {
+    std::env::var(SEARCH_BACKOFF_ENV)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(SEARCH_BACKOFF_MS)
+}
+
+/// Whether `e` is an HTTP 429. JSON error bodies surface as a typed
+/// [`ApiError`] (possibly wrapped in contexts); other bodies as an
+/// `HTTP 429 ...` message.
+fn is_rate_limited(e: &anyhow::Error) -> bool {
+    e.chain().any(|c| {
+        c.downcast_ref::<ApiError>()
+            .is_some_and(|a| a.status_code == 429)
+    }) || format!("{e:#}").contains("HTTP 429")
+}
+
+/// Whether a `/search` hit type denotes a pull zone. The live API reports
+/// `cdn`; recorded fixtures use `PullZone`.
+pub fn is_pull_zone_type(t: &str) -> bool {
+    t.eq_ignore_ascii_case("cdn") || t.eq_ignore_ascii_case("pullzone")
+}
+
 /// `GET /search` with a linear back-off retry on HTTP 429.
 async fn search_with_retry(core: &CoreClient, term: &str) -> Result<SearchResults> {
+    let base = search_backoff_ms();
     let mut attempt = 1;
     loop {
         match core.search(term, None, Some(SEARCH_PAGE_SIZE)).await {
-            Err(e) if attempt < SEARCH_ATTEMPTS && format!("{e:#}").contains("HTTP 429") => {
-                tokio::time::sleep(std::time::Duration::from_millis(1000 * attempt)).await;
+            Err(e) if attempt < SEARCH_ATTEMPTS && is_rate_limited(&e) => {
+                tokio::time::sleep(std::time::Duration::from_millis(base * attempt)).await;
                 attempt += 1;
             }
             other => return other,
@@ -253,7 +283,9 @@ async fn search_with_retry(core: &CoreClient, term: &str) -> Result<SearchResult
 }
 
 /// Pull zone ids of type `cdn` returned by the global search for the terms of
-/// `apps`. A failing search is reported on stderr and skipped.
+/// `apps`. A failing search is reported on stderr and skipped; once a search
+/// stays rate-limited after its retries, the remaining searches are skipped
+/// (one warning) and the ids found so far are returned.
 async fn search_candidates(core: &CoreClient, apps: &[&AppListItem]) -> Vec<i64> {
     let mut terms: Vec<String> = Vec::new();
     for app in apps {
@@ -263,34 +295,29 @@ async fn search_candidates(core: &CoreClient, apps: &[&AppListItem]) -> Vec<i64>
             }
         }
     }
-    let hits: Vec<Vec<i64>> = stream::iter(terms)
-        .map(|term| async move {
-            match search_with_retry(core, &term).await {
-                Ok(res) => res
-                    .search_results
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter(|r| {
-                        r.result_type
-                            .as_deref()
-                            .is_some_and(|t| t.eq_ignore_ascii_case("cdn"))
-                    })
-                    .map(|r| r.id)
-                    .collect(),
-                Err(e) => {
-                    eprintln!("warning: could not search for pull zones of '{term}': {e:#}");
-                    Vec::new()
+    let mut seen = HashSet::new();
+    let mut ids = Vec::new();
+    for term in terms {
+        match search_with_retry(core, &term).await {
+            Ok(res) => {
+                for r in res.search_results.unwrap_or_default() {
+                    if r.result_type.as_deref().is_some_and(is_pull_zone_type) && seen.insert(r.id)
+                    {
+                        ids.push(r.id);
+                    }
                 }
             }
-        })
-        .buffered(SEARCH_CONCURRENCY)
-        .collect()
-        .await;
-    let mut seen = HashSet::new();
-    hits.into_iter()
-        .flatten()
-        .filter(|id| seen.insert(*id))
-        .collect()
+            Err(e) if is_rate_limited(&e) => {
+                eprintln!(
+                    "warning: the search API is rate-limiting requests; \
+                     container pull zones may be incomplete"
+                );
+                break;
+            }
+            Err(e) => eprintln!("warning: could not search for pull zones of '{term}': {e:#}"),
+        }
+    }
+    ids
 }
 
 /// Fetch search candidates and keep those that belong to one of `apps` (by
@@ -323,20 +350,16 @@ async fn fetch_verified(
         .await
 }
 
-/// Discover the pull zones of the given apps (`only`: app ids, `None` = all).
+/// Discover the pull zones of the given apps.
 /// Zones named by an endpoint are taken directly; further zones are found via
 /// the global search and verified against `MagicContainersAppId`. Ids in
 /// `skip` (already listed) are not fetched again.
 pub async fn zones_for_apps(
     core: &CoreClient,
     walk: &[AppWithEndpoints],
-    only: Option<&HashSet<String>>,
     skip: &HashSet<i64>,
 ) -> Discovered {
-    let selected: Vec<&AppWithEndpoints> = walk
-        .iter()
-        .filter(|(a, _)| only.is_none_or(|o| o.contains(&a.id)))
-        .collect();
+    let selected: Vec<&AppWithEndpoints> = walk.iter().collect();
     let refs = zone_refs(selected.iter().copied());
     let by_id: HashMap<&str, AppRef> = selected
         .iter()
@@ -389,7 +412,7 @@ pub async fn discover_zones(
             return Discovered::default();
         }
     };
-    zones_for_apps(core, &walk, None, skip).await
+    zones_for_apps(core, &walk, skip).await
 }
 
 #[cfg(test)]
@@ -429,6 +452,42 @@ mod tests {
             id: id.into(),
             name: name.into(),
         }
+    }
+
+    #[test]
+    fn rate_limit_detected_from_typed_api_error_even_with_context() {
+        let typed = anyhow::Error::new(ApiError {
+            message: "slow down".into(),
+            error_key: "rate".into(),
+            status_code: 429,
+        });
+        assert!(is_rate_limited(&typed));
+        assert!(is_rate_limited(&typed.context("searching")));
+        let other = anyhow::Error::new(ApiError {
+            message: "nope".into(),
+            error_key: "x".into(),
+            status_code: 500,
+        });
+        assert!(!is_rate_limited(&other));
+    }
+
+    #[test]
+    fn rate_limit_detected_from_plain_http_message() {
+        assert!(is_rate_limited(&anyhow::anyhow!(
+            "HTTP 429 Too Many Requests: slow"
+        )));
+        assert!(!is_rate_limited(&anyhow::anyhow!(
+            "HTTP 500 Internal Server Error"
+        )));
+    }
+
+    #[test]
+    fn pull_zone_type_accepts_cdn_and_pullzone_case_insensitively() {
+        assert!(is_pull_zone_type("cdn"));
+        assert!(is_pull_zone_type("CDN"));
+        assert!(is_pull_zone_type("PullZone"));
+        assert!(!is_pull_zone_type("DnsZone"));
+        assert!(!is_pull_zone_type("StorageZone"));
     }
 
     #[test]

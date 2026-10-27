@@ -6,7 +6,7 @@
 //! added as `cdn` results (see [`super::pull_zone_containers`]). Every lookup is
 //! best effort: a failure is a warning on stderr, never an error.
 
-use super::pull_zone_containers::{list_apps, with_endpoints, zones_for_apps};
+use super::pull_zone_containers::{is_pull_zone_type, list_apps, with_endpoints, zones_for_apps};
 use crate::auth::{self, ClientOpts};
 use bunny_net_api::containers::AppListItem;
 use bunny_net_api::core::CoreClient;
@@ -97,9 +97,7 @@ pub fn dedupe(extra: Vec<ExtraResult>, server: &[SearchResultItem]) -> Vec<Extra
 }
 
 fn is_cdn(item: &SearchResultItem) -> bool {
-    item.result_type
-        .as_deref()
-        .is_some_and(|t| t.eq_ignore_ascii_case("cdn"))
+    item.result_type.as_deref().is_some_and(is_pull_zone_type)
 }
 
 async fn container_results(
@@ -130,7 +128,7 @@ async fn container_results(
     match with_endpoints(&containers, matched).await {
         Ok(walk) => {
             let skip: HashSet<i64> = server.iter().filter(|s| is_cdn(s)).map(|s| s.id).collect();
-            let found = zones_for_apps(core, &walk, None, &skip).await;
+            let found = zones_for_apps(core, &walk, &skip).await;
             out.extend(found.zones.into_iter().map(|(zone, _)| ExtraResult {
                 r#type: "cdn".into(),
                 id: ExtraId::Num(zone.id),
@@ -195,6 +193,13 @@ mod tests {
             id,
             name: Some("x".into()),
         }
+    }
+
+    #[test]
+    fn is_cdn_accepts_live_and_fixture_type_names() {
+        assert!(is_cdn(&hit("cdn", 1)));
+        assert!(is_cdn(&hit("PullZone", 1)));
+        assert!(!is_cdn(&hit("DnsZone", 1)));
     }
 
     #[test]

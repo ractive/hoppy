@@ -4644,22 +4644,22 @@ pub struct AccountStatistics {
     #[serde(default)]
     pub cache_hit_rate: f64,
     pub origin_response_time_chart: Option<BTreeMap<String, f64>>,
-    pub bandwidth_used_chart: Option<BTreeMap<String, f64>>,
-    pub bandwidth_cached_chart: Option<BTreeMap<String, f64>>,
+    pub bandwidth_used_chart: Option<BTreeMap<String, i64>>,
+    pub bandwidth_cached_chart: Option<BTreeMap<String, i64>>,
     pub cache_hit_rate_chart: Option<BTreeMap<String, f64>>,
-    pub requests_served_chart: Option<BTreeMap<String, f64>>,
-    pub pull_requests_pulled_chart: Option<BTreeMap<String, f64>>,
-    pub origin_shield_bandwidth_used_chart: Option<BTreeMap<String, f64>>,
-    pub origin_shield_internal_bandwidth_used_chart: Option<BTreeMap<String, f64>>,
-    pub origin_traffic_chart: Option<BTreeMap<String, f64>>,
+    pub requests_served_chart: Option<BTreeMap<String, i64>>,
+    pub pull_requests_pulled_chart: Option<BTreeMap<String, i64>>,
+    pub origin_shield_bandwidth_used_chart: Option<BTreeMap<String, i64>>,
+    pub origin_shield_internal_bandwidth_used_chart: Option<BTreeMap<String, i64>>,
+    pub origin_traffic_chart: Option<BTreeMap<String, i64>>,
     pub user_balance_history_chart: Option<BTreeMap<String, f64>>,
     pub geo_traffic_distribution: Option<BTreeMap<String, i64>>,
     #[serde(rename = "Error3xxChart")]
-    pub error3xx_chart: Option<BTreeMap<String, f64>>,
+    pub error3xx_chart: Option<BTreeMap<String, i64>>,
     #[serde(rename = "Error4xxChart")]
-    pub error4xx_chart: Option<BTreeMap<String, f64>>,
+    pub error4xx_chart: Option<BTreeMap<String, i64>>,
     #[serde(rename = "Error5xxChart")]
-    pub error5xx_chart: Option<BTreeMap<String, f64>>,
+    pub error5xx_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// Storage Zone statistics returned by `GET /storagezone/{id}/statistics`.
@@ -4676,9 +4676,9 @@ pub struct StorageZoneStatistics {
 pub struct DnsZoneStatistics {
     #[serde(default)]
     pub total_queries_served: i64,
-    pub queries_served_chart: Option<BTreeMap<String, f64>>,
-    pub normal_queries_served_chart: Option<BTreeMap<String, f64>>,
-    pub smart_queries_served_chart: Option<BTreeMap<String, f64>>,
+    pub queries_served_chart: Option<BTreeMap<String, i64>>,
+    pub normal_queries_served_chart: Option<BTreeMap<String, i64>>,
+    pub smart_queries_served_chart: Option<BTreeMap<String, i64>>,
     pub queries_by_type_chart: Option<BTreeMap<String, i64>>,
 }
 
@@ -4730,7 +4730,7 @@ pub struct SafeHopStatistics {
 pub struct VideoLibraryDrmStatistics {
     #[serde(default)]
     pub total_licenses_issued: i64,
-    pub licenses_issued_chart: Option<BTreeMap<String, f64>>,
+    pub licenses_issued_chart: Option<BTreeMap<String, i64>>,
 }
 
 /// Video Library transcribing statistics returned by
@@ -4740,7 +4740,7 @@ pub struct VideoLibraryDrmStatistics {
 pub struct VideoLibraryTranscribingStatistics {
     #[serde(default)]
     pub total_transcription_seconds: i64,
-    pub transcription_seconds_chart: Option<BTreeMap<String, f64>>,
+    pub transcription_seconds_chart: Option<BTreeMap<String, i64>>,
 }
 
 // ---------------------------------------------------------------------------
