@@ -694,9 +694,21 @@ pub enum Commands {
     },
 
     /// Global cross-resource search
+    ///
+    /// `GET /search` only indexes DNS, pull and storage zones by name. By default
+    /// hoppy also matches container app names and database names (case-insensitive
+    /// substring) and adds the pull zones of matched apps. In JSON these extras
+    /// are appended as an `ExtraResults` array next to the unchanged `/search`
+    /// envelope (omitted when empty); `Id` is a string for `container` and `db`.
+    /// Extras are only added on the first page (no `--from`). Use `--server-only`
+    /// for the plain `/search` response.
     Search {
-        /// The text to search for across pull zones, storage zones, DNS zones, etc.
+        /// The text to search for across pull zones, storage zones, DNS zones,
+        /// container apps, databases, etc.
         query: String,
+        /// Only query the server-side `/search` (skip container app and database lookups)
+        #[arg(long)]
+        server_only: bool,
         /// Result offset (skip this many matches)
         #[arg(long)]
         from: Option<i32>,

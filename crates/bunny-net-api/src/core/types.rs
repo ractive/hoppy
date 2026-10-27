@@ -4638,12 +4638,12 @@ pub struct AccountStatistics {
     #[serde(default)]
     pub total_origin_traffic: i64,
     #[serde(default)]
-    pub average_origin_response_time: i64,
+    pub average_origin_response_time: f64,
     #[serde(default)]
     pub total_requests_served: i64,
     #[serde(default)]
     pub cache_hit_rate: f64,
-    pub origin_response_time_chart: Option<BTreeMap<String, i64>>,
+    pub origin_response_time_chart: Option<BTreeMap<String, f64>>,
     pub bandwidth_used_chart: Option<BTreeMap<String, i64>>,
     pub bandwidth_cached_chart: Option<BTreeMap<String, i64>>,
     pub cache_hit_rate_chart: Option<BTreeMap<String, f64>>,

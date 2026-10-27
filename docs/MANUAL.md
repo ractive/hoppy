@@ -228,8 +228,13 @@ hoppy billing payment-request-pdf 90002 --output payment-request.pdf
 hoppy region list          # core CDN edge regions + per-GB pricing
 hoppy country list         # ISO codes valid for pull-zone country blocking
 
-# Global cross-resource search
+# Global cross-resource search. `GET /search` only indexes DNS, pull and storage
+# zones, so hoppy also matches container app names and database names (case-insensitive
+# substring) and adds the pull zones of matched apps. JSON keeps the /search envelope and
+# appends the client-side matches as an `ExtraResults` array (omitted when empty;
+# `Id` is a string for container/db). Extras are added on the first page only.
 hoppy search example --size 20
+hoppy search example --server-only   # plain /search, no container/database lookups
 
 # Account audit log for a date (ISO 8601)
 hoppy user audit --date 2026-07-01

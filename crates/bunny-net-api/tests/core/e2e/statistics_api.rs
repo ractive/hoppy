@@ -53,6 +53,11 @@ async fn get_account_statistics_returns_data() {
     assert!(stats.cache_hit_rate >= 0.0);
     assert!(stats.bandwidth_used_chart.is_some());
     assert!(!stats.bandwidth_used_chart.unwrap().is_empty());
+
+    // Live API sends fractional origin response times (regression: iter-91).
+    assert!((stats.average_origin_response_time - 101.918_674_794_025_72).abs() < 1e-9);
+    let rt = stats.origin_response_time_chart.expect("chart present");
+    assert!((rt["2026-06-10T00:00:00Z"] - 101.918_674_794_025_72).abs() < 1e-9);
 }
 
 #[tokio::test]
