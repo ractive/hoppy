@@ -9,11 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
-- `bunny-net-api` library: the statistics charts are `BTreeMap<String, f64>`
-  instead of `i64` (the API sends fractional values), and so is
-  `AccountStatistics.average_origin_response_time`. Affected:
-  `AccountStatistics`, `DnsZoneStatistics`, `VideoLibraryDrmStatistics` and
-  `VideoLibraryTranscribingStatistics`.
+- `bunny-net-api` library: `AccountStatistics.average_origin_response_time`
+  is now `f64` and `AccountStatistics.origin_response_time_chart` is now
+  `Option<BTreeMap<String, f64>>`, because the API sends fractional values.
+  The count and byte charts stay `i64`.
 
 ### Added
 
@@ -29,14 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Scoop and winget installs could not start on a clean Windows.
 - `hoppy` without arguments prints the short help (as `hoppy -h`) on stdout
   and exits 0 instead of exiting 2 with a usage error.
-- `hoppy statistics`, the DNS zone statistics and the video library DRM and
-  transcribing statistics no longer fail when the API returns fractional
-  chart values (or, for the account, a fractional average origin response
-  time). Cache Hit Rate is already a percentage and is no longer multiplied
+- `hoppy statistics` no longer fails when the API returns a fractional
+  average origin response time or fractional origin response time chart
+  values. Cache Hit Rate is already a percentage and is no longer multiplied
   by 100.
 - `pull-zone list` / `count` also find Magic Containers pull zones that no
   container endpoint names. The `/search` calls behind this run one at a time
-  and retry on HTTP 429.
+  and retry on HTTP 429; if the rate limit persists, hoppy stops searching and
+  warns once that the list may be incomplete.
 
 ## [0.8.0] - 2026-10-23
 

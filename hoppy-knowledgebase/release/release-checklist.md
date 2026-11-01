@@ -96,5 +96,9 @@ hoppy follows [Semantic Versioning](https://semver.org):
 - **Minor** (`0.x.0`): new commands or flags, backwards-compatible API additions
 - **Major** (`x.0.0`): breaking changes to CLI surface or crate APIs
 
+Before 1.0, as Cargo reads versions, a breaking change bumps the minor version
+(`0.x.0`), the same as new commands or flags; everything else is a patch.
+0.8.0 and 0.9.0 were cut that way.
+
 To bump: edit `version` in `[workspace.package]` (root `Cargo.toml`) — all crates inherit it.
 Run `cargo check` to confirm the version propagates cleanly before tagging.
