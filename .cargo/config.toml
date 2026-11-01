@@ -6,6 +6,7 @@ xtask = "run --package xtask --"
 # Redistributable, not with Windows, and winget/Scoop/zip users without it
 # could not start the binary (STATUS_DLL_NOT_FOUND, 0xC0000135). The C code of
 # aws-lc-sys (rustls' crypto provider) honours `crt-static`. An env `RUSTFLAGS`
-# would replace this setting; no CI or release workflow sets one.
+# would replace this setting; no CI or release workflow sets one, and
+# release.yml fails a Windows build whose binary imports the dynamic runtime.
 [target.'cfg(all(target_os = "windows", target_env = "msvc"))']
 rustflags = ["-C", "target-feature=+crt-static"]

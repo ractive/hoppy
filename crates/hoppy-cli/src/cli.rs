@@ -103,6 +103,9 @@ pub fn build_version_string() -> String {
 /// meant `--min` to receive `-1`. This wrapper detects that case and emits a
 /// message that points at the preceding `--<flag>` and the `--flag=value`
 /// workaround.
+///
+/// A bare `hoppy` is parsed as `hoppy -h` (see `argv_for_bare_invocation`),
+/// so it prints the short help and exits 0. Plain `Cli::parse()` would exit 2.
 pub fn parse_or_exit() -> Cli {
     match Cli::try_parse_from(argv_for_bare_invocation(std::env::args_os().collect())) {
         Ok(cli) => cli,

@@ -76,6 +76,16 @@ jobs:
             # them there too) — and xtask runs as a debug build, whose
             # clap_mangen recursion overflows the default 1 MB MSVC stack.
             # The empty man/ dir keeps extra-archive-paths satisfied.
+            #
+            # Guard the static C runtime (.cargo/config.toml): an env
+            # RUSTFLAGS would silently drop +crt-static, and hoppy.exe would
+            # again need the VC++ Redistributable, which a clean Windows (and
+            # winget's validator) lacks. The import table names its DLLs in
+            # plain ASCII, so a byte search finds them.
+            if grep -a -i -q -E 'vcruntime[0-9]+\.dll|msvcp[0-9]+\.dll|api-ms-win-crt-' "$BIN_PATH"; then
+              echo "::error::$BIN_PATH links the dynamic MSVC C runtime; is RUSTFLAGS set in the environment?"
+              exit 1
+            fi
             ;;
           *)
             cargo xtask --output-dir man
