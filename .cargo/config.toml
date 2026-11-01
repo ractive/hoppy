@@ -1,2 +1,11 @@
 [alias]
 xtask = "run --package xtask --"
+
+# Link the C runtime statically into Windows MSVC binaries, so `hoppy.exe`
+# does not import VCRUNTIME140.dll. That DLL ships with the VC++
+# Redistributable, not with Windows, and winget/Scoop/zip users without it
+# could not start the binary (STATUS_DLL_NOT_FOUND, 0xC0000135). The C code of
+# aws-lc-sys (rustls' crypto provider) honours `crt-static`. An env `RUSTFLAGS`
+# would replace this setting; no CI or release workflow sets one.
+[target.'cfg(all(target_os = "windows", target_env = "msvc"))']
+rustflags = ["-C", "target-feature=+crt-static"]

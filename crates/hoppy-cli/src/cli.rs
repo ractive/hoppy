@@ -13,6 +13,7 @@ use bunny_net_api::shield::types::{
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
+use std::ffi::OsString;
 
 /// A resource id accepted either positionally (`get 123`) or with `--id 123`.
 ///
@@ -103,10 +104,26 @@ pub fn build_version_string() -> String {
 /// message that points at the preceding `--<flag>` and the `--flag=value`
 /// workaround.
 pub fn parse_or_exit() -> Cli {
-    match Cli::try_parse() {
+    match Cli::try_parse_from(argv_for_bare_invocation(std::env::args_os().collect())) {
         Ok(cli) => cli,
         Err(err) => exit_with_friendly_error(err, std::env::args().collect()),
     }
+}
+
+/// A bare `hoppy` (no arguments) runs as `hoppy -h`: the short help on
+/// stdout and exit 0, instead of clap's usage error (help on stderr, exit 2).
+/// winget's validator runs the installed binary without arguments and counts
+/// any non-zero exit as a failure. Every other argv is left as it is, so
+/// invalid arguments, unknown subcommands and a bare subcommand group
+/// (`hoppy dns`) still exit non-zero.
+fn argv_for_bare_invocation(mut argv: Vec<OsString>) -> Vec<OsString> {
+    if argv.len() <= 1 {
+        if argv.is_empty() {
+            argv.push(OsString::from("hoppy"));
+        }
+        argv.push(OsString::from("-h"));
+    }
+    argv
 }
 
 fn exit_with_friendly_error(err: clap::Error, argv: Vec<String>) -> ! {
@@ -5859,14 +5876,44 @@ impl From<TokenAuthorization> for bunny_net_api::database::types::Authorization 
 
 #[cfg(test)]
 mod cli_parse_tests {
-    use super::Cli;
+    use super::{Cli, argv_for_bare_invocation};
+    use clap::error::ErrorKind;
     use clap::{CommandFactory, Parser};
+    use std::ffi::OsString;
 
     /// Catches positional-ordering and duplicate-arg-id mistakes across the
     /// whole command tree (including every `IdArg` use).
     #[test]
     fn command_tree_passes_clap_debug_asserts() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn bare_invocation_becomes_short_help() {
+        let argv = argv_for_bare_invocation(vec![OsString::from("hoppy")]);
+        assert_eq!(argv, [OsString::from("hoppy"), OsString::from("-h")]);
+        let err = Cli::try_parse_from(argv).err().map(|e| e.kind());
+        assert_eq!(err, Some(ErrorKind::DisplayHelp));
+        assert_eq!(
+            argv_for_bare_invocation(Vec::new()),
+            [OsString::from("hoppy"), OsString::from("-h")]
+        );
+    }
+
+    #[test]
+    fn non_bare_invocations_are_left_alone() {
+        for args in [
+            &["hoppy", "dns"][..],
+            &["hoppy", "--debug"],
+            &["hoppy", "no-such-command"],
+        ] {
+            let argv: Vec<OsString> = args.iter().map(OsString::from).collect();
+            assert_eq!(argv_for_bare_invocation(argv.clone()), argv);
+            assert!(
+                Cli::try_parse_from(argv).is_err(),
+                "{args:?} must not parse"
+            );
+        }
     }
 
     #[test]

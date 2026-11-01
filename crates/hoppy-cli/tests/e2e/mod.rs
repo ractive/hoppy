@@ -3,6 +3,7 @@ mod support;
 mod build_vcs_info;
 mod cli_account;
 mod cli_auth;
+mod cli_bare_invocation;
 mod cli_container;
 mod cli_database;
 mod cli_dns;
