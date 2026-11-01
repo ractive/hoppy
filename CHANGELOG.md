@@ -7,16 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- `--format json` key renames, to the names bunny's API uses: hostname
+  `ForceSsl` is now `ForceSSL` (`pull-zone get` / `list` / `create`), and DNS
+  zone `LoggingIpAnonymizationEnabled` is now `LoggingIPAnonymizationEnabled`
+  (`dns zone get` / `list` / `create`). Scripts that read the old keys get
+  `null`; read the new keys instead.
+
 ### Fixed
 
 - Pull zone hostnames: Force SSL showed as off for every hostname. bunny
-  sends `ForceSSL`, hoppy read `ForceSsl` and fell back to `false`. JSON
-  output now uses the API name `ForceSSL`.
+  sends `ForceSSL`, hoppy read `ForceSsl` and fell back to `false`.
 - DNS zones: `LoggingIPAnonymizationEnabled` always read as `false` for the
-  same reason. JSON output now uses `LoggingIPAnonymizationEnabled`, and
-  `dns zone update` sends that name.
-- `stream library update --ui-language` sends `UILanguage`, the name in
-  bunny's spec, instead of `UiLanguage`.
+  same reason. `dns zone update` now sends that name too.
+- `stream library update --ui-language` sends `UILanguage` and
+  `pull-zone update --blocked-ips` sends `BlockedIps`, the names in bunny's
+  spec, instead of `UiLanguage` and `BlockedIPs`.
 
 ## [0.9.0] - 2026-11-01
 

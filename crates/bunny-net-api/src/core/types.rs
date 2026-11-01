@@ -1626,7 +1626,8 @@ pub struct UpdatePullZone {
     pub blocked_countries: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub budget_redirected_countries: Option<Vec<String>>,
-    #[serde(rename = "BlockedIPs", skip_serializing_if = "Option::is_none")]
+    /// Wire name `BlockedIps`, as in `PullZoneSettingsModel` and the read side.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub blocked_ips: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allowed_referrers: Option<Vec<String>>,
@@ -5215,5 +5216,16 @@ mod tests {
         let v = serde_json::to_value(&body).unwrap();
         assert_eq!(v["UILanguage"], "de");
         assert!(v.get("UiLanguage").is_none());
+    }
+
+    /// `UpdatePullZone` sends `BlockedIps`, the name in `PullZoneSettingsModel`
+    /// and in live pull zone responses. iter-47 had renamed it to `BlockedIPs`,
+    /// which no spec model uses.
+    #[test]
+    fn update_pull_zone_sends_blocked_ips_spec_casing() {
+        let body = UpdatePullZone::new().blocked_ips(vec!["192.0.2.1".to_string()]);
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["BlockedIps"], serde_json::json!(["192.0.2.1"]));
+        assert!(v.get("BlockedIPs").is_none());
     }
 }
