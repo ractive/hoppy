@@ -18,14 +18,14 @@ expression: "String::from_utf8_lossy(&output.stdout)"
         {
           "Id": 2002,
           "Value": "test-11.b-cdn.net",
-          "ForceSsl": false,
+          "ForceSSL": false,
           "HasCertificate": true,
           "IsSystemHostname": true
         },
         {
           "Id": 2003,
           "Value": "test-12.b-cdn.net",
-          "ForceSsl": false,
+          "ForceSSL": true,
           "HasCertificate": true,
           "IsSystemHostname": false
         }
@@ -208,7 +208,7 @@ expression: "String::from_utf8_lossy(&output.stdout)"
         {
           "Id": 2001,
           "Value": "test-16.b-cdn.net",
-          "ForceSsl": false,
+          "ForceSSL": true,
           "HasCertificate": true,
           "IsSystemHostname": true
         }

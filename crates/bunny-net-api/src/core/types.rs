@@ -807,7 +807,8 @@ pub struct EdgeRule {
 pub struct HostnameInfo {
     pub id: i64,
     pub value: String,
-    #[serde(default)]
+    /// bunny sends `ForceSSL`; `ForceSsl` (hoppy <= 0.9.0 JSON output) is accepted on read.
+    #[serde(rename = "ForceSSL", alias = "ForceSsl", default)]
     pub force_ssl: bool,
     #[serde(default)]
     pub has_certificate: bool,
@@ -1625,7 +1626,8 @@ pub struct UpdatePullZone {
     pub blocked_countries: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub budget_redirected_countries: Option<Vec<String>>,
-    #[serde(rename = "BlockedIPs", skip_serializing_if = "Option::is_none")]
+    /// Wire name `BlockedIps`, as in `PullZoneSettingsModel` and the read side.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub blocked_ips: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allowed_referrers: Option<Vec<String>>,
@@ -3162,7 +3164,11 @@ pub struct DnsZone {
     pub nameservers_next_check: String,
     #[serde(default)]
     pub logging_enabled: bool,
-    #[serde(default)]
+    #[serde(
+        rename = "LoggingIPAnonymizationEnabled",
+        alias = "LoggingIpAnonymizationEnabled",
+        default
+    )]
     pub logging_ip_anonymization_enabled: bool,
     #[serde(default)]
     pub dns_sec_enabled: bool,
@@ -3389,7 +3395,10 @@ pub struct UpdateDnsZone {
     pub soa_email: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logging_enabled: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "LoggingIPAnonymizationEnabled",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub logging_ip_anonymization_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_anonymization_type: Option<LogAnonymizationType>,
@@ -3559,7 +3568,7 @@ pub struct UpdateVideoLibrary {
     pub captions_background: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_family: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "UILanguage", skip_serializing_if = "Option::is_none")]
     pub ui_language: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub controls: Option<String>,
@@ -5149,5 +5158,74 @@ mod tests {
         let future: EdgeRuleActionType = serde_json::from_str("99").unwrap();
         assert_eq!(future.to_string(), "Unknown(99)");
         assert_eq!(serde_json::to_string(&future).unwrap(), "99");
+    }
+
+    /// Regression: bunny spells the hostname field `ForceSSL`. The default
+    /// PascalCase rename produced `ForceSsl`, so every hostname silently read
+    /// back as `force_ssl == false`.
+    #[test]
+    fn hostname_info_reads_force_ssl_acronym_casing() {
+        let h: HostnameInfo = serde_json::from_str(
+            r#"{"Id": 1, "Value": "x.b-cdn.net", "ForceSSL": true, "HasCertificate": true, "IsSystemHostname": true}"#,
+        )
+        .unwrap();
+        assert!(h.force_ssl);
+
+        // Older hoppy JSON output (`ForceSsl`) still reads back.
+        let h: HostnameInfo =
+            serde_json::from_str(r#"{"Id": 1, "Value": "x", "ForceSsl": true}"#).unwrap();
+        assert!(h.force_ssl);
+
+        let v = serde_json::to_value(&h).unwrap();
+        assert_eq!(v["ForceSSL"], true);
+        assert!(v.get("ForceSsl").is_none());
+    }
+
+    /// Regression: `DnsZone` read `LoggingIpAnonymizationEnabled`, but bunny
+    /// sends `LoggingIPAnonymizationEnabled`, so the flag always read `false`.
+    #[test]
+    fn dns_zone_reads_logging_ip_anonymization_acronym_casing() {
+        let z: DnsZone =
+            serde_json::from_str(r#"{"Id": 1, "LoggingIPAnonymizationEnabled": true}"#).unwrap();
+        assert!(z.logging_ip_anonymization_enabled);
+
+        let z: DnsZone =
+            serde_json::from_str(r#"{"Id": 1, "LoggingIpAnonymizationEnabled": true}"#).unwrap();
+        assert!(z.logging_ip_anonymization_enabled);
+
+        let v = serde_json::to_value(&z).unwrap();
+        assert_eq!(v["LoggingIPAnonymizationEnabled"], true);
+        assert!(v.get("LoggingIpAnonymizationEnabled").is_none());
+    }
+
+    /// `UpdateDnsZone` must send the spec name `LoggingIPAnonymizationEnabled`
+    /// (`UpdateDnsZoneModel` in the core-platform spec).
+    #[test]
+    fn update_dns_zone_sends_logging_ip_anonymization_acronym_casing() {
+        let body = UpdateDnsZone::new().logging_ip_anonymization_enabled(true);
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["LoggingIPAnonymizationEnabled"], true);
+        assert!(v.get("LoggingIpAnonymizationEnabled").is_none());
+    }
+
+    /// `UpdateVideoLibrary` must send the spec name `UILanguage`
+    /// (`VideoLibraryUpdateModel` in the core-platform spec), not `UiLanguage`.
+    #[test]
+    fn update_video_library_sends_ui_language_acronym_casing() {
+        let body = UpdateVideoLibrary::new().ui_language("de");
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["UILanguage"], "de");
+        assert!(v.get("UiLanguage").is_none());
+    }
+
+    /// `UpdatePullZone` sends `BlockedIps`, the name in `PullZoneSettingsModel`
+    /// and in live pull zone responses. iter-47 had renamed it to `BlockedIPs`,
+    /// which no spec model uses.
+    #[test]
+    fn update_pull_zone_sends_blocked_ips_spec_casing() {
+        let body = UpdatePullZone::new().blocked_ips(vec!["192.0.2.1".to_string()]);
+        let v = serde_json::to_value(&body).unwrap();
+        assert_eq!(v["BlockedIps"], serde_json::json!(["192.0.2.1"]));
+        assert!(v.get("BlockedIPs").is_none());
     }
 }

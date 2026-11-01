@@ -231,6 +231,9 @@ async fn dns_zone_get_json() {
         json["NameserversDetected"].is_boolean(),
         "expected NameserversDetected to be a boolean"
     );
+    // Regression: bunny spells it `LoggingIPAnonymizationEnabled` (fixture
+    // value `true`); the PascalCase default read `...Ip...` and always got `false`.
+    assert_eq!(json["LoggingIPAnonymizationEnabled"], true);
 }
 
 #[tokio::test]
