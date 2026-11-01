@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Pull zone hostnames: Force SSL showed as off for every hostname. bunny
+  sends `ForceSSL`, hoppy read `ForceSsl` and fell back to `false`. JSON
+  output now uses the API name `ForceSSL`.
+- DNS zones: `LoggingIPAnonymizationEnabled` always read as `false` for the
+  same reason. JSON output now uses `LoggingIPAnonymizationEnabled`, and
+  `dns zone update` sends that name.
+- `stream library update --ui-language` sends `UILanguage`, the name in
+  bunny's spec, instead of `UiLanguage`.
+
 ## [0.9.0] - 2026-11-01
 
 ### Breaking
