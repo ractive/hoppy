@@ -5,15 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] - 2026-11-01
+
+### Breaking
+
+- `bunny-net-api` library: the statistics charts are `BTreeMap<String, f64>`
+  instead of `i64` (the API sends fractional values), and so is
+  `AccountStatistics.average_origin_response_time`. Affected:
+  `AccountStatistics`, `DnsZoneStatistics`, `VideoLibraryDrmStatistics` and
+  `VideoLibraryTranscribingStatistics`.
+
+### Added
+
+- `hoppy search` also matches container app names and database names
+  (case-insensitive substring) and adds the pull zones of matched apps. In
+  JSON they are an `ExtraResults` array next to the unchanged `/search`
+  envelope. `--server-only` sends only the plain `/search` request.
 
 ### Fixed
 
 - Windows: `hoppy.exe` links the C runtime statically and no longer needs
-  `VCRUNTIME140.dll` (the VC++ Redistributable). Without it, the zip, Scoop
-  and winget installs could not start on a clean Windows.
+  `VCRUNTIME140.dll` (the Visual C++ Redistributable). Without it, the zip,
+  Scoop and winget installs could not start on a clean Windows.
 - `hoppy` without arguments prints the short help (as `hoppy -h`) on stdout
   and exits 0 instead of exiting 2 with a usage error.
+- `hoppy statistics`, the DNS zone statistics and the video library DRM and
+  transcribing statistics no longer fail when the API returns fractional
+  chart values (or, for the account, a fractional average origin response
+  time). Cache Hit Rate is already a percentage and is no longer multiplied
+  by 100.
+- `pull-zone list` / `count` also find Magic Containers pull zones that no
+  container endpoint names. The `/search` calls behind this run one at a time
+  and retry on HTTP 429.
 
 ## [0.8.0] - 2026-10-23
 
@@ -453,6 +476,6 @@ Initial release.
 - Pagination support across all list commands
 - Credentials excluded from JSON output for security
 
-[Unreleased]: https://github.com/ractive/hoppy/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ractive/hoppy/compare/v0.9.0...HEAD
 [0.1.1]: https://github.com/ractive/hoppy/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ractive/hoppy/releases/tag/v0.1.0
