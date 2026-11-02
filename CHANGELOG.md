@@ -5,14 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2026-11-02
 
 ### Breaking
 
 - `--format json` key renames, to the names bunny's API uses: hostname
-  `ForceSsl` is now `ForceSSL` (`pull-zone get` / `list` / `create`), and DNS
-  zone `LoggingIpAnonymizationEnabled` is now `LoggingIPAnonymizationEnabled`
-  (`dns zone get` / `list` / `create`). Scripts that read the old keys get
+  `ForceSsl` is now `ForceSSL` (`pull-zone get` / `list` / `create` /
+  `update` / `reset-security-key`), and DNS zone
+  `LoggingIpAnonymizationEnabled` is now `LoggingIPAnonymizationEnabled`
+  (`dns zone get` / `list` / `create` / `update`). Scripts that read the old keys get
   `null`; read the new keys instead.
 
 ### Fixed
@@ -495,6 +496,7 @@ Initial release.
 - Pagination support across all list commands
 - Credentials excluded from JSON output for security
 
-[Unreleased]: https://github.com/ractive/hoppy/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/ractive/hoppy/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/ractive/hoppy/compare/v0.9.0...v0.10.0
 [0.1.1]: https://github.com/ractive/hoppy/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ractive/hoppy/releases/tag/v0.1.0
