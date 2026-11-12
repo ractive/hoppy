@@ -14,18 +14,12 @@ use redact::RedactConfig;
 fn main() {
     let cli = cli::parse_or_exit();
 
-    // Propagate --no-redact to the recording layer via env var, BEFORE the
-    // Tokio runtime is constructed. The env-var indirection avoids threading
-    // a flag through every domain client builder; `bunny-net-api` reads
-    // HOPPY_NO_REDACT=1 inside `maybe_record_response` before writing
-    // fixtures to disk.
-    //
-    // SAFETY: we are still single-threaded — the Tokio runtime has not been
-    // built yet, so no other thread can be observing the environment.
+    // Propagate --no-redact to the recording layer. A process-wide switch
+    // avoids threading a flag through every domain client builder;
+    // `bunny-net-api` checks it (and HOPPY_NO_REDACT=1) inside
+    // `maybe_record_response` before writing fixtures to disk.
     if cli.no_redact {
-        unsafe {
-            std::env::set_var("HOPPY_NO_REDACT", "1");
-        }
+        bunny_net_api::recording::set_no_redact(true);
     }
 
     let runtime = tokio::runtime::Builder::new_multi_thread()

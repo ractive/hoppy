@@ -11,3 +11,6 @@ hoppy-cli.workspace = true
 clap_mangen.workspace = true
 clap.workspace = true
 anyhow.workspace = true
+
+[lints]
+workspace = true
