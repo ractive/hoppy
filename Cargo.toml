@@ -19,12 +19,12 @@ hoppy-cli = { path = "crates/hoppy-cli", version = "0.10.0" }
 # External dependencies
 anyhow = "1"
 assert_cmd = "2"
-base64 = "0.22"
+base64 = "0.23"
 bytes = "1"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 clap_mangen = "0.3"
-console = "0.16.4"
+console = "0.16.6"
 indicatif = { version = "0.18.6", features = ["tokio"] }
 insta = { version = "1", features = ["filters", "json", "redactions"] }
 percent-encoding = "2"
@@ -33,10 +33,10 @@ reqwest = { version = "0.13", default-features = false, features = ["json", "que
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
-tabled = "0.21"
+tabled = "0.22"
 tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-tokio-util = { version = "0.7.18", features = ["io"] }
+tokio-util = { version = "0.7.20", features = ["io"] }
 urlencoding = "2"
 regex = "1"
 walkdir = "2"
@@ -46,7 +46,7 @@ wiremock = "0.6"
 # workspace deps for consistency but no other workspace crate should
 # `.workspace = true` them without good reason — `syn = "full"` is a heavy
 # compile-time dependency.
-syn = { version = "2", features = ["full", "extra-traits", "visit"] }
+syn = { version = "3", features = ["full", "extra-traits", "visit"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
