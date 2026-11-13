@@ -1,0 +1,34 @@
+# Dependabot version updates.
+#
+# Every update PR goes through ci.yml, so the quality gates (including
+# `cargo deny check`) judge it like any other PR. Majors arrive as
+# individual PRs; minor/patch updates are grouped per ecosystem to keep the
+# PR count low.
+#
+# - github-actions: third-party actions are SHA-pinned with a `# vX.Y.Z`
+#   comment; Dependabot updates both. The first-party reusable workflows
+#   (ractive/release-workflows) are pinned by tag by design, so their bumps
+#   are ignored here and done by hand with each release-workflows tag.
+# - cargo: the root workspace.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Dependabot names a reusable workflow by its full path
+      # (ractive/release-workflows/.github/workflows/release.yml), so the
+      # pattern needs the trailing wildcard.
+      - dependency-name: "ractive/release-workflows*"
+    groups:
+      github-actions:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      cargo-minor-patch:
+        update-types: [minor, patch]
