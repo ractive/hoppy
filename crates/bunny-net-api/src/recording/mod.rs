@@ -3,6 +3,23 @@ pub mod redact;
 
 use std::path::Path;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Process-wide "skip redaction" switch set by [`set_no_redact`].
+static NO_REDACT: AtomicBool = AtomicBool::new(false);
+
+/// Disable (or re-enable) redaction of recorded fixtures for this process.
+///
+/// Recording also honours `HOPPY_NO_REDACT=1` in the environment; this
+/// setter lets a caller turn redaction off without mutating the process
+/// environment (`std::env::set_var` is `unsafe` since edition 2024).
+pub fn set_no_redact(no_redact: bool) {
+    NO_REDACT.store(no_redact, Ordering::Relaxed);
+}
+
+fn redaction_disabled() -> bool {
+    NO_REDACT.load(Ordering::Relaxed) || std::env::var("HOPPY_NO_REDACT").as_deref() == Ok("1")
+}
 
 /// Capture a request's method and path for later recording.
 ///
@@ -61,11 +78,11 @@ pub fn maybe_record_response(
     if let Some(parent) = file_path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    // Redaction is enabled by default. Set HOPPY_NO_REDACT=1 to skip it.
-    // The env-var indirection avoids threading a `redact: bool` flag through
-    // every domain client builder — recording is already an env-var-driven
-    // opt-in, so this matches the existing pattern.
-    let no_redact = std::env::var("HOPPY_NO_REDACT").as_deref() == Ok("1");
+    // Redaction is enabled by default. `set_no_redact(true)` or
+    // HOPPY_NO_REDACT=1 skips it. A process-wide switch avoids threading a
+    // `redact: bool` flag through every domain client builder — recording is
+    // already an env-var-driven opt-in, so this matches the existing pattern.
+    let no_redact = redaction_disabled();
 
     let payload: Vec<u8> = if let Ok(mut value) = serde_json::from_slice::<serde_json::Value>(bytes)
     {

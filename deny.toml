@@ -4,12 +4,7 @@
 # Runs in CI on every PR and on main (.github/workflows/deny.yml).
 
 [advisories]
-ignore = [
-    # proc-macro-error2 is unmaintained (compile-time only, via
-    # tabled_derive -> tabled). RUSTSEC says "no safe upgrade is available" —
-    # tabled 0.21 still depends on it. Revisit when tabled drops it.
-    "RUSTSEC-2026-0173",
-]
+ignore = []
 
 [licenses]
 allow = [
@@ -22,6 +17,8 @@ allow = [
     # webpki-root-certs (transitively pulled in by rustls-platform-verifier)
     # ships the Mozilla CCADB root list under a Community Data License.
     "CDLA-Permissive-2.0",
+    # foldhash, a dependency of serde_json (new between 1.0.150 and 1.0.154).
+    "Zlib",
 ]
 confidence-threshold = 0.8
 

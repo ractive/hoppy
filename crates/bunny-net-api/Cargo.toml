@@ -7,7 +7,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 
 [features]
 default = ["core", "compute", "containers", "database", "logging", "origin-errors", "recording", "shield", "storage", "stream"]
@@ -77,3 +76,6 @@ path = "tests/storage/e2e/mod.rs"
 [[test]]
 name = "e2e-stream"
 path = "tests/stream/e2e/mod.rs"
+
+[lints]
+workspace = true

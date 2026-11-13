@@ -5,7 +5,6 @@ edition.workspace = true
 description = "Embedded RFC 5424 / 3164 syslog TCP receiver with a pluggable tunnel abstraction (used by `hoppy container logs`)"
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 readme = "README.md"
 keywords = ["syslog", "rfc5424", "rfc3164", "tcp", "logging"]
 categories = ["network-programming", "development-tools::debugging"]
@@ -22,3 +21,6 @@ tracing = "0.1"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "process", "time", "test-util"] }
+
+[lints]
+workspace = true
